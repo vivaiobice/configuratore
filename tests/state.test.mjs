@@ -7,7 +7,7 @@ test('initial state starts in TEST with empty project geometry', () => {
   assert.equal(state.environment, 'TEST');
   assert.equal(state.project.geometry, null);
   assert.equal(state.project.rowSpacingM, 2.5);
-  assert.equal(state.project.plantSpacingM, 1);
+  assert.equal(state.project.plantSpacingM, 0.9);
   assert.equal(state.project.orientationDeg, 0);
   assert.deepEqual(state.project.cadastralRefs, []);
 });

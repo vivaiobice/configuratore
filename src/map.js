@@ -1,6 +1,7 @@
-import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre } from './map-adapters.js';
+import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, createReliablePolygonMode } from './map-adapters.js';
 import { rowsToFeatureCollection, sideMeasurements, sideMeasurementsToFeatureCollection } from './geometry.js';
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
+import { installTrackpadRotation } from './map-gestures.js';
 
 const SATELLITE_ID = 'base-satellite';
 const STREET_ID = 'base-street';
@@ -52,19 +53,26 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
   map.addControl(new globalThis.maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
   map.addControl(new globalThis.maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+  map.dragRotate.enable();
+  map.touchZoomRotate.enable();
+  map.touchZoomRotate.enableRotation();
+  installTrackpadRotation(map);
 
   let draw = null;
   let searchMarker = null;
   let gpsMarker = null;
+  let sideMeasurementMarkers = [];
   let cadastralVisible = false;
   let selectedCadastralParcels = [];
   let polygonUnionPromise = null;
 
   if (globalThis.MapboxDraw) {
     configureDrawForMapLibre(globalThis.MapboxDraw);
+    const reliablePolygonMode = createReliablePolygonMode(globalThis.MapboxDraw, 18);
     draw = new globalThis.MapboxDraw({
       displayControlsDefault: false,
       defaultMode: 'simple_select',
+      modes: reliablePolygonMode ? { ...globalThis.MapboxDraw.modes, draw_polygon: reliablePolygonMode } : globalThis.MapboxDraw.modes,
       clickBuffer: 8,
       touchBuffer: 32,
       keybindings: true,
@@ -140,8 +148,23 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
 
   function updateSideMeasurements(coords) {
+    const measurements = sideMeasurements(coords);
     const source = map.getSource(SIDE_MEASUREMENTS_SOURCE_ID);
-    source?.setData(sideMeasurementsToFeatureCollection(sideMeasurements(coords)));
+    source?.setData(sideMeasurementsToFeatureCollection(measurements));
+
+    for (const marker of sideMeasurementMarkers) marker.remove();
+    sideMeasurementMarkers = [];
+    if (typeof document === 'undefined') return;
+
+    for (const side of measurements) {
+      const element = document.createElement('div');
+      element.className = 'side-measurement-label';
+      element.textContent = `${Math.round(side.lengthM).toLocaleString('it-IT')} m`;
+      const marker = new globalThis.maplibregl.Marker({ element, anchor:'center' })
+        .setLngLat(side.midpoint)
+        .addTo(map);
+      sideMeasurementMarkers.push(marker);
+    }
   }
 
   function cadastralRequest() {

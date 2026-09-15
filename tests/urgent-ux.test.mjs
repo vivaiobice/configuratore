@@ -48,16 +48,17 @@ test('side measurements are forced visible around the edited polygon', () => {
   assert.match(map, /'text-ignore-placement':\s*true/);
 });
 
-test('desktop map includes an always-visible floating project summary with save action', () => {
+test('desktop panel includes an always-visible fixed-footer project summary with save action', () => {
   assert.match(html, /id="map-summary"/);
   for (const id of ['summary-area','summary-perimeter','summary-rows','summary-linear','summary-plants','summary-save-project']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  assert.match(css, /\.map-summary\s*\{/);
+  assert.match(css, /\.panel-scroll\s*\{[^}]*overflow:auto/);
+  assert.match(css, /\.map-summary\s*\{[^}]*position:static/);
   assert.match(app, /summary-save-project/);
 });
 
-test('mobile puts step 1 above the map and reduces floating summary to estimated vines only', () => {
+test('mobile puts step 1 above the map and keeps the sticky summary compact', () => {
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.panel\{[^}]*display:contents/);
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.step\[data-step="1"\]\{[^}]*order:1/);
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.map-wrap\{[^}]*order:2/);

@@ -130,7 +130,7 @@ try {
 } catch (error) { console.error(error); setStatus('Impossibile caricare la mappa. Controlla la connessione e riprova.'); }
 
 $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
-$('#plant-spacing').value = state.project.plantSpacingM ?? 1;
+$('#plant-spacing').value = state.project.plantSpacingM ?? 0.9;
 $('#orientation').value = state.project.orientationDeg ?? 0;
 $('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
 $('#headland').value = state.project.headlandWidthM ?? '';
@@ -143,7 +143,14 @@ $('#rootstock').value = state.project.rootstock ?? '';
 $('#clone-selection').value = state.project.cloneSelection ?? '';
 
 $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
-$('#gps-button')?.addEventListener('click', async () => { try { await mapApi?.locate(); track('gps_used', { source:'button' }); } catch {} });
+async function locateFrom(source) {
+  try {
+    await mapApi?.locate();
+    track('gps_used', { source });
+  } catch {}
+}
+$('#gps-button')?.addEventListener('click', () => locateFrom('panel_button'));
+$('#map-gps-button')?.addEventListener('click', () => locateFrom('map_button'));
 const searchInput = $('#search-input');
 const searchSuggestions = $('#search-suggestions');
 let suggestionTimer = null;
@@ -219,8 +226,7 @@ for (const button of document.querySelectorAll('[data-angle]')) { button.addEven
 $('#mechanized')?.addEventListener('change', (event) => { patchProject({ mechanizedHarvest: event.target.checked }); track('advanced_option_changed', { option:'mechanized_harvest', enabled:event.target.checked }); });
 $('#project-context')?.addEventListener('change', (event) => { patchProject({ projectContextType: event.target.value }); track('advanced_option_changed', { option:'project_context', enabled:Boolean(event.target.value) }); });
 $('#project-context-note')?.addEventListener('input', (event) => patchProject({ projectContextNote: event.target.value }));
-$('#grape-variety')?.addEventListener('input', (event) => patchProject({ grapeVariety: event.target.value }));
-$('#grape-variety')?.addEventListener('change', () => track('plant_material_changed', { field:'grape_variety', defined:Boolean(state.project.grapeVariety) }));
+$('#grape-variety')?.addEventListener('change', (event) => { patchProject({ grapeVariety: event.target.value }); track('plant_material_changed', { field:'grape_variety', defined:Boolean(event.target.value) }); });
 $('#rootstock')?.addEventListener('input', (event) => patchProject({ rootstock: event.target.value }));
 $('#rootstock')?.addEventListener('change', () => track('plant_material_changed', { field:'rootstock', defined:Boolean(state.project.rootstock) }));
 $('#clone-selection')?.addEventListener('input', (event) => patchProject({ cloneSelection: event.target.value }));

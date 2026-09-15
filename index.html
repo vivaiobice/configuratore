@@ -21,6 +21,7 @@
 
   <main class="app-shell">
     <aside class="panel" aria-label="Configurazione vigneto">
+      <div class="panel-scroll">
       <div class="panel-intro">
         <p class="eyebrow">PROGETTA IL TUO VIGNETO</p>
         <h1>Dal terreno a una prima ipotesi d’impianto.</h1>
@@ -45,8 +46,8 @@
       <section class="step" data-step="2">
         <div class="step-heading"><span>02</span><div><h2>Sesto d’impianto</h2><p>Imposta le distanze principali.</p></div></div>
         <div class="field-grid">
+          <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
           <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
-          <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="1.00" /></label>
         </div>
         <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
           <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Inserisci la superficie: usa il sesto impostato qui sopra.</span></div></div>
@@ -75,10 +76,25 @@
           <label>Inquadramento del progetto
             <select id="project-context"><option value="">Nessuno / da definire</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
           </label>
-          <label>Riferimento / note<input id="project-context-note" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
+          <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
           <hr class="soft-divider" />
           <h3>Scelta del materiale vegetale</h3>
-          <label>Vitigno<input id="grape-variety" type="text" placeholder="Da definire" /></label>
+          <label>Vitigno
+            <select id="grape-variety">
+              <option value="">Da definire</option>
+              <option value="Arneis B.">Arneis B.</option>
+              <option value="Barbera N.">Barbera N.</option>
+              <option value="Chardonnay B.">Chardonnay B.</option>
+              <option value="Cortese B.">Cortese B.</option>
+              <option value="Dolcetto N.">Dolcetto N.</option>
+              <option value="Moscato Bianco B.">Moscato Bianco B.</option>
+              <option value="Nebbiolo N.">Nebbiolo N.</option>
+              <option value="Pinot Nero N.">Pinot Nero N.</option>
+              <option value="Sauvignon B.">Sauvignon B.</option>
+              <option value="Viognier B.">Viognier B.</option>
+              <option value="Altro / da definire">Altro / da definire</option>
+            </select>
+          </label>
           <div class="field-grid"><label>Portainnesto<input id="rootstock" type="text" placeholder="Consigliami" /></label><label>Clone / selezione<input id="clone-selection" type="text" placeholder="Facoltativo" /></label></div>
         </div>
       </details>
@@ -97,19 +113,8 @@
         <button id="save-project" class="primary-button wide" type="button">Salva il progetto</button><div class="button-row"><button id="open-report" class="secondary-button" type="button">Proposta / PDF</button><button id="request-quote" class="secondary-button" type="button">Richiedi preventivo</button></div>
         <p>Il progetto viene già salvato come bozza su questo dispositivo. I dati cliente servono per salvarlo definitivamente, PDF e preventivo.</p>
       </div>
-    </aside>
-
-    <section class="map-wrap" aria-label="Mappa del progetto">
-      <div id="map"></div>
-      <div class="map-toolbar">
-        <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
-        <button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
-        <div class="map-rotation" aria-label="Rotazione mappa">
-          <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
-          <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
-          <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
-        </div>
       </div>
+
       <aside id="map-summary" class="map-summary" aria-label="Riepilogo progetto">
         <div class="map-summary-grid">
           <div class="summary-secondary"><span>Superficie</span><strong id="summary-area">—</strong></div>
@@ -120,6 +125,19 @@
         </div>
         <button id="summary-save-project" class="primary-button wide" type="button">Salva il progetto</button>
       </aside>
+    </aside>
+
+    <section class="map-wrap" aria-label="Mappa del progetto">
+      <div id="map"></div>
+      <div class="map-toolbar">
+        <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
+        <button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
+        <div class="map-rotation" aria-label="Rotazione mappa" title="Trackpad: rotazione a due dita dove supportata; in Chrome usa Shift + scorrimento orizzontale">
+          <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
+          <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
+          <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
+        </div>
+      </div>
       <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
     </section>
   </main>

@@ -9,7 +9,7 @@ export function createInitialState() {
       sourceType: 'manual',
       cadastralRefs: [],
       rowSpacingM: 2.5,
-      plantSpacingM: 1,
+      plantSpacingM: 0.9,
       orientationDeg: 0,
       orientationLocked: false,
       locationLabel: '',

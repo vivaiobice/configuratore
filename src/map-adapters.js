@@ -60,6 +60,41 @@ export function coordinatesFromDrawEvent(event, fallbackFeatures = []) {
   return Array.isArray(coords) && coords.length >= 4 ? coords : null;
 }
 
+
+export function shouldClosePolygonAtFirstVertex(state, event, map, tolerancePx = 18) {
+  if (!state || Number(state.currentVertexPosition) < 3) return false;
+  const first = state.polygon?.coordinates?.[0]?.[0];
+  if (!Array.isArray(first) || first.length < 2 || typeof map?.project !== 'function') return false;
+  const firstPoint = map.project(first);
+  const eventPoint = event?.point ?? (event?.lngLat ? map.project([event.lngLat.lng, event.lngLat.lat]) : null);
+  if (!eventPoint || !Number.isFinite(eventPoint.x) || !Number.isFinite(eventPoint.y)) return false;
+  if (!Number.isFinite(firstPoint?.x) || !Number.isFinite(firstPoint?.y)) return false;
+  return Math.hypot(eventPoint.x - firstPoint.x, eventPoint.y - firstPoint.y) <= tolerancePx;
+}
+
+export function createReliablePolygonMode(Draw, tolerancePx = 18) {
+  const base = Draw?.modes?.draw_polygon;
+  if (!base) return null;
+  const mode = { ...base };
+  const builtInClick = base.onClick;
+  const builtInTap = base.onTap ?? base.onClick;
+
+  const handle = function(original, state, event) {
+    if (shouldClosePolygonAtFirstVertex(state, event, this.map, tolerancePx)) {
+      return this.changeMode('simple_select', { featureIds:[state.polygon.id] });
+    }
+    return original?.call(this, state, event);
+  };
+
+  mode.onClick = function(state, event) {
+    return handle.call(this, builtInClick, state, event);
+  };
+  mode.onTap = function(state, event) {
+    return handle.call(this, builtInTap, state, event);
+  };
+  return mode;
+}
+
 export function configureDrawForMapLibre(Draw) {
   const classes = Draw?.constants?.classes;
   if (!classes) return Draw;
