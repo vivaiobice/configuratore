@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#16251c" />
+  <title>Configuratore | Vivai Obice</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Vivai Obice">
+      <span class="brand-mark">VO</span>
+      <span><strong>Vivai Obice</strong><small>Configuratore</small></span>
+    </a>
+    <span class="test-badge">AMBIENTE TEST</span>
+  </header>
+
+  <main class="app-shell">
+    <aside class="panel" aria-label="Configurazione vigneto">
+      <div class="panel-intro">
+        <p class="eyebrow">PROGETTA IL TUO VIGNETO</p>
+        <h1>Dal terreno a una prima ipotesi d’impianto.</h1>
+        <p>Trova l’appezzamento, definisci il perimetro e imposta il sesto. Il progetto si aggiorna in tempo reale.</p>
+      </div>
+
+      <section class="step" data-step="1">
+        <div class="step-heading"><span>01</span><div><h2>Trova il terreno</h2><p>Cerca una località oppure usa la posizione attuale.</p></div></div>
+        <form id="search-form" class="search-row">
+          <input id="search-input" type="search" autocomplete="street-address" placeholder="Comune, località o indirizzo" />
+          <button class="icon-button" aria-label="Cerca" title="Cerca">⌕</button>
+        </form>
+        <div class="button-row">
+          <button id="gps-button" class="secondary-button" type="button">◎ Posizione attuale</button>
+          <button id="draw-button" class="primary-button" type="button">Disegna terreno</button>
+        </div>
+      </section>
+
+      <section class="step" data-step="2">
+        <div class="step-heading"><span>02</span><div><h2>Sesto d’impianto</h2><p>Imposta le distanze principali.</p></div></div>
+        <div class="field-grid">
+          <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
+          <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="1.00" /></label>
+        </div>
+        <label class="range-field">Orientamento filari <output id="orientation-output">0°</output>
+          <input id="orientation" type="range" min="0" max="179" step="1" value="0" />
+        </label>
+        <div class="orientation-presets" aria-label="Orientamenti rapidi">
+          <button data-angle="0">N–S</button><button data-angle="45">NE–SO</button><button data-angle="90">E–O</button><button data-angle="135">SE–NO</button>
+        </div>
+      </section>
+
+      <details class="advanced">
+        <summary>Affina il progetto <span>+</span></summary>
+        <div class="advanced-body">
+          <div class="field-grid">
+            <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
+            <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" placeholder="es. 4,5" /></label>
+          </div>
+          <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
+          <label>Inquadramento del progetto
+            <select id="project-context"><option value="">Nessuno / da definire</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
+          </label>
+          <label>Riferimento / note<input id="project-context-note" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
+          <hr class="soft-divider" />
+          <h3>Scelta del materiale vegetale</h3>
+          <label>Vitigno<input id="grape-variety" type="text" placeholder="Da definire" /></label>
+          <div class="field-grid"><label>Portainnesto<input id="rootstock" type="text" placeholder="Consigliami" /></label><label>Clone / selezione<input id="clone-selection" type="text" placeholder="Facoltativo" /></label></div>
+        </div>
+      </details>
+
+      <section id="project-advice" class="project-advice" aria-live="polite" hidden></section>
+
+      <section class="results" aria-live="polite">
+        <div><span>Superficie</span><strong id="metric-area">—</strong></div>
+        <div><span>Perimetro</span><strong id="metric-perimeter">—</strong></div>
+        <div><span>Filari</span><strong id="metric-rows">—</strong></div>
+        <div><span>Metri lineari</span><strong id="metric-linear">—</strong></div>
+        <div class="hero-result"><span>Barbatelle stimate</span><strong id="metric-plants">—</strong><small id="metric-commercial">Quantità commerciale: —</small></div>
+      </section>
+
+      <div class="project-actions">
+        <button id="save-project" class="primary-button wide" type="button">Salva il progetto</button><div class="button-row"><button id="open-report" class="secondary-button" type="button">Proposta / PDF</button><button id="request-quote" class="secondary-button" type="button">Richiedi preventivo</button></div>
+        <p>Il progetto viene già salvato come bozza su questo dispositivo. I dati cliente servono per salvarlo definitivamente, PDF e preventivo.</p>
+      </div>
+    </aside>
+
+    <section class="map-wrap" aria-label="Mappa del progetto">
+      <div id="map"></div>
+      <div class="map-toolbar">
+        <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
+        <button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
+      </div>
+      <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
+    </section>
+  </main>
+
+  <div id="consent-banner" class="consent-banner" hidden>
+    <div><strong>Privacy e utilizzo</strong><p>Usiamo i dati tecnici necessari al funzionamento. Con il tuo consenso possiamo anche misurare l’utilizzo e riconoscere le visite successive per migliorare il servizio.</p></div>
+    <div class="consent-actions"><button id="consent-necessary" class="secondary-button" type="button">Solo necessari</button><button id="consent-analytics" class="primary-button" type="button">Accetta analisi</button></div>
+  </div>
+
+  <dialog id="contact-dialog" class="contact-dialog">
+    <form id="contact-form">
+      <div class="dialog-heading"><div><p class="eyebrow">SALVA PROGETTO</p><h2>I tuoi riferimenti</h2><p>Li inserisci una volta sola e restano associati a questo progetto.</p></div><button id="close-dialog" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
+      <label>Azienda<input name="company" autocomplete="organization" required /></label>
+      <div class="field-grid"><label>Nome<input name="firstName" autocomplete="given-name" required /></label><label>Cognome<input name="lastName" autocomplete="family-name" required /></label></div>
+      <label>Telefono<input name="phone" type="tel" autocomplete="tel" required /></label>
+      <label>E-mail<input name="email" type="email" autocomplete="email" required /></label>
+      <label class="check-row"><input name="privacy" type="checkbox" required /> Ho letto l’informativa privacy necessaria alla gestione del progetto.</label>
+      <label class="check-row optional-consent"><input name="marketing" type="checkbox" /> Desidero ricevere comunicazioni e aggiornamenti commerciali da Vivai Obice (facoltativo).</label>
+      <button class="primary-button wide" type="submit">Associa i dati al progetto</button>
+      <p id="contact-feedback" class="form-feedback" role="status"></p>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
