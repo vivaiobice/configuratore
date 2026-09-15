@@ -4,9 +4,13 @@ export const GEOLOCATION_OPTIONS = Object.freeze({
   maximumAge: 0
 });
 
+function cleanItalianCountrySuffix(value) {
+  return String(value ?? '').trim().replace(/,\s*(?:ITA|ITALIA|ITALY)\s*$/i, '').trim();
+}
+
 export function buildGeocodeUrl(query) {
   const url = new URL('https://nominatim.openstreetmap.org/search');
-  url.searchParams.set('q', String(query ?? '').trim());
+  url.searchParams.set('q', cleanItalianCountrySuffix(query));
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('limit', '5');
   url.searchParams.set('countrycodes', 'it');
@@ -27,7 +31,7 @@ export function buildSuggestionUrl(query) {
 export function normalizeSuggestionResults(payload) {
   const items = Array.isArray(payload?.suggestions) ? payload.suggestions : [];
   return items.flatMap((item) => {
-    const label = String(item?.text ?? '').trim();
+    const label = cleanItalianCountrySuffix(item?.text);
     if (!label) return [];
     return [{ label, magicKey:String(item?.magicKey ?? '').trim() }];
   });

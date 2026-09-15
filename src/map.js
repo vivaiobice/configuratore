@@ -43,7 +43,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -73,6 +73,9 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
   let manualDrawing = false;
   let manualVertices = [];
   let manualHover = null;
+  let manualCloseMarker = null;
+
+  const emitDrawingState = () => onDrawingState({ active:manualDrawing, canClose:manualDrawing && manualVertices.length >= 3, vertexCount:manualVertices.length });
 
   const setDrawingActive = (active) => {
     manualDrawing = Boolean(active);
@@ -86,6 +89,7 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
       map.dragPan.enable();
       map.doubleClickZoom?.enable?.();
     }
+    emitDrawingState();
   };
 
   function emptyCollection() { return { type:'FeatureCollection', features:[] }; }
@@ -120,11 +124,40 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     return { type:'FeatureCollection', features };
   }
 
+  function removeManualCloseMarker() {
+    manualCloseMarker?.remove?.();
+    manualCloseMarker = null;
+  }
+
+  function syncManualCloseMarker() {
+    removeManualCloseMarker();
+    emitDrawingState();
+    if (!manualDrawing || manualVertices.length < 3 || typeof document === 'undefined' || typeof globalThis.maplibregl?.Marker !== 'function') return;
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'manual-close-vertex';
+    element.setAttribute('aria-label', 'Chiudi perimetro');
+    element.title = 'Chiudi perimetro';
+    element.textContent = '✓';
+    const close = (event) => {
+      event.preventDefault?.();
+      event.stopPropagation?.();
+      finishManualPolygon();
+    };
+    element.addEventListener('pointerdown', (event) => { event.preventDefault?.(); event.stopPropagation?.(); });
+    element.addEventListener('click', close);
+    manualCloseMarker = new globalThis.maplibregl.Marker({ element, anchor:'center' })
+      .setLngLat(manualVertices[0])
+      .addTo(map);
+  }
+
   function renderManualDraft() {
     map.getSource(MANUAL_DRAW_SOURCE_ID)?.setData(manualDraftCollection());
+    syncManualCloseMarker();
   }
 
   function cancelManualDrawing() {
+    removeManualCloseMarker();
     manualVertices = [];
     manualHover = null;
     renderManualDraft();
@@ -468,5 +501,5 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     });
   }
 
-  return { map, draw, beginDraw, beginCadastralSelect, setGeometry, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, beginDraw, finishDraw:finishManualPolygon, beginCadastralSelect, setGeometry, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

@@ -118,6 +118,13 @@ try {
       track('cadastral_parcel_selected', { selected:true, parcelCount:selection?.refs?.length ?? 1 });
     },
     onStatus: setStatus,
+    onDrawingState: ({ canClose }) => {
+      const closeButton = $('#close-perimeter-button');
+      if (closeButton) {
+        closeButton.hidden = !canClose;
+        closeButton.disabled = !canClose;
+      }
+    },
     onReady: calculateAndRender
   });
   if (state.project.geometry) mapApi.setGeometry(state.project.geometry);
@@ -139,6 +146,7 @@ $('#rootstock').value = state.project.rootstock ?? '';
 $('#clone-selection').value = state.project.cloneSelection ?? '';
 
 $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
+$('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
 async function locateFrom(source) {
   try {
     await mapApi?.locate();
