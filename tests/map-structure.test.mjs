@@ -17,3 +17,8 @@ test('new geometry receives automatic orientation until the user manually choose
   assert.match(appSource, /applyGeometryWithSuggestedOrientation/);
   assert.match(appSource, /orientationLocked:\s*true/);
 });
+
+test('excluded-zone drawing is rejected when vertices fall outside the committed field', () => {
+  assert.match(mapSource, /pointInPolygon/);
+  assert.match(mapSource, /zona da escludere deve rimanere interamente dentro il campo/i);
+});

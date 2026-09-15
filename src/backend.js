@@ -1,3 +1,4 @@
+import { ensureProjectFields } from './fields.js';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateContact(contact) {
@@ -93,6 +94,8 @@ export function toProjectRow(state, metrics, { ownerUserId, sessionId, projectId
     grape_variety: project.grapeVariety || null,
     rootstock: project.rootstock || null,
     clone_selection: project.cloneSelection || null,
+    field_plans: Array.isArray(project.fields) ? project.fields : [],
+    active_field_id: project.activeFieldId || null,
     updated_at: new Date().toISOString()
   };
   if (projectId) row.id = projectId;
@@ -111,15 +114,12 @@ export function projectPayloadToState(payload, contact = null, { resumeToken = n
     privacyVersion: contact.privacy_version ?? 'v1',
     marketingConsent: Boolean(contact.marketing_consent)
   } : null;
-  return {
-    environment: payload?.environment ?? 'TEST',
-    map: { base: 'satellite', cadastralVisible: false },
-    project: {
+  const legacyProject = {
       geometry: ring,
       sourceType: payload?.source_type ?? 'manual',
       cadastralRefs: Array.isArray(payload?.cadastral_refs) ? payload.cadastral_refs : [],
       rowSpacingM: payload?.row_spacing_m ?? 2.5,
-      plantSpacingM: payload?.plant_spacing_m ?? 1,
+      plantSpacingM: payload?.plant_spacing_m ?? 0.9,
       orientationDeg: payload?.row_orientation_deg ?? 0,
       orientationLocked: true,
       locationLabel: payload?.location_label ?? '',
@@ -127,14 +127,20 @@ export function projectPayloadToState(payload, contact = null, { resumeToken = n
       province: payload?.province ?? '',
       region: payload?.region ?? '',
       headlandWidthM: payload?.headland_width_m ?? null,
-      postSpacingM: payload?.post_spacing_m ?? null,
+      postSpacingM: payload?.post_spacing_m ?? 4.5,
       mechanizedHarvest: Boolean(payload?.mechanization?.vendemmia_meccanica),
-      projectContextType: payload?.project_context_type ?? '',
+      projectContextType: payload?.project_context_type ?? 'new_planting',
       projectContextNote: payload?.project_context_note ?? '',
       grapeVariety: payload?.grape_variety ?? '',
       rootstock: payload?.rootstock ?? '',
-      cloneSelection: payload?.clone_selection ?? ''
-    },
+      cloneSelection: payload?.clone_selection ?? '',
+      fields: Array.isArray(payload?.field_plans) && payload.field_plans.length ? payload.field_plans : undefined,
+      activeFieldId: payload?.active_field_id ?? undefined
+    };
+  return {
+    environment: payload?.environment ?? 'TEST',
+    map: { base: 'satellite', cadastralVisible: false },
+    project: ensureProjectFields(legacyProject),
     ...(restoredContact ? { contact: restoredContact } : {}),
     cloud: {
       projectId: payload?.id ?? null,

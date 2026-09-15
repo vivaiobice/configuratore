@@ -56,8 +56,9 @@ test('side lengths use HTML markers so raster-only maps do not depend on glyph c
   assert.match(css, /\.side-measurement-label/);
 });
 
-test('map installs trackpad rotation support in addition to MapLibre drag rotation', () => {
+test('map keeps desktop rotation while touch gestures preserve pinch zoom without accidental bearing changes', () => {
   assert.match(map, /installTrackpadRotation/);
-  assert.match(map, /dragRotate\.enable\(\)/);
-  assert.match(map, /touchZoomRotate\.enableRotation\(\)/);
+  assert.match(map, /dragRotate\.disable/);
+  assert.match(map, /touchZoomRotate\.enable\(\)/);
+  assert.match(map, /touchZoomRotate\.disableRotation/);
 });

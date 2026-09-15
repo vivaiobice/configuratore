@@ -41,13 +41,13 @@ test('rootstock and clone are selects and project framing defaults to new planti
   assert.match(state, /projectContextType:\s*'new_planting'/);
 });
 
-test('rotation has a reliable drag handle plus keyboard-modified trackpad fallback', () => {
-  assert.match(html, /id="rotation-drag-handle"/);
-  assert.match(app, /rotation-drag-handle/);
-  assert.match(app, /pointermove/);
+test('rotation uses simple arrow controls plus keyboard-modified trackpad fallback', () => {
+  assert.doesNotMatch(html, /id="rotation-drag-handle"/);
+  assert.doesNotMatch(app, /rotation-drag-handle|rotationDragHandle/);
+  assert.match(html, /id="rotate-left"/);
+  assert.match(html, /id="rotate-right"/);
   assert.match(gestures, /event\?\.(?:shiftKey|altKey)/);
   assert.match(gestures, /deltaY/);
-  assert.match(css, /\.rotation-drag-handle/);
 });
 
 test('desktop summary is a sticky panel footer, while mobile summary is static and non-overlapping', () => {

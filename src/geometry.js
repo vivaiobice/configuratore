@@ -86,7 +86,28 @@ function intersectionsAtX(ring, x) {
   return ys.sort((a, b) => a - b);
 }
 
-export function generateRows(coords, rowSpacingM, orientationDeg = 0) {
+
+function pairIntervals(values) {
+  const intervals = [];
+  for (let i = 0; i + 1 < values.length; i += 2) intervals.push([values[i], values[i + 1]]);
+  return intervals;
+}
+
+function subtractIntervals(baseIntervals, cuts) {
+  let current = baseIntervals.slice();
+  for (const [cutStart, cutEnd] of cuts) {
+    const next = [];
+    for (const [start, end] of current) {
+      if (cutEnd <= start || cutStart >= end) { next.push([start, end]); continue; }
+      if (cutStart > start) next.push([start, Math.min(cutStart, end)]);
+      if (cutEnd < end) next.push([Math.max(cutEnd, start), end]);
+    }
+    current = next;
+  }
+  return current.filter(([start,end]) => end - start > 0.05);
+}
+
+export function generateRows(coords, rowSpacingM, orientationDeg = 0, { exclusions = [] } = {}) {
   const raw = stripClosingPoint(coords);
   if (raw.length < 3 || !Number.isFinite(rowSpacingM) || rowSpacingM <= 0) return [];
 
@@ -95,6 +116,7 @@ export function generateRows(coords, rowSpacingM, orientationDeg = 0) {
   const unrotateAngle = -angle;
   const rotated = raw.map((point) => rotate(toXY(point, ref), angle));
   const ring = closeXY(rotated);
+  const exclusionRings = (Array.isArray(exclusions) ? exclusions : []).map((exclusion) => closeXY(stripClosingPoint(exclusion).map((point) => rotate(toXY(point, ref), angle)))).filter((candidate) => candidate.length >= 4);
   const xs = rotated.map(([x]) => x);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
@@ -102,11 +124,13 @@ export function generateRows(coords, rowSpacingM, orientationDeg = 0) {
   const epsilon = 1e-7;
 
   for (let x = minX + rowSpacingM / 2; x < maxX - epsilon; x += rowSpacingM) {
-    const ys = intersectionsAtX(ring, x);
-    for (let i = 0; i + 1 < ys.length; i += 2) {
-      const startRotated = [x, ys[i]];
-      const endRotated = [x, ys[i + 1]];
-      const lengthM = Math.abs(ys[i + 1] - ys[i]);
+    const outerIntervals = pairIntervals(intersectionsAtX(ring, x));
+    const cutIntervals = exclusionRings.flatMap((exclusionRing) => pairIntervals(intersectionsAtX(exclusionRing, x)));
+    const usableIntervals = subtractIntervals(outerIntervals, cutIntervals);
+    for (const [yStart, yEnd] of usableIntervals) {
+      const startRotated = [x, yStart];
+      const endRotated = [x, yEnd];
+      const lengthM = Math.abs(yEnd - yStart);
       if (lengthM < 0.05) continue;
       const start = toLonLat(rotate(startRotated, unrotateAngle), ref);
       const end = toLonLat(rotate(endRotated, unrotateAngle), ref);

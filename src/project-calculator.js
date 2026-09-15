@@ -16,6 +16,7 @@ function emptyResult() {
     areaM2: 0,
     netAreaM2: 0,
     headlandAreaM2: 0,
+    excludedAreaM2: 0,
     perimeterM: 0,
     vertexCount: 0,
     rows: [],
@@ -30,14 +31,16 @@ function emptyResult() {
   };
 }
 
-export function calculateProject({ polygon, rowSpacingM, plantSpacingM, orientationDeg = 0, postSpacingM = null, headlandWidthM = null }) {
+export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, postSpacingM = null, headlandWidthM = null }) {
   if (!Array.isArray(polygon) || polygon.length < 4) return emptyResult();
   const rowSpacing = Number(rowSpacingM);
   const plantSpacing = Number(plantSpacingM);
   if (!Number.isFinite(rowSpacing) || rowSpacing <= 0 || !Number.isFinite(plantSpacing) || plantSpacing <= 0) return emptyResult();
 
   const metrics = polygonMetrics(polygon);
-  const rawRows = generateRows(polygon, rowSpacing, Number(orientationDeg) || 0);
+  const validExclusions = (Array.isArray(exclusions) ? exclusions : []).filter((item) => Array.isArray(item) && item.length >= 4);
+  const excludedAreaM2 = Math.min(metrics.areaM2, validExclusions.reduce((sum, item) => sum + polygonMetrics(item).areaM2, 0));
+  const rawRows = generateRows(polygon, rowSpacing, Number(orientationDeg) || 0, { exclusions:validExclusions });
   const headlandWidth = Number(headlandWidthM);
   const effectiveHeadland = Number.isFinite(headlandWidth) && headlandWidth > 0 ? headlandWidth : 0;
   const rows = effectiveHeadland > 0 ? rawRows.flatMap((row) => {
@@ -57,8 +60,9 @@ export function calculateProject({ polygon, rowSpacingM, plantSpacingM, orientat
   const rawRowLinearM = rawRows.reduce((sum, row) => sum + row.lengthM, 0);
   const rowLinearM = rows.reduce((sum, row) => sum + row.lengthM, 0);
   const removedLinearM = Math.max(0, rawRowLinearM - rowLinearM);
-  const headlandAreaM2 = Math.min(metrics.areaM2, removedLinearM * rowSpacing);
-  const netAreaM2 = Math.max(0, metrics.areaM2 - headlandAreaM2);
+  const usableBeforeHeadlandsM2 = Math.max(0, metrics.areaM2 - excludedAreaM2);
+  const headlandAreaM2 = Math.min(usableBeforeHeadlandsM2, removedLinearM * rowSpacing);
+  const netAreaM2 = Math.max(0, usableBeforeHeadlandsM2 - headlandAreaM2);
   const simulatedPlants = estimatePlantsFromRows(rows, plantSpacing);
   const theoreticalPlants = Math.ceil(netAreaM2 / (rowSpacing * plantSpacing));
   const postSpacing = Number(postSpacingM);
@@ -74,6 +78,7 @@ export function calculateProject({ polygon, rowSpacingM, plantSpacingM, orientat
     ...metrics,
     netAreaM2,
     headlandAreaM2,
+    excludedAreaM2,
     rows,
     rowCount: rows.length,
     rowLinearM,

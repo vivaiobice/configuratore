@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateContact, toProjectRow, toSessionRow } from '../src/backend.js';
+import { validateContact, toProjectRow, toSessionRow, projectPayloadToState } from '../src/backend.js';
 
 test('validateContact requires company, first name, last name, phone and valid email', () => {
   assert.equal(validateContact({ companyName:'Vivai Obice', firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, true);
@@ -103,4 +103,21 @@ test('toProjectRow stores gross and net vineyard area separately when headlands 
   const row = toProjectRow({ environment:'TEST', project:{ headlandWidthM:8 } }, { areaM2:1200, netAreaM2:980 }, { ownerUserId:'u1', sessionId:'s1' });
   assert.equal(row.gross_area_m2, 1200);
   assert.equal(row.net_area_m2, 980);
+});
+
+test('multi-field plans are persisted and restored through project payloads', () => {
+  const state = { environment:'TEST', project:{
+    geometry:[[8,44],[8.01,44],[8.01,44.01],[8,44.01],[8,44]], rowSpacingM:2.5, plantSpacingM:0.9, orientationDeg:0,
+    fields:[
+      { id:'field-a', label:'Campo 1', geometry:[[8,44],[8.01,44],[8.01,44.01],[8,44.01],[8,44]], rowSpacingM:2.5, plantSpacingM:0.9, postSpacingM:4.5, exclusions:[] },
+      { id:'field-b', label:'Campo 2', geometry:null, rowSpacingM:2.8, plantSpacingM:1, postSpacingM:5, exclusions:[] }
+    ], activeFieldId:'field-b'
+  }};
+  const row = toProjectRow(state, {}, { ownerUserId:'u', sessionId:'s' });
+  assert.equal(row.field_plans.length, 2);
+  assert.equal(row.active_field_id, 'field-b');
+  const restored = projectPayloadToState({ ...row, id:'p', geometry:null, field_plans:row.field_plans, active_field_id:'field-b' });
+  assert.equal(restored.project.fields.length, 2);
+  assert.equal(restored.project.activeFieldId, 'field-b');
+  assert.equal(restored.project.postSpacingM, 5);
 });

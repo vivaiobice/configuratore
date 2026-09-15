@@ -1,5 +1,5 @@
 import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick } from './map-adapters.js';
-import { rowsToFeatureCollection, sideMeasurements } from './geometry.js';
+import { rowsToFeatureCollection, sideMeasurements, pointInPolygon } from './geometry.js';
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 import { installTrackpadRotation } from './map-gestures.js';
 
@@ -16,6 +16,9 @@ const MANUAL_DRAW_POINTS_ID = 'manual-draw-points';
 const PROJECT_GEOMETRY_SOURCE_ID = 'project-geometry';
 const PROJECT_GEOMETRY_FILL_ID = 'project-geometry-fill';
 const PROJECT_GEOMETRY_LINE_ID = 'project-geometry-line';
+const EXCLUSIONS_SOURCE_ID = 'excluded-zones';
+const EXCLUSIONS_FILL_ID = 'excluded-zones-fill';
+const EXCLUSIONS_LINE_ID = 'excluded-zones-line';
 
 function baseStyle() {
   return {
@@ -43,7 +46,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -52,15 +55,16 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     center: [8.225, 44.709],
     zoom: 12.8,
     pitchWithRotate: false,
-    dragRotate: true,
+    dragRotate: false,
     attributionControl: true
   });
 
   map.addControl(new globalThis.maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
   map.addControl(new globalThis.maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
-  map.dragRotate.enable();
+  map.dragRotate.disable?.();
   map.touchZoomRotate.enable();
-  map.touchZoomRotate.enableRotation();
+  map.touchZoomRotate.disableRotation?.();
+  map.touchPitch?.disable?.();
   installTrackpadRotation(map);
 
   let draw = null;
@@ -71,6 +75,9 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
   let selectedCadastralParcels = [];
   let polygonUnionPromise = null;
   let manualDrawing = false;
+  let manualMode = 'perimeter';
+  let committedGeometry = null;
+  let currentExclusions = [];
   let manualVertices = [];
   let manualHover = null;
   let manualCloseMarker = null;
@@ -160,17 +167,27 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     removeManualCloseMarker();
     manualVertices = [];
     manualHover = null;
-    renderManualDraft();
     setDrawingActive(false);
+    map.getSource(MANUAL_DRAW_SOURCE_ID)?.setData(emptyCollection());
   }
 
   function finishManualPolygon() {
     const ring = closeManualPolygon(manualVertices);
     if (!ring) return false;
+    const mode = manualMode;
+    if (mode === 'exclusion' && (!committedGeometry || ring.slice(0, -1).some((point) => !pointInPolygon(point, committedGeometry)))) {
+      onStatus('La zona da escludere deve rimanere interamente dentro il campo.');
+      return false;
+    }
     manualVertices = [];
     manualHover = null;
     renderManualDraft();
     setDrawingActive(false);
+    if (mode === 'exclusion') {
+      onExclusionAdd(ring);
+      onStatus('Area esclusa aggiunta. I filari e le quantità vengono ricalcolati.');
+      return true;
+    }
     setGeometry(ring);
     onGeometryChange(ring);
     onStatus('Perimetro creato. Tocca/clicca il terreno per modificare i vertici.');
@@ -198,13 +215,16 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
     const emitGeometry = (event = null) => {
       const coordinates = coordinatesFromDrawEvent(event, draw.getAll().features);
-      updateProjectGeometrySource(coordinates);
-      updateSideMeasurements(coordinates);
-      onGeometryChange(coordinates);
+      if (coordinates) committedGeometry = coordinates;
+      updateProjectGeometrySource(committedGeometry);
+      updateSideMeasurements(committedGeometry);
+      if (coordinates) onGeometryChange(coordinates);
       return coordinates;
     };
     map.on('draw.update', (event) => emitGeometry(event));
-    map.on('draw.delete', (event) => emitGeometry(event));
+    map.on('draw.delete', () => {
+      if (committedGeometry) { setGeometry(committedGeometry); onStatus('Il perimetro resta attivo. Usa “Cancella campo” per rimuoverlo completamente.'); }
+    });
   }
 
   map.on('click', (event) => {
@@ -251,7 +271,10 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     });
     map.addSource(PROJECT_GEOMETRY_SOURCE_ID, { type:'geojson', data:emptyCollection() });
     map.addLayer({ id:PROJECT_GEOMETRY_FILL_ID, type:'fill', source:PROJECT_GEOMETRY_SOURCE_ID, paint:{ 'fill-color':'#b9d39d', 'fill-opacity':0.12 } });
-    map.addLayer({ id:PROJECT_GEOMETRY_LINE_ID, type:'line', source:PROJECT_GEOMETRY_SOURCE_ID, paint:{ 'line-color':'#eff6ed', 'line-width':2.5 } });
+    map.addLayer({ id:PROJECT_GEOMETRY_LINE_ID, type:'line', source:PROJECT_GEOMETRY_SOURCE_ID, layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#1d6b45', 'line-width':4 } });
+    map.addSource(EXCLUSIONS_SOURCE_ID, { type:'geojson', data:emptyCollection() });
+    map.addLayer({ id:EXCLUSIONS_FILL_ID, type:'fill', source:EXCLUSIONS_SOURCE_ID, paint:{ 'fill-color':'#8a3f32', 'fill-opacity':0.22 } });
+    map.addLayer({ id:EXCLUSIONS_LINE_ID, type:'line', source:EXCLUSIONS_SOURCE_ID, paint:{ 'line-color':'#fff1e7', 'line-width':2.5, 'line-dasharray':[1.5,1] } });
     map.addSource(MANUAL_DRAW_SOURCE_ID, { type:'geojson', data:emptyCollection() });
     map.addLayer({ id:MANUAL_DRAW_FILL_ID, type:'fill', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'fill'], paint:{ 'fill-color':'#d5e5c5', 'fill-opacity':0.22 } });
     map.addLayer({ id:MANUAL_DRAW_LINE_ID, type:'line', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'line'], layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':3, 'line-dasharray':[1,1] } });
@@ -276,6 +299,25 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
         .addTo(map);
       sideMeasurementMarkers.push(marker);
     }
+  }
+
+  function exclusionFeatureCollection(exclusions = currentExclusions) {
+    return { type:'FeatureCollection', features:(exclusions ?? []).map((item, index) => {
+      const geometry = Array.isArray(item) ? item : item?.geometry;
+      if (!Array.isArray(geometry) || geometry.length < 4) return null;
+      return { type:'Feature', id:item?.id ?? index, properties:{ label:item?.label ?? `Area esclusa ${index + 1}` }, geometry:{ type:'Polygon', coordinates:[geometry] } };
+    }).filter(Boolean) };
+  }
+
+  function setExclusions(exclusions = []) {
+    currentExclusions = Array.isArray(exclusions) ? exclusions : [];
+    map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());
+  }
+
+  function ensureCommittedVisuals() {
+    if (!committedGeometry) return;
+    updateProjectGeometrySource(committedGeometry);
+    if (sideMeasurementMarkers.length !== sideMeasurements(committedGeometry).length) updateSideMeasurements(committedGeometry);
   }
 
   function cadastralRequest() {
@@ -387,6 +429,7 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
   function setGeometry(coords) {
     if (!Array.isArray(coords) || coords.length < 4) return false;
+    committedGeometry = coords;
     const apply = () => {
       updateProjectGeometrySource(coords);
       if (draw) {
@@ -410,8 +453,10 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
   }
 
   function beginDraw() {
+    manualMode = 'perimeter';
     selectedCadastralParcels = [];
     if (draw) { try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); } }
+    committedGeometry = null;
     updateProjectGeometrySource(null);
     updateSideMeasurements(null);
     manualVertices = [];
@@ -420,6 +465,39 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     setDrawingActive(true);
     map.getCanvas()?.focus?.();
     onStatus('Disegna il confine: inserisci almeno 3 punti, poi clicca/tocca il primo punto verde per chiudere.');
+  }
+
+  function beginExclusionDraw() {
+    if (!committedGeometry) { onStatus('Disegna prima il perimetro del campo.'); return false; }
+    manualMode = 'exclusion';
+    manualVertices = []; manualHover = null; renderManualDraft(); setDrawingActive(true);
+    onStatus('Disegna la zona da escludere e chiudila sul primo punto verde.');
+    return true;
+  }
+
+  function clearGeometry() {
+    committedGeometry = null;
+    selectedCadastralParcels = [];
+    cancelManualDrawing();
+    if (draw) { try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); } }
+    updateProjectGeometrySource(null);
+    updateSideMeasurements(null);
+    setRows([]);
+    setExclusions([]);
+    onStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.');
+  }
+
+  function removeSelectedVertex() {
+    if (!draw || !committedGeometry) return false;
+    const selected = draw.getSelectedPoints?.()?.features ?? [];
+    if (!selected.length) { onStatus('Seleziona prima un vertice del perimetro, poi premi “− Punto”.'); return false; }
+    const uniqueVertices = Math.max(0, committedGeometry.length - 1);
+    if (uniqueVertices <= 3) { onStatus('Il perimetro deve mantenere almeno 3 vertici.'); return false; }
+    draw.trash();
+    const coordinates = coordinatesFromDrawEvent(null, draw.getAll().features);
+    if (coordinates?.length >= 4) { committedGeometry = coordinates; updateProjectGeometrySource(coordinates); updateSideMeasurements(coordinates); onGeometryChange(coordinates); return true; }
+    setGeometry(committedGeometry);
+    return false;
   }
 
   function setBaseMap(kind) {
@@ -474,6 +552,7 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
   map.on('moveend', refreshCadastre);
   map.on('resize', refreshCadastre);
+  map.on('idle', ensureCommittedVisuals);
 
   function locate() {
     return new Promise((resolve, reject) => {
@@ -501,5 +580,5 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     });
   }
 
-  return { map, draw, beginDraw, finishDraw:finishManualPolygon, beginCadastralSelect, setGeometry, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, beginDraw, beginExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

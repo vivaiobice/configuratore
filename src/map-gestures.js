@@ -18,27 +18,14 @@ export function installTrackpadRotation(map) {
   const container = map?.getCanvasContainer?.() ?? map?.getContainer?.();
   if (!container?.addEventListener) return () => {};
 
-  map.dragRotate?.enable?.();
+  // Keep native MapLibre pinch zoom on touch devices, but prevent accidental
+  // bearing changes while pinching on iOS. Desktop rotation remains available
+  // through Shift/Alt + trackpad wheel and MapLibre's native drag rotation.
+  map.dragRotate?.disable?.();
   map.touchZoomRotate?.enable?.();
-  map.touchZoomRotate?.enableRotation?.();
+  map.touchZoomRotate?.disableRotation?.();
+  map.touchPitch?.disable?.();
 
-  let previousGestureRotation = 0;
-  const onGestureStart = (event) => {
-    previousGestureRotation = Number(event.rotation) || 0;
-    event.preventDefault?.();
-  };
-  const onGestureChange = (event) => {
-    const current = Number(event.rotation) || 0;
-    const delta = gestureRotationDelta(current, previousGestureRotation);
-    previousGestureRotation = current;
-    if (!delta) return;
-    event.preventDefault?.();
-    map.setBearing?.(map.getBearing() + delta);
-  };
-  const onGestureEnd = (event) => {
-    previousGestureRotation = 0;
-    event.preventDefault?.();
-  };
   const onWheel = (event) => {
     const delta = wheelRotationDelta(event);
     if (!delta) return;
@@ -46,15 +33,9 @@ export function installTrackpadRotation(map) {
     map.setBearing?.(map.getBearing() + delta);
   };
 
-  container.addEventListener('gesturestart', onGestureStart, { passive:false, capture:true });
-  container.addEventListener('gesturechange', onGestureChange, { passive:false, capture:true });
-  container.addEventListener('gestureend', onGestureEnd, { passive:false, capture:true });
   container.addEventListener('wheel', onWheel, { passive:false, capture:true });
 
   return () => {
-    container.removeEventListener('gesturestart', onGestureStart, true);
-    container.removeEventListener('gesturechange', onGestureChange, true);
-    container.removeEventListener('gestureend', onGestureEnd, true);
     container.removeEventListener('wheel', onWheel, true);
   };
 }

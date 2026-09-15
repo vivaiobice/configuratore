@@ -1,7 +1,8 @@
 import { suggestRowOrientation } from './geometry.js';
+import { ensureProjectFields, updateActiveFieldProject } from './fields.js';
 
 export function createInitialState() {
-  return {
+  const state = {
     environment: 'TEST',
     map: { base: 'satellite', cadastralVisible: false },
     project: {
@@ -17,7 +18,8 @@ export function createInitialState() {
       province: '',
       region: '',
       headlandWidthM: null,
-      postSpacingM: null,
+      postSpacingM: 4.5,
+      exclusions: [],
       mechanizedHarvest: false,
       projectContextType: 'new_planting',
       projectContextNote: '',
@@ -26,16 +28,12 @@ export function createInitialState() {
       cloneSelection: ''
     }
   };
+  state.project = ensureProjectFields(state.project);
+  return state;
 }
 
 export function mergeProjectState(current, patch) {
-  return {
-    ...current,
-    project: {
-      ...current.project,
-      ...patch
-    }
-  };
+  return { ...current, project:updateActiveFieldProject(current.project, patch) };
 }
 
 

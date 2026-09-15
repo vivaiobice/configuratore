@@ -27,3 +27,31 @@ test('manual edits of a cadastral perimeter are marked as mixed source', () => {
   assert.match(app, /sourceType\s*===\s*'cadastral'/);
   assert.match(app, /sourceType:\s*'mixed'/);
 });
+
+test('V10 exposes multi-field, exclusion, clear field and remove vertex controls', () => {
+  assert.match(html, /id="field-select"/);
+  assert.match(html, /id="add-field-button"/);
+  assert.match(html, /id="remove-field-button"/);
+  assert.match(html, /id="exclude-zone-button"/);
+  assert.match(html, /id="clear-field-button"/);
+  assert.match(html, /id="remove-vertex-button"/);
+  assert.match(html, /id="exclusion-list"/);
+});
+
+test('header and map watermark use cache-busted transparent V10 logo asset', () => {
+  assert.match(html, /logo-vivai-obice-v10\.png/);
+  assert.match(html, /class="map-watermark"/);
+});
+
+test('post spacing input defaults to 4.50 m and remains editable', () => {
+  assert.match(html, /id="post-spacing"[^>]*value="4\.50"/);
+});
+
+test('mobile fullscreen map control remains exposed', () => {
+  assert.match(html, /id="map-fullscreen-button"/);
+});
+
+test('mobile runtime physically places the map immediately after step 01 instead of relying on display contents', () => {
+  assert.match(app, /stepOne\.insertAdjacentElement\('afterend', mapWrap\)/);
+  assert.match(app, /matchMedia\?\.\('\(max-width: 800px\)'\)/);
+});

@@ -76,6 +76,8 @@ create table public.projects (
   intermediate_posts integer not null default 0,
   total_posts integer not null default 0,
   mechanization jsonb not null default '{}'::jsonb,
+  field_plans jsonb not null default '[]'::jsonb,
+  active_field_id text,
   project_context_type text,
   project_context_note text,
   grape_variety text,

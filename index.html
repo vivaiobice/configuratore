@@ -13,7 +13,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#" aria-label="Vivai Obice">
-      <img class="brand-logo" src="./assets/logo-vivai-obice.png" alt="Vivai Obice · Barbatelle di vite innestate" />
+      <img class="brand-logo" src="./assets/logo-vivai-obice-v10.png" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
     <span class="test-badge">AMBIENTE TEST</span>
@@ -40,6 +40,10 @@
         <div class="button-row">
           <button id="gps-button" class="secondary-button" type="button">◎ Posizione attuale</button>
           <button id="draw-button" class="primary-button" type="button">Disegna terreno</button>
+        </div>
+        <div class="field-manager" aria-label="Gestione campi">
+          <label>Campo attivo<select id="field-select"></select></label>
+          <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">＋ Campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">− Campo</button></div>
         </div>
       </section>
 
@@ -70,7 +74,7 @@
         <div class="advanced-body">
           <div class="field-grid">
             <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
-            <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" placeholder="es. 4,5" /></label>
+            <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" value="4.50" placeholder="es. 4,5" /></label>
           </div>
           <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
           <label>Inquadramento del progetto
@@ -122,11 +126,13 @@
             </label>
           </div>
         </div>
+        <div class="exclusion-panel">
+          <div class="exclusion-heading"><strong>Aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
+          <div id="exclusion-list" class="exclusion-list"><p class="empty-exclusions">Nessuna area esclusa.</p></div>
+        </div>
       </details>
 
       <section id="project-advice" class="project-advice" aria-live="polite" hidden></section>
-
-      </div>
 
       <aside id="map-summary" class="map-summary" aria-label="Riepilogo progetto">
         <div class="map-summary-grid">
@@ -143,17 +149,18 @@
         </div>
         <p class="summary-disclaimer">Stima preliminare e indicativa: quantità, filari, pali e materiali vanno verificati in fase di progettazione definitiva. I dati cliente sono richiesti solo per salvataggio definitivo, proposta PDF e preventivo.</p>
       </aside>
+      </div>
     </aside>
 
     <section class="map-wrap" aria-label="Mappa del progetto">
       <div id="map"></div>
+      <img class="map-watermark" src="./assets/logo-vivai-obice-v10.png" alt="" aria-hidden="true" />
       <div class="map-toolbar">
         <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
-        <button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
-        <div class="map-rotation" aria-label="Rotazione mappa" title="Trackpad: rotazione a due dita dove supportata; in Chrome usa Shift + scorrimento orizzontale">
+        <button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Cancella campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
+        <div class="map-rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
           <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
           <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
-          <button id="rotation-drag-handle" class="tool-button rotation-drag-handle" type="button" aria-label="Trascina per ruotare la mappa" title="Trascina a destra/sinistra con trackpad o mouse per ruotare">↔ Ruota</button>
           <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
         </div>
       </div>

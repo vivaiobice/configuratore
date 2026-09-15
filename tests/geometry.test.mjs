@@ -78,3 +78,13 @@ test('sideMeasurementsToFeatureCollection formats side labels for the map', asyn
   assert.match(featureCollection.features[0].properties.label, /^\d+(?:[,.]\d+)? m$/);
   assert.equal(featureCollection.features[0].geometry.type, 'Point');
 });
+
+test('generateRows can subtract exclusion polygons from row segments', () => {
+  const lonM = 1 / (111320 * Math.cos(44 * Math.PI / 180));
+  const latM = 1 / 110540;
+  const exclusion = [[8+3*lonM,44+2*latM],[8+7*lonM,44+2*latM],[8+7*lonM,44+8*latM],[8+3*lonM,44+8*latM],[8+3*lonM,44+2*latM]];
+  const full = generateRows(square10m, 2.5, 0);
+  const cut = generateRows(square10m, 2.5, 0, { exclusions:[exclusion] });
+  assert.ok(cut.reduce((s,r)=>s+r.lengthM,0) < full.reduce((s,r)=>s+r.lengthM,0));
+  assert.ok(cut.length >= full.length);
+});

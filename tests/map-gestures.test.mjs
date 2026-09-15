@@ -13,3 +13,9 @@ test('wheelRotationDelta rotates with Shift or Alt using either trackpad axis', 
   assert.equal(wheelRotationDelta({ shiftKey:true, deltaX:2, deltaY:30 }), 5.4);
   assert.equal(wheelRotationDelta({ altKey:true, deltaX:-20, deltaY:3 }), -3.6);
 });
+
+test('touch rotation stays disabled while desktop wheel rotation helper remains separate', async () => {
+  const source = await import('node:fs').then(fs => fs.readFileSync(new URL('../src/map-gestures.js', import.meta.url), 'utf8'));
+  assert.match(source, /disableRotation/);
+  assert.doesNotMatch(source, /gesturechange|gesturestart/);
+});

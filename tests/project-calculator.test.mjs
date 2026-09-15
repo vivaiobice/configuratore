@@ -51,3 +51,24 @@ test('without headlands net area remains equal to gross area', () => {
   assert.equal(result.netAreaM2, result.areaM2);
   assert.equal(result.headlandAreaM2, 0);
 });
+
+test('excluded zones reduce usable area and split physical rows', () => {
+  const lonM = 1 / (111320 * Math.cos(44 * Math.PI / 180));
+  const latM = 1 / 110540;
+  const exclusion = [
+    [8 + 3*lonM,44 + 3*latM], [8 + 7*lonM,44 + 3*latM],
+    [8 + 7*lonM,44 + 7*latM], [8 + 3*lonM,44 + 7*latM], [8 + 3*lonM,44 + 3*latM]
+  ];
+  const full = calculateProject({ polygon:square10m, rowSpacingM:2.5, plantSpacingM:1, orientationDeg:0, postSpacingM:4.5 });
+  const cut = calculateProject({ polygon:square10m, exclusions:[exclusion], rowSpacingM:2.5, plantSpacingM:1, orientationDeg:0, postSpacingM:4.5 });
+  assert.ok(cut.excludedAreaM2 > 6);
+  assert.ok(cut.netAreaM2 < full.netAreaM2);
+  assert.ok(cut.rowLinearM < full.rowLinearM);
+  assert.ok(cut.simulatedPlants < full.simulatedPlants);
+});
+
+test('post spacing defaults to 4.50 m when field supplies the standard default', () => {
+  const result = calculateProject({ polygon:square10m, rowSpacingM:2.5, plantSpacingM:1, orientationDeg:0, postSpacingM:4.5 });
+  assert.equal(result.headPosts, result.rowCount * 2);
+  assert.ok(result.totalPosts > result.headPosts);
+});

@@ -8,10 +8,11 @@ import { createCloudService } from './cloud.js';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField } from './fields.js';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
-let state = stored?.project ? { ...createInitialState(), ...stored, project: { ...createInitialState().project, ...stored.project } } : createInitialState();
+let state = stored?.project ? { ...createInitialState(), ...stored, project: ensureProjectFields({ ...createInitialState().project, ...stored.project }) } : createInitialState();
 if (!state.project.projectContextType) state = { ...state, project:{ ...state.project, projectContextType:'new_planting' } };
 let mapApi = null;
 let cloudService = null;
@@ -64,7 +65,7 @@ function renderProjectAdvice(project) {
 
 function calculateAndRender() {
   const project = state.project;
-  const result = calculateProject({ polygon: project.geometry, rowSpacingM: project.rowSpacingM, plantSpacingM: project.plantSpacingM, orientationDeg: project.orientationDeg, postSpacingM: project.postSpacingM, headlandWidthM: project.headlandWidthM });
+  const result = calculateProject({ polygon: project.geometry, exclusions:(project.exclusions ?? []).map((item) => item.geometry ?? item), rowSpacingM: project.rowSpacingM, plantSpacingM: project.plantSpacingM, orientationDeg: project.orientationDeg, postSpacingM: project.postSpacingM, headlandWidthM: project.headlandWidthM });
   latestMetrics = result;
   const areaText = formatArea(result.areaM2);
   const perimeterText = formatMetres(result.perimeterM);
@@ -79,10 +80,12 @@ function calculateAndRender() {
   setText('#summary-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
   renderManualAreaCalculation();
   mapApi?.setRows(result.rows);
+  mapApi?.setExclusions(project.exclusions ?? []);
   renderProjectAdvice(project);
   if (project.geometry && result.vertexCount) {
     const posts = result.totalPosts ? ` · ${result.totalPosts} pali stimati` : '';
-    setStatus(`${result.vertexCount} vertici · ${formatArea(result.areaM2)} · ${result.rowCount} filari${posts}`);
+    const excluded = result.excludedAreaM2 ? ` · ${formatArea(result.excludedAreaM2)} esclusi` : '';
+    setStatus(`${result.vertexCount} vertici · ${formatArea(result.areaM2)}${excluded} · ${result.rowCount} filari${posts}`);
   }
 }
 
@@ -94,8 +97,8 @@ function syncOrientationControl() {
 }
 function patchProject(patch) { state = mergeProjectState(state, patch); persist(); calculateAndRender(); }
 function patchGeometry(geometry, patch = {}) {
-  const project = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
-  state = { ...state, project };
+  const proposed = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
+  state = { ...state, project:updateActiveFieldProject(state.project, { ...patch, geometry:proposed.geometry, orientationDeg:proposed.orientationDeg, orientationLocked:proposed.orientationLocked }) };
   syncOrientationControl();
   persist();
   calculateAndRender();
@@ -109,6 +112,12 @@ try {
       const sourcePatch = state.project.sourceType === 'cadastral' ? { sourceType:'mixed' } : {};
       patchGeometry(geometry, sourcePatch);
       if (geometry && !perimeterEventSent) { perimeterEventSent = true; track('perimeter_completed', { vertices:Math.max(0, geometry.length - 1) }); }
+    },
+    onExclusionAdd: (geometry) => {
+      const exclusions = [...(state.project.exclusions ?? []), { id:`ex-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, label:`Area esclusa ${(state.project.exclusions?.length ?? 0) + 1}`, geometry }];
+      patchProject({ exclusions });
+      renderExclusions();
+      track('excluded_zone_added', { count:exclusions.length });
     },
     onCadastralParcel: (parcel, selection) => {
       patchGeometry(selection?.coordinates ?? parcel.coordinates, {
@@ -128,6 +137,7 @@ try {
     onReady: calculateAndRender
   });
   if (state.project.geometry) mapApi.setGeometry(state.project.geometry);
+  mapApi.setExclusions(state.project.exclusions ?? []);
   mapApi.setBaseMap(state.map?.base ?? 'satellite');
   if (state.map?.cadastralVisible) mapApi.setCadastralVisible(true);
 } catch (error) { console.error(error); setStatus('Impossibile caricare la mappa. Controlla la connessione e riprova.'); }
@@ -137,7 +147,7 @@ $('#plant-spacing').value = state.project.plantSpacingM ?? 0.9;
 $('#orientation').value = state.project.orientationDeg ?? 0;
 $('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
 $('#headland').value = state.project.headlandWidthM ?? '';
-$('#post-spacing').value = state.project.postSpacingM ?? '';
+$('#post-spacing').value = state.project.postSpacingM ?? 4.5;
 $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
 $('#project-context').value = state.project.projectContextType || 'new_planting';
 $('#project-context-note').value = state.project.projectContextNote ?? '';
@@ -145,8 +155,60 @@ $('#grape-variety').value = state.project.grapeVariety ?? '';
 $('#rootstock').value = state.project.rootstock ?? '';
 $('#clone-selection').value = state.project.cloneSelection ?? '';
 
+function syncProjectControls() {
+  $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
+  $('#plant-spacing').value = state.project.plantSpacingM ?? 0.9;
+  $('#orientation').value = state.project.orientationDeg ?? 0;
+  $('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
+  $('#headland').value = state.project.headlandWidthM ?? '';
+  $('#post-spacing').value = state.project.postSpacingM ?? 4.5;
+  $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
+  $('#project-context').value = state.project.projectContextType || 'new_planting';
+  $('#project-context-note').value = state.project.projectContextNote ?? '';
+  $('#grape-variety').value = state.project.grapeVariety ?? '';
+  $('#rootstock').value = state.project.rootstock ?? '';
+  $('#clone-selection').value = state.project.cloneSelection ?? '';
+}
+
+function renderFieldManager() {
+  const select = $('#field-select');
+  if (!select) return;
+  select.replaceChildren();
+  for (const field of state.project.fields ?? []) {
+    const option = document.createElement('option'); option.value = field.id; option.textContent = field.label; option.selected = field.id === state.project.activeFieldId; select.append(option);
+  }
+  const remove = $('#remove-field-button'); if (remove) remove.disabled = (state.project.fields?.length ?? 1) <= 1;
+}
+
+function renderExclusions() {
+  const list = $('#exclusion-list'); if (!list) return; list.replaceChildren();
+  const items = state.project.exclusions ?? [];
+  if (!items.length) { const empty = document.createElement('p'); empty.className='empty-exclusions'; empty.textContent='Nessuna area esclusa.'; list.append(empty); return; }
+  items.forEach((item, index) => {
+    const row = document.createElement('div'); row.className='exclusion-item';
+    const input = document.createElement('input'); input.value=item.label ?? `Area esclusa ${index+1}`; input.setAttribute('aria-label','Nome area esclusa');
+    input.addEventListener('change', () => { const exclusions = items.map((x,i)=>i===index?{...x,label:input.value.trim() || `Area esclusa ${index+1}`} : x); patchProject({exclusions}); });
+    const remove = document.createElement('button'); remove.type='button'; remove.textContent='×'; remove.title='Rimuovi area esclusa'; remove.addEventListener('click', () => { const exclusions = items.filter((_,i)=>i!==index); patchProject({exclusions}); renderExclusions(); });
+    row.append(input, remove); list.append(row);
+  });
+}
+
+function loadActiveFieldOnMap() {
+  mapApi?.clearGeometry();
+  if (state.project.geometry) mapApi?.setGeometry(state.project.geometry);
+  mapApi?.setExclusions(state.project.exclusions ?? []);
+  syncProjectControls(); renderFieldManager(); renderExclusions(); calculateAndRender();
+}
+
+$('#field-select')?.addEventListener('change', (event) => { state = { ...state, project:switchProjectField(state.project, event.target.value) }; persist(); loadActiveFieldOnMap(); });
+$('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
+$('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
+
 $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
 $('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
+$('#exclude-zone-button')?.addEventListener('click', () => mapApi?.beginExclusionDraw());
+$('#remove-vertex-button')?.addEventListener('click', () => mapApi?.removeSelectedVertex());
+$('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; if (!globalThis.confirm?.('Cancellare il disegno del campo attivo?')) return; mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); });
 async function locateFrom(source) {
   try {
     await mapApi?.locate();
@@ -216,28 +278,36 @@ for (const button of document.querySelectorAll('[data-base]')) { button.classLis
 $('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(-15));
 $('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(15));
 $('#north-button')?.addEventListener('click', () => mapApi?.resetNorth());
-const rotationDragHandle = $('#rotation-drag-handle');
-let rotationDrag = null;
-rotationDragHandle?.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  rotationDragHandle.setPointerCapture?.(event.pointerId);
-  rotationDrag = { x:event.clientX, bearing:mapApi?.map?.getBearing?.() ?? 0 };
-  rotationDragHandle.classList.add('dragging');
+
+const mapWrap = document.querySelector('.map-wrap');
+const appShell = document.querySelector('.app-shell');
+const panelScroll = document.querySelector('.panel-scroll');
+const stepOne = document.querySelector('.step[data-step="1"]');
+function placeMapForViewport() {
+  if (!mapWrap || !appShell || !panelScroll || !stepOne) return;
+  const mobile = globalThis.matchMedia?.('(max-width: 800px)')?.matches;
+  if (mobile) stepOne.insertAdjacentElement('afterend', mapWrap);
+  else if (mapWrap.parentElement !== appShell) appShell.append(mapWrap);
+  requestAnimationFrame(() => mapApi?.map?.resize?.());
+}
+placeMapForViewport();
+globalThis.addEventListener?.('resize', placeMapForViewport);
+const mapFullscreenButton = $('#map-fullscreen-button');
+function setMapFullscreen(active) {
+  const next = Boolean(active);
+  mapWrap?.classList.toggle('fullscreen-map', next);
+  document.body.classList.toggle('map-fullscreen-open', next);
+  if (mapFullscreenButton) {
+    mapFullscreenButton.setAttribute('aria-pressed', String(next));
+    mapFullscreenButton.setAttribute('aria-label', next ? 'Chiudi mappa a tutto schermo' : 'Apri la mappa a tutto schermo');
+    mapFullscreenButton.textContent = next ? '✓ Fine' : '⛶ Mappa';
+  }
+  requestAnimationFrame(() => mapApi?.map?.resize?.());
+}
+mapFullscreenButton?.addEventListener('click', () => setMapFullscreen(!mapWrap?.classList.contains('fullscreen-map')));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && mapWrap?.classList.contains('fullscreen-map')) setMapFullscreen(false);
 });
-rotationDragHandle?.addEventListener('pointermove', (event) => {
-  if (!rotationDrag) return;
-  event.preventDefault();
-  const delta = (event.clientX - rotationDrag.x) * 0.55;
-  mapApi?.map?.setBearing?.(rotationDrag.bearing + delta);
-});
-const stopRotationDrag = (event) => {
-  if (!rotationDrag) return;
-  rotationDragHandle.releasePointerCapture?.(event.pointerId);
-  rotationDrag = null;
-  rotationDragHandle.classList.remove('dragging');
-};
-rotationDragHandle?.addEventListener('pointerup', stopRotationDrag);
-rotationDragHandle?.addEventListener('pointercancel', stopRotationDrag);
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#headland', 'headlandWidthM'); bindNumberInput('#post-spacing', 'postSpacingM');
 $('#manual-area')?.addEventListener('input', renderManualAreaCalculation);
@@ -375,5 +445,8 @@ async function initializeCloud() {
   }
 }
 
+renderFieldManager();
+renderExclusions();
+syncProjectControls();
 calculateAndRender();
 initializeCloud();
