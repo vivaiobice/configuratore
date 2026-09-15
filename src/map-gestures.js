@@ -6,11 +6,12 @@ export function gestureRotationDelta(currentRotation, previousRotation = 0) {
 }
 
 export function wheelRotationDelta(event) {
-  if (!event?.shiftKey) return 0;
+  if (!event?.shiftKey && !event?.altKey) return 0;
   const dx = Number(event.deltaX) || 0;
   const dy = Number(event.deltaY) || 0;
-  if (Math.abs(dx) <= Math.abs(dy) || Math.abs(dx) < 2) return 0;
-  return Math.round(dx * 0.18 * 1000) / 1000;
+  const axis = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
+  if (Math.abs(axis) < 2) return 0;
+  return Math.round(axis * 0.18 * 1000) / 1000;
 }
 
 export function installTrackpadRotation(map) {

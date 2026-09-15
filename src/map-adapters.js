@@ -105,3 +105,25 @@ export function configureDrawForMapLibre(Draw) {
   classes.ATTRIBUTION = 'maplibregl-ctrl-attrib';
   return Draw;
 }
+
+export function closeManualPolygon(vertices) {
+  if (!Array.isArray(vertices) || vertices.length < 3) return null;
+  const cleaned = vertices
+    .filter((point) => Array.isArray(point) && point.length >= 2 && Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1])))
+    .map(([lon, lat]) => [Number(lon), Number(lat)]);
+  if (cleaned.length < 3) return null;
+  const [firstLon, firstLat] = cleaned[0];
+  const last = cleaned[cleaned.length - 1];
+  if (last[0] === firstLon && last[1] === firstLat) return cleaned;
+  return [...cleaned, [firstLon, firstLat]];
+}
+
+export function isManualCloseClick(vertices, eventPoint, project, tolerancePx = 18) {
+  if (!Array.isArray(vertices) || vertices.length < 3 || typeof project !== 'function') return false;
+  const first = vertices[0];
+  if (!Array.isArray(first) || !eventPoint) return false;
+  const firstPoint = project(first);
+  if (!Number.isFinite(firstPoint?.x) || !Number.isFinite(firstPoint?.y)) return false;
+  if (!Number.isFinite(eventPoint?.x) || !Number.isFinite(eventPoint?.y)) return false;
+  return Math.hypot(eventPoint.x - firstPoint.x, eventPoint.y - firstPoint.y) <= Number(tolerancePx || 0);
+}

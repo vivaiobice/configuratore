@@ -12,6 +12,7 @@ import { adviseProject } from './project-advisor.js';
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
 let state = stored?.project ? { ...createInitialState(), ...stored, project: { ...createInitialState().project, ...stored.project } } : createInitialState();
+if (!state.project.projectContextType) state = { ...state, project:{ ...state.project, projectContextType:'new_planting' } };
 let mapApi = null;
 let cloudService = null;
 let latestMetrics = null;
@@ -70,17 +71,12 @@ function calculateAndRender() {
   const rowsText = result.rowCount ? result.rowCount.toLocaleString('it-IT') : '—';
   const linearText = formatMetres(result.rowLinearM);
   const plantsText = result.simulatedPlants ? result.simulatedPlants.toLocaleString('it-IT') : '—';
-  setText('#metric-area', areaText);
-  setText('#metric-perimeter', perimeterText);
-  setText('#metric-rows', rowsText);
-  setText('#metric-linear', linearText);
-  setText('#metric-plants', plantsText);
-  setText('#metric-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
   setText('#summary-area', areaText);
   setText('#summary-perimeter', perimeterText);
   setText('#summary-rows', rowsText);
   setText('#summary-linear', linearText);
   setText('#summary-plants', plantsText);
+  setText('#summary-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
   renderManualAreaCalculation();
   mapApi?.setRows(result.rows);
   renderProjectAdvice(project);
@@ -136,7 +132,7 @@ $('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
 $('#headland').value = state.project.headlandWidthM ?? '';
 $('#post-spacing').value = state.project.postSpacingM ?? '';
 $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
-$('#project-context').value = state.project.projectContextType ?? '';
+$('#project-context').value = state.project.projectContextType || 'new_planting';
 $('#project-context-note').value = state.project.projectContextNote ?? '';
 $('#grape-variety').value = state.project.grapeVariety ?? '';
 $('#rootstock').value = state.project.rootstock ?? '';
@@ -212,6 +208,28 @@ for (const button of document.querySelectorAll('[data-base]')) { button.classLis
 $('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(-15));
 $('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(15));
 $('#north-button')?.addEventListener('click', () => mapApi?.resetNorth());
+const rotationDragHandle = $('#rotation-drag-handle');
+let rotationDrag = null;
+rotationDragHandle?.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  rotationDragHandle.setPointerCapture?.(event.pointerId);
+  rotationDrag = { x:event.clientX, bearing:mapApi?.map?.getBearing?.() ?? 0 };
+  rotationDragHandle.classList.add('dragging');
+});
+rotationDragHandle?.addEventListener('pointermove', (event) => {
+  if (!rotationDrag) return;
+  event.preventDefault();
+  const delta = (event.clientX - rotationDrag.x) * 0.55;
+  mapApi?.map?.setBearing?.(rotationDrag.bearing + delta);
+});
+const stopRotationDrag = (event) => {
+  if (!rotationDrag) return;
+  rotationDragHandle.releasePointerCapture?.(event.pointerId);
+  rotationDrag = null;
+  rotationDragHandle.classList.remove('dragging');
+};
+rotationDragHandle?.addEventListener('pointerup', stopRotationDrag);
+rotationDragHandle?.addEventListener('pointercancel', stopRotationDrag);
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#headland', 'headlandWidthM'); bindNumberInput('#post-spacing', 'postSpacingM');
 $('#manual-area')?.addEventListener('input', renderManualAreaCalculation);
@@ -227,10 +245,8 @@ $('#mechanized')?.addEventListener('change', (event) => { patchProject({ mechani
 $('#project-context')?.addEventListener('change', (event) => { patchProject({ projectContextType: event.target.value }); track('advanced_option_changed', { option:'project_context', enabled:Boolean(event.target.value) }); });
 $('#project-context-note')?.addEventListener('input', (event) => patchProject({ projectContextNote: event.target.value }));
 $('#grape-variety')?.addEventListener('change', (event) => { patchProject({ grapeVariety: event.target.value }); track('plant_material_changed', { field:'grape_variety', defined:Boolean(event.target.value) }); });
-$('#rootstock')?.addEventListener('input', (event) => patchProject({ rootstock: event.target.value }));
-$('#rootstock')?.addEventListener('change', () => track('plant_material_changed', { field:'rootstock', defined:Boolean(state.project.rootstock) }));
-$('#clone-selection')?.addEventListener('input', (event) => patchProject({ cloneSelection: event.target.value }));
-$('#clone-selection')?.addEventListener('change', () => track('plant_material_changed', { field:'clone_selection', defined:Boolean(state.project.cloneSelection) }));
+$('#rootstock')?.addEventListener('change', (event) => { patchProject({ rootstock:event.target.value }); track('plant_material_changed', { field:'rootstock', defined:Boolean(event.target.value) }); });
+$('#clone-selection')?.addEventListener('change', (event) => { patchProject({ cloneSelection:event.target.value }); track('plant_material_changed', { field:'clone_selection', defined:Boolean(event.target.value) }); });
 
 const consentBanner = $('#consent-banner');
 if (!getConsentState(globalThis.localStorage)) consentBanner.hidden = false;
@@ -285,10 +301,9 @@ function requestFinalAction(action) {
   runFinalAction(action).catch((error) => { console.error(error); $('#contact-feedback').textContent = 'Operazione non completata. La bozza locale resta salvata.'; });
 }
 
-$('#save-project')?.addEventListener('click', () => requestFinalAction('save'));
 $('#summary-save-project')?.addEventListener('click', () => requestFinalAction('save'));
-$('#open-report')?.addEventListener('click', () => requestFinalAction('report'));
-$('#request-quote')?.addEventListener('click', () => requestFinalAction('quote'));
+$('#summary-open-report')?.addEventListener('click', () => requestFinalAction('report'));
+$('#summary-request-quote')?.addEventListener('click', () => requestFinalAction('quote'));
 $('#close-dialog')?.addEventListener('click', () => contactDialog?.close());
 $('#contact-form')?.addEventListener('submit', async (event) => {
   event.preventDefault();

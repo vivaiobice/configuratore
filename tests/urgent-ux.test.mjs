@@ -43,9 +43,10 @@ test('satellite source declares its real native max zoom so MapLibre overzooms i
   assert.match(map, /type:\s*'raster'[\s\S]*?World_Imagery[\s\S]*?maxzoom:\s*19/);
 });
 
-test('side measurements are forced visible around the edited polygon', () => {
-  assert.match(map, /'text-allow-overlap':\s*true/);
-  assert.match(map, /'text-ignore-placement':\s*true/);
+test('side measurements are forced visible around the edited polygon as HTML markers', () => {
+  assert.match(map, /sideMeasurementMarkers/);
+  assert.match(map, /side-measurement-label/);
+  assert.doesNotMatch(map, /text-allow-overlap/);
 });
 
 test('desktop panel includes an always-visible fixed-footer project summary with save action', () => {
@@ -54,14 +55,15 @@ test('desktop panel includes an always-visible fixed-footer project summary with
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(css, /\.panel-scroll\s*\{[^}]*overflow:auto/);
-  assert.match(css, /\.map-summary\s*\{[^}]*position:static/);
+  assert.match(css, /\.map-summary\s*\{[^}]*position:sticky/);
   assert.match(app, /summary-save-project/);
 });
 
-test('mobile puts step 1 above the map and keeps the sticky summary compact', () => {
+test('mobile puts step 1 above the map and keeps the summary static without overlaying fields', () => {
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.panel\{[^}]*display:contents/);
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.step\[data-step="1"\]\{[^}]*order:1/);
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.map-wrap\{[^}]*order:2/);
-  assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.map-summary \.summary-secondary\{[^}]*display:none/);
-  assert.match(css, /@media\(max-width:800px\)[\s\S]*?#summary-save-project\{[^}]*display:none/);
+  assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.map-summary\{[^}]*position:static/);
+  assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.map-summary \.summary-secondary\{[^}]*display:block/);
+  assert.match(css, /@media\(max-width:800px\)[\s\S]*?#summary-save-project\{[^}]*display:block/);
 });

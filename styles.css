@@ -29,3 +29,27 @@
 
 /* === Manual area calculator === */
 .manual-calculator{margin-top:14px;padding:13px;border:1px solid #dce4de;border-radius:13px;background:#f7f9f7}.manual-calculator-heading strong{display:block;font-size:12px;color:var(--ink)}.manual-calculator-heading span{display:block;margin-top:3px;font-size:10px;line-height:1.4;color:var(--muted)}.manual-area-field{display:grid;grid-template-columns:1fr auto;align-items:end;margin-top:11px;font-size:10px;color:var(--muted);font-weight:700}.manual-area-field>span{font-weight:500}.manual-area-field input{grid-column:1/-1;width:100%;margin-top:5px;border:1px solid #cfd7d1;background:#fff;border-radius:10px;padding:10px 11px;font:inherit;color:var(--ink);font-weight:750;outline:none}.manual-area-field input:focus{border-color:#557a62;box-shadow:0 0 0 3px rgba(39,95,62,.10)}.manual-calculator-results{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.manual-calculator-results>div{background:#fff;border-radius:10px;padding:9px}.manual-calculator-results span{display:block;font-size:9px;color:var(--muted)}.manual-calculator-results strong{display:block;margin-top:2px;font-size:17px}.manual-calculator-results .manual-commercial{background:var(--green);color:#fff}.manual-calculator-results .manual-commercial span{color:#c9d9cd}@media(max-width:800px){.manual-calculator{margin-top:12px}.manual-calculator-results strong{font-size:19px}}
+
+
+/* === V7 structural fixes: single summary + reliable rotation control === */
+.panel-scroll{padding-bottom:10px}
+.map-summary{position:sticky;bottom:0;flex:0 0 auto;z-index:9;width:auto;margin:0;background:rgba(255,255,255,.985);border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 18px 14px;box-shadow:0 -10px 30px rgba(20,32,25,.10);backdrop-filter:blur(10px)}
+.map-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.map-summary .summary-primary{grid-column:1/-1}
+.map-summary .summary-primary small{display:block;margin-top:3px;color:#c9d9cd;font-size:9px}
+.summary-action-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.summary-disclaimer{margin:8px 2px 0;font-size:9px;line-height:1.4;color:var(--muted)}
+.rotation-drag-handle{cursor:ew-resize!important;touch-action:none;user-select:none;min-width:72px!important}
+.rotation-drag-handle.dragging{background:var(--green)!important;color:#fff!important}
+
+@media(max-width:800px){
+  .map-summary{order:7;position:static;bottom:auto;width:auto;margin:0;padding:12px 18px 24px;border-top:1px solid var(--line);border-radius:0;box-shadow:none;background:var(--surface)}
+  .map-summary-grid{display:grid;grid-template-columns:1fr 1fr}
+  .map-summary .summary-secondary{display:block}
+  .map-summary .summary-primary{padding:10px 11px;border-radius:10px}
+  .map-summary .summary-primary strong{font-size:23px}
+  #summary-save-project{display:block}
+  .summary-action-row{grid-template-columns:1fr 1fr}
+  .summary-disclaimer{font-size:9px}
+  .rotation-drag-handle{min-width:60px!important}
+}

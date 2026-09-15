@@ -74,7 +74,7 @@
           </div>
           <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
           <label>Inquadramento del progetto
-            <select id="project-context"><option value="">Nessuno / da definire</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
+            <select id="project-context"><option value="new_planting">NUOVO IMPIANTO</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
           </label>
           <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
           <hr class="soft-divider" />
@@ -95,24 +95,37 @@
               <option value="Altro / da definire">Altro / da definire</option>
             </select>
           </label>
-          <div class="field-grid"><label>Portainnesto<input id="rootstock" type="text" placeholder="Consigliami" /></label><label>Clone / selezione<input id="clone-selection" type="text" placeholder="Facoltativo" /></label></div>
+          <div class="field-grid">
+            <label>Portainnesto
+              <select id="rootstock">
+                <option value="">Consigliami</option>
+                <option value="1103 Paulsen">1103 Paulsen</option>
+                <option value="110 Richter">110 Richter</option>
+                <option value="140 Ruggeri">140 Ruggeri</option>
+                <option value="420 A">420 A</option>
+                <option value="5BB Kober">5BB Kober</option>
+                <option value="SO4">SO4</option>
+                <option value="41 B">41 B</option>
+                <option value="161-49 C">161-49 C</option>
+                <option value="3309 C">3309 C</option>
+                <option value="Gravesac">Gravesac</option>
+                <option value="Altro / da definire">Altro / da definire</option>
+              </select>
+            </label>
+            <label>Clone / selezione
+              <select id="clone-selection">
+                <option value="">Da definire</option>
+                <option value="Clone certificato da definire">Clone certificato da definire</option>
+                <option value="Selezione massale">Selezione massale</option>
+                <option value="Altro / da definire">Altro / da definire</option>
+              </select>
+            </label>
+          </div>
         </div>
       </details>
 
       <section id="project-advice" class="project-advice" aria-live="polite" hidden></section>
 
-      <section class="results" aria-live="polite">
-        <div><span>Superficie</span><strong id="metric-area">—</strong></div>
-        <div><span>Perimetro</span><strong id="metric-perimeter">—</strong></div>
-        <div><span>Filari</span><strong id="metric-rows">—</strong></div>
-        <div><span>Metri lineari</span><strong id="metric-linear">—</strong></div>
-        <div class="hero-result"><span>Barbatelle stimate</span><strong id="metric-plants">—</strong><small id="metric-commercial">Quantità commerciale: —</small></div>
-      </section>
-
-      <div class="project-actions">
-        <button id="save-project" class="primary-button wide" type="button">Salva il progetto</button><div class="button-row"><button id="open-report" class="secondary-button" type="button">Proposta / PDF</button><button id="request-quote" class="secondary-button" type="button">Richiedi preventivo</button></div>
-        <p>Il progetto viene già salvato come bozza su questo dispositivo. I dati cliente servono per salvarlo definitivamente, PDF e preventivo.</p>
-      </div>
       </div>
 
       <aside id="map-summary" class="map-summary" aria-label="Riepilogo progetto">
@@ -121,9 +134,14 @@
           <div class="summary-secondary"><span>Perimetro</span><strong id="summary-perimeter">—</strong></div>
           <div class="summary-secondary"><span>Filari</span><strong id="summary-rows">—</strong></div>
           <div class="summary-secondary"><span>Metri lineari</span><strong id="summary-linear">—</strong></div>
-          <div class="summary-primary"><span>Barbatelle stimate</span><strong id="summary-plants">—</strong></div>
+          <div class="summary-primary"><span>Barbatelle stimate</span><strong id="summary-plants">—</strong><small id="summary-commercial">Quantità commerciale: —</small></div>
         </div>
         <button id="summary-save-project" class="primary-button wide" type="button">Salva il progetto</button>
+        <div class="summary-action-row">
+          <button id="summary-open-report" class="secondary-button" type="button">Proposta / PDF</button>
+          <button id="summary-request-quote" class="secondary-button" type="button">Richiedi preventivo</button>
+        </div>
+        <p class="summary-disclaimer">Stima preliminare e indicativa: quantità, filari, pali e materiali vanno verificati in fase di progettazione definitiva. I dati cliente sono richiesti solo per salvataggio definitivo, proposta PDF e preventivo.</p>
       </aside>
     </aside>
 
@@ -135,6 +153,7 @@
         <div class="map-rotation" aria-label="Rotazione mappa" title="Trackpad: rotazione a due dita dove supportata; in Chrome usa Shift + scorrimento orizzontale">
           <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
           <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
+          <button id="rotation-drag-handle" class="tool-button rotation-drag-handle" type="button" aria-label="Trascina per ruotare la mappa" title="Trascina a destra/sinistra con trackpad o mouse per ruotare">↔ Ruota</button>
           <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
         </div>
       </div>

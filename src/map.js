@@ -1,5 +1,5 @@
-import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, createReliablePolygonMode } from './map-adapters.js';
-import { rowsToFeatureCollection, sideMeasurements, sideMeasurementsToFeatureCollection } from './geometry.js';
+import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick } from './map-adapters.js';
+import { rowsToFeatureCollection, sideMeasurements } from './geometry.js';
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 import { installTrackpadRotation } from './map-gestures.js';
 
@@ -7,10 +7,15 @@ const SATELLITE_ID = 'base-satellite';
 const STREET_ID = 'base-street';
 const ROWS_SOURCE_ID = 'vineyard-rows';
 const ROWS_LAYER_ID = 'vineyard-rows-line';
-const SIDE_MEASUREMENTS_SOURCE_ID = 'side-measurements';
-const SIDE_MEASUREMENTS_LAYER_ID = 'side-measurements-labels';
 const CADASTRE_SOURCE_ID = 'cadastre-image';
 const CADASTRE_LAYER_ID = 'cadastre-image-layer';
+const MANUAL_DRAW_SOURCE_ID = 'manual-draw';
+const MANUAL_DRAW_FILL_ID = 'manual-draw-fill';
+const MANUAL_DRAW_LINE_ID = 'manual-draw-line';
+const MANUAL_DRAW_POINTS_ID = 'manual-draw-points';
+const PROJECT_GEOMETRY_SOURCE_ID = 'project-geometry';
+const PROJECT_GEOMETRY_FILL_ID = 'project-geometry-fill';
+const PROJECT_GEOMETRY_LINE_ID = 'project-geometry-line';
 
 function baseStyle() {
   return {
@@ -65,20 +70,91 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
   let cadastralVisible = false;
   let selectedCadastralParcels = [];
   let polygonUnionPromise = null;
+  let manualDrawing = false;
+  let manualVertices = [];
+  let manualHover = null;
+
+  const setDrawingActive = (active) => {
+    manualDrawing = Boolean(active);
+    const canvas = map.getCanvas();
+    canvas.classList?.toggle('drawing-active', manualDrawing);
+    canvas.style.cursor = manualDrawing ? 'url("./assets/pencil-cursor.svg") 2 24, crosshair' : '';
+    if (manualDrawing) {
+      map.dragPan.disable();
+      map.doubleClickZoom?.disable?.();
+    } else {
+      map.dragPan.enable();
+      map.doubleClickZoom?.enable?.();
+    }
+  };
+
+  function emptyCollection() { return { type:'FeatureCollection', features:[] }; }
+
+  function projectFeature(coords) {
+    return Array.isArray(coords) && coords.length >= 4
+      ? { type:'Feature', properties:{}, geometry:{ type:'Polygon', coordinates:[coords] } }
+      : null;
+  }
+
+  function updateProjectGeometrySource(coords) {
+    const source = map.getSource(PROJECT_GEOMETRY_SOURCE_ID);
+    if (!source) return;
+    const feature = projectFeature(coords);
+    source.setData(feature ? { type:'FeatureCollection', features:[feature] } : emptyCollection());
+  }
+
+  function manualDraftCollection() {
+    const features = [];
+    const lineCoords = [...manualVertices];
+    if (manualHover && manualVertices.length) lineCoords.push(manualHover);
+    if (lineCoords.length >= 2) features.push({ type:'Feature', properties:{ kind:'line' }, geometry:{ type:'LineString', coordinates:lineCoords } });
+    if (manualVertices.length >= 3) {
+      const ring = closeManualPolygon(manualVertices);
+      if (ring) features.push({ type:'Feature', properties:{ kind:'fill' }, geometry:{ type:'Polygon', coordinates:[ring] } });
+    }
+    manualVertices.forEach((coordinate, index) => features.push({
+      type:'Feature',
+      properties:{ kind:'point', first:index === 0 ? 1 : 0, index },
+      geometry:{ type:'Point', coordinates:coordinate }
+    }));
+    return { type:'FeatureCollection', features };
+  }
+
+  function renderManualDraft() {
+    map.getSource(MANUAL_DRAW_SOURCE_ID)?.setData(manualDraftCollection());
+  }
+
+  function cancelManualDrawing() {
+    manualVertices = [];
+    manualHover = null;
+    renderManualDraft();
+    setDrawingActive(false);
+  }
+
+  function finishManualPolygon() {
+    const ring = closeManualPolygon(manualVertices);
+    if (!ring) return false;
+    manualVertices = [];
+    manualHover = null;
+    renderManualDraft();
+    setDrawingActive(false);
+    setGeometry(ring);
+    onGeometryChange(ring);
+    onStatus('Perimetro creato. Tocca/clicca il terreno per modificare i vertici.');
+    return true;
+  }
 
   if (globalThis.MapboxDraw) {
     configureDrawForMapLibre(globalThis.MapboxDraw);
-    const reliablePolygonMode = createReliablePolygonMode(globalThis.MapboxDraw, 18);
     draw = new globalThis.MapboxDraw({
       displayControlsDefault: false,
       defaultMode: 'simple_select',
-      modes: reliablePolygonMode ? { ...globalThis.MapboxDraw.modes, draw_polygon: reliablePolygonMode } : globalThis.MapboxDraw.modes,
       clickBuffer: 8,
       touchBuffer: 32,
       keybindings: true,
       styles: [
-        { id: 'gl-draw-polygon-fill-inactive', type: 'fill', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']], paint: { 'fill-color': '#b9d39d', 'fill-opacity': 0.24 } },
-        { id: 'gl-draw-polygon-fill-active', type: 'fill', filter: ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], paint: { 'fill-color': '#d5e5c5', 'fill-opacity': 0.3 } },
+        { id: 'gl-draw-polygon-fill-inactive', type: 'fill', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']], paint: { 'fill-color': '#b9d39d', 'fill-opacity': 0.16 } },
+        { id: 'gl-draw-polygon-fill-active', type: 'fill', filter: ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], paint: { 'fill-color': '#d5e5c5', 'fill-opacity': 0.22 } },
         { id: 'gl-draw-polygon-stroke-inactive', type: 'line', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#eff6ed', 'line-width': 3 } },
         { id: 'gl-draw-polygon-stroke-active', type: 'line', filter: ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-dasharray': [0.2, 2], 'line-width': 3 } },
         { id: 'gl-draw-polygon-and-line-vertex-inactive', type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']], paint: { 'circle-radius': 7, 'circle-color': '#183f28', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } },
@@ -87,35 +163,50 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     });
     map.addControl(draw, 'top-left');
 
-    const setDrawingActive = (active) => {
-      const canvas = map.getCanvas();
-      canvas.style.cursor = active ? 'url("./assets/pencil-cursor.svg") 2 24, crosshair' : '';
-      if (active) map.dragPan.disable();
-      else map.dragPan.enable();
-    };
     const emitGeometry = (event = null) => {
       const coordinates = coordinatesFromDrawEvent(event, draw.getAll().features);
+      updateProjectGeometrySource(coordinates);
       updateSideMeasurements(coordinates);
       onGeometryChange(coordinates);
       return coordinates;
     };
-    map.on('draw.create', (event) => {
-      const created = event.features?.[0];
-      const coordinates = coordinatesFromDrawEvent(event, draw.getAll().features);
-      for (const feature of draw.getAll().features) {
-        if (created?.id && feature.id !== created.id) draw.delete(feature.id);
-      }
-      if (created?.id) draw.changeMode('simple_select', { featureIds: [created.id] });
-      setDrawingActive(false);
-      updateSideMeasurements(coordinates);
-      onGeometryChange(coordinates);
-      onStatus('Perimetro creato. Tocca/clicca il terreno per modificare i vertici.');
-    });
     map.on('draw.update', (event) => emitGeometry(event));
     map.on('draw.delete', (event) => emitGeometry(event));
-    map.getContainer().addEventListener('keydown', (event) => { if (event.key === 'Escape') setDrawingActive(false); });
-    map.__setDrawingActive = setDrawingActive;
   }
+
+  map.on('click', (event) => {
+    if (!manualDrawing) return;
+    const point = event?.point;
+    if (isManualCloseClick(manualVertices, point, (coordinate) => map.project(coordinate), 22)) {
+      event.originalEvent?.preventDefault?.();
+      finishManualPolygon();
+      return;
+    }
+    const lon = Number(event?.lngLat?.lng);
+    const lat = Number(event?.lngLat?.lat);
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+    manualVertices.push([lon, lat]);
+    manualHover = null;
+    renderManualDraft();
+    onStatus(manualVertices.length < 3
+      ? `Punto ${manualVertices.length} inserito. Aggiungi almeno ${3 - manualVertices.length} punto/i.`
+      : 'Ora chiudi il perimetro cliccando/toccando il primo punto verde.');
+  });
+
+  map.on('mousemove', (event) => {
+    if (!manualDrawing || !manualVertices.length) return;
+    const lon = Number(event?.lngLat?.lng);
+    const lat = Number(event?.lngLat?.lat);
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+    manualHover = [lon, lat];
+    renderManualDraft();
+  });
+
+  map.getContainer().addEventListener('keydown', (event) => {
+    if (!manualDrawing) return;
+    if (event.key === 'Escape') { cancelManualDrawing(); onStatus('Disegno annullato.'); }
+    if (event.key === 'Enter' && manualVertices.length >= 3) finishManualPolygon();
+  });
 
   map.on('load', () => {
     map.addSource(ROWS_SOURCE_ID, { type: 'geojson', data: rowsToFeatureCollection([]) });
@@ -125,23 +216,13 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
       source: ROWS_SOURCE_ID,
       paint: { 'line-color': '#f4f0c2', 'line-width': 1.45, 'line-opacity': 0.92 }
     });
-    map.addSource(SIDE_MEASUREMENTS_SOURCE_ID, { type:'geojson', data:sideMeasurementsToFeatureCollection([]) });
-    map.addLayer({
-      id: SIDE_MEASUREMENTS_LAYER_ID,
-      type: 'symbol',
-      source: SIDE_MEASUREMENTS_SOURCE_ID,
-      layout: {
-        'text-field': ['get', 'label'],
-        'text-size': 12,
-        'text-allow-overlap': true,
-        'text-ignore-placement': true
-      },
-      paint: {
-        'text-color': '#183f28',
-        'text-halo-color': 'rgba(255,255,255,0.94)',
-        'text-halo-width': 2
-      }
-    });
+    map.addSource(PROJECT_GEOMETRY_SOURCE_ID, { type:'geojson', data:emptyCollection() });
+    map.addLayer({ id:PROJECT_GEOMETRY_FILL_ID, type:'fill', source:PROJECT_GEOMETRY_SOURCE_ID, paint:{ 'fill-color':'#b9d39d', 'fill-opacity':0.12 } });
+    map.addLayer({ id:PROJECT_GEOMETRY_LINE_ID, type:'line', source:PROJECT_GEOMETRY_SOURCE_ID, paint:{ 'line-color':'#eff6ed', 'line-width':2.5 } });
+    map.addSource(MANUAL_DRAW_SOURCE_ID, { type:'geojson', data:emptyCollection() });
+    map.addLayer({ id:MANUAL_DRAW_FILL_ID, type:'fill', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'fill'], paint:{ 'fill-color':'#d5e5c5', 'fill-opacity':0.22 } });
+    map.addLayer({ id:MANUAL_DRAW_LINE_ID, type:'line', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'line'], layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':3, 'line-dasharray':[1,1] } });
+    map.addLayer({ id:MANUAL_DRAW_POINTS_ID, type:'circle', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'point'], paint:{ 'circle-radius':['case',['==',['get','first'],1],9,6], 'circle-color':['case',['==',['get','first'],1],'#4fa76c','#183f28'], 'circle-stroke-color':'#ffffff', 'circle-stroke-width':2 } });
     if (cadastralVisible) refreshCadastre();
     onReady();
   });
@@ -149,9 +230,6 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
   function updateSideMeasurements(coords) {
     const measurements = sideMeasurements(coords);
-    const source = map.getSource(SIDE_MEASUREMENTS_SOURCE_ID);
-    source?.setData(sideMeasurementsToFeatureCollection(measurements));
-
     for (const marker of sideMeasurementMarkers) marker.remove();
     sideMeasurementMarkers = [];
     if (typeof document === 'undefined') return;
@@ -275,16 +353,19 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
   }
 
   function setGeometry(coords) {
-    if (!draw || !Array.isArray(coords) || coords.length < 4) return false;
+    if (!Array.isArray(coords) || coords.length < 4) return false;
     const apply = () => {
-      draw.deleteAll();
-      const ids = draw.add({
-        type: 'Feature',
-        properties: {},
-        geometry: { type: 'Polygon', coordinates: [coords] }
-      });
-      const id = ids?.[0];
-      if (id) draw.changeMode('simple_select', { featureIds: [id] });
+      updateProjectGeometrySource(coords);
+      if (draw) {
+        try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); }
+        const ids = draw.add({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Polygon', coordinates: [coords] }
+        });
+        const id = ids?.[0];
+        if (id) draw.changeMode('simple_select', { featureIds: [id] });
+      }
       updateSideMeasurements(coords);
       const bounds = coords.reduce((box, [lon, lat]) => box.extend([lon, lat]), new globalThis.maplibregl.LngLatBounds(coords[0], coords[0]));
       map.fitBounds(bounds, { padding: 55, maxZoom: 18, duration: 0 });
@@ -297,15 +378,15 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
 
   function beginDraw() {
     selectedCadastralParcels = [];
-    if (!draw) {
-      onStatus('Strumento di disegno non disponibile. Ricarica la pagina con una connessione attiva.');
-      return;
-    }
-    draw.deleteAll();
+    if (draw) { try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); } }
+    updateProjectGeometrySource(null);
     updateSideMeasurements(null);
-    draw.changeMode('draw_polygon');
-    map.__setDrawingActive?.(true);
-    onStatus('Disegna il confine del terreno. Chiudi il poligono cliccando il primo punto.');
+    manualVertices = [];
+    manualHover = null;
+    renderManualDraft();
+    setDrawingActive(true);
+    map.getCanvas()?.focus?.();
+    onStatus('Disegna il confine: inserisci almeno 3 punti, poi clicca/tocca il primo punto verde per chiudere.');
   }
 
   function setBaseMap(kind) {

@@ -19,7 +19,7 @@ export function createInitialState() {
       headlandWidthM: null,
       postSpacingM: null,
       mechanizedHarvest: false,
-      projectContextType: '',
+      projectContextType: 'new_planting',
       projectContextNote: '',
       grapeVariety: '',
       rootstock: '',
