@@ -1,6 +1,6 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
 import { initMap } from './map.js';
-import { calculateProject } from './project-calculator.js';
+import { calculateProject, calculateManualPlants } from './project-calculator.js';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
@@ -33,6 +33,19 @@ function track(type, payload = {}) { cloudService?.trackEvent(type, payload).cat
 function numberOrNull(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed > 0 ? parsed : null; }
 function formatArea(value) { if (!value) return '—'; if (value >= 10000) return `${(value / 10000).toLocaleString('it-IT', { maximumFractionDigits: 2 })} ha`; return `${Math.round(value).toLocaleString('it-IT')} m²`; }
 function formatMetres(value) { return value ? `${Math.round(value).toLocaleString('it-IT')} m` : '—'; }
+function setText(selector, value) { const node = $(selector); if (node) node.textContent = value; }
+
+function renderManualAreaCalculation() {
+  const input = $('#manual-area');
+  if (!input) return;
+  const result = calculateManualPlants({
+    areaM2:input.value,
+    rowSpacingM:state.project.rowSpacingM,
+    plantSpacingM:state.project.plantSpacingM
+  });
+  setText('#manual-theoretical', result.theoreticalPlants ? result.theoreticalPlants.toLocaleString('it-IT') : '—');
+  setText('#manual-commercial', result.commercialPlants25 ? result.commercialPlants25.toLocaleString('it-IT') : '—');
+}
 
 function renderProjectAdvice(project) {
   const container = $('#project-advice');
@@ -52,12 +65,23 @@ function calculateAndRender() {
   const project = state.project;
   const result = calculateProject({ polygon: project.geometry, rowSpacingM: project.rowSpacingM, plantSpacingM: project.plantSpacingM, orientationDeg: project.orientationDeg, postSpacingM: project.postSpacingM, headlandWidthM: project.headlandWidthM });
   latestMetrics = result;
-  $('#metric-area').textContent = formatArea(result.areaM2);
-  $('#metric-perimeter').textContent = formatMetres(result.perimeterM);
-  $('#metric-rows').textContent = result.rowCount ? result.rowCount.toLocaleString('it-IT') : '—';
-  $('#metric-linear').textContent = formatMetres(result.rowLinearM);
-  $('#metric-plants').textContent = result.simulatedPlants ? result.simulatedPlants.toLocaleString('it-IT') : '—';
-  $('#metric-commercial').textContent = result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —';
+  const areaText = formatArea(result.areaM2);
+  const perimeterText = formatMetres(result.perimeterM);
+  const rowsText = result.rowCount ? result.rowCount.toLocaleString('it-IT') : '—';
+  const linearText = formatMetres(result.rowLinearM);
+  const plantsText = result.simulatedPlants ? result.simulatedPlants.toLocaleString('it-IT') : '—';
+  setText('#metric-area', areaText);
+  setText('#metric-perimeter', perimeterText);
+  setText('#metric-rows', rowsText);
+  setText('#metric-linear', linearText);
+  setText('#metric-plants', plantsText);
+  setText('#metric-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
+  setText('#summary-area', areaText);
+  setText('#summary-perimeter', perimeterText);
+  setText('#summary-rows', rowsText);
+  setText('#summary-linear', linearText);
+  setText('#summary-plants', plantsText);
+  renderManualAreaCalculation();
   mapApi?.setRows(result.rows);
   renderProjectAdvice(project);
   if (project.geometry && result.vertexCount) {
@@ -86,7 +110,8 @@ try {
   mapApi = initMap({
     container: 'map',
     onGeometryChange: (geometry) => {
-      patchGeometry(geometry);
+      const sourcePatch = state.project.sourceType === 'cadastral' ? { sourceType:'mixed' } : {};
+      patchGeometry(geometry, sourcePatch);
       if (geometry && !perimeterEventSent) { perimeterEventSent = true; track('perimeter_completed', { vertices:Math.max(0, geometry.length - 1) }); }
     },
     onCadastralParcel: (parcel, selection) => {
@@ -119,14 +144,71 @@ $('#clone-selection').value = state.project.cloneSelection ?? '';
 
 $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
 $('#gps-button')?.addEventListener('click', async () => { try { await mapApi?.locate(); track('gps_used', { source:'button' }); } catch {} });
-$('#search-form')?.addEventListener('submit', async (event) => { event.preventDefault(); try { const result = await mapApi?.search($('#search-input').value); if (result) patchProject({ locationLabel:result.locationLabel ?? result.label ?? '', municipality:result.municipality ?? '', province:result.province ?? '', region:result.region ?? '' }); track('location_searched', { found:Boolean(result) }); } catch (error) { console.error(error); setStatus('Ricerca momentaneamente non disponibile. Puoi navigare manualmente sulla mappa.'); } });
+const searchInput = $('#search-input');
+const searchSuggestions = $('#search-suggestions');
+let suggestionTimer = null;
+let suggestionRequest = 0;
+function hideSuggestions() { if (searchSuggestions) { searchSuggestions.hidden = true; searchSuggestions.replaceChildren(); } }
+function storeSearchResult(result) {
+  if (!result) return;
+  patchProject({ locationLabel:result.locationLabel ?? result.label ?? '', municipality:result.municipality ?? '', province:result.province ?? '', region:result.region ?? '' });
+}
+async function runSearch(query) {
+  try {
+    const result = await mapApi?.search(query);
+    storeSearchResult(result);
+    track('location_searched', { found:Boolean(result) });
+    return result;
+  } catch (error) {
+    console.error(error);
+    setStatus('Ricerca momentaneamente non disponibile. Puoi navigare manualmente sulla mappa.');
+    return null;
+  }
+}
+function renderSuggestions(items) {
+  if (!searchSuggestions) return;
+  searchSuggestions.replaceChildren();
+  for (const item of items) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'search-suggestion';
+    button.setAttribute('role', 'option');
+    button.textContent = item.label;
+    button.addEventListener('click', async () => {
+      if (searchInput) searchInput.value = item.label;
+      hideSuggestions();
+      await runSearch(item.label);
+    });
+    searchSuggestions.append(button);
+  }
+  searchSuggestions.hidden = items.length === 0;
+}
+searchInput?.addEventListener('input', () => {
+  const query = searchInput.value.trim();
+  clearTimeout(suggestionTimer);
+  if (query.length < 3) { hideSuggestions(); return; }
+  const requestId = ++suggestionRequest;
+  suggestionTimer = setTimeout(async () => {
+    try {
+      const items = await mapApi?.suggest(query) ?? [];
+      if (requestId === suggestionRequest && searchInput.value.trim() === query) renderSuggestions(items);
+    } catch { if (requestId === suggestionRequest) hideSuggestions(); }
+  }, 280);
+});
+$('#search-form')?.addEventListener('submit', async (event) => { event.preventDefault(); hideSuggestions(); await runSearch(searchInput?.value ?? ''); });
+document.addEventListener('click', (event) => { if (!event.target.closest('.search-shell')) hideSuggestions(); });
 $('#cadastre-button')?.classList.toggle('active', Boolean(state.map?.cadastralVisible));
 $('#cadastre-button')?.addEventListener('click', (event) => { const next = !state.map.cadastralVisible; state = { ...state, map: { ...state.map, cadastralVisible: next } }; persist(); event.currentTarget.classList.toggle('active', next); $('#select-cadastre-button').disabled = !next; mapApi?.setCadastralVisible(next); track('cadastre_toggled', { visible:next }); });
 $('#select-cadastre-button').disabled = !state.map?.cadastralVisible;
 $('#select-cadastre-button')?.addEventListener('click', () => mapApi?.beginCadastralSelect());
 for (const button of document.querySelectorAll('[data-base]')) { button.classList.toggle('active', button.dataset.base === (state.map?.base ?? 'satellite')); button.addEventListener('click', () => { for (const sibling of document.querySelectorAll('[data-base]')) sibling.classList.remove('active'); button.classList.add('active'); const base = button.dataset.base; mapApi?.setBaseMap(base); state = { ...state, map: { ...state.map, base } }; persist(); track('base_map_changed', { base }); }); }
+$('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(-15));
+$('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(15));
+$('#north-button')?.addEventListener('click', () => mapApi?.resetNorth());
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#headland', 'headlandWidthM'); bindNumberInput('#post-spacing', 'postSpacingM');
+$('#manual-area')?.addEventListener('input', renderManualAreaCalculation);
+$('#manual-area')?.addEventListener('change', (event) => { const areaM2 = Number(event.target.value); if (Number.isFinite(areaM2) && areaM2 > 0) track('manual_area_calculated', { areaM2 }); });
 $('#row-spacing')?.addEventListener('change', () => track('planting_spacing_changed', { rowSpacingM:state.project.rowSpacingM, plantSpacingM:state.project.plantSpacingM }));
 $('#plant-spacing')?.addEventListener('change', () => track('planting_spacing_changed', { rowSpacingM:state.project.rowSpacingM, plantSpacingM:state.project.plantSpacingM }));
 $('#headland')?.addEventListener('change', () => track('advanced_option_changed', { option:'headland', enabled:Boolean(state.project.headlandWidthM) }));
@@ -198,6 +280,7 @@ function requestFinalAction(action) {
 }
 
 $('#save-project')?.addEventListener('click', () => requestFinalAction('save'));
+$('#summary-save-project')?.addEventListener('click', () => requestFinalAction('save'));
 $('#open-report')?.addEventListener('click', () => requestFinalAction('report'));
 $('#request-quote')?.addEventListener('click', () => requestFinalAction('quote'));
 $('#close-dialog')?.addEventListener('click', () => contactDialog?.close());

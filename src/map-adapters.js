@@ -14,6 +14,25 @@ export function buildGeocodeUrl(query) {
   return url.toString();
 }
 
+export function buildSuggestionUrl(query) {
+  const url = new URL('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/suggest');
+  url.searchParams.set('text', String(query ?? '').trim());
+  url.searchParams.set('countryCode', 'ITA');
+  url.searchParams.set('maxSuggestions', '5');
+  url.searchParams.set('returnCollections', 'false');
+  url.searchParams.set('f', 'json');
+  return url.toString();
+}
+
+export function normalizeSuggestionResults(payload) {
+  const items = Array.isArray(payload?.suggestions) ? payload.suggestions : [];
+  return items.flatMap((item) => {
+    const label = String(item?.text ?? '').trim();
+    if (!label) return [];
+    return [{ label, magicKey:String(item?.magicKey ?? '').trim() }];
+  });
+}
+
 export function normalizeGeocodeResults(items) {
   if (!Array.isArray(items)) return [];
   return items.flatMap((item) => {
@@ -32,6 +51,13 @@ export function normalizeGeocodeResults(items) {
     if (municipality || province || region) result.locationLabel = locationLabel;
     return [result];
   });
+}
+
+export function coordinatesFromDrawEvent(event, fallbackFeatures = []) {
+  const candidates = Array.isArray(event?.features) && event.features.length ? event.features : fallbackFeatures;
+  const feature = candidates.find((item) => item?.geometry?.type === 'Polygon');
+  const coords = feature?.geometry?.coordinates?.[0];
+  return Array.isArray(coords) && coords.length >= 4 ? coords : null;
 }
 
 export function configureDrawForMapLibre(Draw) {

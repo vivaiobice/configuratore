@@ -1,4 +1,4 @@
-import { buildGeocodeUrl, normalizeGeocodeResults, GEOLOCATION_OPTIONS, configureDrawForMapLibre } from './map-adapters.js';
+import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre } from './map-adapters.js';
 import { rowsToFeatureCollection, sideMeasurements, sideMeasurementsToFeatureCollection } from './geometry.js';
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 
@@ -19,12 +19,14 @@ function baseStyle() {
         type: 'raster',
         tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
         tileSize: 256,
+        maxzoom: 19,
         attribution: 'Imagery © Esri'
       },
       street: {
         type: 'raster',
         tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
+        maxzoom: 19,
         attribution: '© OpenStreetMap contributors'
       }
     },
@@ -44,6 +46,7 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     center: [8.225, 44.709],
     zoom: 12.8,
     pitchWithRotate: false,
+    dragRotate: true,
     attributionControl: true
   });
 
@@ -62,34 +65,48 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     draw = new globalThis.MapboxDraw({
       displayControlsDefault: false,
       defaultMode: 'simple_select',
+      clickBuffer: 8,
+      touchBuffer: 32,
+      keybindings: true,
       styles: [
         { id: 'gl-draw-polygon-fill-inactive', type: 'fill', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']], paint: { 'fill-color': '#b9d39d', 'fill-opacity': 0.24 } },
         { id: 'gl-draw-polygon-fill-active', type: 'fill', filter: ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], paint: { 'fill-color': '#d5e5c5', 'fill-opacity': 0.3 } },
         { id: 'gl-draw-polygon-stroke-inactive', type: 'line', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#eff6ed', 'line-width': 3 } },
         { id: 'gl-draw-polygon-stroke-active', type: 'line', filter: ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-dasharray': [0.2, 2], 'line-width': 3 } },
-        { id: 'gl-draw-polygon-and-line-vertex-inactive', type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']], paint: { 'circle-radius': 5, 'circle-color': '#183f28', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } },
+        { id: 'gl-draw-polygon-and-line-vertex-inactive', type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']], paint: { 'circle-radius': 7, 'circle-color': '#183f28', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } },
         { id: 'gl-draw-polygon-midpoint', type: 'circle', filter: ['all', ['==', 'meta', 'midpoint'], ['==', '$type', 'Point']], paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#183f28', 'circle-stroke-width': 1.5 } }
       ]
     });
     map.addControl(draw, 'top-left');
 
-    const emitGeometry = () => {
-      const feature = draw.getAll().features.find((item) => item.geometry?.type === 'Polygon');
-      const coordinates = feature?.geometry?.coordinates?.[0] ?? null;
+    const setDrawingActive = (active) => {
+      const canvas = map.getCanvas();
+      canvas.style.cursor = active ? 'url("./assets/pencil-cursor.svg") 2 24, crosshair' : '';
+      if (active) map.dragPan.disable();
+      else map.dragPan.enable();
+    };
+    const emitGeometry = (event = null) => {
+      const coordinates = coordinatesFromDrawEvent(event, draw.getAll().features);
       updateSideMeasurements(coordinates);
       onGeometryChange(coordinates);
+      return coordinates;
     };
     map.on('draw.create', (event) => {
       const created = event.features?.[0];
+      const coordinates = coordinatesFromDrawEvent(event, draw.getAll().features);
       for (const feature of draw.getAll().features) {
         if (created?.id && feature.id !== created.id) draw.delete(feature.id);
       }
       if (created?.id) draw.changeMode('simple_select', { featureIds: [created.id] });
-      emitGeometry();
+      setDrawingActive(false);
+      updateSideMeasurements(coordinates);
+      onGeometryChange(coordinates);
       onStatus('Perimetro creato. Tocca/clicca il terreno per modificare i vertici.');
     });
-    map.on('draw.update', emitGeometry);
-    map.on('draw.delete', emitGeometry);
+    map.on('draw.update', (event) => emitGeometry(event));
+    map.on('draw.delete', (event) => emitGeometry(event));
+    map.getContainer().addEventListener('keydown', (event) => { if (event.key === 'Escape') setDrawingActive(false); });
+    map.__setDrawingActive = setDrawingActive;
   }
 
   map.on('load', () => {
@@ -107,9 +124,9 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
       source: SIDE_MEASUREMENTS_SOURCE_ID,
       layout: {
         'text-field': ['get', 'label'],
-        'text-size': 11,
-        'text-allow-overlap': false,
-        'text-ignore-placement': false
+        'text-size': 12,
+        'text-allow-overlap': true,
+        'text-ignore-placement': true
       },
       paint: {
         'text-color': '#183f28',
@@ -264,6 +281,7 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     draw.deleteAll();
     updateSideMeasurements(null);
     draw.changeMode('draw_polygon');
+    map.__setDrawingActive?.(true);
     onStatus('Disegna il confine del terreno. Chiudi il poligono cliccando il primo punto.');
   }
 
@@ -300,6 +318,23 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     return result;
   }
 
+  async function suggest(query) {
+    const normalized = String(query ?? '').trim();
+    if (normalized.length < 3) return [];
+    const response = await fetch(buildSuggestionUrl(normalized), { headers:{ Accept:'application/json' } });
+    if (!response.ok) return [];
+    return normalizeSuggestionResults(await response.json());
+  }
+
+  function rotateBy(deltaDeg) {
+    const next = map.getBearing() + Number(deltaDeg || 0);
+    map.easeTo({ bearing: next, duration: 180, essential: true });
+  }
+
+  function resetNorth() {
+    map.easeTo({ bearing: 0, duration: 180, essential: true });
+  }
+
   map.on('moveend', refreshCadastre);
   map.on('resize', refreshCadastre);
 
@@ -329,5 +364,5 @@ export function initMap({ container, onGeometryChange = () => {}, onCadastralPar
     });
   }
 
-  return { map, draw, beginDraw, beginCadastralSelect, setGeometry, setBaseMap, setRows, search, locate, setCadastralVisible };
+  return { map, draw, beginDraw, beginCadastralSelect, setGeometry, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

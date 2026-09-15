@@ -1,5 +1,16 @@
 import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js';
 
+export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
+  const area = Number(areaM2);
+  const rowSpacing = Number(rowSpacingM);
+  const plantSpacing = Number(plantSpacingM);
+  if (!Number.isFinite(area) || area <= 0 || !Number.isFinite(rowSpacing) || rowSpacing <= 0 || !Number.isFinite(plantSpacing) || plantSpacing <= 0) {
+    return { theoreticalPlants:0, commercialPlants25:0 };
+  }
+  const theoreticalPlants = Math.ceil(area / (rowSpacing * plantSpacing));
+  return { theoreticalPlants, commercialPlants25:roundUpTo25(theoreticalPlants) };
+}
+
 function emptyResult() {
   return {
     areaM2: 0,

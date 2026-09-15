@@ -3,3 +3,28 @@
 .soft-divider{border:0;border-top:1px solid #dce2dd;margin:18px 0}.advanced-body h3{font-size:.9rem;margin:0 0 10px;color:#183f28}.project-actions .button-row{margin-top:10px}.project-actions .button-row>*{flex:1}
 
 .project-advice{display:grid;gap:7px;margin:10px 0}.project-advice[hidden]{display:none}.project-advice-item{margin:0;padding:10px 11px;border-radius:10px;font-size:10px;line-height:1.45;background:#f3f6f3;color:#526057;border:1px solid #e0e7e2}.project-advice-item.attention{background:#f8f3e8;color:#725d24;border-color:#eadfbd}.optional-consent{font-weight:500!important;color:#6d776f!important}
+
+/* === Urgent usability fixes · desktop + mobile === */
+.brand{gap:9px}.brand-logo{display:block;height:44px;width:auto;max-width:210px;object-fit:contain;border-radius:7px;background:#050505}.brand-caption{font-size:11px;color:var(--muted);font-weight:750;white-space:nowrap}.search-shell{position:relative}.search-suggestions{position:absolute;z-index:25;left:0;right:50px;top:calc(100% + 5px);background:#fff;border:1px solid #cfd7d1;border-radius:12px;box-shadow:0 14px 36px rgba(20,32,25,.16);overflow:hidden}.search-suggestions[hidden]{display:none}.search-suggestion{width:100%;border:0;background:#fff;color:var(--ink);text-align:left;padding:10px 12px;font:inherit;font-size:11px;line-height:1.35;cursor:pointer}.search-suggestion:hover,.search-suggestion:focus{background:var(--soft);outline:none}.map-toolbar{flex-wrap:wrap;max-width:calc(100% - 300px)}.map-rotation{display:flex;gap:4px}.map-rotation .tool-button{min-width:35px;padding-inline:9px}.north-button{font-weight:900;color:var(--green)!important}.map-summary{position:absolute;z-index:4;right:18px;top:18px;width:250px;background:rgba(255,255,255,.96);border:1px solid rgba(220,226,221,.95);border-radius:16px;padding:12px;box-shadow:0 12px 38px rgba(20,32,25,.18);backdrop-filter:blur(8px)}.map-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.map-summary-grid>div{padding:8px;border-radius:10px;background:#f5f7f5}.map-summary span{display:block;font-size:9px;color:var(--muted)}.map-summary strong{display:block;margin-top:2px;font-size:13px}.map-summary .summary-primary{grid-column:1/-1;background:var(--green);color:#fff;padding:11px}.map-summary .summary-primary span{color:#c9d9cd}.map-summary .summary-primary strong{font-size:25px;letter-spacing:-.03em}.map-summary .primary-button{margin-top:8px}.maplibregl-canvas.drawing-active{cursor:url("./assets/pencil-cursor.svg") 2 24,crosshair!important}
+
+@media(max-width:800px){
+  .topbar{height:58px;padding:0 12px}.brand-logo{height:38px;max-width:165px}.brand-caption{display:none}
+  .app-shell{height:auto;display:flex;flex-direction:column;background:var(--surface)}
+  .panel{display:contents}
+  .panel-intro{order:0;padding:18px 18px 10px;background:var(--surface)}
+  .step[data-step="1"]{order:1;padding:12px 18px 18px;border-top:0;background:var(--surface)}
+  .map-wrap{order:2;height:54vh;min-height:390px}
+  .step[data-step="2"]{order:3;padding:22px 18px;background:var(--surface)}
+  .advanced{order:4;padding:17px 18px;background:var(--surface)}
+  .project-advice{order:5;margin:0;padding:10px 18px;background:var(--surface)}
+  .results{order:6;position:static;padding:8px 18px 0;margin:0;background:var(--surface)}
+  .project-actions{order:7;padding:16px 18px 36px;background:var(--surface)}
+  .map-toolbar{top:10px;left:10px;right:10px;max-width:none;gap:5px}.segmented button,.tool-button{padding:7px 8px;font-size:10px}.map-rotation .tool-button{min-width:31px}
+  .map-summary{top:auto;right:10px;bottom:50px;width:auto;min-width:155px;padding:8px;border-radius:13px}
+  .map-summary-grid{display:block}.map-summary .summary-secondary{display:none}.map-summary .summary-primary{padding:8px 11px;border-radius:9px}.map-summary .summary-primary strong{font-size:22px}.map-summary .summary-primary span{font-size:8px}#summary-save-project{display:none}
+  .map-status{bottom:10px;max-width:calc(100% - 20px);white-space:normal}
+  .search-suggestions{right:0}
+}
+
+/* === Manual area calculator === */
+.manual-calculator{margin-top:14px;padding:13px;border:1px solid #dce4de;border-radius:13px;background:#f7f9f7}.manual-calculator-heading strong{display:block;font-size:12px;color:var(--ink)}.manual-calculator-heading span{display:block;margin-top:3px;font-size:10px;line-height:1.4;color:var(--muted)}.manual-area-field{display:grid;grid-template-columns:1fr auto;align-items:end;margin-top:11px;font-size:10px;color:var(--muted);font-weight:700}.manual-area-field>span{font-weight:500}.manual-area-field input{grid-column:1/-1;width:100%;margin-top:5px;border:1px solid #cfd7d1;background:#fff;border-radius:10px;padding:10px 11px;font:inherit;color:var(--ink);font-weight:750;outline:none}.manual-area-field input:focus{border-color:#557a62;box-shadow:0 0 0 3px rgba(39,95,62,.10)}.manual-calculator-results{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.manual-calculator-results>div{background:#fff;border-radius:10px;padding:9px}.manual-calculator-results span{display:block;font-size:9px;color:var(--muted)}.manual-calculator-results strong{display:block;margin-top:2px;font-size:17px}.manual-calculator-results .manual-commercial{background:var(--green);color:#fff}.manual-calculator-results .manual-commercial span{color:#c9d9cd}@media(max-width:800px){.manual-calculator{margin-top:12px}.manual-calculator-results strong{font-size:19px}}

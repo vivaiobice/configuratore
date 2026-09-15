@@ -13,8 +13,8 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#" aria-label="Vivai Obice">
-      <span class="brand-mark">VO</span>
-      <span><strong>Vivai Obice</strong><small>Configuratore</small></span>
+      <img class="brand-logo" src="./assets/logo-vivai-obice.png" alt="Vivai Obice · Barbatelle di vite innestate" />
+      <span class="brand-caption">Configuratore</span>
     </a>
     <span class="test-badge">AMBIENTE TEST</span>
   </header>
@@ -29,10 +29,13 @@
 
       <section class="step" data-step="1">
         <div class="step-heading"><span>01</span><div><h2>Trova il terreno</h2><p>Cerca una località oppure usa la posizione attuale.</p></div></div>
-        <form id="search-form" class="search-row">
-          <input id="search-input" type="search" autocomplete="street-address" placeholder="Comune, località o indirizzo" />
-          <button class="icon-button" aria-label="Cerca" title="Cerca">⌕</button>
-        </form>
+        <div class="search-shell">
+          <form id="search-form" class="search-row">
+            <input id="search-input" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="search-suggestions" placeholder="Comune, località o indirizzo" />
+            <button class="icon-button" aria-label="Cerca" title="Cerca">⌕</button>
+          </form>
+          <div id="search-suggestions" class="search-suggestions" role="listbox" hidden></div>
+        </div>
         <div class="button-row">
           <button id="gps-button" class="secondary-button" type="button">◎ Posizione attuale</button>
           <button id="draw-button" class="primary-button" type="button">Disegna terreno</button>
@@ -44,6 +47,14 @@
         <div class="field-grid">
           <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
           <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="1.00" /></label>
+        </div>
+        <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
+          <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Inserisci la superficie: usa il sesto impostato qui sopra.</span></div></div>
+          <label class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
+          <div class="manual-calculator-results" aria-live="polite">
+            <div><span>Barbatelle teoriche</span><strong id="manual-theoretical">—</strong></div>
+            <div class="manual-commercial"><span>Quantità commerciale ×25</span><strong id="manual-commercial">—</strong></div>
+          </div>
         </div>
         <label class="range-field">Orientamento filari <output id="orientation-output">0°</output>
           <input id="orientation" type="range" min="0" max="179" step="1" value="0" />
@@ -93,7 +104,22 @@
       <div class="map-toolbar">
         <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
         <button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
+        <div class="map-rotation" aria-label="Rotazione mappa">
+          <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
+          <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
+          <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
+        </div>
       </div>
+      <aside id="map-summary" class="map-summary" aria-label="Riepilogo progetto">
+        <div class="map-summary-grid">
+          <div class="summary-secondary"><span>Superficie</span><strong id="summary-area">—</strong></div>
+          <div class="summary-secondary"><span>Perimetro</span><strong id="summary-perimeter">—</strong></div>
+          <div class="summary-secondary"><span>Filari</span><strong id="summary-rows">—</strong></div>
+          <div class="summary-secondary"><span>Metri lineari</span><strong id="summary-linear">—</strong></div>
+          <div class="summary-primary"><span>Barbatelle stimate</span><strong id="summary-plants">—</strong></div>
+        </div>
+        <button id="summary-save-project" class="primary-button wide" type="button">Salva il progetto</button>
+      </aside>
       <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
     </section>
   </main>

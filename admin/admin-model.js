@@ -10,6 +10,8 @@ export function filterProjects(projects, filters = {}) {
   const contextType = text(filters.contextType);
   const minPlants = Number(filters.minPlants) || 0;
   const minArea = Number(filters.minArea) || 0;
+  const createdFrom = filters.createdFrom ? new Date(`${filters.createdFrom}T00:00:00`).getTime() : null;
+  const createdTo = filters.createdTo ? new Date(`${filters.createdTo}T23:59:59.999`).getTime() : null;
   return (projects ?? []).filter((project) => {
     if (environment && text(project.environment) !== environment) return false;
     if (status && text(project.status) !== status) return false;
@@ -21,6 +23,9 @@ export function filterProjects(projects, filters = {}) {
     if (contextType && text(project.project_context_type) !== contextType) return false;
     if ((Number(project.commercial_plants_25) || 0) < minPlants) return false;
     if ((Number(project.gross_area_m2) || 0) < minArea) return false;
+    const createdAt = project.created_at ? new Date(project.created_at).getTime() : null;
+    if (createdFrom && (!Number.isFinite(createdAt) || createdAt < createdFrom)) return false;
+    if (createdTo && (!Number.isFinite(createdAt) || createdAt > createdTo)) return false;
     return true;
   });
 }
