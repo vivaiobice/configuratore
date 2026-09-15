@@ -82,7 +82,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let manualHover = null;
   let manualCloseMarker = null;
 
-  const emitDrawingState = () => onDrawingState({ active:manualDrawing, canClose:manualDrawing && manualVertices.length >= 3, vertexCount:manualVertices.length });
+  const emitDrawingState = () => onDrawingState({ active:manualDrawing, mode:manualMode, canClose:manualDrawing && manualVertices.length >= 3, vertexCount:manualVertices.length });
 
   const setDrawingActive = (active) => {
     manualDrawing = Boolean(active);
@@ -185,6 +185,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     setDrawingActive(false);
     if (mode === 'exclusion') {
       onExclusionAdd(ring);
+      if (committedGeometry) setGeometry(committedGeometry);
       onStatus('Area esclusa aggiunta. I filari e le quantità vengono ricalcolati.');
       return true;
     }
@@ -317,7 +318,11 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function ensureCommittedVisuals() {
     if (!committedGeometry) return;
     updateProjectGeometrySource(committedGeometry);
-    if (sideMeasurementMarkers.length !== sideMeasurements(committedGeometry).length) updateSideMeasurements(committedGeometry);
+    updateSideMeasurements(committedGeometry);
+    if (map.getLayer(PROJECT_GEOMETRY_LINE_ID)) {
+      try { map.setLayoutProperty(PROJECT_GEOMETRY_LINE_ID, 'visibility', 'visible'); } catch {}
+      try { map.moveLayer?.(PROJECT_GEOMETRY_LINE_ID); } catch {}
+    }
   }
 
   function cadastralRequest() {
@@ -470,8 +475,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function beginExclusionDraw() {
     if (!committedGeometry) { onStatus('Disegna prima il perimetro del campo.'); return false; }
     manualMode = 'exclusion';
+    if (draw) { try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); } }
     manualVertices = []; manualHover = null; renderManualDraft(); setDrawingActive(true);
-    onStatus('Disegna la zona da escludere e chiudila sul primo punto verde.');
+    onStatus('Disegna la zona da escludere: inserisci almeno 3 punti e poi chiudila sul primo punto verde o con “Chiudi esclusione”.');
     return true;
   }
 
@@ -485,6 +491,39 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     setRows([]);
     setExclusions([]);
     onStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.');
+  }
+
+  function beginVertexRemoval() {
+    if (!committedGeometry || committedGeometry.length <= 4) {
+      onStatus(committedGeometry ? 'Il perimetro deve mantenere almeno 3 vertici.' : 'Disegna prima il perimetro del campo.');
+      return false;
+    }
+    onStatus('Clicca/tocca il vertice del perimetro che vuoi eliminare.');
+    map.getCanvas().style.cursor = 'crosshair';
+    map.once('click', (event) => {
+      map.getCanvas().style.cursor = '';
+      const point = event?.point;
+      if (!point) return;
+      const vertices = committedGeometry.slice(0, -1);
+      let bestIndex = -1;
+      let bestDistance = Infinity;
+      vertices.forEach((coordinate, index) => {
+        const projected = map.project(coordinate);
+        const distance = Math.hypot(Number(projected.x) - Number(point.x), Number(projected.y) - Number(point.y));
+        if (distance < bestDistance) { bestDistance = distance; bestIndex = index; }
+      });
+      if (bestIndex < 0 || bestDistance > 32) {
+        onStatus('Nessun vertice abbastanza vicino. Premi di nuovo “− Punto” e tocca direttamente il punto da eliminare.');
+        return;
+      }
+      const remaining = vertices.filter((_, index) => index !== bestIndex);
+      if (remaining.length < 3) { onStatus('Il perimetro deve mantenere almeno 3 vertici.'); return; }
+      const next = [...remaining, remaining[0]];
+      setGeometry(next);
+      onGeometryChange(next);
+      onStatus('Vertice eliminato. Perimetro e quote aggiornati.');
+    });
+    return true;
   }
 
   function removeSelectedVertex() {
@@ -550,8 +589,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.easeTo({ bearing: 0, duration: 180, essential: true });
   }
 
-  map.on('moveend', refreshCadastre);
-  map.on('resize', refreshCadastre);
+  map.on('moveend', () => { refreshCadastre(); ensureCommittedVisuals(); });
+  map.on('resize', () => { refreshCadastre(); ensureCommittedVisuals(); });
+  map.on('styledata', ensureCommittedVisuals);
   map.on('idle', ensureCommittedVisuals);
 
   function locate() {
@@ -580,5 +620,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     });
   }
 
-  return { map, draw, beginDraw, beginExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, beginDraw, beginExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

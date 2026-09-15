@@ -22,8 +22,8 @@ test('first manual vertex gets an HTML close target once the polygon can be clos
 });
 
 test('manual rotation arrows follow their visual direction', () => {
-  assert.match(app, /rotate-left'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(-15\)\)/);
-  assert.match(app, /rotate-right'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(15\)\)/);
+  assert.match(app, /rotate-left'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(15\)\)/);
+  assert.match(app, /rotate-right'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(-15\)\)/);
 });
 
 test('summary disclaimer is visually subordinate', () => {

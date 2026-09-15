@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=12" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#" aria-label="Vivai Obice">
-      <img class="brand-logo" src="./assets/logo-vivai-obice-v10.png" alt="Vivai Obice · Barbatelle di vite innestate" />
+      <img class="brand-logo" src="./assets/logo-vivai-obice-v12.png?v=12" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
     <span class="test-badge">AMBIENTE TEST</span>
@@ -78,7 +78,7 @@
           </div>
           <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
           <label>Inquadramento del progetto
-            <select id="project-context"><option value="new_planting">NUOVO IMPIANTO</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
+            <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
           </label>
           <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
           <hr class="soft-divider" />
@@ -154,7 +154,8 @@
 
     <section class="map-wrap" aria-label="Mappa del progetto">
       <div id="map"></div>
-      <img class="map-watermark" src="./assets/logo-vivai-obice-v10.png" alt="" aria-hidden="true" />
+      <div class="map-watermark-layer" aria-hidden="true"></div>
+      <img class="map-watermark" src="./assets/logo-vivai-obice-v12.png?v=12" alt="" aria-hidden="true" />
       <div class="map-toolbar">
         <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
         <button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Cancella campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
@@ -189,6 +190,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js"></script>
+  <script type="module" src="./src/app.js?v=12"></script>
 </body>
 </html>

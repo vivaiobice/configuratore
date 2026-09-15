@@ -36,7 +36,7 @@ test('rootstock and clone are selects and project framing defaults to new planti
   assert.match(html, /<select id="clone-selection"/);
   assert.doesNotMatch(html, /<input id="rootstock"/);
   assert.doesNotMatch(html, /<input id="clone-selection"/);
-  assert.match(html, /<option value="new_planting">NUOVO IMPIANTO<\/option>/);
+  assert.match(html, /<option value="new_planting">Nuovo Impianto<\/option>/);
   assert.doesNotMatch(html, /Nessuno \/ da definire/);
   assert.match(state, /projectContextType:\s*'new_planting'/);
 });

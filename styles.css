@@ -96,3 +96,21 @@ body.map-fullscreen-open{overflow:hidden!important}
   .panel-intro{padding:18px 18px 10px}.step[data-step="1"]{padding:12px 18px 18px;border-top:0}.map-wrap{height:54vh;min-height:390px;width:100%;position:relative}.step[data-step="2"]{padding:22px 18px}.advanced{padding:17px 18px}.project-advice{margin:0;padding:10px 18px}.map-summary{position:static!important;margin:0!important;padding:10px 18px 20px!important}.map-summary-grid{grid-template-columns:repeat(2,1fr)}.map-summary .summary-primary{grid-column:1/-1}.map-fullscreen-button{display:inline-flex!important}
   .map-rotation{display:none}.map-toolbar{max-height:45%;overflow:auto;align-content:flex-start}.map-watermark{width:62%;opacity:.065}
 }
+
+/* === V11 · stronger editing controls, supplied logo, watermark and card sidebar === */
+#map{z-index:0}.map-toolbar,.map-status{z-index:6}.brand-logo{height:46px;max-width:230px;object-fit:contain;object-position:left center}
+.map-watermark{z-index:2!important;width:min(58%,640px)!important;max-height:32%!important;opacity:.15!important;filter:brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.28))!important;transform:translate(-50%,-50%) rotate(-7deg)!important}
+.map-wrap.fullscreen-map .map-watermark{width:min(64%,720px)!important;opacity:.14!important}
+.panel-scroll{background:#f5f7f5;padding:22px 18px 16px}.panel-intro{padding:4px 6px 18px}
+.step,.advanced{background:#fff;border:1px solid #e1e7e2;border-radius:16px;margin:0 0 12px;padding:16px;box-shadow:0 3px 14px rgba(20,32,25,.045)}
+.step{border-top:1px solid #e1e7e2}.step-heading{margin-bottom:13px}.advanced{padding:0}.advanced>summary{padding:15px 16px}.advanced-body{padding:0 16px 15px}.exclusion-panel{margin:0 16px 16px;padding:11px 12px;border:1px solid #e1e7e2;border-radius:12px;background:#f7f9f7}.exclusion-heading{display:grid;gap:3px}.exclusion-heading strong{font-size:12px}.exclusion-heading span{font-size:10px;line-height:1.4}.empty-exclusions{padding:7px 8px;border-radius:9px;background:#fff;border:1px dashed #d7dfd9}
+.field-manager{background:#f7f9f7}.map-summary{background:#f5f7f5!important;border:1px solid #e1e7e2!important;border-radius:14px!important;padding:9px!important;margin-top:8px!important}.map-summary-grid>div{background:#fff!important;border:1px solid #e7ebe8}.map-summary .summary-primary{background:var(--green)!important;border:0!important}
+#exclude-zone-button.active{background:#8a3f32!important;color:#fff!important}
+@media(max-width:800px){.brand-logo{height:40px;max-width:185px}.panel-scroll{background:#f5f7f5!important}.panel-intro{padding:18px 18px 10px}.step[data-step="1"],.step[data-step="2"],.advanced{margin:0 12px 12px;padding:15px;border:1px solid #e1e7e2;border-radius:15px;background:#fff}.advanced{padding:0}.advanced>summary{padding:15px}.advanced-body{padding:0 15px 14px}.exclusion-panel{margin:0 15px 15px}.map-watermark{width:72%!important;opacity:.14!important}.map-summary{margin:0 12px 14px!important;padding:9px!important;border-radius:14px!important}}
+
+/* === V12 · cache-busted supplied logo, multi-field context and stronger watermark === */
+.map-watermark-layer{position:absolute;inset:0;z-index:1;pointer-events:none;user-select:none;background-image:url('./assets/logo-vivai-obice-v12.png?v=12');background-repeat:repeat;background-size:260px auto;background-position:40px 30px;opacity:.045;filter:brightness(0) invert(1)}
+.map-watermark{opacity:.22!important;width:min(60%,680px)!important;filter:brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.32))!important}
+.map-wrap.fullscreen-map .map-watermark{opacity:.2!important}
+.brand-logo{background:transparent!important;filter:none!important}
+@media(max-width:800px){.map-watermark-layer{background-size:210px auto;opacity:.04}.map-watermark{opacity:.2!important}}

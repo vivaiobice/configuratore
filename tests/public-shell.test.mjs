@@ -39,7 +39,7 @@ test('V10 exposes multi-field, exclusion, clear field and remove vertex controls
 });
 
 test('header and map watermark use cache-busted transparent V10 logo asset', () => {
-  assert.match(html, /logo-vivai-obice-v10\.png/);
+  assert.match(html, /logo-vivai-obice-lineare\.png/);
   assert.match(html, /class="map-watermark"/);
 });
 

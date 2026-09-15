@@ -9,6 +9,7 @@ import { mergeCloudSnapshot } from './cloud-state.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField } from './fields.js';
+import { normalizeHeadlandForMechanization } from './project-rules.js';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
@@ -127,12 +128,15 @@ try {
       track('cadastral_parcel_selected', { selected:true, parcelCount:selection?.refs?.length ?? 1 });
     },
     onStatus: setStatus,
-    onDrawingState: ({ canClose }) => {
+    onDrawingState: ({ active, canClose, mode }) => {
       const closeButton = $('#close-perimeter-button');
       if (closeButton) {
         closeButton.hidden = !canClose;
         closeButton.disabled = !canClose;
+        closeButton.textContent = mode === 'exclusion' ? '✓ Chiudi esclusione' : '✓ Chiudi perimetro';
       }
+      $('#exclude-zone-button')?.classList.toggle('active', Boolean(active && mode === 'exclusion'));
+      $('#draw-button')?.classList.toggle('active', Boolean(active && mode === 'perimeter'));
     },
     onReady: calculateAndRender
   });
@@ -149,6 +153,7 @@ $('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
 $('#headland').value = state.project.headlandWidthM ?? '';
 $('#post-spacing').value = state.project.postSpacingM ?? 4.5;
 $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
+$('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
 $('#project-context').value = state.project.projectContextType || 'new_planting';
 $('#project-context-note').value = state.project.projectContextNote ?? '';
 $('#grape-variety').value = state.project.grapeVariety ?? '';
@@ -163,6 +168,7 @@ function syncProjectControls() {
   $('#headland').value = state.project.headlandWidthM ?? '';
   $('#post-spacing').value = state.project.postSpacingM ?? 4.5;
   $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
+  $('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
   $('#project-context').value = state.project.projectContextType || 'new_planting';
   $('#project-context-note').value = state.project.projectContextNote ?? '';
   $('#grape-variety').value = state.project.grapeVariety ?? '';
@@ -207,8 +213,8 @@ $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.
 $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
 $('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
 $('#exclude-zone-button')?.addEventListener('click', () => mapApi?.beginExclusionDraw());
-$('#remove-vertex-button')?.addEventListener('click', () => mapApi?.removeSelectedVertex());
-$('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; if (!globalThis.confirm?.('Cancellare il disegno del campo attivo?')) return; mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); });
+$('#remove-vertex-button')?.addEventListener('click', () => mapApi?.beginVertexRemoval());
+$('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
 async function locateFrom(source) {
   try {
     await mapApi?.locate();
@@ -275,8 +281,8 @@ $('#cadastre-button')?.addEventListener('click', (event) => { const next = !stat
 $('#select-cadastre-button').disabled = !state.map?.cadastralVisible;
 $('#select-cadastre-button')?.addEventListener('click', () => mapApi?.beginCadastralSelect());
 for (const button of document.querySelectorAll('[data-base]')) { button.classList.toggle('active', button.dataset.base === (state.map?.base ?? 'satellite')); button.addEventListener('click', () => { for (const sibling of document.querySelectorAll('[data-base]')) sibling.classList.remove('active'); button.classList.add('active'); const base = button.dataset.base; mapApi?.setBaseMap(base); state = { ...state, map: { ...state.map, base } }; persist(); track('base_map_changed', { base }); }); }
-$('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(-15));
-$('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(15));
+$('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(15));
+$('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(-15));
 $('#north-button')?.addEventListener('click', () => mapApi?.resetNorth());
 
 const mapWrap = document.querySelector('.map-wrap');
@@ -309,7 +315,12 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && mapWrap?.classList.contains('fullscreen-map')) setMapFullscreen(false);
 });
 
-bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#headland', 'headlandWidthM'); bindNumberInput('#post-spacing', 'postSpacingM');
+bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#post-spacing', 'postSpacingM');
+$('#headland')?.addEventListener('input', (event) => {
+  const normalized = normalizeHeadlandForMechanization(numberOrNull(event.target.value), state.project.mechanizedHarvest);
+  if (state.project.mechanizedHarvest && normalized === 6 && Number(event.target.value) !== 6) event.target.value = '6';
+  patchProject({ headlandWidthM:normalized });
+});
 $('#manual-area')?.addEventListener('input', renderManualAreaCalculation);
 $('#manual-area')?.addEventListener('change', (event) => { const areaM2 = Number(event.target.value); if (Number.isFinite(areaM2) && areaM2 > 0) track('manual_area_calculated', { areaM2 }); });
 $('#row-spacing')?.addEventListener('change', () => track('planting_spacing_changed', { rowSpacingM:state.project.rowSpacingM, plantSpacingM:state.project.plantSpacingM }));
@@ -319,7 +330,14 @@ $('#post-spacing')?.addEventListener('change', () => track('advanced_option_chan
 $('#orientation')?.addEventListener('input', (event) => { const value = Number(event.target.value); $('#orientation-output').value = `${value}°`; patchProject({ orientationDeg:value, orientationLocked:true }); });
 $('#orientation')?.addEventListener('change', () => track('orientation_changed', { degrees:state.project.orientationDeg }));
 for (const button of document.querySelectorAll('[data-angle]')) { button.addEventListener('click', () => { const value = Number(button.dataset.angle); $('#orientation').value = value; $('#orientation-output').value = `${value}°`; patchProject({ orientationDeg:value, orientationLocked:true }); track('orientation_changed', { degrees:value }); }); }
-$('#mechanized')?.addEventListener('change', (event) => { patchProject({ mechanizedHarvest: event.target.checked }); track('advanced_option_changed', { option:'mechanized_harvest', enabled:event.target.checked }); });
+$('#mechanized')?.addEventListener('change', (event) => {
+  const enabled = event.target.checked;
+  const headlandWidthM = normalizeHeadlandForMechanization(state.project.headlandWidthM, enabled);
+  const headlandInput = $('#headland');
+  if (headlandInput) { headlandInput.min = enabled ? '6' : '0'; headlandInput.value = headlandWidthM ?? ''; }
+  patchProject({ mechanizedHarvest:enabled, headlandWidthM });
+  track('advanced_option_changed', { option:'mechanized_harvest', enabled });
+});
 $('#project-context')?.addEventListener('change', (event) => { patchProject({ projectContextType: event.target.value }); track('advanced_option_changed', { option:'project_context', enabled:Boolean(event.target.value) }); });
 $('#project-context-note')?.addEventListener('input', (event) => patchProject({ projectContextNote: event.target.value }));
 $('#grape-variety')?.addEventListener('change', (event) => { patchProject({ grapeVariety: event.target.value }); track('plant_material_changed', { field:'grape_variety', defined:Boolean(event.target.value) }); });
