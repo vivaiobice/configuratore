@@ -1,4 +1,4 @@
-import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js';
+import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=16';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);
@@ -43,20 +43,7 @@ export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantS
   const rawRows = generateRows(polygon, rowSpacing, Number(orientationDeg) || 0, { exclusions:validExclusions });
   const headlandWidth = Number(headlandWidthM);
   const effectiveHeadland = Number.isFinite(headlandWidth) && headlandWidth > 0 ? headlandWidth : 0;
-  const rows = effectiveHeadland > 0 ? rawRows.flatMap((row) => {
-    const remaining = row.lengthM - (2 * effectiveHeadland);
-    if (remaining <= 0.05) return [];
-    const fraction = effectiveHeadland / row.lengthM;
-    const start = [
-      row.start[0] + ((row.end[0] - row.start[0]) * fraction),
-      row.start[1] + ((row.end[1] - row.start[1]) * fraction)
-    ];
-    const end = [
-      row.end[0] - ((row.end[0] - row.start[0]) * fraction),
-      row.end[1] - ((row.end[1] - row.start[1]) * fraction)
-    ];
-    return [{ ...row, start, end, lengthM:remaining }];
-  }) : rawRows;
+  const rows = generateRows(polygon, rowSpacing, Number(orientationDeg) || 0, { exclusions:validExclusions, headlandWidthM:effectiveHeadland });
   const rawRowLinearM = rawRows.reduce((sum, row) => sum + row.lengthM, 0);
   const rowLinearM = rows.reduce((sum, row) => sum + row.lengthM, 0);
   const removedLinearM = Math.max(0, rawRowLinearM - rowLinearM);

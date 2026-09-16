@@ -1,6 +1,6 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { initMap } from './map.js';
-import { calculateProject, calculateManualPlants } from './project-calculator.js';
+import { initMap } from './map.js?v=16';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
@@ -95,6 +95,8 @@ function calculateAndRender() {
   setText('#summary-perimeter', perimeterText);
   setText('#summary-rows', rowsText);
   setText('#summary-linear', linearText);
+  setText('#summary-posts', result.totalPosts.toLocaleString('it-IT'));
+  setText('#summary-head-posts', result.headPosts.toLocaleString('it-IT'));
   setText('#summary-plants', plantsText);
   setText('#summary-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
   renderManualAreaCalculation();
@@ -144,6 +146,9 @@ try {
       patchProject({ exclusions });
       renderExclusions();
       track('excluded_zone_added', { count:exclusions.length, type:meta.type || 'area' });
+    },
+    onExclusionChange: (id, geometry) => {
+      patchProject({exclusions:(state.project.exclusions ?? []).map(item=>item.id===id ? {...item,geometry} : item)});
     },
     onCadastralParcel: (parcel, selection) => {
       patchGeometry(selection?.coordinates ?? parcel.coordinates, {
@@ -267,9 +272,14 @@ function renderExclusions() {
   items.forEach((item, index) => {
     const row = document.createElement('div'); row.className='exclusion-item';
     const input = document.createElement('input'); input.value=item.label ?? `Area esclusa ${index+1}`; input.setAttribute('aria-label','Nome area esclusa');
-    input.addEventListener('change', () => { const exclusions = items.map((x,i)=>i===index?{...x,label:input.value.trim() || `Area esclusa ${index+1}`} : x); patchProject({exclusions}); });
-    const remove = document.createElement('button'); remove.type='button'; remove.textContent='×'; remove.title='Rimuovi area esclusa'; remove.addEventListener('click', () => { const exclusions = items.filter((_,i)=>i!==index); patchProject({exclusions}); renderExclusions(); });
-    row.append(input, remove); list.append(row);
+    input.addEventListener('change', () => { const exclusions = (state.project.exclusions ?? []).map(x=>x.id===item.id?{...x,label:input.value.trim() || `Area esclusa ${index+1}`} : x); patchProject({exclusions}); });
+    const edit = document.createElement('button'); edit.type='button'; edit.textContent='Modifica'; edit.addEventListener('click',()=>mapApi?.beginExclusionEditing(item.id));
+    const remove = document.createElement('button'); remove.type='button'; remove.textContent='Elimina'; remove.title='Rimuovi area esclusa'; remove.addEventListener('click', () => {
+      mapApi?.finishVertexEditing();
+      const exclusions = (state.project.exclusions ?? []).filter(x=>x.id!==item.id);
+      patchProject({exclusions}); renderExclusions();
+    });
+    row.append(input, edit, remove); list.append(row);
   });
 }
 

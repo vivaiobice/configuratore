@@ -148,7 +148,7 @@ function subtractIntervals(baseIntervals, cuts) {
   return current.filter(([start,end]) => end - start > 0.05);
 }
 
-export function generateRows(coords, rowSpacingM, orientationDeg = 0, { exclusions = [] } = {}) {
+export function generateRows(coords, rowSpacingM, orientationDeg = 0, { exclusions = [], headlandWidthM = 0 } = {}) {
   const raw = stripClosingPoint(coords);
   if (raw.length < 3 || !Number.isFinite(rowSpacingM) || rowSpacingM <= 0) return [];
 
@@ -167,7 +167,9 @@ export function generateRows(coords, rowSpacingM, orientationDeg = 0, { exclusio
   for (let x = minX + rowSpacingM / 2; x < maxX - epsilon; x += rowSpacingM) {
     const outerIntervals = pairIntervals(intersectionsAtX(ring, x));
     const cutIntervals = exclusionRings.flatMap((exclusionRing) => pairIntervals(intersectionsAtX(exclusionRing, x)));
-    const usableIntervals = subtractIntervals(outerIntervals, cutIntervals);
+    const headland = Math.max(0, Number(headlandWidthM) || 0);
+    const trimmedIntervals = outerIntervals.map(([start,end]) => [start+headland,end-headland]).filter(([start,end])=>end-start>0.05);
+    const usableIntervals = subtractIntervals(trimmedIntervals, cutIntervals);
     for (const [yStart, yEnd] of usableIntervals) {
       const startRotated = [x, yStart];
       const endRotated = [x, yEnd];

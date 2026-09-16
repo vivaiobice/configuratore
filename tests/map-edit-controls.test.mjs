@@ -5,7 +5,9 @@ import { initMap } from '../src/map.js';
 class FakeSource { constructor(spec) { this.data=spec.data; } setData(data){ this.data=data; } }
 class FakeBounds { extend(){ return this; } }
 class FakeMarker {
-  constructor({element}={}){ this.element=element; globalThis.__editMarkers.push(this); }
+  constructor({element,draggable}={}){ this.element=element; this.draggable=draggable; this.handlers={}; globalThis.__editMarkers.push(this); }
+  on(name,fn){this.handlers[name]=fn;return this;}
+  getLngLat(){return {lng:this.lngLat[0],lat:this.lngLat[1]};}
   setLngLat(value){ this.lngLat=value; return this; }
   addTo(){ return this; }
   remove(){ this.removed=true; }
@@ -79,7 +81,7 @@ test('vertex removal mode deletes the clicked perimeter vertex without Mapbox Dr
   } finally { ctx.restore(); }
 });
 
-test('explicit vertex editing enters direct select and commits dragged geometry on finish', () => {
+test('explicit vertex editing shows draggable handles and commits dragged geometry on finish', () => {
   let emitted=null;
   const editingStates=[];
   const ctx=setup({onGeometryChange:(g)=>{emitted=g;},onEditingState:(state)=>editingStates.push(state.active)}, true);
@@ -88,12 +90,11 @@ test('explicit vertex editing enters direct select and commits dragged geometry 
     const moved=[[10,10],[22,10],[20,20],[10,10]];
     ctx.api.setGeometry(original);
     assert.equal(ctx.api.beginVertexEditing(), true);
-    assert.equal(ctx.draw.mode, 'direct_select');
-    assert.deepEqual(ctx.draw.options, {featureId:'field-shape'});
-    ctx.draw.features[0].geometry.coordinates[0]=moved;
+    const handle=globalThis.__editMarkers.find(m=>m.draggable && m.lngLat[0]===20 && m.lngLat[1]===10);
+    assert.ok(handle);
+    handle.setLngLat([22,10]); handle.handlers.dragend();
     assert.equal(ctx.api.finishVertexEditing(), true);
     assert.deepEqual(emitted, moved);
-    assert.equal(ctx.draw.mode, 'simple_select');
     assert.deepEqual(editingStates, [true,false]);
   } finally { ctx.restore(); }
 });
@@ -136,4 +137,40 @@ test('other project fields render as passive polygons without replacing active g
     assert.equal(ctx.map.getSource('other-project-fields').data.features.length,1);
     assert.equal(ctx.map.getSource('other-project-fields').data.features[0].properties.label,'Campo 2');
   } finally { ctx.restore(); }
+});
+
+test('changing fields removes handles and editing restarts on the new geometry',()=>{
+ const ctx=setup();
+ try {
+  ctx.api.setGeometry([[0,0],[10,0],[10,10],[0,0]]);
+  ctx.api.beginVertexEditing();
+  const old=globalThis.__editMarkers.filter(m=>m.draggable);
+  assert.equal(old.length,3);
+  ctx.api.clearGeometry();
+  ctx.api.setGeometry([[20,20],[30,20],[30,30],[20,20]]);
+  assert.ok(old.every(m=>m.removed));
+  ctx.api.beginVertexEditing();
+  assert.deepEqual(globalThis.__editMarkers.filter(m=>m.draggable&&!m.removed).map(m=>m.lngLat),[[20,20],[30,20],[30,30]]);
+ } finally {ctx.restore();}
+});
+
+test('exclusion handles modify only the selected exclusion and support adding a vertex',()=>{
+ let changed; let perimeterChanges=0;
+ const ctx=setup({onExclusionChange:(id,ring)=>changed={id,ring},onGeometryChange:()=>perimeterChanges++});
+ try {
+  ctx.api.setGeometry([[0,0],[10,0],[10,10],[0,10],[0,0]]);
+  ctx.api.setExclusions([{id:'cut',geometry:[[2,2],[4,2],[4,4],[2,2]]}]);
+  assert.equal(ctx.api.beginExclusionEditing('cut'),true);
+  const handle=globalThis.__editMarkers.find(m=>m.draggable&&!m.removed);
+  handle.setLngLat([1,2]);handle.handlers.dragend();
+  assert.equal(changed.id,'cut');
+  assert.deepEqual(changed.ring[0],[1,2]);
+  assert.deepEqual(changed.ring.at(-1),[1,2]);
+  const add=globalThis.__editMarkers.find(m=>m.element.className==='vertex-add-handle'&&!m.removed);
+  add.element.click();
+  assert.equal(changed.ring.length,5);
+  assert.equal(perimeterChanges,0);
+  ctx.api.finishVertexEditing();
+  assert.ok(globalThis.__editMarkers.filter(m=>m.draggable).every(m=>m.removed));
+ } finally {ctx.restore();}
 });

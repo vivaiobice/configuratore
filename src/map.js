@@ -51,7 +51,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -94,6 +94,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let drawEditingSuspended = false;
   let editableFeatureId = null;
   let vertexEditing = false;
+  let editingExclusionId = null;
+  let editRing = null;
+  let editMarkers = [];
   let linearFinishPending = false;
 
   const emitDrawingState = () => onDrawingState({
@@ -166,6 +169,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function suspendDrawEditing() {
+    stopVertexEditing();
     drawEditingSuspended = true;
     if (!draw) return;
     try { draw.deleteAll({ silent:true }); } catch { try { draw.deleteAll(); } catch {} }
@@ -613,6 +617,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
 
   function setGeometry(coords) {
     if (!Array.isArray(coords) || coords.length < 4) return false;
+    stopVertexEditing();
     clearVertexRemovalMarkers();
     committedGeometry = coords;
     const apply = () => {
@@ -626,7 +631,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
         });
         const id = ids?.[0];
         editableFeatureId = id ?? null;
-        if (id) draw.changeMode('simple_select', { featureIds: [id] });
+        // The committed source displays the field; editing uses explicit HTML handles.
+        draw.deleteAll({ silent:true });
       }
       updateSideMeasurements(coords);
       renderActiveFieldLabel();
@@ -657,39 +663,99 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
 
   function beginVertexEditing() {
     clearVertexRemovalMarkers();
-    if (!draw || !committedGeometry) { onStatus('Disegna prima il perimetro del campo.'); return false; }
-    if (!editableFeatureId) setGeometry(committedGeometry);
-    if (!editableFeatureId) { onStatus('Non riesco ad attivare la modifica dei punti. Riprova.'); return false; }
-    try {
-      draw.changeMode('direct_select', { featureId:editableFeatureId });
-      vertexEditing = true;
-      map.dragPan.disable();
-      onEditingState({ active:true });
-      onStatus('Modifica punti attiva: trascina i vertici. Premi “Fine modifica” quando hai terminato.');
-      return true;
-    } catch (error) {
-      console.error(error);
-      onStatus('Non riesco ad attivare la modifica dei punti. Riprova.');
-      return false;
-    }
+    if (!committedGeometry) { onStatus('Disegna prima il perimetro del campo.'); return false; }
+    if (manualDrawing) cancelManualDrawing();
+    stopVertexEditing();
+    editRing = committedGeometry.map(p=>[...p]);
+    vertexEditing = true;
+    draw?.deleteAll({silent:true});
+    map.dragPan.disable();
+    onEditingState({active:true});
+    renderEditHandles();
+    onStatus('Trascina i punti; premi + per aggiungerne uno. Poi premi “Fine modifica”.');
+    return true;
   }
 
   function finishVertexEditing() {
-    if (!vertexEditing || !draw) return false;
-    const coordinates = coordinatesFromDrawEvent(null, draw.getAll().features);
-    if (coordinates) {
-      committedGeometry = coordinates;
-      updateProjectGeometrySource(coordinates);
-      updateSideMeasurements(coordinates);
-      renderActiveFieldLabel();
-      onGeometryChange(coordinates);
-    }
-    try { draw.changeMode('simple_select', { featureIds:editableFeatureId ? [editableFeatureId] : [] }); } catch {}
-    vertexEditing = false;
-    map.dragPan.enable();
-    onEditingState({ active:false });
+    if (!vertexEditing) return false;
+    stopVertexEditing();
     onStatus('Modifica conclusa. Perimetro, quote e progetto aggiornati.');
     return true;
+  }
+
+  function stopVertexEditing() {
+    for (const marker of editMarkers) marker.remove();
+    editMarkers = [];
+    const wasEditing = vertexEditing;
+    vertexEditing = false;
+    editingExclusionId = null;
+    editRing = null;
+    if (wasEditing) { map.dragPan.enable(); onEditingState({active:false}); }
+  }
+
+  function beginExclusionEditing(id) {
+    const item = currentExclusions.find(x=>x.id===id);
+    if (!item?.geometry) return false;
+    if (manualDrawing) cancelManualDrawing();
+    stopVertexEditing();
+    clearVertexRemovalMarkers();
+    editingExclusionId = id;
+    editRing = item.geometry.map(p=>[...p]);
+    vertexEditing = true;
+    draw?.deleteAll({silent:true});
+    map.dragPan.disable();
+    onEditingState({active:true, exclusionId:id});
+    renderEditHandles();
+    onStatus('Modifica zona esclusa: trascina i vertici o aggiungi punti con +. Poi “Fine modifica”.');
+    return true;
+  }
+
+  function publishEditRing() {
+    const ring = editRing.map(p=>[...p]);
+    if (editingExclusionId !== null) {
+      currentExclusions = currentExclusions.map(item=>item.id===editingExclusionId ? {...item,geometry:ring} : item);
+      map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());
+      onExclusionChange(editingExclusionId,ring);
+    } else {
+      committedGeometry = ring;
+      updateProjectGeometrySource(ring);
+      updateSideMeasurements(ring);
+      renderActiveFieldLabel();
+      onGeometryChange(ring);
+    }
+  }
+
+  function renderEditHandles() {
+    for (const marker of editMarkers) marker.remove();
+    editMarkers = [];
+    if (!vertexEditing || !editRing) return;
+    const points = editRing.slice(0,-1);
+    points.forEach((point,index)=>{
+      const element = document.createElement('button');
+      element.type='button'; element.className='vertex-edit-handle';
+      element.setAttribute('aria-label', `Sposta punto ${index+1}`);
+      element.textContent=String(index+1);
+      const marker = new globalThis.maplibregl.Marker({element,draggable:true}).setLngLat(point).addTo(map);
+      marker.on('dragend',()=>{
+        if (!vertexEditing) return;
+        const {lng,lat}=marker.getLngLat();
+        editRing[index]=[lng,lat];
+        editRing[editRing.length-1]=[...editRing[0]];
+        publishEditRing(); renderEditHandles(); map.dragPan.disable();
+      });
+      editMarkers.push(marker);
+      const next=points[(index+1)%points.length];
+      const midpoint=[(point[0]+next[0])/2,(point[1]+next[1])/2];
+      const add=document.createElement('button');
+      add.type='button'; add.className='vertex-add-handle'; add.textContent='+';
+      add.setAttribute('aria-label',`Aggiungi punto dopo ${index+1}`);
+      add.addEventListener('click',event=>{
+        event.preventDefault?.(); event.stopPropagation?.();
+        editRing.splice(index+1,0,midpoint);
+        publishEditRing(); renderEditHandles();
+      });
+      editMarkers.push(new globalThis.maplibregl.Marker({element:add}).setLngLat(midpoint).addTo(map));
+    });
   }
 
   function beginExclusionDraw() {
@@ -713,6 +779,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function clearGeometry() {
+    stopVertexEditing();
     clearVertexRemovalMarkers();
     resumeDrawEditing();
     committedGeometry = null;
@@ -731,6 +798,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function beginVertexRemoval() {
+    stopVertexEditing();
     clearVertexRemovalMarkers();
     if (!committedGeometry || committedGeometry.length <= 4) {
       onStatus(committedGeometry ? 'Il perimetro deve mantenere almeno 3 vertici.' : 'Disegna prima il perimetro del campo.');
@@ -865,5 +933,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     });
   }
 
-  return { map, draw, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

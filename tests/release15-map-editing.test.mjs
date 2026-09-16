@@ -7,8 +7,8 @@ const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
 
 test('release 15 cache-busts changed application assets', () => {
-  assert.match(html, /styles\.css\?v=15/);
-  assert.match(html, /src\/app\.js\?v=15/);
+  assert.match(html, /styles\.css\?v=16/);
+  assert.match(html, /src\/app\.js\?v=16/);
 });
 
 test('map toolbar exposes an explicit perimeter vertex editing control', () => {
@@ -19,7 +19,7 @@ test('map toolbar exposes an explicit perimeter vertex editing control', () => {
 
 test('map API enters direct vertex selection and can finish editing', () => {
   assert.match(map, /function beginVertexEditing\(\)/);
-  assert.match(map, /changeMode\('direct_select'/);
+  assert.match(map, /draggable:true/);
   assert.match(map, /function finishVertexEditing\(\)/);
   assert.match(map, /beginVertexEditing, finishVertexEditing/);
 });

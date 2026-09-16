@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
-  <link rel="stylesheet" href="./styles.css?v=15" />
+  <link rel="stylesheet" href="./styles.css?v=16" />
 </head>
 <body>
   <header class="topbar">
@@ -16,7 +16,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <span class="test-badge">AMBIENTE TEST</span>
+    <span class="test-badge">AMBIENTE TEST · V16</span>
   </header>
 
   <main class="app-shell">
@@ -100,11 +100,11 @@
             <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
           </label>
         </div>
+      </details>
         <div class="exclusion-panel">
           <div class="exclusion-heading"><strong>Aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
           <div id="exclusion-list" class="exclusion-list"><p class="empty-exclusions">Nessuna area esclusa.</p></div>
         </div>
-      </details>
 
       <section id="project-advice" class="project-advice" aria-live="polite" hidden></section>
 
@@ -114,6 +114,8 @@
           <div class="summary-secondary"><span>Perimetro</span><strong id="summary-perimeter">—</strong></div>
           <div class="summary-secondary"><span>Filari</span><strong id="summary-rows">—</strong></div>
           <div class="summary-secondary"><span>Metri lineari</span><strong id="summary-linear">—</strong></div>
+          <div class="summary-secondary"><span>Pali totali</span><strong id="summary-posts">0</strong></div>
+          <div class="summary-secondary"><span>Di cui pali di testa</span><strong id="summary-head-posts">0</strong></div>
           <div class="summary-primary"><span>Barbatelle stimate</span><strong id="summary-plants">—</strong><small id="summary-commercial">Quantità commerciale: —</small></div>
         </div>
         <button id="summary-save-project" class="primary-button wide" type="button">Salva il progetto</button>
@@ -163,6 +165,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=15"></script>
+  <script type="module" src="./src/app.js?v=16"></script>
 </body>
 </html>
