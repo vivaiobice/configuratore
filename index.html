@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
-  <link rel="stylesheet" href="./styles.css?v=16" />
+  <link rel="stylesheet" href="./styles.css?v=17" />
 </head>
 <body>
   <header class="topbar">
@@ -16,7 +16,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <span class="test-badge">AMBIENTE TEST · V16</span>
+    <span class="test-badge">AMBIENTE TEST · V17</span>
   </header>
 
   <main class="app-shell">
@@ -132,6 +132,7 @@
       <div id="map"></div>
       <div class="map-watermark-layer" aria-hidden="true"></div>
       <div class="map-toolbar">
+        <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
         <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
         <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Cancella campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button><button id="center-field-button" class="tool-button icon-only" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
         <div class="map-rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
@@ -141,6 +142,7 @@
         </div>
       </div>
       <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
+      <details id="fullscreen-exclusions"><summary>Aree escluse</summary><div id="fullscreen-exclusions-content"></div></details>
     </section>
   </main>
 
@@ -165,6 +167,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=16"></script>
+  <script type="module" src="./src/app.js?v=17"></script>
 </body>
 </html>

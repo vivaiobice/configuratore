@@ -98,6 +98,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let editRing = null;
   let editMarkers = [];
   let linearFinishPending = false;
+  let touchStartPoint = null;
+  let lastTouchEnd = -Infinity;
+  let previousPerimeter = null;
+  let toolsVersion = 0;
 
   const emitDrawingState = () => onDrawingState({
     active:manualDrawing,
@@ -217,6 +221,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     setDrawingActive(false);
     map.getSource(MANUAL_DRAW_SOURCE_ID)?.setData(emptyCollection());
     resumeDrawEditing();
+    if (mode === 'perimeter' && previousPerimeter) {
+      committedGeometry = previousPerimeter;
+      setGeometry(committedGeometry);
+    }
     if (mode !== 'perimeter' && committedGeometry) setGeometry(committedGeometry);
   }
 
@@ -256,6 +264,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   async function clipAndFinishExclusion(ring, meta = {}) {
+    const version = toolsVersion;
     let clippedRings;
     try {
       clippedRings = await polygonIntersection(committedGeometry, ring);
@@ -264,6 +273,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       onStatus('Non riesco a ritagliare la zona esclusa in questo momento. Riprova tra poco.');
       return false;
     }
+    if (version !== toolsVersion) return false;
     if (!clippedRings.length) {
       onStatus('La zona disegnata non interseca il campo selezionato.');
       return false;
@@ -339,7 +349,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     });
   }
 
-  map.on('click', (event) => {
+  function handleDrawingPoint(event) {
     if (!manualDrawing) return;
     const point = event?.point;
     if (isManualCloseClick(manualVertices, point, (coordinate) => map.project(coordinate), 22)) {
@@ -361,7 +371,26 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     onStatus(manualVertices.length < 3
       ? `Punto ${manualVertices.length} inserito. Aggiungi almeno ${3 - manualVertices.length} punto/i.`
       : 'Ora chiudi il perimetro cliccando/toccando il primo punto verde.');
+  }
+  map.on('click', event => {
+    if (Date.now()-lastTouchEnd < 700) return;
+    handleDrawingPoint(event);
   });
+  map.on('touchstart', event => {
+    touchStartPoint = manualDrawing && event.points?.length === 1 ? event.points[0] : null;
+  });
+  map.on('touchmove', event => {
+    if (!touchStartPoint) return;
+    const point=event.points?.[0];
+    if (event.points?.length !== 1 || !point || Math.hypot(point.x-touchStartPoint.x,point.y-touchStartPoint.y)>10) touchStartPoint=null;
+  });
+  map.on('touchend', event => {
+    lastTouchEnd=Date.now();
+    const point=touchStartPoint;
+    touchStartPoint=null;
+    if (point && manualDrawing) handleDrawingPoint({...event,point:event.point ?? point});
+  });
+  map.on('touchcancel',()=>{touchStartPoint=null;});
 
   map.on('dblclick', (event) => {
     if (!manualDrawing || manualMode === 'linear-exclusion' || manualVertices.length < 3) return;
@@ -563,7 +592,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     }
     onStatus('Tocca/clicca una particella catastale sulla mappa.');
     map.getCanvas().style.cursor = 'crosshair';
+    const version = toolsVersion;
     map.once('click', async (event) => {
+      if (version !== toolsVersion) return;
       map.getCanvas().style.cursor = '';
       const lon = event.lngLat.lng;
       const lat = event.lngLat.lat;
@@ -590,6 +621,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
           onStatus('Le particelle selezionate non formano un unico perimetro semplice. Mantengo la selezione precedente.');
           return;
         }
+        if (version !== toolsVersion) return;
         selectedCadastralParcels = candidates;
         setGeometry(selection.coordinates);
         onGeometryChange(selection.coordinates);
@@ -650,6 +682,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualMode = 'perimeter';
     selectedCadastralParcels = [];
     suspendDrawEditing();
+    previousPerimeter = committedGeometry;
     committedGeometry = null;
     updateProjectGeometrySource(null);
     updateSideMeasurements(null);
@@ -782,6 +815,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     stopVertexEditing();
     clearVertexRemovalMarkers();
     resumeDrawEditing();
+    previousPerimeter = null;
     committedGeometry = null;
     editableFeatureId = null;
     vertexEditing = false;
@@ -933,5 +967,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     });
   }
 
-  return { map, draw, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  function stopTools() {
+    toolsVersion++;
+    map.getCanvas().style.cursor = '';
+    if (manualDrawing) cancelManualDrawing();
+    finishVertexEditing();
+    clearVertexRemovalMarkers();
+  }
+  return { map, draw, stopTools, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

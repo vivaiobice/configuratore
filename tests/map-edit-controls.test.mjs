@@ -154,6 +154,51 @@ test('changing fields removes handles and editing restarts on the new geometry',
  } finally {ctx.restore();}
 });
 
+test('touch taps draw and close a polygon without relying on synthetic clicks',()=>{
+ let geometry; const states=[];
+ const ctx=setup({onGeometryChange:g=>geometry=g,onDrawingState:s=>states.push(s)});
+ try {
+  ctx.api.beginDraw();
+  let count=0;
+  for (const [lng,lat] of [[2,2],[8,2],[8,8]]) {
+   const e={point:{x:lng*10,y:lat*10},lngLat:{lng,lat},points:[{x:lng*10,y:lat*10}]};
+   ctx.map.trigger('touchstart',e);ctx.map.trigger('touchend',e);
+   assert.equal(states.at(-1).vertexCount,++count);
+   ctx.map.trigger('click',e);
+  }
+  assert.equal(states.at(-1).vertexCount,3);
+  assert.equal(ctx.api.finishDraw(),true);
+  assert.deepEqual(geometry,[[2,2],[8,2],[8,8],[2,2]]);
+ } finally {ctx.restore();}
+});
+
+test('touch movement and pinch gestures do not place drawing points',()=>{
+ const states=[];const ctx=setup({onDrawingState:s=>states.push(s)});
+ try {
+  ctx.api.beginDraw();
+  ctx.map.trigger('touchstart',{points:[{x:10,y:10}],point:{x:10,y:10}});
+  ctx.map.trigger('touchmove',{points:[{x:40,y:40}],point:{x:40,y:40}});
+  ctx.map.trigger('touchend',{lngLat:{lng:4,lat:4},point:{x:40,y:40}});
+  ctx.map.trigger('touchstart',{points:[{x:10,y:10},{x:30,y:30}]});
+  ctx.map.trigger('touchend',{lngLat:{lng:2,lat:2},point:{x:20,y:20}});
+  assert.equal(states.at(-1).vertexCount,0);
+ } finally {ctx.restore();}
+});
+
+test('leaving editor cancels an unfinished perimeter and restores the previous field',()=>{
+ let changes=0;const ctx=setup({onGeometryChange:()=>changes++});
+ try {
+  const ring=[[0,0],[10,0],[10,10],[0,0]];
+  ctx.api.setGeometry(ring);ctx.api.beginDraw();
+  ctx.map.trigger('click',{point:{x:20,y:20},lngLat:{lng:2,lat:2}});
+  ctx.api.stopTools();
+  assert.deepEqual(ctx.map.getSource('project-geometry').data.features[0].geometry.coordinates[0],ring);
+  ctx.map.trigger('click',{point:{x:40,y:40},lngLat:{lng:4,lat:4}});
+  assert.equal(changes,0);
+  assert.equal(ctx.api.finishDraw(),false);
+ } finally {ctx.restore();}
+});
+
 test('exclusion handles modify only the selected exclusion and support adding a vertex',()=>{
  let changed; let perimeterChanges=0;
  const ctx=setup({onExclusionChange:(id,ring)=>changed={id,ring},onGeometryChange:()=>perimeterChanges++});

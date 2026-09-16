@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { initMap } from './map.js?v=16';
+import { initMap } from './map.js?v=17';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
@@ -273,7 +273,7 @@ function renderExclusions() {
     const row = document.createElement('div'); row.className='exclusion-item';
     const input = document.createElement('input'); input.value=item.label ?? `Area esclusa ${index+1}`; input.setAttribute('aria-label','Nome area esclusa');
     input.addEventListener('change', () => { const exclusions = (state.project.exclusions ?? []).map(x=>x.id===item.id?{...x,label:input.value.trim() || `Area esclusa ${index+1}`} : x); patchProject({exclusions}); });
-    const edit = document.createElement('button'); edit.type='button'; edit.textContent='Modifica'; edit.addEventListener('click',()=>mapApi?.beginExclusionEditing(item.id));
+    const edit = document.createElement('button'); edit.type='button'; edit.textContent='Modifica'; edit.addEventListener('click',()=>{ if (isMobileMap()) setMapFullscreen(true); mapApi?.beginExclusionEditing(item.id); });
     const remove = document.createElement('button'); remove.type='button'; remove.textContent='Elimina'; remove.title='Rimuovi area esclusa'; remove.addEventListener('click', () => {
       mapApi?.finishVertexEditing();
       const exclusions = (state.project.exclusions ?? []).filter(x=>x.id!==item.id);
@@ -314,7 +314,10 @@ $('#field-name')?.addEventListener('input', (event) => {
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
 
-$('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
+function isMobileMap() { return Boolean(globalThis.matchMedia?.('(max-width: 800px)')?.matches); }
+function startDrawingField() { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); }
+$('#draw-button')?.addEventListener('click', () => { if (isMobileMap()) setMapFullscreen(true); else startDrawingField(); });
+$('#draw-map-button')?.addEventListener('click', startDrawingField);
 $('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
 $('#exclude-zone-button')?.addEventListener('click', () => mapApi?.beginExclusionDraw());
 $('#exclude-line-button')?.addEventListener('click', () => mapApi?.beginLinearExclusionDraw());
@@ -396,9 +399,17 @@ const mapWrap = document.querySelector('.map-wrap');
 const appShell = document.querySelector('.app-shell');
 const panelScroll = document.querySelector('.panel-scroll');
 const stepOne = document.querySelector('.step[data-step="1"]');
+const exclusionPanel = document.querySelector('.exclusion-panel');
+const exclusionHome = document.createComment('exclusions-home');
+exclusionPanel?.before(exclusionHome);
+let fullscreenScrollY = 0;
 function placeMapForViewport() {
   if (!mapWrap || !appShell || !panelScroll || !stepOne) return;
+  if (mapWrap.classList.contains('fullscreen-map')) { requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
   const mobile = globalThis.matchMedia?.('(max-width: 800px)')?.matches;
+  if (mobile) mapApi?.stopTools();
+  const drawButton=$('#draw-button');
+  if (drawButton) drawButton.textContent=mobile ? 'Apri editor mappa' : 'Disegna terreno';
   if (mobile) stepOne.insertAdjacentElement('afterend', mapWrap);
   else if (mapWrap.parentElement !== appShell) appShell.append(mapWrap);
   requestAnimationFrame(() => mapApi?.map?.resize?.());
@@ -406,17 +417,31 @@ function placeMapForViewport() {
 placeMapForViewport();
 globalThis.addEventListener?.('resize', placeMapForViewport);
 const mapFullscreenButton = $('#map-fullscreen-button');
+// Keep entry/exit outside the scrollable toolbar so it is always reachable.
+if (mapFullscreenButton) mapWrap?.append(mapFullscreenButton);
 function setMapFullscreen(active) {
   const next = Boolean(active);
+  if (!mapWrap || next === mapWrap.classList.contains('fullscreen-map')) return;
+  if (next) {
+    fullscreenScrollY=window.scrollY;
+    document.body.append(mapWrap);
+    if (isMobileMap() && exclusionPanel) $('#fullscreen-exclusions-content')?.append(exclusionPanel);
+  } else {
+    mapApi?.stopTools();
+    if (exclusionPanel) exclusionHome.after(exclusionPanel);
+    const exclusions=$('#fullscreen-exclusions'); if (exclusions) exclusions.open=false;
+  }
   mapWrap?.classList.toggle('fullscreen-map', next);
   document.body.classList.toggle('map-fullscreen-open', next);
   if (mapFullscreenButton) {
     mapFullscreenButton.setAttribute('aria-pressed', String(next));
     mapFullscreenButton.setAttribute('aria-label', next ? 'Chiudi mappa a tutto schermo' : 'Apri la mappa a tutto schermo');
-    mapFullscreenButton.textContent = next ? '✓ Fine' : '⛶ Mappa';
+    mapFullscreenButton.textContent = next ? '✓ Torna al progetto' : '⛶ Apri mappa a tutto schermo';
   }
+  if (!next) { placeMapForViewport(); window.scrollTo(0,fullscreenScrollY); }
   requestAnimationFrame(() => mapApi?.map?.resize?.());
 }
+if (mapFullscreenButton) mapFullscreenButton.textContent='⛶ Apri mappa a tutto schermo';
 mapFullscreenButton?.addEventListener('click', () => setMapFullscreen(!mapWrap?.classList.contains('fullscreen-map')));
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && mapWrap?.classList.contains('fullscreen-map')) setMapFullscreen(false);

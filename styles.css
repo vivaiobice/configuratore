@@ -123,7 +123,40 @@ body.map-fullscreen-open{overflow:hidden!important}
 /* V16 — explicit edit handles and visible exclusion actions */
 .vertex-edit-handle,.vertex-add-handle{width:30px;height:30px;border:2px solid white;border-radius:50%;background:#1d6b45;color:white;font-weight:800;box-shadow:0 2px 6px #0006;touch-action:none;cursor:grab;padding:0;display:grid;place-items:center}
 .vertex-add-handle{width:25px;height:25px;background:white;color:#1d6b45;border-color:#1d6b45;cursor:pointer;font-size:18px}
-.exclusion-item{display:flex!important;flex-wrap:wrap;gap:6px}.exclusion-item input{flex:1 1 130px;min-width:0}.exclusion-item button{width:auto!important;padding:8px!important;min-height:36px}
+.exclusion-item{display:flex!important;flex-wrap:wrap;gap:5px}.exclusion-item input{flex:1 1 130px;min-width:0}.exclusion-item button{width:auto!important;padding:5px 7px!important;min-height:28px;font:inherit;font-size:10px;font-weight:650}
+/* V17: mobile preview and fullscreen-only editor. */
+#draw-map-button,#fullscreen-exclusions{display:none}
+.map-wrap.fullscreen-map #draw-map-button{display:inline-flex}
+.map-wrap.fullscreen-map{height:100vh!important;height:100dvh!important}
+.map-wrap.fullscreen-map .map-fullscreen-button{display:flex!important;position:absolute;z-index:12;top:max(8px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));min-height:44px;background:#183f28;color:white}
+.map-wrap.fullscreen-map .map-toolbar{top:calc(60px + env(safe-area-inset-top));max-height:36vh;overflow:auto}
+@media(max-width:800px){
+ .map-wrap:not(.fullscreen-map){height:320px;min-height:280px;margin-bottom:12px}
+ .map-wrap:not(.fullscreen-map) #edit-vertices-button,
+ .map-wrap:not(.fullscreen-map) #exclude-zone-button,
+ .map-wrap:not(.fullscreen-map) #exclude-line-button,
+ .map-wrap:not(.fullscreen-map) #clear-field-button,
+ .map-wrap:not(.fullscreen-map) #remove-vertex-button,
+ .map-wrap:not(.fullscreen-map) #select-cadastre-button,
+ .map-wrap:not(.fullscreen-map) #close-perimeter-button,
+ .map-wrap:not(.fullscreen-map) .map-rotation,
+ .map-wrap:not(.fullscreen-map) .map-status{display:none!important}
+ .map-wrap:not(.fullscreen-map) .map-fullscreen-button{position:absolute;left:10px;bottom:12px;z-index:8;min-height:44px;background:#183f28;color:#fff;max-width:calc(100% - 66px)}
+ .map-wrap:not(.fullscreen-map) .map-toolbar{max-height:none}
+ .map-wrap:not(.fullscreen-map) .maplibregl-ctrl-compass{display:none}
+ .exclusion-panel{order:5;padding:10px 18px}
+ body:not(.map-fullscreen-open) .exclusion-item button{display:none}
+ .map-wrap.fullscreen-map #fullscreen-exclusions{display:block;position:absolute;left:10px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:8;background:#fff;border-radius:10px;max-width:calc(100% - 70px);max-height:28vh;overflow:auto;padding:9px}
+ #fullscreen-exclusions summary{font-size:12px;font-weight:700;cursor:pointer;min-height:24px}
+ #fullscreen-exclusions .exclusion-panel{margin:0;padding:8px 0;border:0}
+ #fullscreen-exclusions .exclusion-item button{min-height:36px;padding:6px 8px!important}
+ .map-wrap.fullscreen-map .map-rotation{display:flex}
+ .map-wrap.fullscreen-map .tool-button{min-height:40px;touch-action:manipulation}
+ .map-wrap.fullscreen-map #map{touch-action:none}
+ .map-wrap.fullscreen-map .maplibregl-ctrl-bottom-right{bottom:calc(65px + env(safe-area-inset-bottom))}
+ .map-wrap.fullscreen-map .map-status{border-radius:10px}
+ body.map-fullscreen-open{position:fixed;width:100%;height:100%;overscroll-behavior:none}
+}
 /* V14 — simultaneous field context, recenter and linear exclusion */
 .tool-button.icon-only{min-width:36px;padding-inline:9px;font-size:16px}.tool-button:disabled{opacity:.45;cursor:not-allowed}
 #exclude-line-button.active{background:#8a3f32!important;color:#fff!important}.active-field-label{background:rgba(19,78,45,.96);border-width:2px;font-size:11px;padding:5px 9px}
