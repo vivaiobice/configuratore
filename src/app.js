@@ -21,6 +21,7 @@ state = { ...state, project:updateActiveFieldProject(state.project, {
   headlandWidthM:normalizeHeadlandForMechanization(state.project.headlandWidthM, state.project.mechanizedHarvest)
 }) };
 let mapApi = null;
+let vertexEditingActive = false;
 let cloudService = null;
 let latestMetrics = null;
 let pendingFinalAction = null;
@@ -155,13 +156,22 @@ try {
     onDrawingState: ({ active, canClose, mode }) => {
       const closeButton = $('#close-perimeter-button');
       if (closeButton) {
-        closeButton.hidden = !active || mode === 'linear-exclusion';
+        closeButton.hidden = !active;
         closeButton.disabled = !canClose;
-        closeButton.textContent = mode === 'exclusion' ? '✓ Chiudi esclusione' : '✓ Chiudi perimetro';
+        closeButton.textContent = mode === 'linear-exclusion' ? '✓ Conferma passaggio' : mode === 'exclusion' ? '✓ Chiudi esclusione' : '✓ Chiudi perimetro';
       }
       $('#exclude-zone-button')?.classList.toggle('active', Boolean(active && mode === 'exclusion'));
       $('#exclude-line-button')?.classList.toggle('active', Boolean(active && mode === 'linear-exclusion'));
       $('#draw-button')?.classList.toggle('active', Boolean(active && mode === 'perimeter'));
+    },
+    onEditingState: ({ active }) => {
+      vertexEditingActive = Boolean(active);
+      const button = $('#edit-vertices-button');
+      if (button) {
+        button.classList.toggle('active', vertexEditingActive);
+        button.textContent = vertexEditingActive ? '✓ Fine modifica' : '✥ Modifica punti';
+        button.setAttribute('aria-pressed', String(vertexEditingActive));
+      }
     },
     onReady: calculateAndRender
   });
@@ -298,6 +308,7 @@ $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'
 $('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
 $('#exclude-zone-button')?.addEventListener('click', () => mapApi?.beginExclusionDraw());
 $('#exclude-line-button')?.addEventListener('click', () => mapApi?.beginLinearExclusionDraw());
+$('#edit-vertices-button')?.addEventListener('click', () => vertexEditingActive ? mapApi?.finishVertexEditing() : mapApi?.beginVertexEditing());
 $('#center-field-button')?.addEventListener('click', () => mapApi?.focusActiveField());
 $('#remove-vertex-button')?.addEventListener('click', () => mapApi?.beginVertexRemoval());
 $('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });

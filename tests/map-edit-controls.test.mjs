@@ -35,15 +35,25 @@ class FakeMap {
   easeTo({bearing}){ if(Number.isFinite(bearing)) this.bearing=bearing; }
 }
 
-function setup(callbacks={}){
+class FakeDraw {
+  static constants={classes:{}};
+  constructor(){ this.features=[]; this.mode=null; this.options=null; globalThis.__fakeDraw=this; }
+  deleteAll(){ this.features=[]; }
+  add(feature){ const stored={...feature,id:'field-shape'}; this.features=[stored]; return [stored.id]; }
+  changeMode(mode,options){ this.mode=mode; this.options=options; }
+  getAll(){ return {type:'FeatureCollection',features:this.features}; }
+  getSelectedPoints(){ return {features:[]}; }
+}
+
+function setup(callbacks={}, withDraw=false){
   const oldMapLibre=globalThis.maplibregl, oldDraw=globalThis.MapboxDraw, oldDocument=globalThis.document;
   globalThis.__editMarkers=[];
   globalThis.document={createElement:fakeElement};
   globalThis.maplibregl={Map:FakeMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds,Marker:FakeMarker};
-  globalThis.MapboxDraw=undefined;
+  globalThis.MapboxDraw=withDraw ? FakeDraw : undefined;
   const api=initMap({container:'map',...callbacks});
   const map=globalThis.__editMap; map.trigger('load');
-  return {api,map,restore(){globalThis.maplibregl=oldMapLibre;globalThis.MapboxDraw=oldDraw;globalThis.document=oldDocument;delete globalThis.__editMap;delete globalThis.__editMarkers;}};
+  return {api,map,draw:globalThis.__fakeDraw,restore(){globalThis.maplibregl=oldMapLibre;globalThis.MapboxDraw=oldDraw;globalThis.document=oldDocument;delete globalThis.__editMap;delete globalThis.__editMarkers;delete globalThis.__fakeDraw;}};
 }
 
 test('clearGeometry actually empties the committed perimeter source', () => {
@@ -66,6 +76,25 @@ test('vertex removal mode deletes the clicked perimeter vertex without Mapbox Dr
     assert.ok(marker, 'expected direct HTML removal marker on the selected vertex');
     marker.element.click();
     assert.deepEqual(emitted, [[10,10],[20,20],[10,20],[10,10]]);
+  } finally { ctx.restore(); }
+});
+
+test('explicit vertex editing enters direct select and commits dragged geometry on finish', () => {
+  let emitted=null;
+  const editingStates=[];
+  const ctx=setup({onGeometryChange:(g)=>{emitted=g;},onEditingState:(state)=>editingStates.push(state.active)}, true);
+  try {
+    const original=[[10,10],[20,10],[20,20],[10,10]];
+    const moved=[[10,10],[22,10],[20,20],[10,10]];
+    ctx.api.setGeometry(original);
+    assert.equal(ctx.api.beginVertexEditing(), true);
+    assert.equal(ctx.draw.mode, 'direct_select');
+    assert.deepEqual(ctx.draw.options, {featureId:'field-shape'});
+    ctx.draw.features[0].geometry.coordinates[0]=moved;
+    assert.equal(ctx.api.finishVertexEditing(), true);
+    assert.deepEqual(emitted, moved);
+    assert.equal(ctx.draw.mode, 'simple_select');
+    assert.deepEqual(editingStates, [true,false]);
   } finally { ctx.restore(); }
 });
 

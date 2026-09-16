@@ -51,7 +51,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -92,8 +92,16 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let activeFieldLabelMarker = null;
   let currentActiveFieldLabel = 'Campo';
   let drawEditingSuspended = false;
+  let editableFeatureId = null;
+  let vertexEditing = false;
+  let linearFinishPending = false;
 
-  const emitDrawingState = () => onDrawingState({ active:manualDrawing, mode:manualMode, canClose:manualDrawing && manualMode !== 'linear-exclusion' && manualVertices.length >= 3, vertexCount:manualVertices.length });
+  const emitDrawingState = () => onDrawingState({
+    active:manualDrawing,
+    mode:manualMode,
+    canClose:manualDrawing && (manualMode === 'linear-exclusion' ? manualVertices.length >= 2 : manualVertices.length >= 3),
+    vertexCount:manualVertices.length
+  });
 
   const setDrawingActive = (active) => {
     manualDrawing = Boolean(active);
@@ -170,12 +178,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function syncManualCloseMarker() {
     removeManualCloseMarker();
     emitDrawingState();
-    if (!manualDrawing || manualVertices.length < 3 || typeof document === 'undefined' || typeof globalThis.maplibregl?.Marker !== 'function') return;
+    const requiredVertices = manualMode === 'linear-exclusion' ? 2 : 3;
+    if (!manualDrawing || manualVertices.length < requiredVertices || typeof document === 'undefined' || typeof globalThis.maplibregl?.Marker !== 'function') return;
     const element = document.createElement('button');
     element.type = 'button';
     element.className = 'manual-close-vertex';
-    if (manualMode === 'linear-exclusion') return;
-    const closeLabel = manualMode === 'exclusion' ? 'Chiudi esclusione' : 'Chiudi perimetro';
+    const closeLabel = manualMode === 'linear-exclusion' ? 'Conferma passaggio' : manualMode === 'exclusion' ? 'Chiudi esclusione' : 'Chiudi perimetro';
     element.setAttribute('aria-label', closeLabel);
     element.title = closeLabel;
     element.textContent = '✓';
@@ -266,11 +274,17 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     return clipAndFinishExclusion(ring, meta);
   }
 
-  function finishLinearExclusion() {
+  async function finishLinearExclusion() {
     if (manualVertices.length < 2) return false;
+    if (linearFinishPending) { onStatus('Conferma del passaggio in corso…'); return false; }
     const corridor = corridorPolygonFromLine(manualVertices[0], manualVertices[1], 1.5);
     if (!corridor) { onStatus('Il passaggio lineare è troppo corto. Inserisci due punti distinti.'); return false; }
-    return finishExclusionRing(corridor, { type:'linear', widthM:1.5, label:'Passaggio lineare 1,50 m' });
+    linearFinishPending = true;
+    try {
+      return await finishExclusionRing(corridor, { type:'linear', widthM:1.5, label:'Passaggio lineare 1,50 m' });
+    } finally {
+      linearFinishPending = false;
+    }
   }
 
   function finishManualPolygon() {
@@ -611,6 +625,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
           geometry: { type: 'Polygon', coordinates: [coords] }
         });
         const id = ids?.[0];
+        editableFeatureId = id ?? null;
         if (id) draw.changeMode('simple_select', { featureIds: [id] });
       }
       updateSideMeasurements(coords);
@@ -640,6 +655,43 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     onStatus('Disegna il confine: inserisci almeno 3 punti, poi clicca/tocca il primo punto verde per chiudere.');
   }
 
+  function beginVertexEditing() {
+    clearVertexRemovalMarkers();
+    if (!draw || !committedGeometry) { onStatus('Disegna prima il perimetro del campo.'); return false; }
+    if (!editableFeatureId) setGeometry(committedGeometry);
+    if (!editableFeatureId) { onStatus('Non riesco ad attivare la modifica dei punti. Riprova.'); return false; }
+    try {
+      draw.changeMode('direct_select', { featureId:editableFeatureId });
+      vertexEditing = true;
+      map.dragPan.disable();
+      onEditingState({ active:true });
+      onStatus('Modifica punti attiva: trascina i vertici. Premi “Fine modifica” quando hai terminato.');
+      return true;
+    } catch (error) {
+      console.error(error);
+      onStatus('Non riesco ad attivare la modifica dei punti. Riprova.');
+      return false;
+    }
+  }
+
+  function finishVertexEditing() {
+    if (!vertexEditing || !draw) return false;
+    const coordinates = coordinatesFromDrawEvent(null, draw.getAll().features);
+    if (coordinates) {
+      committedGeometry = coordinates;
+      updateProjectGeometrySource(coordinates);
+      updateSideMeasurements(coordinates);
+      renderActiveFieldLabel();
+      onGeometryChange(coordinates);
+    }
+    try { draw.changeMode('simple_select', { featureIds:editableFeatureId ? [editableFeatureId] : [] }); } catch {}
+    vertexEditing = false;
+    map.dragPan.enable();
+    onEditingState({ active:false });
+    onStatus('Modifica conclusa. Perimetro, quote e progetto aggiornati.');
+    return true;
+  }
+
   function beginExclusionDraw() {
     if (!committedGeometry) { onStatus('Disegna prima il perimetro del campo.'); return false; }
     clearVertexRemovalMarkers();
@@ -664,6 +716,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     clearVertexRemovalMarkers();
     resumeDrawEditing();
     committedGeometry = null;
+    editableFeatureId = null;
+    vertexEditing = false;
+    onEditingState({ active:false });
     clearActiveFieldLabel();
     selectedCadastralParcels = [];
     cancelManualDrawing();
@@ -810,5 +865,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     });
   }
 
-  return { map, draw, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }
