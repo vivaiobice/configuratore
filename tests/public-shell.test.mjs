@@ -39,7 +39,7 @@ test('V10 exposes multi-field, exclusion, clear field and remove vertex controls
 });
 
 test('header uses cache-busted V13 logo and only the subtle repeated watermark remains', () => {
-  assert.match(html, /logo-vivai-obice-v13\.png\?v=13/);
+  assert.match(html, /logo-vivai-obice-v14\.png\?v=14/);
   assert.match(html, /class="map-watermark-layer"/);
   assert.doesNotMatch(html, /class="map-watermark"/);
 });

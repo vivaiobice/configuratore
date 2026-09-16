@@ -49,6 +49,47 @@ function closeXY(points) {
   return [...points, points[0]];
 }
 
+
+export function corridorPolygonFromLine(start, end, widthM = 1.5) {
+  if (!Array.isArray(start) || !Array.isArray(end)) return null;
+  const width = Number(widthM);
+  if (!Number.isFinite(width) || width <= 0) return null;
+  const ref = referenceFor([start, end]);
+  const a = toXY(start, ref);
+  const b = toXY(end, ref);
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const length = Math.hypot(dx, dy);
+  if (!Number.isFinite(length) || length < 0.05) return null;
+  const half = width / 2;
+  const nx = (-dy / length) * half;
+  const ny = (dx / length) * half;
+  const corners = [
+    [a[0] + nx, a[1] + ny],
+    [b[0] + nx, b[1] + ny],
+    [b[0] - nx, b[1] - ny],
+    [a[0] - nx, a[1] - ny]
+  ].map((point) => toLonLat(point, ref));
+  return [...corners, corners[0]];
+}
+
+export function normalizeIntersectionRings(result) {
+  if (!Array.isArray(result)) return [];
+  const rings = [];
+  for (const polygon of result) {
+    const outer = Array.isArray(polygon) ? polygon[0] : null;
+    if (!Array.isArray(outer) || outer.length < 3) continue;
+    const clean = outer.filter((point) => Array.isArray(point) && Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1])))
+      .map((point) => [Number(point[0]), Number(point[1])]);
+    if (clean.length < 3) continue;
+    const first = clean[0];
+    const last = clean[clean.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) clean.push([...first]);
+    if (polygonMetrics(clean).areaM2 > 0.01) rings.push(clean);
+  }
+  return rings;
+}
+
 export function polygonMetrics(coords) {
   const raw = stripClosingPoint(coords);
   if (raw.length < 3) return { areaM2: 0, perimeterM: 0, vertexCount: raw.length };
@@ -174,6 +215,49 @@ export function pointInPolygon(point, coords) {
     if (crosses) inside = !inside;
   }
   return inside;
+}
+
+
+export function interiorLabelPoint(coords) {
+  const raw = stripClosingPoint(coords);
+  if (raw.length < 3) return null;
+  const ref = referenceFor(raw);
+  const xy = raw.map((point) => toXY(point, ref));
+  let twiceArea = 0;
+  let cxSum = 0;
+  let cySum = 0;
+  for (let i = 0; i < xy.length; i += 1) {
+    const [x1, y1] = xy[i];
+    const [x2, y2] = xy[(i + 1) % xy.length];
+    const cross = x1 * y2 - x2 * y1;
+    twiceArea += cross;
+    cxSum += (x1 + x2) * cross;
+    cySum += (y1 + y2) * cross;
+  }
+  if (Math.abs(twiceArea) > 1e-9) {
+    const centroid = toLonLat([cxSum / (3 * twiceArea), cySum / (3 * twiceArea)], ref);
+    if (pointInPolygon(centroid, coords)) return centroid;
+  }
+  const xs = raw.map((point) => point[0]);
+  const ys = raw.map((point) => point[1]);
+  const minLon = Math.min(...xs);
+  const maxLon = Math.max(...xs);
+  const minLat = Math.min(...ys);
+  const maxLat = Math.max(...ys);
+  const center = [(minLon + maxLon) / 2, (minLat + maxLat) / 2];
+  if (pointInPolygon(center, coords)) return center;
+  let best = null;
+  let bestDistance = Infinity;
+  const steps = 20;
+  for (let ix = 1; ix < steps; ix += 1) {
+    for (let iy = 1; iy < steps; iy += 1) {
+      const candidate = [minLon + ((maxLon - minLon) * ix / steps), minLat + ((maxLat - minLat) * iy / steps)];
+      if (!pointInPolygon(candidate, coords)) continue;
+      const distance = Math.hypot(candidate[0] - center[0], candidate[1] - center[1]);
+      if (distance < bestDistance) { best = candidate; bestDistance = distance; }
+    }
+  }
+  return best ?? raw[0];
 }
 
 export function sideMeasurements(coords) {

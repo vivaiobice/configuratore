@@ -18,7 +18,8 @@ test('new geometry receives automatic orientation until the user manually choose
   assert.match(appSource, /orientationLocked:\s*true/);
 });
 
-test('excluded-zone drawing is rejected when vertices fall outside the committed field', () => {
-  assert.match(mapSource, /pointInPolygon/);
-  assert.match(mapSource, /zona da escludere deve rimanere interamente dentro il campo/i);
+test('excluded-zone drawing accepts boundary overlap by clipping to the committed field', () => {
+  assert.match(mapSource, /polygonIntersection/);
+  assert.match(mapSource, /normalizeIntersectionRings/);
+  assert.doesNotMatch(mapSource, /zona da escludere deve rimanere interamente dentro il campo/i);
 });

@@ -12,10 +12,10 @@ test('project context copy uses title case Nuovo Impianto', () => {
 });
 
 test('header uses the supplied Vivai Obice logo and watermark is background-only', () => {
-  assert.match(html, /brand-logo[^>]+src="\.\/assets\/logo-vivai-obice-v13\.png\?v=13"/);
+  assert.match(html, /brand-logo[^>]+src="\.\/assets\/logo-vivai-obice-v14\.png\?v=14"/);
   assert.match(html, /class="map-watermark-layer"/);
   assert.doesNotMatch(html, /class="map-watermark"/);
-  assert.match(css, /map-watermark-layer[\s\S]*logo-vivai-obice-v13\.png\?v=13/);
+  assert.match(css, /map-watermark-layer[\s\S]*logo-vivai-obice-v14\.png\?v=14/);
 });
 
 test('clear field is deterministic and does not depend on a confirm dialog', () => {

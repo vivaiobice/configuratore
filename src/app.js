@@ -69,9 +69,21 @@ function renderProjectAdvice(project) {
   }
 }
 
+function calculateFieldProject(project) {
+  return calculateProject({
+    polygon:project?.geometry,
+    exclusions:(project?.exclusions ?? []).map((item) => item?.geometry ?? item),
+    rowSpacingM:project?.rowSpacingM,
+    plantSpacingM:project?.plantSpacingM,
+    orientationDeg:project?.orientationDeg,
+    postSpacingM:project?.postSpacingM,
+    headlandWidthM:project?.headlandWidthM
+  });
+}
+
 function calculateAndRender() {
   const project = state.project;
-  const result = calculateProject({ polygon: project.geometry, exclusions:(project.exclusions ?? []).map((item) => item.geometry ?? item), rowSpacingM: project.rowSpacingM, plantSpacingM: project.plantSpacingM, orientationDeg: project.orientationDeg, postSpacingM: project.postSpacingM, headlandWidthM: project.headlandWidthM });
+  const result = calculateFieldProject(project);
   latestMetrics = result;
   const areaText = formatArea(result.areaM2);
   const perimeterText = formatMetres(result.perimeterM);
@@ -87,6 +99,10 @@ function calculateAndRender() {
   renderManualAreaCalculation();
   mapApi?.setRows(result.rows);
   mapApi?.setExclusions(project.exclusions ?? []);
+  mapApi?.setActiveFieldLabel(project.label ?? 'Campo');
+  syncOtherFieldsOnMap();
+  const centerButton = $('#center-field-button');
+  if (centerButton) centerButton.disabled = !project.geometry;
   renderProjectAdvice(project);
   if (project.geometry && result.vertexCount) {
     const posts = result.totalPosts ? ` · ${result.totalPosts} pali stimati` : '';
@@ -119,11 +135,14 @@ try {
       patchGeometry(geometry, sourcePatch);
       if (geometry && !perimeterEventSent) { perimeterEventSent = true; track('perimeter_completed', { vertices:Math.max(0, geometry.length - 1) }); }
     },
-    onExclusionAdd: (geometry) => {
-      const exclusions = [...(state.project.exclusions ?? []), { id:`ex-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, label:`Area esclusa ${(state.project.exclusions?.length ?? 0) + 1}`, geometry }];
+    onExclusionAdd: (geometry, meta = {}) => {
+      const existing = state.project.exclusions ?? [];
+      const baseLabel = meta.label || `Area esclusa ${existing.length + 1}`;
+      const label = Number(meta.parts) > 1 ? `${baseLabel} · parte ${meta.part}` : baseLabel;
+      const exclusions = [...existing, { id:`ex-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, label, type:meta.type || 'area', widthM:meta.widthM ?? null, geometry }];
       patchProject({ exclusions });
       renderExclusions();
-      track('excluded_zone_added', { count:exclusions.length });
+      track('excluded_zone_added', { count:exclusions.length, type:meta.type || 'area' });
     },
     onCadastralParcel: (parcel, selection) => {
       patchGeometry(selection?.coordinates ?? parcel.coordinates, {
@@ -136,11 +155,12 @@ try {
     onDrawingState: ({ active, canClose, mode }) => {
       const closeButton = $('#close-perimeter-button');
       if (closeButton) {
-        closeButton.hidden = !active;
+        closeButton.hidden = !active || mode === 'linear-exclusion';
         closeButton.disabled = !canClose;
         closeButton.textContent = mode === 'exclusion' ? '✓ Chiudi esclusione' : '✓ Chiudi perimetro';
       }
       $('#exclude-zone-button')?.classList.toggle('active', Boolean(active && mode === 'exclusion'));
+      $('#exclude-line-button')?.classList.toggle('active', Boolean(active && mode === 'linear-exclusion'));
       $('#draw-button')?.classList.toggle('active', Boolean(active && mode === 'perimeter'));
     },
     onReady: calculateAndRender
@@ -244,8 +264,14 @@ function renderExclusions() {
 }
 
 function syncOtherFieldsOnMap() {
-  const otherFields = (state.project.fields ?? []).filter((field) => field.id !== state.project.activeFieldId && Array.isArray(field.geometry) && field.geometry.length >= 4);
+  const otherFields = (state.project.fields ?? [])
+    .filter((field) => field.id !== state.project.activeFieldId && Array.isArray(field.geometry) && field.geometry.length >= 4)
+    .map((field) => {
+      const metrics = calculateFieldProject(field);
+      return { ...field, rows:metrics.rows };
+    });
   mapApi?.setOtherFields(otherFields);
+  mapApi?.setActiveFieldLabel(state.project.label ?? 'Campo');
 }
 
 function loadActiveFieldOnMap() {
@@ -262,6 +288,7 @@ $('#field-name')?.addEventListener('input', (event) => {
   persist();
   const selected = $('#field-select')?.selectedOptions?.[0];
   if (selected) selected.textContent = state.project.label;
+  mapApi?.setActiveFieldLabel(state.project.label);
   syncOtherFieldsOnMap();
 });
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
@@ -270,6 +297,8 @@ $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.
 $('#draw-button')?.addEventListener('click', () => { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); });
 $('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
 $('#exclude-zone-button')?.addEventListener('click', () => mapApi?.beginExclusionDraw());
+$('#exclude-line-button')?.addEventListener('click', () => mapApi?.beginLinearExclusionDraw());
+$('#center-field-button')?.addEventListener('click', () => mapApi?.focusActiveField());
 $('#remove-vertex-button')?.addEventListener('click', () => mapApi?.beginVertexRemoval());
 $('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
 async function locateFrom(source) {

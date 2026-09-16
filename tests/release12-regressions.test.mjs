@@ -8,9 +8,9 @@ const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
 test('release assets are cache-busted and header uses the V13 supplied logo', () => {
-  assert.match(html, /styles\.css\?v=13/);
-  assert.match(html, /src\/app\.js\?v=13/);
-  assert.match(html, /brand-logo[^>]+logo-vivai-obice-v13\.png\?v=13/);
+  assert.match(html, /styles\.css\?v=14/);
+  assert.match(html, /src\/app\.js\?v=14/);
+  assert.match(html, /brand-logo[^>]+logo-vivai-obice-v14\.png\?v=14/);
 });
 
 test('Nuovo Impianto is enforced as title case at runtime', () => {
