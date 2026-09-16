@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
-  <link rel="stylesheet" href="./styles.css?v=12" />
+  <link rel="stylesheet" href="./styles.css?v=13" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#" aria-label="Vivai Obice">
-      <img class="brand-logo" src="./assets/logo-vivai-obice-v12.png?v=12" alt="Vivai Obice · Barbatelle di vite innestate" />
+      <img class="brand-logo" src="./assets/logo-vivai-obice-v13.png?v=13" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
     <span class="test-badge">AMBIENTE TEST</span>
@@ -43,6 +43,7 @@
         </div>
         <div class="field-manager" aria-label="Gestione campi">
           <label>Campo attivo<select id="field-select"></select></label>
+          <label class="field-name-label">Nome campo<input id="field-name" class="control-input" type="text" maxlength="80" placeholder="es. Vigneto Cascina" /></label>
           <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">＋ Campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">− Campo</button></div>
         </div>
       </section>
@@ -84,47 +85,20 @@
           <hr class="soft-divider" />
           <h3>Scelta del materiale vegetale</h3>
           <label>Vitigno
-            <select id="grape-variety">
-              <option value="">Da definire</option>
-              <option value="Arneis B.">Arneis B.</option>
-              <option value="Barbera N.">Barbera N.</option>
-              <option value="Chardonnay B.">Chardonnay B.</option>
-              <option value="Cortese B.">Cortese B.</option>
-              <option value="Dolcetto N.">Dolcetto N.</option>
-              <option value="Moscato Bianco B.">Moscato Bianco B.</option>
-              <option value="Nebbiolo N.">Nebbiolo N.</option>
-              <option value="Pinot Nero N.">Pinot Nero N.</option>
-              <option value="Sauvignon B.">Sauvignon B.</option>
-              <option value="Viognier B.">Viognier B.</option>
-              <option value="Altro / da definire">Altro / da definire</option>
-            </select>
+            <select id="grape-variety"><option value="">Da definire</option></select>
           </label>
-          <div class="field-grid">
-            <label>Portainnesto
-              <select id="rootstock">
-                <option value="">Consigliami</option>
-                <option value="1103 Paulsen">1103 Paulsen</option>
-                <option value="110 Richter">110 Richter</option>
-                <option value="140 Ruggeri">140 Ruggeri</option>
-                <option value="420 A">420 A</option>
-                <option value="5BB Kober">5BB Kober</option>
-                <option value="SO4">SO4</option>
-                <option value="41 B">41 B</option>
-                <option value="161-49 C">161-49 C</option>
-                <option value="3309 C">3309 C</option>
-                <option value="Gravesac">Gravesac</option>
-                <option value="Altro / da definire">Altro / da definire</option>
-              </select>
-            </label>
+          <div class="field-grid material-grid">
             <label>Clone / selezione
-              <select id="clone-selection">
-                <option value="">Da definire</option>
-                <option value="Clone certificato da definire">Clone certificato da definire</option>
-                <option value="Selezione massale">Selezione massale</option>
-                <option value="Altro / da definire">Altro / da definire</option>
-              </select>
+              <select id="clone-selection"><option value="">Da definire</option></select>
+            </label>
+            <label>Portainnesto
+              <select id="rootstock"><option value="">Consigliami</option></select>
             </label>
           </div>
+          <label id="material-request-wrap" class="material-request-wrap" hidden>Richiesta particolare / materiale desiderato
+            <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. Pinot Bianco su 420A, clone specifico o altra combinazione da verificare"></textarea>
+            <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
+          </label>
         </div>
         <div class="exclusion-panel">
           <div class="exclusion-heading"><strong>Aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
@@ -155,7 +129,6 @@
     <section class="map-wrap" aria-label="Mappa del progetto">
       <div id="map"></div>
       <div class="map-watermark-layer" aria-hidden="true"></div>
-      <img class="map-watermark" src="./assets/logo-vivai-obice-v12.png?v=12" alt="" aria-hidden="true" />
       <div class="map-toolbar">
         <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
         <button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Cancella campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
@@ -190,6 +163,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=12"></script>
+  <script type="module" src="./src/app.js?v=13"></script>
 </body>
 </html>

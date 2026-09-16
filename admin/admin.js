@@ -84,6 +84,7 @@ async function showProject(id) {
   if (!project) return;
   selectedProjectId = id;
   const contact = project.contacts ?? {};
+  const activeField = Array.isArray(project.field_plans) ? (project.field_plans.find((field) => field.id === project.active_field_id) || project.field_plans[0] || {}) : {};
   $('#detail-title').textContent = `${contact.company_name ?? 'Progetto'} · ${project.public_code ?? id.slice(0,8)}`;
   $('#detail-status').value = project.status;
   const grid = $('#detail-grid');
@@ -99,6 +100,8 @@ async function showProject(id) {
     detailItem('Sesto', `${project.row_spacing_m ?? '—'} × ${project.plant_spacing_m ?? '—'} m`),
     detailItem('Vitigno', project.grape_variety || 'Da definire'),
     detailItem('Portainnesto', project.rootstock || 'Consigliami'),
+    detailItem('Clone / selezione', project.clone_selection || '—'),
+    detailItem('Richiesta materiale', activeField.materialRequestNote || '—'),
     detailItem('Contesto', project.project_context_type || '—'),
     detailItem('Fonte perimetro', project.source_type || '—'),
     detailItem('Preventivo', project.quote_requested ? 'Richiesto' : '—')

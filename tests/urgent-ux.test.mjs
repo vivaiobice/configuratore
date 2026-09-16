@@ -8,8 +8,8 @@ const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 
 test('header uses the Vivai Obice logo asset instead of the VO placeholder', () => {
-  assert.match(html, /class="brand-logo"[^>]+src="\.\/assets\/logo-vivai-obice-lineare\.png"/);
-  assert.ok(fs.existsSync(new URL('../assets/logo-vivai-obice-lineare.png', import.meta.url)));
+  assert.match(html, /class="brand-logo"[^>]+src="\.\/assets\/logo-vivai-obice-v13\.png\?v=13"/);
+  assert.ok(fs.existsSync(new URL('../assets/logo-vivai-obice-v13.png', import.meta.url)));
   assert.doesNotMatch(html, /class="brand-mark">VO</);
 });
 

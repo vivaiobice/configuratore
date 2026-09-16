@@ -51,7 +51,7 @@
   #summary-save-project{display:block}
   .summary-action-row{grid-template-columns:1fr 1fr}
   .summary-disclaimer{font-size:7px}
-  
+
 }
 
 .manual-close-vertex{width:30px;height:30px;border:3px solid #fff;border-radius:999px;background:#2f8b50;color:#fff;font-size:17px;font-weight:900;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28);padding:0}.manual-close-vertex:hover{transform:scale(1.08);background:#236e3f}.close-perimeter-button{background:#1f6d42!important;color:#fff!important;border-color:#1f6d42!important;font-weight:800}.close-perimeter-button[hidden]{display:none!important}
@@ -109,8 +109,13 @@ body.map-fullscreen-open{overflow:hidden!important}
 @media(max-width:800px){.brand-logo{height:40px;max-width:185px}.panel-scroll{background:#f5f7f5!important}.panel-intro{padding:18px 18px 10px}.step[data-step="1"],.step[data-step="2"],.advanced{margin:0 12px 12px;padding:15px;border:1px solid #e1e7e2;border-radius:15px;background:#fff}.advanced{padding:0}.advanced>summary{padding:15px}.advanced-body{padding:0 15px 14px}.exclusion-panel{margin:0 15px 15px}.map-watermark{width:72%!important;opacity:.14!important}.map-summary{margin:0 12px 14px!important;padding:9px!important;border-radius:14px!important}}
 
 /* === V12 · cache-busted supplied logo, multi-field context and stronger watermark === */
-.map-watermark-layer{position:absolute;inset:0;z-index:1;pointer-events:none;user-select:none;background-image:url('./assets/logo-vivai-obice-v12.png?v=12');background-repeat:repeat;background-size:260px auto;background-position:40px 30px;opacity:.045;filter:brightness(0) invert(1)}
+.map-watermark-layer{position:absolute;inset:0;z-index:1;pointer-events:none;user-select:none;background-image:url('./assets/logo-vivai-obice-v13.png?v=13');background-repeat:repeat;background-size:260px auto;background-position:40px 30px;opacity:.045;filter:brightness(0) invert(1)}
 .map-watermark{opacity:.22!important;width:min(60%,680px)!important;filter:brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.32))!important}
 .map-wrap.fullscreen-map .map-watermark{opacity:.2!important}
 .brand-logo{background:transparent!important;filter:none!important}
 @media(max-width:800px){.map-watermark-layer{background-size:210px auto;opacity:.04}.map-watermark{opacity:.2!important}}
+
+/* V13 — multi-field labels, direct vertex controls and material requests */
+.field-manager .field-name-label{display:block;margin-top:8px}.field-manager .field-name-label input{display:block;width:100%;margin-top:5px;border:1px solid #cfd7d1;border-radius:9px;background:#fff;padding:8px 10px;font:inherit;color:var(--ink);font-weight:700}.material-grid{margin-top:10px}.material-request-wrap{display:block!important;margin-top:12px;padding:11px;border:1px solid #d9e2db;border-radius:12px;background:#f7faf7;color:var(--muted);font-size:11px;font-weight:700}.material-request-wrap[hidden]{display:none!important}.material-request-wrap textarea{display:block;width:100%;resize:vertical;min-height:74px;margin-top:7px;border:1px solid #cfd7d1;border-radius:10px;background:#fff;padding:10px 11px;font:inherit;color:var(--ink)}.material-request-wrap small{display:block;margin-top:6px;font-size:9px;line-height:1.4;color:var(--muted);font-weight:500}
+.manual-close-vertex{touch-action:manipulation;pointer-events:auto}.vertex-removal-marker{width:30px;height:30px;border:3px solid #fff;border-radius:999px;background:#9d3b32;color:#fff;font-size:22px;font-weight:900;line-height:1;display:grid;place-items:center;padding:0;cursor:pointer;touch-action:manipulation;box-shadow:0 4px 16px rgba(0,0,0,.3)}.vertex-removal-marker:hover{transform:scale(1.08);background:#7e2d27}.field-label-marker{pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.92);border-radius:999px;background:rgba(24,63,40,.9);color:#fff;padding:4px 8px;font-size:10px;font-weight:800;box-shadow:0 3px 12px rgba(0,0,0,.2)}
+.map-watermark-layer{background-image:url('./assets/logo-vivai-obice-v13.png?v=13')!important}

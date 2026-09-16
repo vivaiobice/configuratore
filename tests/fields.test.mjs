@@ -42,3 +42,19 @@ test('removing active field keeps at least one field and activates a survivor', 
   assert.equal(project.fields.length, 1);
   assert.notEqual(project.activeFieldId, removedId);
 });
+
+test('adding a second field preserves the first field geometry and exclusions', () => {
+  const geometry = [[8,44],[8.01,44],[8.01,44.01],[8,44]];
+  const exclusion = { id:'x1', label:'Strada', geometry:[[8.002,44.002],[8.003,44.002],[8.003,44.003],[8.002,44.002]] };
+  let project = ensureProjectFields({});
+  project = updateActiveFieldProject(project, { geometry, exclusions:[exclusion] });
+  const firstId = project.activeFieldId;
+  project = addProjectField(project);
+  assert.equal(project.fields.length, 2);
+  const first = project.fields.find((field) => field.id === firstId);
+  assert.deepEqual(first.geometry, geometry);
+  assert.deepEqual(first.exclusions, [exclusion]);
+  project = switchProjectField(project, firstId);
+  assert.deepEqual(project.geometry, geometry);
+  assert.deepEqual(project.exclusions, [exclusion]);
+});

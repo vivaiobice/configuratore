@@ -74,6 +74,7 @@ ${row('Vendemmia meccanica', layout.mechanizedHarvest ? 'Sì' : 'No')}
 ${row('Vitigno', material.grapeVariety || 'Da definire')}
 ${row('Portainnesto', material.rootstock || 'Consigliami')}
 ${material.cloneSelection ? row('Clone / selezione', material.cloneSelection) : ''}
+${material.requestNote ? row('Richiesta particolare', `${material.requestNote}${material.requiresVerification ? ' · da verificare' : ''}`) : ''}
 </section>
 <section class="hero"><h2 style="color:#fff">Quantità</h2>${row('Barbatelle commerciali', number(layout.commercialPlants25))}<strong>${number(layout.commercialPlants25)}</strong></section>
 </div>

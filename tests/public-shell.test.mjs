@@ -38,9 +38,10 @@ test('V10 exposes multi-field, exclusion, clear field and remove vertex controls
   assert.match(html, /id="exclusion-list"/);
 });
 
-test('header and map watermark use cache-busted transparent V10 logo asset', () => {
-  assert.match(html, /logo-vivai-obice-lineare\.png/);
-  assert.match(html, /class="map-watermark"/);
+test('header uses cache-busted V13 logo and only the subtle repeated watermark remains', () => {
+  assert.match(html, /logo-vivai-obice-v13\.png\?v=13/);
+  assert.match(html, /class="map-watermark-layer"/);
+  assert.doesNotMatch(html, /class="map-watermark"/);
 });
 
 test('post spacing input defaults to 4.50 m and remains editable', () => {

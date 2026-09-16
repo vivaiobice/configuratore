@@ -11,11 +11,11 @@ test('project context copy uses title case Nuovo Impianto', () => {
   assert.doesNotMatch(html, />NUOVO IMPIANTO</);
 });
 
-test('header and watermark use the newly supplied transparent Vivai Obice logo', () => {
-  assert.match(html, /brand-logo[^>]+src="\.\/assets\/logo-vivai-obice-lineare\.png"/);
-  assert.match(html, /map-watermark[^>]+src="\.\/assets\/logo-vivai-obice-lineare\.png"/);
-  assert.match(css, /\.map-watermark\{[^}]*opacity:\.1[2-9]/);
-  assert.match(css, /\.map-watermark\{[^}]*filter:[^}]*invert\(1\)/);
+test('header uses the supplied Vivai Obice logo and watermark is background-only', () => {
+  assert.match(html, /brand-logo[^>]+src="\.\/assets\/logo-vivai-obice-v13\.png\?v=13"/);
+  assert.match(html, /class="map-watermark-layer"/);
+  assert.doesNotMatch(html, /class="map-watermark"/);
+  assert.match(css, /map-watermark-layer[\s\S]*logo-vivai-obice-v13\.png\?v=13/);
 });
 
 test('clear field is deterministic and does not depend on a confirm dialog', () => {
@@ -25,8 +25,8 @@ test('clear field is deterministic and does not depend on a confirm dialog', () 
 });
 
 test('rotation arrow bindings are inverted to match the visual map direction', () => {
-  assert.match(app, /rotate-left'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(15\)\)/);
-  assert.match(app, /rotate-right'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(-15\)\)/);
+  assert.match(app, /rotate-left'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(-15\)\)/);
+  assert.match(app, /rotate-right'\)\?\.addEventListener\('click', \(\) => mapApi\?\.rotateBy\(15\)\)/);
 });
 
 test('excluded area copy and sidebar sections are presented as separate cards', () => {

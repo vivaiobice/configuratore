@@ -8,13 +8,18 @@ import { createCloudService } from './cloud.js';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField } from './fields.js';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField } from './fields.js';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
+import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
 let state = stored?.project ? { ...createInitialState(), ...stored, project: ensureProjectFields({ ...createInitialState().project, ...stored.project }) } : createInitialState();
 if (!state.project.projectContextType) state = { ...state, project:{ ...state.project, projectContextType:'new_planting' } };
+state = { ...state, project:updateActiveFieldProject(state.project, {
+  projectContextType:state.project.projectContextType || 'new_planting',
+  headlandWidthM:normalizeHeadlandForMechanization(state.project.headlandWidthM, state.project.mechanizedHarvest)
+}) };
 let mapApi = null;
 let cloudService = null;
 let latestMetrics = null;
@@ -131,7 +136,7 @@ try {
     onDrawingState: ({ active, canClose, mode }) => {
       const closeButton = $('#close-perimeter-button');
       if (closeButton) {
-        closeButton.hidden = !canClose;
+        closeButton.hidden = !active;
         closeButton.disabled = !canClose;
         closeButton.textContent = mode === 'exclusion' ? '✓ Chiudi esclusione' : '✓ Chiudi perimetro';
       }
@@ -142,6 +147,7 @@ try {
   });
   if (state.project.geometry) mapApi.setGeometry(state.project.geometry);
   mapApi.setExclusions(state.project.exclusions ?? []);
+  syncOtherFieldsOnMap();
   mapApi.setBaseMap(state.map?.base ?? 'satellite');
   if (state.map?.cadastralVisible) mapApi.setCadastralVisible(true);
 } catch (error) { console.error(error); setStatus('Impossibile caricare la mappa. Controlla la connessione e riprova.'); }
@@ -156,9 +162,47 @@ $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
 $('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
 $('#project-context').value = state.project.projectContextType || 'new_planting';
 $('#project-context-note').value = state.project.projectContextNote ?? '';
-$('#grape-variety').value = state.project.grapeVariety ?? '';
-$('#rootstock').value = state.project.rootstock ?? '';
-$('#clone-selection').value = state.project.cloneSelection ?? '';
+renderMaterialSelectors();
+const newPlantingOption = $('#project-context')?.querySelector('option[value="new_planting"]');
+if (newPlantingOption) newPlantingOption.dataset.context = 'new_planting', newPlantingOption.textContent = 'Nuovo Impianto';
+
+function addSelectOption(select, value, label = value) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  select.append(option);
+}
+
+function populateMaterialSelect(select, { placeholderValue = '', placeholderLabel, values = [], selected = '', includeOther = true }) {
+  if (!select) return;
+  select.replaceChildren();
+  addSelectOption(select, placeholderValue, placeholderLabel);
+  for (const value of values) addSelectOption(select, value);
+  if (includeOther) addSelectOption(select, OTHER_MATERIAL_VALUE, 'Altro');
+  const available = new Set([placeholderValue, ...values, ...(includeOther ? [OTHER_MATERIAL_VALUE] : [])]);
+  if (selected && !available.has(selected)) addSelectOption(select, selected, `${selected} (selezione precedente)`);
+  select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : placeholderValue;
+}
+
+function renderMaterialSelectors() {
+  const varietySelect = $('#grape-variety');
+  const cloneSelect = $('#clone-selection');
+  const rootstockSelect = $('#rootstock');
+  if (!varietySelect || !cloneSelect || !rootstockSelect) return;
+
+  const variety = state.project.grapeVariety ?? '';
+  const clone = state.project.cloneSelection ?? '';
+  const rootstock = state.project.rootstock ?? '';
+  populateMaterialSelect(varietySelect, { placeholderLabel:'Da definire', values:listVarieties(), selected:variety });
+  populateMaterialSelect(cloneSelect, { placeholderLabel:'Da definire', values:listClonesForVariety(variety), selected:clone });
+  populateMaterialSelect(rootstockSelect, { placeholderLabel:'Consigliami', values:listRootstocksForSelection(variety, clone), selected:rootstock });
+
+  const requestWrap = $('#material-request-wrap');
+  const requestNote = $('#material-request-note');
+  const hasOther = [variety, clone, rootstock].some(isOtherMaterialSelection);
+  if (requestWrap) requestWrap.hidden = !hasOther;
+  if (requestNote && requestNote.value !== (state.project.materialRequestNote ?? '')) requestNote.value = state.project.materialRequestNote ?? '';
+}
 
 function syncProjectControls() {
   $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
@@ -171,9 +215,7 @@ function syncProjectControls() {
   $('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
   $('#project-context').value = state.project.projectContextType || 'new_planting';
   $('#project-context-note').value = state.project.projectContextNote ?? '';
-  $('#grape-variety').value = state.project.grapeVariety ?? '';
-  $('#rootstock').value = state.project.rootstock ?? '';
-  $('#clone-selection').value = state.project.cloneSelection ?? '';
+  renderMaterialSelectors();
 }
 
 function renderFieldManager() {
@@ -184,6 +226,8 @@ function renderFieldManager() {
     const option = document.createElement('option'); option.value = field.id; option.textContent = field.label; option.selected = field.id === state.project.activeFieldId; select.append(option);
   }
   const remove = $('#remove-field-button'); if (remove) remove.disabled = (state.project.fields?.length ?? 1) <= 1;
+  const fieldName = $('#field-name');
+  if (fieldName && fieldName.value !== (state.project.label ?? '')) fieldName.value = state.project.label ?? '';
 }
 
 function renderExclusions() {
@@ -199,14 +243,27 @@ function renderExclusions() {
   });
 }
 
+function syncOtherFieldsOnMap() {
+  const otherFields = (state.project.fields ?? []).filter((field) => field.id !== state.project.activeFieldId && Array.isArray(field.geometry) && field.geometry.length >= 4);
+  mapApi?.setOtherFields(otherFields);
+}
+
 function loadActiveFieldOnMap() {
   mapApi?.clearGeometry();
+  syncOtherFieldsOnMap();
   if (state.project.geometry) mapApi?.setGeometry(state.project.geometry);
   mapApi?.setExclusions(state.project.exclusions ?? []);
   syncProjectControls(); renderFieldManager(); renderExclusions(); calculateAndRender();
 }
 
 $('#field-select')?.addEventListener('change', (event) => { state = { ...state, project:switchProjectField(state.project, event.target.value) }; persist(); loadActiveFieldOnMap(); });
+$('#field-name')?.addEventListener('input', (event) => {
+  state = { ...state, project:renameActiveProjectField(state.project, event.target.value) };
+  persist();
+  const selected = $('#field-select')?.selectedOptions?.[0];
+  if (selected) selected.textContent = state.project.label;
+  syncOtherFieldsOnMap();
+});
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
 
@@ -281,8 +338,8 @@ $('#cadastre-button')?.addEventListener('click', (event) => { const next = !stat
 $('#select-cadastre-button').disabled = !state.map?.cadastralVisible;
 $('#select-cadastre-button')?.addEventListener('click', () => mapApi?.beginCadastralSelect());
 for (const button of document.querySelectorAll('[data-base]')) { button.classList.toggle('active', button.dataset.base === (state.map?.base ?? 'satellite')); button.addEventListener('click', () => { for (const sibling of document.querySelectorAll('[data-base]')) sibling.classList.remove('active'); button.classList.add('active'); const base = button.dataset.base; mapApi?.setBaseMap(base); state = { ...state, map: { ...state.map, base } }; persist(); track('base_map_changed', { base }); }); }
-$('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(15));
-$('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(-15));
+$('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(-15));
+$('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(15));
 $('#north-button')?.addEventListener('click', () => mapApi?.resetNorth());
 
 const mapWrap = document.querySelector('.map-wrap');
@@ -330,7 +387,7 @@ $('#post-spacing')?.addEventListener('change', () => track('advanced_option_chan
 $('#orientation')?.addEventListener('input', (event) => { const value = Number(event.target.value); $('#orientation-output').value = `${value}°`; patchProject({ orientationDeg:value, orientationLocked:true }); });
 $('#orientation')?.addEventListener('change', () => track('orientation_changed', { degrees:state.project.orientationDeg }));
 for (const button of document.querySelectorAll('[data-angle]')) { button.addEventListener('click', () => { const value = Number(button.dataset.angle); $('#orientation').value = value; $('#orientation-output').value = `${value}°`; patchProject({ orientationDeg:value, orientationLocked:true }); track('orientation_changed', { degrees:value }); }); }
-$('#mechanized')?.addEventListener('change', (event) => {
+$('#mechanized')?.addEventListener('input', (event) => {
   const enabled = event.target.checked;
   const headlandWidthM = normalizeHeadlandForMechanization(state.project.headlandWidthM, enabled);
   const headlandInput = $('#headland');
@@ -340,9 +397,27 @@ $('#mechanized')?.addEventListener('change', (event) => {
 });
 $('#project-context')?.addEventListener('change', (event) => { patchProject({ projectContextType: event.target.value }); track('advanced_option_changed', { option:'project_context', enabled:Boolean(event.target.value) }); });
 $('#project-context-note')?.addEventListener('input', (event) => patchProject({ projectContextNote: event.target.value }));
-$('#grape-variety')?.addEventListener('change', (event) => { patchProject({ grapeVariety: event.target.value }); track('plant_material_changed', { field:'grape_variety', defined:Boolean(event.target.value) }); });
-$('#rootstock')?.addEventListener('change', (event) => { patchProject({ rootstock:event.target.value }); track('plant_material_changed', { field:'rootstock', defined:Boolean(event.target.value) }); });
-$('#clone-selection')?.addEventListener('change', (event) => { patchProject({ cloneSelection:event.target.value }); track('plant_material_changed', { field:'clone_selection', defined:Boolean(event.target.value) }); });
+$('#grape-variety')?.addEventListener('change', (event) => {
+  const grapeVariety = event.target.value;
+  const cloneSelection = isKnownCloneForVariety(grapeVariety, state.project.cloneSelection) ? state.project.cloneSelection : '';
+  const rootstock = isKnownRootstockForSelection(grapeVariety, cloneSelection, state.project.rootstock) ? state.project.rootstock : '';
+  patchProject({ grapeVariety, cloneSelection, rootstock });
+  renderMaterialSelectors();
+  track('plant_material_changed', { field:'grape_variety', defined:Boolean(grapeVariety) });
+});
+$('#clone-selection')?.addEventListener('change', (event) => {
+  const cloneSelection = event.target.value;
+  const rootstock = isKnownRootstockForSelection(state.project.grapeVariety, cloneSelection, state.project.rootstock) ? state.project.rootstock : '';
+  patchProject({ cloneSelection, rootstock });
+  renderMaterialSelectors();
+  track('plant_material_changed', { field:'clone_selection', defined:Boolean(cloneSelection) });
+});
+$('#rootstock')?.addEventListener('change', (event) => {
+  patchProject({ rootstock:event.target.value });
+  renderMaterialSelectors();
+  track('plant_material_changed', { field:'rootstock', defined:Boolean(event.target.value) });
+});
+$('#material-request-note')?.addEventListener('input', (event) => patchProject({ materialRequestNote:event.target.value }));
 
 const consentBanner = $('#consent-banner');
 if (!getConsentState(globalThis.localStorage)) consentBanner.hidden = false;
@@ -374,7 +449,9 @@ async function runFinalAction(action) {
       $('#contact-feedback').textContent = 'Progetto salvato sul dispositivo. Il preventivo online si attiverà appena il backend sarà collegato.';
       return;
     }
-    const snapshot = await cloudService.requestQuote(state, latestMetrics ?? {}, 'Richiesta dal Configuratore');
+    const materialRequest = String(state.project.materialRequestNote ?? '').trim();
+    const quoteMessage = materialRequest ? `Richiesta materiale da verificare: ${materialRequest}` : 'Richiesta dal Configuratore';
+    const snapshot = await cloudService.requestQuote(state, latestMetrics ?? {}, quoteMessage);
     await persistCloudSnapshot(snapshot);
     $('#contact-feedback').textContent = 'Richiesta preventivo registrata.';
     return;

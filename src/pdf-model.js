@@ -1,3 +1,5 @@
+import { isOtherMaterialSelection } from './plant-catalog.js';
+
 const CONTEXT_LABELS = {
   application: 'Domanda',
   tender: 'Bando',
@@ -64,6 +66,8 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
       grapeVariety: project.grapeVariety || 'Da definire',
       rootstock: project.rootstock || 'Consigliami',
       cloneSelection: project.cloneSelection || null,
+      requestNote: project.materialRequestNote || '',
+      requiresVerification: [project.grapeVariety, project.rootstock, project.cloneSelection].some(isOtherMaterialSelection) || Boolean(project.materialRequestNote),
       quantity: metrics.commercialPlants25 ?? 0
     },
     resumeUrl,

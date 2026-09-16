@@ -131,3 +131,11 @@ export function isManualCloseClick(vertices, eventPoint, project, tolerancePx = 
   if (!Number.isFinite(eventPoint?.x) || !Number.isFinite(eventPoint?.y)) return false;
   return Math.hypot(eventPoint.x - firstPoint.x, eventPoint.y - firstPoint.y) <= Number(tolerancePx || 0);
 }
+
+export function removeClosedRingVertex(ring, index) {
+  if (!Array.isArray(ring) || ring.length < 5) return null;
+  const vertices = ring.slice(0, -1);
+  if (vertices.length <= 3 || !Number.isInteger(index) || index < 0 || index >= vertices.length) return null;
+  const remaining = vertices.filter((_, vertexIndex) => vertexIndex !== index);
+  return [...remaining, remaining[0]];
+}

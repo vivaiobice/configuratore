@@ -6,7 +6,7 @@ const PROJECT_SELECT = [
   'gross_area_m2','net_area_m2','perimeter_m','vertex_count','row_spacing_m','plant_spacing_m',
   'row_orientation_deg','headland_width_m','commercial_plants_25','row_count','row_linear_m',
   'post_spacing_m','head_posts','intermediate_posts','total_posts','mechanization','project_context_type',
-  'project_context_note','grape_variety','rootstock','clone_selection','contact_id',
+  'project_context_note','grape_variety','rootstock','clone_selection','field_plans','active_field_id','contact_id',
   'contacts(id,company_name,first_name,last_name,phone,email,marketing_consent)',
   'quote_requests(id,status,message,created_at)'
 ].join(',');

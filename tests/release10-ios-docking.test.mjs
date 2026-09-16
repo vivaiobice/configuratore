@@ -65,6 +65,6 @@ test('project summary lives inside the scrollable sidebar so sticky docking beco
 });
 
 test('header uses a light-background logo asset without embedded black panel', () => {
-  assert.match(html, /assets\/logo-vivai-obice-lineare\.png/);
-  assert.ok(fs.existsSync(new URL('../assets/logo-vivai-obice-lineare.png', import.meta.url)));
+  assert.match(html, /assets\/logo-vivai-obice-v13\.png\?v=13/);
+  assert.ok(fs.existsSync(new URL('../assets/logo-vivai-obice-v13.png', import.meta.url)));
 });
