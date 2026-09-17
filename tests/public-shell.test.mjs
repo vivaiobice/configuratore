@@ -54,5 +54,5 @@ test('mobile fullscreen map control remains exposed', () => {
 
 test('mobile runtime physically places the map immediately after step 01 instead of relying on display contents', () => {
   assert.match(app, /stepOne\.insertAdjacentElement\('afterend', mapWrap\)/);
-  assert.match(app, /matchMedia\?\.\('\(max-width: 800px\)'\)/);
+  assert.match(app, /max-width: 1100px\) and \(pointer: coarse/);
 });

@@ -51,7 +51,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -360,12 +360,16 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     const lon = Number(event?.lngLat?.lng);
     const lat = Number(event?.lngLat?.lat);
     if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
-    manualVertices.push([lon, lat]);
+    if (manualMode === 'linear-exclusion' && manualVertices.length >= 2 && requiresLinearConfirmation()) manualVertices[1]=[lon,lat];
+    else manualVertices.push([lon, lat]);
     manualHover = null;
     renderManualDraft();
     if (manualMode === 'linear-exclusion') {
       if (manualVertices.length === 1) onStatus('Primo punto del passaggio inserito. Tocca/clicca il punto finale.');
-      if (manualVertices.length >= 2) void finishLinearExclusion();
+      if (manualVertices.length >= 2) {
+        if (requiresLinearConfirmation()) onStatus('Tocca Conferma passaggio per applicare il taglio di 1,50 m.');
+        else void finishLinearExclusion();
+      }
       return;
     }
     onStatus(manualVertices.length < 3
@@ -974,5 +978,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     finishVertexEditing();
     clearVertexRemovalMarkers();
   }
-  return { map, draw, stopTools, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  function undoDrawPoint() {
+    if (!manualDrawing || !manualVertices.length || linearFinishPending) return;
+    manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
+    onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
+  }
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

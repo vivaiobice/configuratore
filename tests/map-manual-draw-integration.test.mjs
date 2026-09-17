@@ -2,6 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initMap } from '../src/map.js';
 
+test('undoing a mobile drawing point updates closure readiness without committing',()=>{
+ const previous=globalThis.maplibregl;
+ try {
+  globalThis.maplibregl={Map:FakeMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds};
+  let drawing, geometry;
+  const api=initMap({container:'map',onDrawingState:s=>drawing=s,onGeometryChange:g=>geometry=g});
+  const map=globalThis.__fakeMap;map.trigger('load');api.beginDraw();
+  for(const [lng,lat] of [[8,44],[9,44],[9,45]])map.trigger('click',{lngLat:{lng,lat}});
+  assert.equal(drawing.canClose,true);
+  assert.equal(typeof api.undoDrawPoint,'function');
+  api.undoDrawPoint();assert.equal(drawing.vertexCount,2);assert.equal(drawing.canClose,false);assert.equal(geometry,undefined);
+  api.undoDrawPoint();api.undoDrawPoint();api.undoDrawPoint();assert.equal(drawing.vertexCount,0);
+ }finally{globalThis.maplibregl=previous;}
+});
+
 class FakeSource {
   constructor(spec) { this.data = spec.data; }
   setData(data) { this.data = data; }
@@ -10,6 +25,22 @@ class FakeBounds {
   constructor() {}
   extend() { return this; }
 }
+
+test('mobile passage waits for explicit confirmation before cutting the field',async()=>{
+ const previous=globalThis.maplibregl;
+ try {
+  globalThis.maplibregl={Map:FakeMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds};
+  let additions=0,drawing;
+  const api=initMap({container:'map',requiresLinearConfirmation:()=>true,onDrawingState:s=>drawing=s,onExclusionAdd:()=>additions++});
+  const map=globalThis.__fakeMap;map.trigger('load');
+  api.setGeometry([[8,44],[8.01,44],[8.01,44.01],[8,44.01],[8,44]]);
+  api.beginLinearExclusionDraw();
+  map.trigger('click',{lngLat:{lng:8.002,lat:44.002}});
+  map.trigger('click',{lngLat:{lng:8.008,lat:44.008}});
+  assert.equal(additions,0);assert.equal(drawing.canClose,true);
+  await api.finishDraw();assert.equal(additions,1);assert.equal(drawing.active,false);
+ }finally{globalThis.maplibregl=previous;}
+});
 class FakeMap {
   constructor() {
     globalThis.__fakeMap = this;

@@ -1,5 +1,6 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { initMap } from './map.js?v=17';
+import { createMobileUI } from './mobile-ui.js?v=18';
+import { initMap } from './map.js?v=18';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
@@ -21,6 +22,7 @@ state = { ...state, project:updateActiveFieldProject(state.project, {
   headlandWidthM:normalizeHeadlandForMechanization(state.project.headlandWidthM, state.project.mechanizedHarvest)
 }) };
 let mapApi = null;
+let mobileUi = null;
 let vertexEditingActive = false;
 let cloudService = null;
 let latestMetrics = null;
@@ -99,6 +101,7 @@ function calculateAndRender() {
   setText('#summary-head-posts', result.headPosts.toLocaleString('it-IT'));
   setText('#summary-plants', plantsText);
   setText('#summary-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
+  mobileUi?.renderField();
   renderManualAreaCalculation();
   mapApi?.setRows(result.rows);
   mapApi?.setExclusions(project.exclusions ?? []);
@@ -133,6 +136,7 @@ function bindNumberInput(selector, key) { $(selector)?.addEventListener('input',
 try {
   mapApi = initMap({
     container: 'map',
+    requiresLinearConfirmation:isMobileMap,
     onGeometryChange: (geometry) => {
       const sourcePatch = state.project.sourceType === 'cadastral' ? { sourceType:'mixed' } : {};
       patchGeometry(geometry, sourcePatch);
@@ -158,7 +162,8 @@ try {
       track('cadastral_parcel_selected', { selected:true, parcelCount:selection?.refs?.length ?? 1 });
     },
     onStatus: setStatus,
-    onDrawingState: ({ active, canClose, mode }) => {
+    onDrawingState: ({ active, canClose, mode, vertexCount }) => {
+      mobileUi?.drawingState({active,vertexCount});
       const closeButton = $('#close-perimeter-button');
       if (closeButton) {
         closeButton.hidden = !active;
@@ -170,6 +175,7 @@ try {
       $('#draw-button')?.classList.toggle('active', Boolean(active && mode === 'perimeter'));
     },
     onEditingState: ({ active }) => {
+      mobileUi?.editingState({active});
       vertexEditingActive = Boolean(active);
       const button = $('#edit-vertices-button');
       if (button) {
@@ -254,6 +260,7 @@ function syncProjectControls() {
 }
 
 function renderFieldManager() {
+  mobileUi?.renderField();
   const select = $('#field-select');
   if (!select) return;
   select.replaceChildren();
@@ -314,7 +321,7 @@ $('#field-name')?.addEventListener('input', (event) => {
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
 
-function isMobileMap() { return Boolean(globalThis.matchMedia?.('(max-width: 800px)')?.matches); }
+function isMobileMap() { return Boolean(globalThis.matchMedia?.('(max-width: 800px), (max-width: 1100px) and (pointer: coarse)')?.matches); }
 function startDrawingField() { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); }
 $('#draw-button')?.addEventListener('click', () => { if (isMobileMap()) setMapFullscreen(true); else startDrawingField(); });
 $('#draw-map-button')?.addEventListener('click', startDrawingField);
@@ -405,13 +412,14 @@ exclusionPanel?.before(exclusionHome);
 let fullscreenScrollY = 0;
 function placeMapForViewport() {
   if (!mapWrap || !appShell || !panelScroll || !stepOne) return;
-  if (mapWrap.classList.contains('fullscreen-map')) { requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
-  const mobile = globalThis.matchMedia?.('(max-width: 800px)')?.matches;
+  if (mapWrap.classList.contains('fullscreen-map')) { mobileUi?.sync(); requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
+  const mobile = isMobileMap();
   if (mobile) mapApi?.stopTools();
   const drawButton=$('#draw-button');
   if (drawButton) drawButton.textContent=mobile ? 'Apri editor mappa' : 'Disegna terreno';
   if (mobile) stepOne.insertAdjacentElement('afterend', mapWrap);
   else if (mapWrap.parentElement !== appShell) appShell.append(mapWrap);
+  mobileUi?.sync();
   requestAnimationFrame(() => mapApi?.map?.resize?.());
 }
 placeMapForViewport();
@@ -439,6 +447,7 @@ function setMapFullscreen(active) {
     mapFullscreenButton.textContent = next ? '✓ Torna al progetto' : '⛶ Apri mappa a tutto schermo';
   }
   if (!next) { placeMapForViewport(); window.scrollTo(0,fullscreenScrollY); }
+  mobileUi?.sync();
   requestAnimationFrame(() => mapApi?.map?.resize?.());
 }
 if (mapFullscreenButton) mapFullscreenButton.textContent='⛶ Apri mappa a tutto schermo';
@@ -446,6 +455,9 @@ mapFullscreenButton?.addEventListener('click', () => setMapFullscreen(!mapWrap?.
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && mapWrap?.classList.contains('fullscreen-map')) setMapFullscreen(false);
 });
+
+mobileUi = createMobileUI({isMobile:isMobileMap,setFullscreen:setMapFullscreen,getField:()=>state.project,
+  stopTools:()=>mapApi?.stopTools(),finishEdit:()=>mapApi?.finishVertexEditing(),undoPoint:()=>mapApi?.undoDrawPoint()});
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#post-spacing', 'postSpacingM');
 $('#headland')?.addEventListener('input', (event) => {

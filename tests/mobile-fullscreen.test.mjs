@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 // Execute the actual fullscreen controller with a small DOM boundary double.
 const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
-const controller=app.slice(app.indexOf("const mapWrap = document.querySelector"), app.indexOf("bindNumberInput('#row-spacing'"));
+const controller=app.slice(app.indexOf("const mapWrap = document.querySelector"), app.indexOf("mobileUi = createMobileUI("));
 function setup(){
  class Node {
   constructor(){this.classes=new Set();this.attrs={};this.handlers={};this.classList={contains:c=>this.classes.has(c),toggle:(c,on)=>on?this.classes.add(c):this.classes.delete(c)};}
@@ -20,7 +20,7 @@ function setup(){
  const body=new Node();const panel=nodes['.panel-scroll'];
  panel.append(nodes['.step[data-step="1"]']);panel.append(nodes['.exclusion-panel']);
  let stopped=0,resizes=0,scroll;
- const context={document:{body,querySelector:k=>nodes[k],createComment:()=>new Node(),addEventListener(){}},window:{scrollY:240,scrollTo:(x,y)=>scroll=y},$:k=>nodes[k],matchMedia:()=>({matches:true}),isMobileMap:()=>true,requestAnimationFrame:fn=>fn(),addEventListener(){},mapApi:{stopTools:()=>stopped++,map:{resize:()=>resizes++}}};
+ const context={mobileUi:null,document:{body,querySelector:k=>nodes[k],createComment:()=>new Node(),addEventListener(){}},window:{scrollY:240,scrollTo:(x,y)=>scroll=y},$:k=>nodes[k],matchMedia:()=>({matches:true}),isMobileMap:()=>true,requestAnimationFrame:fn=>fn(),addEventListener(){},mapApi:{stopTools:()=>stopped++,map:{resize:()=>resizes++}}};
  vm.createContext(context);vm.runInContext(controller,context);
  return {context,nodes,body,panel,get stopped(){return stopped;},get scroll(){return scroll;},get resizes(){return resizes;}};
 }
