@@ -14,7 +14,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V24</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V24.1</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -46,9 +46,13 @@ export function createMobileUI(api){
    else{delete host.dataset.base;api.restoreBaseMap?.();}
   }
  }
- function protectMobileControls(){
-  for(const type of ['touchstart','touchend','pointerdown','pointerup'])root.addEventListener(type,event=>{
-   if(event.target.closest?.('input,select,textarea'))event.stopImmediatePropagation?.();
+ function protectNativeControls(container){
+  for(const type of ['touchstart','touchend','pointerdown','pointerup'])container.addEventListener(type,event=>{
+   const control=event.target.closest?.('input,select,textarea');if(!control)return;
+   if(type==='touchstart'&&control.matches('input:not([type="range"]):not([type="checkbox"]),textarea')){
+    try{control.focus({preventScroll:true});}catch{control.focus();}
+   }
+   event.stopPropagation();
   });
  }
  function navigate(next){
@@ -203,7 +207,7 @@ export function createMobileUI(api){
   event.preventDefault();lastTouchButton=button;lastTouchAt=Date.now();forwardingTouch=true;button.click();forwardingTouch=false;
  });
  for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').textContent=result.theoreticalPlants?`${n(result.theoreticalPlants)} barbatelle · ordine: ${n(result.commercialPlants25)} (multipli di 25)`:'Inserisci superficie e distanze valide';});
- protectMobileControls();
+ protectNativeControls($('#mobile-pages'));protectNativeControls(sheet);
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();
  return controller;

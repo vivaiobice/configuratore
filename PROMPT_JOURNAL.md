@@ -207,6 +207,16 @@ Correzioni:
 - Aggiunta in mobile la dicitura `AMBIENTE TEST · V24`.
 - Nessuna modifica al foglio desktop `styles.css`; la presentazione resta confinata a `mobile.css`.
 
+### V24.1 — fix isolato dei controlli nativi iOS
+
+- Segnalazione su Safari iPhone: i pulsanti rispondevano, mentre input e menu (`Superficie`,
+  distanze, nome campo, vitigno, clone e altri select) restavano completamente inattivi.
+- Causa: la protezione touch V24 era installata sulla radice mobile e intercettava troppo tardi il
+  gesto nativo; i pulsanti funzionavano perché disponevano di un inoltro sintetico separato.
+- Correzione: protezione spostata sui soli pannelli modulo (`mobile-pages` e foglio strumenti),
+  propagazione fermata senza annullare l’evento e focus iOS esplicito su input/textarea al `touchstart`.
+- Nessuna modifica grafica, ai calcoli o al desktop.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e

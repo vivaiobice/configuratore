@@ -2,7 +2,7 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V24 WebApp.
+Stato: ambiente TEST · release V24.1 WebApp.
 
 ## V20 — fix interazione mobile
 

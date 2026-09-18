@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=24';
+import { createMobileUI } from './mobile-ui.js?v=24.1';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=20';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
