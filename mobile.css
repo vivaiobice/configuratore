@@ -11,7 +11,7 @@
  #mobile-app button:focus-visible{outline:3px solid #8fb699;outline-offset:2px}
  #mobile-app button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
  #mobile-app [hidden]{display:none!important}
- #mobile-map-host{position:absolute;inset:0 0 calc(72px + env(safe-area-inset-bottom));}
+ #mobile-map-host{position:absolute;inset:0 0 calc(72px + env(safe-area-inset-bottom));z-index:1;pointer-events:auto;touch-action:auto}
  #mobile-app .map-wrap{position:absolute!important;inset:0!important;height:100%!important;min-height:0!important;width:100%!important;margin:0!important;z-index:0!important;display:block}
  #mobile-app .map-wrap #map{position:absolute;inset:0}
  #mobile-app .map-toolbar,#mobile-app #map-fullscreen-button,#mobile-app #fullscreen-exclusions{display:none!important}
@@ -21,7 +21,7 @@
  #mobile-app .maplibregl-ctrl-bottom-right{bottom:4px;right:8px}
  .mobile-brand{position:absolute;top:calc(12px + env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));z-index:4;pointer-events:none}
  .mobile-brand img{width:145px;height:45px;object-fit:contain;background:#fffffff2;border-radius:10px;padding:5px 8px;box-shadow:0 3px 14px #17302319}
- .mobile-home-tools{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px;z-index:4}
+ .mobile-home-tools{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px;z-index:14;pointer-events:auto}
  #mobile-app .mobile-home-tools button{width:44px;height:44px;padding:8px;background:#fffffff5;box-shadow:0 3px 14px #17302322;font-size:11px;border-radius:50%}
  .mobile-home-bottom{position:absolute;z-index:4;bottom:calc(100px + env(safe-area-inset-bottom));left:max(16px,env(safe-area-inset-left));right:max(70px,env(safe-area-inset-right));display:flex;align-items:flex-start;flex-direction:column;gap:10px;pointer-events:none}
  #mobile-app .mobile-home-bottom button{pointer-events:auto}

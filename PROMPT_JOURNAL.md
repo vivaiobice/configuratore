@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V19 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V20 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -107,6 +107,21 @@ Implementazione V19:
 - Il salvataggio locale non richiede i dati di contatto; PDF e preventivo mantengono il flusso contatti.
 - Il gestore responsive desktop non può ricollocare la mappa mentre la shell mobile è attiva.
 
+### V20 — fix dei comandi mobile
+
+Segnalazioni ricevute dopo la V19: `Aggiungi campo` inattivo, impossibilità di aprire la
+configurazione dei campi, rotazione assente e comandi della sezione Mappa inattivi.
+
+Correzioni:
+
+- aggiunto inoltro esplicito `pointerup` touch → attivazione pulsante, con soppressione del click
+  sintetico successivo per evitare azioni doppie su Safari;
+- resi espliciti livello e `pointer-events` dei controlli sopra la superficie MapLibre;
+- riabilitata la rotazione a due dita esclusivamente quando il chiamante è mobile;
+- aggiunta selezione delle geometrie renderizzate: il tocco su un campo passa il relativo ID,
+  carica il campo e apre la scheda;
+- mantenuto il comportamento desktop precedente, compresa la rotazione con comandi/trackpad.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
@@ -123,6 +138,10 @@ Implementazione V19:
 - **Mappa spostata fuori dalla shell dopo resize:** `placeMapForViewport()` non deve ricollocarla
   quando `mobileUi.isActive()` è vero.
 - **V18 troppo simile a pagina web:** V19 nasconde interamente topbar e configuratore desktop sul mobile.
+- **Tasti V19 inattivi su iOS:** attivazione touch non più dipendente esclusivamente dal click sintetico;
+  controlli sopra la mappa con stacking e puntamento espliciti.
+- **Campo sulla mappa non apribile:** aggiunto hit-test sulle geometrie renderizzate e apertura scheda.
+- **Rotazione mobile assente:** abilitato `touchZoomRotate.enableRotation()` solo sul layout mobile.
 - **Archivio locale corrotto o quota esaurita:** non sovrascrivere dati illeggibili e mostrare errore.
 
 ## Regole di calcolo da non cambiare accidentalmente

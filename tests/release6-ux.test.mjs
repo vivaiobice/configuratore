@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
+const gestures = fs.readFileSync(new URL('../src/map-gestures.js', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 const state = fs.readFileSync(new URL('../src/state.js', import.meta.url), 'utf8');
 
@@ -56,9 +57,10 @@ test('side lengths use HTML markers so raster-only maps do not depend on glyph c
   assert.match(css, /\.side-measurement-label/);
 });
 
-test('map keeps desktop rotation while touch gestures preserve pinch zoom without accidental bearing changes', () => {
+test('map keeps desktop rotation while mobile explicitly enables two-finger rotation', () => {
   assert.match(map, /installTrackpadRotation/);
   assert.match(map, /dragRotate\.disable/);
   assert.match(map, /touchZoomRotate\.enable\(\)/);
-  assert.match(map, /touchZoomRotate\.disableRotation/);
+  assert.match(gestures, /touchRotation.*enableRotation/s);
+  assert.match(gestures, /else map\.touchZoomRotate\?\.disableRotation/);
 });

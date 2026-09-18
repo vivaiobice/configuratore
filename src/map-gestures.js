@@ -14,7 +14,7 @@ export function wheelRotationDelta(event) {
   return Math.round(axis * 0.18 * 1000) / 1000;
 }
 
-export function installTrackpadRotation(map) {
+export function installTrackpadRotation(map, { touchRotation = false } = {}) {
   const container = map?.getCanvasContainer?.() ?? map?.getContainer?.();
   if (!container?.addEventListener) return () => {};
 
@@ -23,7 +23,8 @@ export function installTrackpadRotation(map) {
   // through Shift/Alt + trackpad wheel and MapLibre's native drag rotation.
   map.dragRotate?.disable?.();
   map.touchZoomRotate?.enable?.();
-  map.touchZoomRotate?.disableRotation?.();
+  if (touchRotation) map.touchZoomRotate?.enableRotation?.();
+  else map.touchZoomRotate?.disableRotation?.();
   map.touchPitch?.disable?.();
 
   const onWheel = (event) => {

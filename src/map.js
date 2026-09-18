@@ -51,7 +51,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -68,9 +68,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   map.addControl(new globalThis.maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
   map.dragRotate.disable?.();
   map.touchZoomRotate.enable();
-  map.touchZoomRotate.disableRotation?.();
   map.touchPitch?.disable?.();
-  installTrackpadRotation(map);
+  installTrackpadRotation(map, { touchRotation:enableTouchRotation() });
 
   let draw = null;
   let searchMarker = null;
@@ -378,7 +377,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
   map.on('click', event => {
     if (Date.now()-lastTouchEnd < 700) return;
-    handleDrawingPoint(event);
+    if (manualDrawing) { handleDrawingPoint(event); return; }
+    const selected = map.queryRenderedFeatures?.(event.point, { layers:[PROJECT_GEOMETRY_FILL_ID, OTHER_FIELDS_FILL_ID] })?.[0];
+    if (selected) onFieldSelect(selected.properties?.fieldId || null);
   });
   map.on('touchstart', event => {
     touchStartPoint = manualDrawing && event.points?.length === 1 ? event.points[0] : null;
@@ -483,7 +484,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       return {
         type:'Feature',
         id:field?.id ?? index,
-        properties:{ label:field?.label ?? `Campo ${index + 1}` },
+        properties:{ label:field?.label ?? `Campo ${index + 1}`, fieldId:field?.id ?? '' },
         geometry:{ type:'Polygon', coordinates:[geometry] }
       };
     }).filter(Boolean) };

@@ -1,7 +1,7 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=19';
+import { createMobileUI } from './mobile-ui.js?v=20';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
-import { initMap } from './map.js?v=18';
+import { initMap } from './map.js?v=20';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
@@ -139,6 +139,12 @@ try {
   mapApi = initMap({
     container: 'map',
     requiresLinearConfirmation:isMobileMap,
+    enableTouchRotation:isMobileMap,
+    onFieldSelect:(fieldId)=>{
+      if (!isMobileMap()) return;
+      if (fieldId) { state={...state,project:switchProjectField(state.project,fieldId)};persist();loadActiveFieldOnMap(); }
+      mobileUi?.openField(state.project.activeFieldId);
+    },
     onGeometryChange: (geometry) => {
       const sourcePatch = state.project.sourceType === 'cadastral' ? { sourceType:'mixed' } : {};
       patchGeometry(geometry, sourcePatch);

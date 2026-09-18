@@ -74,6 +74,23 @@ class FakeMap {
   easeTo({bearing}) { if (Number.isFinite(bearing)) this.bearing = bearing; }
 }
 
+test('touch rotation can be enabled only by the mobile caller',()=>{
+ const oldMapLibre=globalThis.maplibregl;try{
+  let enabledRotation=0;
+  class RotatingMap extends FakeMap{constructor(){super();this.touchZoomRotate={enable(){},enableRotation(){enabledRotation++;},disableRotation(){assert.fail('mobile must not disable rotation');}};}}
+  globalThis.maplibregl={Map:RotatingMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds};
+  initMap({container:'map',enableTouchRotation:()=>true});assert.equal(enabledRotation,1);
+ }finally{globalThis.maplibregl=oldMapLibre;}
+});
+test('tapping a rendered field exposes its id to the mobile field sheet',()=>{
+ const oldMapLibre=globalThis.maplibregl;try{
+  class SelectingMap extends FakeMap{queryRenderedFeatures(){return [{properties:{fieldId:'field-2'}}];}}
+  globalThis.maplibregl={Map:SelectingMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds};
+  let selected=null;initMap({container:'map',onFieldSelect:id=>selected=id});globalThis.__fakeMap.trigger('click',{point:{x:1,y:1}});
+  assert.equal(selected,'field-2');
+ }finally{globalThis.maplibregl=oldMapLibre;}
+});
+
 test('manual draw closes by clicking the first vertex and emits a real closed polygon', () => {
   const oldMapLibre = globalThis.maplibregl;
   const oldDraw = globalThis.MapboxDraw;

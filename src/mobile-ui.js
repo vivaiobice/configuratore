@@ -169,6 +169,16 @@ export function createMobileUI(api){
   if(b.closest('[data-content="perimeter"]')||['exclude-line-button','exclude-zone-button'].includes(b.id)||b.textContent==='Modifica')closeSheet();
   if(['remove-vertex-button','select-cadastre-button'].includes(b.id))editingState({active:true});
  });
+ let forwardingTouch=false,lastTouchButton=null,lastTouchAt=0;
+ root.addEventListener('click',(event)=>{
+  const button=event.target.closest?.('button');
+  if(!forwardingTouch&&button===lastTouchButton&&Date.now()-lastTouchAt<700){event.preventDefault();event.stopImmediatePropagation?.();}
+ },true);
+ root.addEventListener('pointerup',(event)=>{
+  if(event.pointerType!=='touch')return;
+  const button=event.target.closest?.('button');if(!button||button.disabled)return;
+  event.preventDefault();lastTouchButton=button;lastTouchAt=Date.now();forwardingTouch=true;button.click();forwardingTouch=false;
+ });
  for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').textContent=result.theoreticalPlants?`${n(result.theoreticalPlants)} barbatelle · ordine: ${n(result.commercialPlants25)} (multipli di 25)`:'Inserisci superficie e distanze valide';});
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();

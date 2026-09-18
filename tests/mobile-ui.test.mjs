@@ -44,3 +44,8 @@ test('desktop restoration keeps the same inputs and values',()=>{
  assert.equal($('.map-wrap').parentElement.className,'app-shell');assert.ok(!c.document.body.classList.contains('mobile-app-active'));
 });
 test('desktop startup never moves controls',()=>{const c=setup(false);assert.equal(c.$('.map-wrap').parentElement.className,'app-shell');assert.ok(c.$('.step[data-step="2"]').contains(c.$('#plant-spacing')));});
+test('touch pointer activation reaches mobile controls even when Safari omits the synthetic click',()=>{
+ const c=setup(),button=c.$('#mobile-add-field');
+ const event=new c.document.defaultView.Event('pointerup',{bubbles:true,cancelable:true});Object.defineProperty(event,'pointerType',{value:'touch'});button.dispatchEvent(event);
+ assert.equal(c.begun,1);assert.equal(c.document.body.dataset.mobileScreen,'editor');
+});

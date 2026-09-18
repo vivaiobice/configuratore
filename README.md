@@ -2,7 +2,15 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V19 WebApp.
+Stato: ambiente TEST · release V20 WebApp.
+
+## V20 — fix interazione mobile
+
+- Comandi mobile attivabili anche tramite `pointerup` touch quando Safari non produce il click sintetico.
+- Livelli e pulsanti flottanti portati esplicitamente sopra la superficie della mappa.
+- Rotazione mappa a due dita abilitata solo nella versione mobile; desktop invariato.
+- Tocco su un campo disegnato apre la sua scheda e seleziona il campo corretto.
+- Confermati i flussi Aggiungi campo, Campi → scheda e ritorno alla mappa.
 
 ## V19 — WebApp mobile a schermate
 
@@ -32,7 +40,8 @@ Stato: ambiente TEST · release V19 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-223 test automatici verificati, compresi flusso mobile a schermate, archivio progetti,
+226 test automatici verificati, compresi tocchi Safari, selezione campo, rotazione mobile,
+flusso mobile a schermate, archivio progetti,
 navigazione sul DOM, ripristino desktop e calcolo dei tagli.
 Il browser remoto di verifica non raggiunge la copia locale: resa visiva, gesti e rotazione vanno ancora verificati su Safari iPhone reale.
 
