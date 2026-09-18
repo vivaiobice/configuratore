@@ -1,7 +1,7 @@
 import {renderProjectDiagramSvg} from './report-diagram.js';
 import {calculateManualPlants} from './project-calculator.js?v=16';
 
-const icons={map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5zm6-2v16m6-14v16',fields:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',projects:'M3 7h7l2-3h9v16H3z',plus:'M12 4v16M4 12h16',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',layers:'M2 7l10-5 10 5-10 5zm0 5l10 5 10-5M2 17l10 5 10-5',calc:'M5 2h14v20H5zM8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1',back:'M15 4l-8 8 8 8'};
+const icons={map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5zm6-2v16m6-14v16',fields:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',projects:'M3 7h7l2-3h9v16H3z',plus:'M12 4v16M4 12h16',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',layers:'M2 7l10-5 10 5-10 5zm0 5l10 5 10-5M2 17l10 5 10-5',calc:'M5 2h14v20H5zM8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1',back:'M15 4l-8 8 8 8',north:'M12 2l4.2 8.1L12 8.4 7.8 10.1 12 2zm0 20V8.4'};
 const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
 const n=value=>Number(value||0).toLocaleString('it-IT',{maximumFractionDigits:1});
 const area=value=>value>=10000?`${n(value/10000)} ha`:`${n(Math.round(value||0))} m²`;
@@ -10,20 +10,20 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 export function createMobileUI(api){
  const $=s=>document.querySelector(s), map=$('.map-wrap'), homes=new Map();
  let enabled=false,screen='map',drawing=false,editing=false,awaitingPerimeter=false,transaction=false,saving=false;
- let oldAdvancedOpen=false;
+ let oldAdvancedOpen=false,oldNorthHtml='';
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V24</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
- <button id="mobile-add-field" class="mobile-primary">${icon('plus')} Aggiungi campo</button>
+ <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
  <div class="mobile-editor-top"><button id="mobile-editor-cancel">${icon('back')} Annulla</button><strong id="mobile-editor-title">Disegna campo</strong><button id="mobile-editor-next" class="mobile-primary">Continua</button></div>
  <div class="mobile-editor-tools"><button data-sheet="perimeter">Perimetro</button><button data-sheet="cuts">Passaggi / esclusioni</button><button data-sheet="orientation">Filari</button><button data-sheet="layers">${icon('layers')}</button></div>
  <div id="mobile-drawing-actions"><button id="mobile-undo">↶ Ultimo punto</button><button id="mobile-stop-tool">Annulla disegno</button><button id="mobile-finish-edit">Fine modifica</button></div>
  <main id="mobile-pages">
   <section data-screen="fields"><header class="mobile-page-heading"><h1>Campi</h1><button id="mobile-add-from-fields" aria-label="Aggiungi campo">${icon('plus')}</button></header><div id="mobile-fields-total"></div><div id="mobile-fields-list"></div></section>
-  <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Proposta / PDF</button><button id="mobile-detail-quote">Preventivo</button></div></section>
+  <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Proposta / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
   <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><button id="mobile-parameters-map">Modifica perimetro e passaggi</button><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Salvato su questo dispositivo. PDF e preventivo sono disponibili nella scheda del campo.</p></section>
   <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><button id="mobile-new-project">${icon('plus')} Nuovo</button></header><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
  </main>
@@ -46,10 +46,9 @@ export function createMobileUI(api){
    else{delete host.dataset.base;api.restoreBaseMap?.();}
   }
  }
- function protectParameterControls(){
-  const body=$('#mobile-parameters-body');
-  for(const type of ['touchstart','touchend','pointerdown','pointerup'])body.addEventListener(type,event=>{
-   if(event.target.closest?.('input,select,textarea'))event.stopPropagation();
+ function protectMobileControls(){
+  for(const type of ['touchstart','touchend','pointerdown','pointerup'])root.addEventListener(type,event=>{
+   if(event.target.closest?.('input,select,textarea'))event.stopImmediatePropagation?.();
   });
  }
  function navigate(next){
@@ -117,9 +116,13 @@ export function createMobileUI(api){
   $('#mobile-fields-total').innerHTML=`<strong>${fields.length} campi · ${area(sum('areaM2'))}</strong><span>${n(sum('simulatedPlants'))} barbatelle · ${n(sum('totalPosts'))} pali</span><small>${n(sum('intermediatePosts'))} intermedi · ${n(sum('headPosts'))} di testa</small>`;
   const list=$('#mobile-fields-list');list.replaceChildren();
   if(!fields.length){list.innerHTML='<p class="mobile-empty">Nessun campo disegnato. Aggiungi il primo campo dalla mappa.</p>';return;}
-  for(const field of fields){const m=api.getMetrics(field),button=document.createElement('button');button.type='button';button.className='mobile-field-card';button.dataset.fieldId=field.id;button.innerHTML=`<div class="mobile-card-preview">${preview(field)}</div><div><strong>${escape(field.label)}</strong><span>${area(m.areaM2)} · ${n(m.simulatedPlants)} barbatelle</span><small>${escape(field.grapeVariety||'Vitigno da definire')} · ${n(m.totalPosts)} pali</small></div><b aria-hidden="true">›</b>`;button.addEventListener('click',()=>openField(field.id));list.append(button);}
+  for(const field of fields){const m=api.getMetrics(field),row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');row.className='mobile-field-card-row';button.type='button';button.className='mobile-field-card';button.dataset.fieldId=field.id;button.innerHTML=`<div class="mobile-card-preview">${preview(field)}</div><div><strong>${escape(field.label)}</strong><span>${area(m.areaM2)} · ${n(m.simulatedPlants)} barbatelle</span><small>${escape(field.grapeVariety||'Vitigno da definire')} · ${n(m.totalPosts)} pali</small></div><b aria-hidden="true">›</b>`;button.addEventListener('click',()=>openField(field.id));remove.type='button';remove.className='mobile-card-delete';remove.dataset.removeField=field.id;remove.setAttribute('aria-label',`Elimina ${field.label}`);remove.textContent='−';remove.addEventListener('click',()=>deleteField(field.id));row.append(button,remove);list.append(row);}
  }
  function openField(id){if(transaction)return;api.selectField(id);navigate('detail');}
+ function deleteField(id){
+  if(globalThis.confirm&&!globalThis.confirm('Eliminare definitivamente questo campo?'))return;
+  api.removeField(id);transaction=false;awaitingPerimeter=false;navigate('fields');showNotice('Campo eliminato.');
+ }
  function renderDetail(){
   const field=api.getField();$('#mobile-detail-title').textContent=field.label||'Campo';
   $('#mobile-field-detail').innerHTML=`<div class="mobile-large-preview">${preview(field)}</div>${metricsHtml(field)}<dl class="mobile-materials">${[
@@ -160,10 +163,11 @@ export function createMobileUI(api){
    for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button','#select-cadastre-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
    move($('#close-perimeter-button'),$('#mobile-drawing-actions'));
    move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));move($('#north-button'),$('.mobile-home-tools'));
+   oldNorthHtml=$('#north-button').innerHTML;$('#north-button').innerHTML=icon('north');
    $('#mobile-project-name').value=api.getField()?.localProjectName||'Il mio impianto';
    screen='map';navigate('map');
   }else{
-   api.stopTools();closeSheet();for(const [node,anchor] of homes)anchor.after(node);
+   api.stopTools();closeSheet();if(oldNorthHtml)$('#north-button').innerHTML=oldNorthHtml;for(const [node,anchor] of homes)anchor.after(node);
    $('.advanced').open=oldAdvancedOpen;
    document.body.classList.remove('mobile-app-active','mobile-drawing','mobile-editing');delete document.body.dataset.mobileScreen;
    map.classList.remove('fullscreen-map');document.body.classList.remove('map-fullscreen-open');
@@ -182,6 +186,7 @@ export function createMobileUI(api){
  $('#mobile-undo').addEventListener('click',api.undoPoint);$('#mobile-stop-tool').addEventListener('click',()=>{api.stopTools();drawingState({active:false});});
  $('#mobile-finish-edit').addEventListener('click',()=>{api.stopTools();editingState({active:false});});
  $('#mobile-detail-pdf').addEventListener('click',()=>api.finalAction('report'));$('#mobile-detail-quote').addEventListener('click',()=>api.finalAction('quote'));
+ $('#mobile-delete-field').addEventListener('click',()=>deleteField(api.getField().activeFieldId));
  sheet.addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;
   if(b.id==='draw-map-button')awaitingPerimeter=true;
   if(b.closest('[data-content="perimeter"]')||['exclude-line-button','exclude-zone-button'].includes(b.id)||b.textContent==='Modifica')closeSheet();
@@ -198,7 +203,7 @@ export function createMobileUI(api){
   event.preventDefault();lastTouchButton=button;lastTouchAt=Date.now();forwardingTouch=true;button.click();forwardingTouch=false;
  });
  for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').textContent=result.theoreticalPlants?`${n(result.theoreticalPlants)} barbatelle · ordine: ${n(result.commercialPlants25)} (multipli di 25)`:'Inserisci superficie e distanze valide';});
- protectParameterControls();
+ protectMobileControls();
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();
  return controller;

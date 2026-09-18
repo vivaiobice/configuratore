@@ -191,6 +191,22 @@ Correzioni:
 - in Campi la mappa sottostante viene forzata su Satellite e il pannello elenco diventa traslucido;
 - aggiunti test DOM per propagazione touch, Satellite, conteggi e regressione desktop.
 
+### V24 — controlli iOS globali, eliminazione campi e rifinitura mobile
+
+- Inserita l’icona WebApp/Favicon fornita dall’utente e aggiunto il manifest installabile.
+- Estesa la protezione degli eventi touch a tutti gli input, select e textarea della UI mobile,
+  compresi ricerca mappa e calcolatore rapido, senza annullare il comportamento nativo iOS.
+- Aggiunta l’eliminazione con conferma: pulsante `−` nella schermata Campi e pulsante
+  `Elimina campo` nella scheda specifica.
+- Se viene eliminato l’unico campo, il progetto conserva la propria identità locale ma torna a una
+  bozza vuota pronta per un nuovo disegno.
+- Sostituita la lettera `N` del comando Nord mobile con una freccia a bussola; tornando al layout
+  desktop viene ripristinato il contenuto originale.
+- Barra mobile più trasparente e arrotondata; pulsante Campo quadrato e centrato; scala e controlli
+  cartografici sollevati sopra la barra per evitare sovrapposizioni.
+- Aggiunta in mobile la dicitura `AMBIENTE TEST · V24`.
+- Nessuna modifica al foglio desktop `styles.css`; la presentazione resta confinata a `mobile.css`.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
@@ -252,10 +268,10 @@ Correzioni:
 8. Non dichiarare “testato su iPhone” senza prova reale su Safari iOS.
 9. Conservare lo ZIP precedente tramite cronologia versioni; sostituire l'identità persistente corrente.
 
-## Stato di verifica e limitazioni alla V19
+## Stato di verifica e limitazioni alla V24
 
 - Test unitari/DOM automatizzati: vedere l'output dell'ultima esecuzione e `README.md`.
-- Test nativo Safari iPhone: ancora necessario dopo la consegna della V19.
+- Test nativo Safari iPhone: ancora necessario dopo la consegna della V24.
 - Il browser remoto non può raggiungere il server locale del workspace; una verifica DOM automatizzata
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta

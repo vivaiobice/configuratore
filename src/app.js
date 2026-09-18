@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=23';
+import { createMobileUI } from './mobile-ui.js?v=24';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=20';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -498,6 +498,16 @@ function newMobileProject() {
   state = { ...state, project:createInitialState().project, cloud:undefined };
   ensureLocalProjectIdentity('Il mio impianto'); mobileTransactionSnapshot = null; loadActiveFieldOnMap();
 }
+function removeMobileField(fieldId) {
+  const selected = switchProjectField(state.project, fieldId);
+  const localProjectId = selected.localProjectId;
+  const localProjectName = selected.localProjectName;
+  const project = selected.fields.length > 1
+    ? removeActiveProjectField(selected)
+    : { ...createInitialState().project, localProjectId, localProjectName };
+  state = { ...state, project:ensureProjectFields(project) };
+  mobileTransactionSnapshot = null; persist(); loadActiveFieldOnMap();
+}
 
 mobileUi = createMobileUI({
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
@@ -506,6 +516,7 @@ mobileUi = createMobileUI({
   stopTools:()=>mapApi?.stopTools(), finishEdit:()=>mapApi?.finishVertexEditing(), undoPoint:()=>mapApi?.undoDrawPoint(), finishDraw:()=>mapApi?.finishDraw(),
   beginNewField:beginMobileNewField, beginEdit:beginMobileEdit, cancelEdit:cancelMobileEdit,
   selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },
+  removeField:removeMobileField,
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
   finalAction:requestFinalAction
 });
