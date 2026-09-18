@@ -41,8 +41,16 @@ export function createMobileUI(api){
    preview.replaceChildren();preview.dataset.base='satellite';preview.append(map);api.showSatellitePreview?.();
    $('#mobile-parameters-body').dataset.mobileInteractive='true';
   }else{
-   $('#mobile-map-host').append(map);delete preview.dataset.base;api.restoreBaseMap?.();
+   const host=$('#mobile-map-host');host.append(map);delete preview.dataset.base;
+   if(next==='fields'){host.dataset.base='satellite';api.showSatellitePreview?.();}
+   else{delete host.dataset.base;api.restoreBaseMap?.();}
   }
+ }
+ function protectParameterControls(){
+  const body=$('#mobile-parameters-body');
+  for(const type of ['touchstart','touchend','pointerdown','pointerup'])body.addEventListener(type,event=>{
+   if(event.target.closest?.('input,select,textarea'))event.stopPropagation();
+  });
  }
  function navigate(next){
   if(!enabled)return;
@@ -190,6 +198,7 @@ export function createMobileUI(api){
   event.preventDefault();lastTouchButton=button;lastTouchAt=Date.now();forwardingTouch=true;button.click();forwardingTouch=false;
  });
  for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').textContent=result.theoreticalPlants?`${n(result.theoreticalPlants)} barbatelle · ordine: ${n(result.commercialPlants25)} (multipli di 25)`:'Inserisci superficie e distanze valide';});
+ protectParameterControls();
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();
  return controller;

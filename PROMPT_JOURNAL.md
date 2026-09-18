@@ -151,6 +151,46 @@ Implementazione:
 - Mantenere separati valori planimetrici e valori sul terreno, indicando risoluzione e affidabilità del dato.
 - Preferire DTM/LiDAR ad alta risoluzione; un DEM da circa 30 m non è adeguato ai dettagli di vigneto.
 
+### V22 — correzioni mobile dopo prova iPhone
+
+Screenshot e problemi segnalati:
+
+- `+ Aggiungi campo` scomparso;
+- dock inferiore visivamente opaca anziché liquid glass;
+- mappa interrotta sopra il fondo dello schermo;
+- strumenti Mappa ancora visibili in Campi e Progetti;
+- conteggio/riepilogo Campi non affidabile in presenza di bozze incomplete;
+- vincolo ribadito: desktop intatto.
+
+Cause e correzioni:
+
+- la regola che mostrava il CTA aveva specificità CSS inferiore alla regola che lo nascondeva;
+- `#mobile-map-host` conservava il vecchio margine inferiore di 72 px;
+- la visibilità degli strumenti non era legata allo stato della schermata;
+- il filtro Campi considerava valida qualsiasi `geometry` truthy, anche un anello incompleto.
+
+La V22 assegna lo stato direttamente alla shell mobile, estende la mappa a tutto il viewport,
+mostra il CTA con selettore non ambiguo, nasconde gli strumenti fuori da Mappa/editor, applica
+blur+saturazione e maggiore trasparenza alla dock e conteggia solo perimetri chiusi validi.
+`styles.css` desktop resta invariato alla V18.
+
+### V23 — controlli modulo iOS e Satellite nella sezione Campi
+
+Segnalazioni:
+
+- tutti i campi testo/numerici e i menu a elenco di `Imposta l’impianto` non rispondevano su iPhone;
+- nella schermata Campi non era visibile lo sfondo satellitare;
+- desktop da mantenere invariato.
+
+Correzioni:
+
+- ripristinato `touch-action:auto` per input, select e textarea;
+- isolati `touchstart`, `touchend`, `pointerdown` e `pointerup` dei controlli del modulo senza
+  chiamare `preventDefault`, così Safari mantiene tastiera e selettori nativi;
+- innalzato e isolato lo strato del modulo rispetto alla superficie MapLibre;
+- in Campi la mappa sottostante viene forzata su Satellite e il pannello elenco diventa traslucido;
+- aggiunti test DOM per propagazione touch, Satellite, conteggi e regressione desktop.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e

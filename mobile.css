@@ -1,4 +1,4 @@
-/* V22: mobile application shell. Desktop declarations are untouched. */
+/* V23: mobile application shell. Desktop declarations are untouched. */
 .mobile-only{display:none}
 @media(max-width:800px), (max-width:1100px) and (pointer:coarse){
  body.mobile-app-active{margin:0;padding:0;overflow:hidden;height:100dvh;background:#edf2ed}
@@ -34,6 +34,7 @@
  #mobile-app .mobile-navigation button{flex:1;flex-direction:column;gap:3px;padding:5px;background:transparent;border-radius:14px;font-size:11px;font-weight:650;color:#fff}
  #mobile-app .mobile-navigation button[aria-current="page"]{background:rgba(255,255,255,.2);color:#fff}
  #mobile-pages{position:absolute;inset:0 0 calc(72px + env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#f4f6f2;z-index:7;padding:calc(8px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 28px max(16px,env(safe-area-inset-left))}
+ #mobile-app[data-screen="fields"] #mobile-pages{background:rgba(244,246,242,.62);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
  body[data-mobile-screen="map"] #mobile-pages,body[data-mobile-screen="editor"] #mobile-pages{display:none}
  .mobile-page-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 20px}
  .mobile-page-heading h1{font-size:25px;letter-spacing:-.04em;margin:0;flex:1}
@@ -58,11 +59,11 @@
  .mobile-storage-note,.mobile-empty{font-size:12px;line-height:1.5;color:#75806e;margin:14px 0}
  #mobile-app .mobile-project-card{width:100%;padding:18px;text-align:left;background:#fff;border:1px solid #e0e6dc;display:grid;justify-content:stretch;gap:7px}
  .mobile-project-card strong{font-size:17px}.mobile-project-card span,.mobile-project-card small{font-size:12px;font-weight:500}
- #mobile-app input,#mobile-app select,#mobile-app textarea{font:inherit;font-size:16px;color:#193b29;max-width:100%;padding:12px;border:1px solid #ccd8c9;border-radius:10px;background:white;min-height:44px;pointer-events:auto;touch-action:manipulation;-webkit-user-select:text;user-select:text}
+ #mobile-app input,#mobile-app select,#mobile-app textarea{font:inherit;font-size:16px;color:#193b29;max-width:100%;padding:12px;border:1px solid #ccd8c9;border-radius:10px;background:white;min-height:44px;pointer-events:auto;touch-action:auto;-webkit-user-select:text;user-select:text}
  #mobile-app label{font-size:12px;font-weight:650;color:#5c6c59}
  .mobile-label{display:grid;gap:6px;margin-bottom:15px}
  #mobile-app .field-manager{background:#fff;border:1px solid #e0e6dc;border-radius:16px;padding:16px;margin:0 0 14px;display:block}
- #mobile-parameters-body{position:relative;z-index:2;pointer-events:auto;isolation:isolate}
+ #mobile-parameters-body{position:relative;z-index:20;pointer-events:auto;isolation:isolate;touch-action:auto}
  #mobile-app .field-manager>label:first-child,#mobile-app .field-manager-actions{display:none}
  #mobile-app .field-name-label{display:block}
  #mobile-app .step[data-step="2"],#mobile-app .advanced{margin:0 0 14px;padding:17px;border:1px solid #e0e6dc;border-radius:16px;background:#fff}
