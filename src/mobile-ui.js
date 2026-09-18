@@ -50,7 +50,7 @@ export function createMobileUI(api){
    if(globalThis.confirm&&!globalThis.confirm('Uscire senza confermare le modifiche?'))return;
    cancel();return;
   }
-  screen=next;document.body.dataset.mobileScreen=next;closeSheet();$('#mobile-notice').hidden=true;placeMap(next);
+  screen=next;document.body.dataset.mobileScreen=next;root.dataset.screen=next;closeSheet();$('#mobile-notice').hidden=true;placeMap(next);
   root.querySelectorAll('[data-screen]').forEach(node=>node.hidden=node.dataset.screen!==next);
   root.querySelectorAll('[data-view]').forEach(button=>button.setAttribute('aria-current',button.dataset.view===(next==='detail'?'fields':next)?'page':'false'));
   $('#mobile-pages').scrollTop=0;
@@ -104,7 +104,7 @@ export function createMobileUI(api){
  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;}
  function preview(field){return renderProjectDiagramSvg({polygon:field.geometry,rows:api.getMetrics(field).rows});}
  function renderFields(){
-  const fields=api.getFields().filter(f=>f.geometry),metrics=fields.map(api.getMetrics);
+  const fields=api.getFields().filter(f=>Array.isArray(f?.geometry)&&f.geometry.length>=4),metrics=fields.map(api.getMetrics);
   const sum=key=>metrics.reduce((total,m)=>total+(Number(m[key])||0),0);
   $('#mobile-fields-total').innerHTML=`<strong>${fields.length} campi · ${area(sum('areaM2'))}</strong><span>${n(sum('simulatedPlants'))} barbatelle · ${n(sum('totalPosts'))} pali</span><small>${n(sum('intermediatePosts'))} intermedi · ${n(sum('headPosts'))} di testa</small>`;
   const list=$('#mobile-fields-list');list.replaceChildren();
