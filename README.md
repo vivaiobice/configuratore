@@ -2,7 +2,18 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V18 WebApp.
+Stato: ambiente TEST · release V19 WebApp.
+
+## V19 — WebApp mobile a schermate
+
+- Il link mobile apre direttamente la mappa con logo, filigrana e campi già disegnati.
+- Flusso: Aggiungi campo → editor → parametri impianto → salva → ritorno alla mappa.
+- Menu principale: Mappa / Campi / Progetti.
+- Campi: riepilogo aggregato, schede singole, anteprima dell'impianto, barbatelle e pali distinti.
+- Progetti: salvataggio e riapertura locale dell'impianto completo.
+- Calcolatore rapido e livelli accessibili dalla mappa.
+- Desktop conservato; la shell mobile riusa gli stessi controlli e gli stessi dati.
+- `PROMPT_JOURNAL.md` contiene cronologia, requisiti, KPI, bug corretti e regole di continuità.
 
 ## V18 — mobile ispirato al flusso OneSoil
 
@@ -21,7 +32,8 @@ Stato: ambiente TEST · release V18 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-216 test automatici verificati, compresi navigazione sul DOM, ripristino desktop e calcolo dei tagli.
+223 test automatici verificati, compresi flusso mobile a schermate, archivio progetti,
+navigazione sul DOM, ripristino desktop e calcolo dei tagli.
 Il browser remoto di verifica non raggiunge la copia locale: resa visiva, gesti e rotazione vanno ancora verificati su Safari iPhone reale.
 
 Prova consigliata su iPhone: apri Mappa, disegna un campo, conferma, modifica punti, aggiungi un passaggio,

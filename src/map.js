@@ -890,6 +890,16 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     return true;
   }
 
+  function focusAllFields() {
+    const rings = [committedGeometry, ...(currentOtherFields ?? []).map((field) => field?.geometry)]
+      .filter((ring) => Array.isArray(ring) && ring.length >= 4);
+    if (!rings.length) return false;
+    const first = rings[0][0];
+    const bounds = rings.flat().reduce((box, coordinate) => box.extend(coordinate), new globalThis.maplibregl.LngLatBounds(first, first));
+    map.fitBounds(bounds, { padding:65, maxZoom:18, duration:350, essential:true });
+    return true;
+  }
+
   function setBaseMap(kind) {
     if (!map.getLayer(SATELLITE_ID) || !map.getLayer(STREET_ID)) return;
     const satellite = kind !== 'street';
@@ -983,5 +993,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, focusAllFields, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

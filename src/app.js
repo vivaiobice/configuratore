@@ -1,5 +1,6 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=18';
+import { createMobileUI } from './mobile-ui.js?v=19';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=18';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
@@ -27,6 +28,7 @@ let vertexEditingActive = false;
 let cloudService = null;
 let latestMetrics = null;
 let pendingFinalAction = null;
+let mobileTransactionSnapshot = null;
 let perimeterEventSent = Boolean(state.project.geometry);
 const sessionId = (() => {
   const existing = globalThis.sessionStorage?.getItem('vivai-obice:configuratore:session');
@@ -140,6 +142,7 @@ try {
     onGeometryChange: (geometry) => {
       const sourcePatch = state.project.sourceType === 'cadastral' ? { sourceType:'mixed' } : {};
       patchGeometry(geometry, sourcePatch);
+      mobileUi?.geometryCommitted();
       if (geometry && !perimeterEventSent) { perimeterEventSent = true; track('perimeter_completed', { vertices:Math.max(0, geometry.length - 1) }); }
     },
     onExclusionAdd: (geometry, meta = {}) => {
@@ -412,6 +415,7 @@ exclusionPanel?.before(exclusionHome);
 let fullscreenScrollY = 0;
 function placeMapForViewport() {
   if (!mapWrap || !appShell || !panelScroll || !stepOne) return;
+  if (mobileUi?.isActive?.()) { mobileUi.sync(); requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
   if (mapWrap.classList.contains('fullscreen-map')) { mobileUi?.sync(); requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
   const mobile = isMobileMap();
   if (mobile) mapApi?.stopTools();
@@ -456,8 +460,48 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && mapWrap?.classList.contains('fullscreen-map')) setMapFullscreen(false);
 });
 
-mobileUi = createMobileUI({isMobile:isMobileMap,setFullscreen:setMapFullscreen,getField:()=>state.project,
-  stopTools:()=>mapApi?.stopTools(),finishEdit:()=>mapApi?.finishVertexEditing(),undoPoint:()=>mapApi?.undoDrawPoint()});
+function snapshotMobileTransaction() { mobileTransactionSnapshot = JSON.parse(JSON.stringify(state)); }
+function ensureLocalProjectIdentity(name = '') {
+  if (!state.project.localProjectId) state = { ...state, project:{ ...state.project, localProjectId:newSessionId() } };
+  if (name.trim()) state = { ...state, project:{ ...state.project, localProjectName:name.trim() } };
+  persist();
+}
+function beginMobileNewField() {
+  snapshotMobileTransaction();
+  const fields = state.project.fields ?? [];
+  if (!(fields.length === 1 && !fields[0].geometry)) state = { ...state, project:addProjectField(state.project) };
+  persist(); loadActiveFieldOnMap(); mapApi?.beginDraw();
+}
+function beginMobileEdit() { snapshotMobileTransaction(); }
+function cancelMobileEdit() {
+  if (!mobileTransactionSnapshot) return;
+  state = mobileTransactionSnapshot; mobileTransactionSnapshot = null;
+  persist(); loadActiveFieldOnMap();
+}
+async function saveMobileProject(name = '') {
+  ensureLocalProjectIdentity(name || state.project.localProjectName || 'Il mio impianto');
+  writeLocalProject(globalThis.localStorage, state.project, state.project.localProjectName);
+  mobileTransactionSnapshot = null;
+}
+function loadMobileProject(item) {
+  if (!item?.project) return;
+  state = { ...state, project:ensureProjectFields(JSON.parse(JSON.stringify(item.project))), cloud:undefined };
+  mobileTransactionSnapshot = null; persist(); loadActiveFieldOnMap();
+}
+function newMobileProject() {
+  state = { ...state, project:createInitialState().project, cloud:undefined };
+  ensureLocalProjectIdentity('Il mio impianto'); mobileTransactionSnapshot = null; loadActiveFieldOnMap();
+}
+
+mobileUi = createMobileUI({
+  isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
+  resizeMap:()=>requestAnimationFrame(()=>mapApi?.map?.resize?.()), focusAll:()=>mapApi?.focusAllFields?.(), focusField:()=>mapApi?.focusActiveField(),
+  stopTools:()=>mapApi?.stopTools(), finishEdit:()=>mapApi?.finishVertexEditing(), undoPoint:()=>mapApi?.undoDrawPoint(), finishDraw:()=>mapApi?.finishDraw(),
+  beginNewField:beginMobileNewField, beginEdit:beginMobileEdit, cancelEdit:cancelMobileEdit,
+  selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },
+  saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
+  finalAction:requestFinalAction
+});
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#post-spacing', 'postSpacingM');
 $('#headland')?.addEventListener('input', (event) => {

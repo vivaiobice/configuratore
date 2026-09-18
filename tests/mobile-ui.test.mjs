@@ -1,58 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import vm from 'node:vm';
 import {parseHTML} from 'linkedom';
 import {createMobileUI} from '../src/mobile-ui.js';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
-const controller=app.slice(app.indexOf('const mapWrap = document.querySelector'),app.indexOf('mobileUi = createMobileUI('));
-function setup(){
- const {document}=parseHTML(html);globalThis.document=document;
- const $=s=>document.querySelector(s);let mobile=true,stopped=0;
- const window={scrollY:200,scrollTo(){}};globalThis.window=window;
- const context={document,window,$,isMobileMap:()=>mobile,mobileUi:null,requestAnimationFrame:fn=>fn(),addEventListener(){},mapApi:{stopTools(){stopped++;},map:{resize(){}}}};
- vm.createContext(context);vm.runInContext(controller,context);
- const ui=createMobileUI({isMobile:()=>mobile,setFullscreen:context.setMapFullscreen,getField:()=>({label:'Campo test'}),stopTools:()=>stopped++,finishEdit(){},undoPoint(){}});
- context.mobileUi=ui;
- return {$,document,ui,context,get stopped(){return stopped;},desktop(){mobile=false;context.placeMapForViewport();}};
+test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
+function setup(mobile=true){
+ const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
+ const $=s=>document.querySelector(s);let begun=0,saved=0,cancelled=0;
+ const field={id:'f1',label:'Campo 1',geometry:[[8,44],[8.001,44],[8.001,44.001],[8,44]],exclusions:[]};
+ const project={activeFieldId:'f1',fields:[field],...field};
+ const metrics={areaM2:1000,netAreaM2:900,rows:[],simulatedPlants:400,intermediatePosts:80,headPosts:20,totalPosts:100};
+ const ui=createMobileUI({isMobile:()=>mobile,getField:()=>project,getFields:()=>project.fields,getMetrics:()=>metrics,
+  resizeMap(){},focusAll(){},stopTools(){},finishEdit(){},undoPoint(){},beginEdit(){begun++;},beginNewField(){begun++;},
+  selectField(){},cancelEdit(){cancelled++;},saveProject(){saved++;},listProjects:()=>[],loadProject(){},newProject(){},
+  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){}});
+ return {$,ui,document,get begun(){return begun;},get saved(){return saved;},get cancelled(){return cancelled;},desktop(){mobile=false;ui.sync();}};
 }
-test('real mobile DOM: entry, sheets, editor and return retain controls and project data',()=>{
- const c=setup(),{$}=c;
- assert.equal($('.field-manager').parentElement.dataset.content,'fields');
- assert.equal($('.segmented').parentElement.className,'map-toolbar');
- $('[data-view="fields"]').click();assert.equal($('.mobile-sheet').hidden,false);
- assert.equal($('[data-content="fields"]').hidden,false);
- $('.mobile-sheet header button').click();assert.equal($('.mobile-sheet').hidden,true);
- $('#map-fullscreen-button').click();assert.equal($('.map-wrap').parentElement,c.document.body);
- assert.equal($('.segmented').parentElement.dataset.content,'layers');
- $('[data-sheet="perimeter"]').click();assert.equal($('[data-content="perimeter"]').hidden,false);
- c.ui.drawingState({active:true,vertexCount:3});assert.equal($('.mobile-sheet').hidden,true);assert.equal($('.mobile-draw-actions').hidden,false);
- assert.equal($('#close-perimeter-button').parentElement,$('.mobile-draw-actions'));
- $('[data-action="cancel"]').click();assert.ok(c.stopped>0);
- $('#map-fullscreen-button').click();assert.equal($('.map-wrap').parentElement,$('.panel-scroll'));
- assert.equal($('.segmented').parentElement.className,'map-toolbar');
- $('[data-view="map"]').click();assert.ok($('.map-wrap').classList.contains('fullscreen-map'));
- $('[data-view="project"]').click();assert.ok(!$('.map-wrap').classList.contains('fullscreen-map'));
- assert.equal($('.mobile-draw-actions').hidden,true);
+test('mobile opens on map: add → editor → confirm → parameters → save → map',async()=>{
+ const c=setup(),{$}=c;assert.equal(c.document.body.dataset.mobileScreen,'map');
+ assert.equal($('.map-wrap').parentElement.id,'mobile-map-host');
+ $('#mobile-add-field').click();assert.equal(c.begun,1);assert.equal(c.document.body.dataset.mobileScreen,'editor');
+ c.ui.geometryCommitted();assert.equal(c.document.body.dataset.mobileScreen,'parameters');
+ assert.ok($('#mobile-parameters-body').contains($('#plant-spacing')));
+ assert.ok($('#mobile-parameters-body').contains($('#rootstock')));
+ $('#mobile-save-field').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.saved,1);assert.equal(c.document.body.dataset.mobileScreen,'map');
 });
-test('switching to desktop restores every moved control to its original container and order',()=>{
- const c=setup(),{$}=c;
- c.desktop();
- const original=parseHTML(html).document;
- for(const selector of ['.map-toolbar','.field-manager','.map-summary-grid']){
-  const structure=doc=>Array.from(doc.querySelector(selector).children).map(el=>el.outerHTML);
-  // Fullscreen button is deliberately detached by the existing V17 controller.
-  const filter=items=>items.filter(s=>!s.includes('id="map-fullscreen-button"'));
-  assert.deepEqual(filter(structure(c.document)),filter(structure(original)));
- }
- assert.equal($('#summary-save-project').textContent,'Salva il progetto');
- assert.equal($('.field-manager').parentElement,$('.step[data-step="1"]'));
- assert.equal($('.map-wrap').parentElement,$('.app-shell'));
+test('fields expose totals, preview, pole counts and edit/cancel',()=>{
+ const c=setup(),{$}=c;$('[data-view="fields"]').click();assert.equal(c.document.body.dataset.mobileScreen,'fields');
+ assert.match($('#mobile-fields-total').textContent,/400/);
+ $('[data-field-id="f1"]').click();assert.equal(c.document.body.dataset.mobileScreen,'detail');
+ assert.ok($('#mobile-field-detail svg'));assert.match($('#mobile-field-detail').textContent,/Pali intermedi/);
+ $('#mobile-edit-parameters').click();assert.equal(c.document.body.dataset.mobileScreen,'parameters');
+ $('#mobile-cancel-field').click();assert.equal(c.cancelled,1);assert.equal(c.document.body.dataset.mobileScreen,'map');
 });
-test('leaving a removal tool restores the main mobile map menu on reentry',()=>{
- const c=setup(),{$}=c;$('#map-fullscreen-button').click();
- c.ui.editingState({active:true});assert.ok($('.map-wrap').classList.contains('mobile-tool-active'));
- $('#map-fullscreen-button').click();$('#map-fullscreen-button').click();
- assert.ok(!$('.map-wrap').classList.contains('mobile-tool-active'));
+test('desktop restoration keeps the same inputs and values',()=>{
+ const c=setup(),{$}=c,input=$('#plant-spacing');input.value='1.2';c.desktop();
+ assert.equal($('#plant-spacing'),input);assert.equal(input.value,'1.2');
+ assert.ok($('.step[data-step="2"]').contains(input));assert.ok($('.advanced').contains($('#rootstock')));
+ assert.ok($('.step[data-step="1"]').contains($('.field-manager')));
+ assert.equal($('.map-wrap').parentElement.className,'app-shell');assert.ok(!c.document.body.classList.contains('mobile-app-active'));
 });
+test('desktop startup never moves controls',()=>{const c=setup(false);assert.equal(c.$('.map-wrap').parentElement.className,'app-shell');assert.ok(c.$('.step[data-step="2"]').contains(c.$('#plant-spacing')));});
