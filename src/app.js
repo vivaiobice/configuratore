@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=20';
+import { createMobileUI } from './mobile-ui.js?v=21';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=20';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -502,6 +502,7 @@ function newMobileProject() {
 mobileUi = createMobileUI({
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
   resizeMap:()=>requestAnimationFrame(()=>mapApi?.map?.resize?.()), focusAll:()=>mapApi?.focusAllFields?.(), focusField:()=>mapApi?.focusActiveField(),
+  showSatellitePreview:()=>mapApi?.setBaseMap('satellite'), restoreBaseMap:()=>mapApi?.setBaseMap(state.map?.base ?? 'satellite'),
   stopTools:()=>mapApi?.stopTools(), finishEdit:()=>mapApi?.finishVertexEditing(), undoPoint:()=>mapApi?.undoDrawPoint(), finishDraw:()=>mapApi?.finishDraw(),
   beginNewField:beginMobileNewField, beginEdit:beginMobileEdit, cancelEdit:cancelMobileEdit,
   selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },

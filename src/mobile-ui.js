@@ -16,7 +16,8 @@ export function createMobileUI(api){
  <div id="mobile-map-host"></div>
  <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
- <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button><button id="mobile-add-field" class="mobile-primary">${icon('plus')} Aggiungi campo</button></div>
+ <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
+ <button id="mobile-add-field" class="mobile-primary">${icon('plus')} Aggiungi campo</button>
  <div class="mobile-editor-top"><button id="mobile-editor-cancel">${icon('back')} Annulla</button><strong id="mobile-editor-title">Disegna campo</strong><button id="mobile-editor-next" class="mobile-primary">Continua</button></div>
  <div class="mobile-editor-tools"><button data-sheet="perimeter">Perimetro</button><button data-sheet="cuts">Passaggi / esclusioni</button><button data-sheet="orientation">Filari</button><button data-sheet="layers">${icon('layers')}</button></div>
  <div id="mobile-drawing-actions"><button id="mobile-undo">↶ Ultimo punto</button><button id="mobile-stop-tool">Annulla disegno</button><button id="mobile-finish-edit">Fine modifica</button></div>
@@ -34,13 +35,22 @@ export function createMobileUI(api){
  function move(node,parent){if(!node||!parent)return;if(!homes.has(node)){const anchor=document.createComment('mobile-home');node.before(anchor);homes.set(node,anchor);}parent.append(node);}
  function closeSheet(){sheet.hidden=true;}
  function showNotice(message){$('#mobile-notice').textContent=message;$('#mobile-notice').hidden=false;}
+ function placeMap(next){
+  const preview=$('#mobile-parameters-preview');
+  if(next==='parameters'){
+   preview.replaceChildren();preview.dataset.base='satellite';preview.append(map);api.showSatellitePreview?.();
+   $('#mobile-parameters-body').dataset.mobileInteractive='true';
+  }else{
+   $('#mobile-map-host').append(map);delete preview.dataset.base;api.restoreBaseMap?.();
+  }
+ }
  function navigate(next){
   if(!enabled)return;
   if(transaction&&!['parameters','editor'].includes(next)){
    if(globalThis.confirm&&!globalThis.confirm('Uscire senza confermare le modifiche?'))return;
    cancel();return;
   }
-  screen=next;document.body.dataset.mobileScreen=next;closeSheet();$('#mobile-notice').hidden=true;
+  screen=next;document.body.dataset.mobileScreen=next;closeSheet();$('#mobile-notice').hidden=true;placeMap(next);
   root.querySelectorAll('[data-screen]').forEach(node=>node.hidden=node.dataset.screen!==next);
   root.querySelectorAll('[data-view]').forEach(button=>button.setAttribute('aria-current',button.dataset.view===(next==='detail'?'fields':next)?'page':'false'));
   $('#mobile-pages').scrollTop=0;
@@ -119,7 +129,7 @@ export function createMobileUI(api){
   $('#mobile-active-field').textContent=field.geometry?`${field.label} · ${area(api.getMetrics(field).areaM2)} ›`:'I tuoi campi sulla mappa';
   $('#mobile-active-field').disabled=!field.geometry;
   $('#mobile-editor-next').disabled=!field.geometry&&!drawing;
-  if(screen==='parameters'){$('#mobile-parameters-preview').innerHTML=preview(field);$('#mobile-parameters-metrics').innerHTML=metricsHtml(field);}
+  if(screen==='parameters'){$('#mobile-parameters-metrics').innerHTML=metricsHtml(field);}
   if(screen==='detail')renderDetail();
  }
  function updateDrawingActions(){
@@ -141,7 +151,7 @@ export function createMobileUI(api){
    move($('.exclusion-panel'),sheet.querySelector('[data-content="cuts"]'));
    for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button','#select-cadastre-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
    move($('#close-perimeter-button'),$('#mobile-drawing-actions'));
-   move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));
+   move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));move($('#north-button'),$('.mobile-home-tools'));
    $('#mobile-project-name').value=api.getField()?.localProjectName||'Il mio impianto';
    screen='map';navigate('map');
   }else{

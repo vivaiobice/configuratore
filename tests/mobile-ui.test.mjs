@@ -49,3 +49,19 @@ test('touch pointer activation reaches mobile controls even when Safari omits th
  const event=new c.document.defaultView.Event('pointerup',{bubbles:true,cancelable:true});Object.defineProperty(event,'pointerType',{value:'touch'});button.dispatchEvent(event);
  assert.equal(c.begun,1);assert.equal(c.document.body.dataset.mobileScreen,'editor');
 });
+test('parameters use the live satellite map preview and return it to the home map',async()=>{
+ const c=setup(),{$}=c;$('#mobile-add-field').click();c.ui.geometryCommitted();
+ assert.equal($('.map-wrap').parentElement.id,'mobile-parameters-preview');
+ assert.equal($('#mobile-parameters-preview').dataset.base,'satellite');
+ $('#mobile-save-field').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal($('.map-wrap').parentElement.id,'mobile-map-host');
+});
+test('mobile parameter controls remain directly editable',()=>{
+ const c=setup(),{$}=c;$('#mobile-add-field').click();c.ui.geometryCommitted();
+ assert.equal($('#mobile-parameters-body').dataset.mobileInteractive,'true');
+ for(const selector of ['#field-name','#plant-spacing','#row-spacing','#headland','#post-spacing','#grape-variety','#rootstock']){
+  const control=$(selector);assert.ok(control);assert.equal(control.disabled,false);assert.equal(control.closest('#mobile-parameters-body')!==null,true);
+ }
+ $('#field-name').value='Collina sud';$('#field-name').dispatchEvent(new c.document.defaultView.Event('input',{bubbles:true}));
+ assert.equal($('#field-name').value,'Collina sud');
+});

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const html=read('index.html'),mobile=read('mobile.css'),app=read('src/app.js'),journal=read('PROMPT_JOURNAL.md');
-test('V20 cache busts its mobile shell and opens it as the mobile app',()=>{
- assert.match(html,/mobile\.css\?v=20/);assert.match(html,/src\/app\.js\?v=20/);
+test('current release cache busts its mobile shell and opens it as the mobile app',()=>{
+ assert.match(html,/mobile\.css\?v=21/);assert.match(html,/src\/app\.js\?v=21/);
  assert.match(app,/createMobileUI/);assert.match(mobile,/body\.mobile-app-active>.topbar/);
  assert.match(mobile,/data-mobile-screen="map"/);assert.match(mobile,/data-mobile-screen="editor"/);
 });

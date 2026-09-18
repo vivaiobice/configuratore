@@ -122,6 +122,35 @@ Correzioni:
   carica il campo e apre la scheda;
 - mantenuto il comportamento desktop precedente, compresa la rotazione con comandi/trackpad.
 
+### V21 — anteprima satellitare e grafica mobile
+
+Richieste ricevute:
+
+- nella schermata `Imposta l’impianto` mostrare sempre il satellite per valutare l’orientamento;
+- rendere modificabili Nome campo e tutti gli altri parametri su iOS;
+- barra inferiore traslucida, arrotondata, con icone e testi bianchi in stile app;
+- pulsante `+ Aggiungi campo` in basso al centro, più compatto e squadrato;
+- eliminare `+ / −` dello zoom mobile e lasciare un solo comando per riportare il Nord in alto;
+- non modificare la versione desktop.
+
+Implementazione:
+
+- l’anteprima parametri usa la stessa istanza MapLibre dell’editor, bloccata all’interazione e forzata
+  temporaneamente sul satellite; uscendo ripristina la base scelta dall’utente;
+- il modulo parametri è isolato sopra la mappa e input/select/textarea ricevono puntamento e selezione
+  testo espliciti per Safari iOS;
+- introdotto dock mobile flottante traslucido e riposizionato il CTA di aggiunta campo;
+- nascosti solo su mobile i controlli zoom MapLibre; il pulsante Nord originale viene riutilizzato;
+- `styles.css` desktop resta alla V18 e non è stato modificato.
+
+### Roadmap futura — terreno 3D e pendenze
+
+- Integrare in futuro un DEM/DTM per vista 3D, quote, dislivello, pendenza ed esposizione.
+- Prima fase: informativa e visuale, senza modificare automaticamente le quantità.
+- Seconda fase: campionamento altimetrico lungo i filari per lunghezze reali, barbatelle e pali.
+- Mantenere separati valori planimetrici e valori sul terreno, indicando risoluzione e affidabilità del dato.
+- Preferire DTM/LiDAR ad alta risoluzione; un DEM da circa 30 m non è adeguato ai dettagli di vigneto.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
