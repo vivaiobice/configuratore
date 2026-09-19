@@ -14,7 +14,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V24.1</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V25</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -23,7 +23,7 @@ export function createMobileUI(api){
  <div id="mobile-drawing-actions"><button id="mobile-undo">↶ Ultimo punto</button><button id="mobile-stop-tool">Annulla disegno</button><button id="mobile-finish-edit">Fine modifica</button></div>
  <main id="mobile-pages">
   <section data-screen="fields"><header class="mobile-page-heading"><h1>Campi</h1><button id="mobile-add-from-fields" aria-label="Aggiungi campo">${icon('plus')}</button></header><div id="mobile-fields-total"></div><div id="mobile-fields-list"></div></section>
-  <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Proposta / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
+  <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-detail-map" aria-label="Mappa satellitare interattiva del campo"></div><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Proposta / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
   <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><button id="mobile-parameters-map">Modifica perimetro e passaggi</button><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Salvato su questo dispositivo. PDF e preventivo sono disponibili nella scheda del campo.</p></section>
   <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><button id="mobile-new-project">${icon('plus')} Nuovo</button></header><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
  </main>
@@ -37,9 +37,12 @@ export function createMobileUI(api){
  function showNotice(message){$('#mobile-notice').textContent=message;$('#mobile-notice').hidden=false;}
  function placeMap(next){
   const preview=$('#mobile-parameters-preview');
+  map.classList.toggle('mobile-viewer-only',next==='detail');
   if(next==='parameters'){
    preview.replaceChildren();preview.dataset.base='satellite';preview.append(map);api.showSatellitePreview?.();
    $('#mobile-parameters-body').dataset.mobileInteractive='true';
+  }else if(next==='detail'){
+   const detail=$('#mobile-detail-map');detail.replaceChildren();detail.dataset.base='satellite';detail.append(map);api.showSatellitePreview?.();
   }else{
    const host=$('#mobile-map-host');host.append(map);delete preview.dataset.base;
    if(next==='fields'){host.dataset.base='satellite';api.showSatellitePreview?.();}
@@ -49,6 +52,7 @@ export function createMobileUI(api){
  function protectNativeControls(container){
   for(const type of ['touchstart','touchend','pointerdown','pointerup'])container.addEventListener(type,event=>{
    const control=event.target.closest?.('input,select,textarea');if(!control)return;
+   if(control.matches('select'))return;
    if(type==='touchstart'&&control.matches('input:not([type="range"]):not([type="checkbox"]),textarea')){
     try{control.focus({preventScroll:true});}catch{control.focus();}
    }
@@ -68,7 +72,7 @@ export function createMobileUI(api){
   if(next!=='editor'){api.stopTools();drawing=false;editing=false;}
   placeOrientation();renderField();
   if(next==='fields')renderFields();if(next==='detail')renderDetail();if(next==='projects')renderProjects();
-  api.resizeMap();if(next==='map')api.focusAll();
+  api.resizeMap();if(next==='map')api.focusAll();if(next==='detail')api.focusField();
  }
  function placeOrientation(){
   const parent=screen==='editor'?sheet.querySelector('[data-content="orientation"]'):$('.step[data-step="2"]');
@@ -120,7 +124,21 @@ export function createMobileUI(api){
   $('#mobile-fields-total').innerHTML=`<strong>${fields.length} campi · ${area(sum('areaM2'))}</strong><span>${n(sum('simulatedPlants'))} barbatelle · ${n(sum('totalPosts'))} pali</span><small>${n(sum('intermediatePosts'))} intermedi · ${n(sum('headPosts'))} di testa</small>`;
   const list=$('#mobile-fields-list');list.replaceChildren();
   if(!fields.length){list.innerHTML='<p class="mobile-empty">Nessun campo disegnato. Aggiungi il primo campo dalla mappa.</p>';return;}
-  for(const field of fields){const m=api.getMetrics(field),row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');row.className='mobile-field-card-row';button.type='button';button.className='mobile-field-card';button.dataset.fieldId=field.id;button.innerHTML=`<div class="mobile-card-preview">${preview(field)}</div><div><strong>${escape(field.label)}</strong><span>${area(m.areaM2)} · ${n(m.simulatedPlants)} barbatelle</span><small>${escape(field.grapeVariety||'Vitigno da definire')} · ${n(m.totalPosts)} pali</small></div><b aria-hidden="true">›</b>`;button.addEventListener('click',()=>openField(field.id));remove.type='button';remove.className='mobile-card-delete';remove.dataset.removeField=field.id;remove.setAttribute('aria-label',`Elimina ${field.label}`);remove.textContent='−';remove.addEventListener('click',()=>deleteField(field.id));row.append(button,remove);list.append(row);}
+  for(const field of fields){
+   const m=api.getMetrics(field),row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');
+   let swipeStartX=null,suppressOpen=false;
+   row.className='mobile-field-card-row';button.type='button';button.className='mobile-field-card';button.dataset.fieldId=field.id;
+   button.innerHTML=`<div class="mobile-card-preview">${preview(field)}</div><div><strong>${escape(field.label)}</strong><span>${area(m.areaM2)} · ${n(m.simulatedPlants)} barbatelle</span><small>${escape(field.grapeVariety||'Vitigno da definire')} · ${n(m.totalPosts)} pali</small></div><b aria-hidden="true">›</b>`;
+   button.addEventListener('pointerdown',event=>{swipeStartX=event.clientX;});
+   button.addEventListener('pointerup',event=>{
+    if(swipeStartX===null)return;const delta=event.clientX-swipeStartX;swipeStartX=null;if(Math.abs(delta)<45)return;
+    suppressOpen=true;for(const other of list.querySelectorAll('.mobile-field-card-row.delete-revealed'))if(other!==row)other.classList.remove('delete-revealed');
+    row.classList.toggle('delete-revealed',delta<0);remove.setAttribute('aria-hidden',delta<0?'false':'true');remove.tabIndex=delta<0?0:-1;
+   });
+   button.addEventListener('click',()=>{if(suppressOpen){suppressOpen=false;return;}openField(field.id);});
+   remove.type='button';remove.className='mobile-card-delete';remove.dataset.removeField=field.id;remove.setAttribute('aria-label',`Elimina ${field.label}`);remove.setAttribute('aria-hidden','true');remove.tabIndex=-1;remove.textContent='Elimina';remove.addEventListener('click',()=>deleteField(field.id));
+   row.append(remove,button);list.append(row);
+  }
  }
  function openField(id){if(transaction)return;api.selectField(id);navigate('detail');}
  function deleteField(id){
@@ -129,7 +147,7 @@ export function createMobileUI(api){
  }
  function renderDetail(){
   const field=api.getField();$('#mobile-detail-title').textContent=field.label||'Campo';
-  $('#mobile-field-detail').innerHTML=`<div class="mobile-large-preview">${preview(field)}</div>${metricsHtml(field)}<dl class="mobile-materials">${[
+  $('#mobile-field-detail').innerHTML=`${metricsHtml(field)}<dl class="mobile-materials">${[
    ['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
   ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
  }

@@ -217,6 +217,28 @@ Correzioni:
   propagazione fermata senza annullare l’evento e focus iOS esplicito su input/textarea al `touchstart`.
 - Nessuna modifica grafica, ai calcoli o al desktop.
 
+### V24.2 — sostituzione icona WebApp e favicon
+
+- Sostituito esclusivamente `assets/vivai-obice-app-icon.png` con la nuova icona trasparente
+  fornita dall’utente.
+- Aggiornato il cache-busting di favicon, Apple Touch Icon e manifest a `v=24.2` per impedire a
+  Safari/iOS di mantenere l’asset precedente.
+- Nessuna modifica a interfaccia, interazioni, calcoli o desktop.
+
+### V25 — menu iOS, eliminazione a scomparsa e scheda Campo LIVE
+
+- Richiesta: tutti i menu a tendina mobile devono tornare utilizzabili su Safari/iOS.
+- Causa corretta: la protezione dei controlli intercettava anche gli eventi touch/pointer dei `select`;
+  i menu ora seguono interamente il percorso nativo del browser senza `preventDefault` o stop della propagazione.
+- Nell’elenco Campi il comando elimina non è più sempre visibile: compare trascinando la scheda verso
+  sinistra, in stile Mail, e mantiene la conferma prima della cancellazione.
+- La scheda del singolo campo resta invariata nei dati e nelle azioni, ma l’anteprima SVG statica è
+  sostituita dalla mappa satellitare LIVE, navigabile con pan, pinch-zoom e rotazione gestuale.
+- Il riquadro mappa della scheda non espone pulsanti, toolbar o strumenti di modifica. Per modificare
+  il progetto si entra nell’editor oppure si torna alla Home Mappa.
+- Modifiche confinate a `src/mobile-ui.js`, `mobile.css`, cache/versione e test mobile; `styles.css`,
+  calcoli, geometrie e comportamento desktop restano invariati.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
@@ -278,10 +300,10 @@ Correzioni:
 8. Non dichiarare “testato su iPhone” senza prova reale su Safari iOS.
 9. Conservare lo ZIP precedente tramite cronologia versioni; sostituire l'identità persistente corrente.
 
-## Stato di verifica e limitazioni alla V24
+## Stato di verifica e limitazioni alla V25
 
 - Test unitari/DOM automatizzati: vedere l'output dell'ultima esecuzione e `README.md`.
-- Test nativo Safari iPhone: ancora necessario dopo la consegna della V24.
+- Test nativo Safari iPhone: ancora necessario dopo la consegna della V25.
 - Il browser remoto non può raggiungere il server locale del workspace; una verifica DOM automatizzata
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta

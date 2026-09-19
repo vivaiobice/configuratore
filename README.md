@@ -2,7 +2,15 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V24.1 WebApp.
+Stato: ambiente TEST · release V25 WebApp.
+
+## V25 — interazioni mobile e scheda Campo LIVE
+
+- Menu a tendina lasciati al percorso eventi nativo di Safari/iOS, senza intercettazione touch.
+- Eliminazione rapida nell’elenco Campi nascosta finché la scheda non viene trascinata verso sinistra.
+- L’anteprima nella scheda Campo usa la mappa satellitare LIVE con pan, zoom e rotazione gestuale.
+- Il riquadro LIVE non mostra pulsanti, toolbar o comandi di modifica; per modificare si usa l’editor o la Home Mappa.
+- Versione desktop e regole di calcolo invariate.
 
 ## V20 — fix interazione mobile
 
@@ -40,7 +48,7 @@ Stato: ambiente TEST · release V24.1 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-226 test automatici verificati, compresi tocchi Safari, selezione campo, rotazione mobile,
+249 test automatici verificati, compresi menu Safari, swipe eliminazione, scheda Campo LIVE,
 flusso mobile a schermate, archivio progetti,
 navigazione sul DOM, ripristino desktop e calcolo dei tagli.
 Il browser remoto di verifica non raggiunge la copia locale: resa visiva, gesti e rotazione vanno ancora verificati su Safari iPhone reale.
