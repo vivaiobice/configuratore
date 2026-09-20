@@ -1,5 +1,6 @@
 import {renderProjectDiagramSvg} from './report-diagram.js';
 import {calculateManualPlants} from './project-calculator.js?v=16';
+import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
 
 const icons={map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5zm6-2v16m6-14v16',fields:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',projects:'M3 7h7l2-3h9v16H3z',plus:'M12 4v16M4 12h16',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',layers:'M2 7l10-5 10 5-10 5zm0 5l10 5 10-5M2 17l10 5 10-5',calc:'M5 2h14v20H5zM8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1',back:'M15 4l-8 8 8 8',north:'M12 2l4.2 8.1L12 8.4 7.8 10.1 12 2zm0 20V8.4'};
 const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
@@ -10,11 +11,11 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 export function createMobileUI(api){
  const $=s=>document.querySelector(s), map=$('.map-wrap'), homes=new Map();
  let enabled=false,screen='map',drawing=false,editing=false,awaitingPerimeter=false,transaction=false,saving=false;
- let oldAdvancedOpen=false,oldNorthHtml='';
+ let oldAdvancedOpen=false,oldCompassLabel=null;
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V25</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V26</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -32,12 +33,30 @@ export function createMobileUI(api){
  <p id="mobile-notice" role="status" hidden></p>`;
  document.body.append(root);
  const sheet=$('.mobile-sheet');
+ const choices=createMobileChoices(root,()=>enabled);
+ const keyboard=installMobileKeyboard(root,()=>enabled);
+ const mapInstance=api.getMap?.(),desktopPaints=new Map();
+ function updateMapPresentation(){
+  if(!mapInstance)return;
+  for(const id of ['project-geometry-line','other-project-fields-line']){
+   if(!mapInstance.getLayer(id))continue;
+   const mobilePaint={'line-color':'#f5f6ed','line-width':1.1,'line-opacity':0.62};
+   if(enabled){
+    if(!desktopPaints.has(id))desktopPaints.set(id,Object.fromEntries(Object.keys(mobilePaint).map(key=>[key,mapInstance.getPaintProperty(id,key)??null])));
+    for(const [key,value] of Object.entries(mobilePaint))mapInstance.setPaintProperty(id,key,value);
+   }else if(desktopPaints.has(id)){
+    for(const [key,value] of Object.entries(desktopPaints.get(id)))mapInstance.setPaintProperty(id,key,value);
+    desktopPaints.delete(id);
+   }
+  }
+ }
+ mapInstance?.on('load',updateMapPresentation);
  function move(node,parent){if(!node||!parent)return;if(!homes.has(node)){const anchor=document.createComment('mobile-home');node.before(anchor);homes.set(node,anchor);}parent.append(node);}
- function closeSheet(){sheet.hidden=true;}
+ function closeSheet(){if(sheet.contains(document.activeElement))document.activeElement.blur?.();sheet.hidden=true;}
  function showNotice(message){$('#mobile-notice').textContent=message;$('#mobile-notice').hidden=false;}
  function placeMap(next){
   const preview=$('#mobile-parameters-preview');
-  map.classList.toggle('mobile-viewer-only',next==='detail');
+  map.classList.toggle('mobile-viewer-only',next==='detail'||next==='parameters');
   if(next==='parameters'){
    preview.replaceChildren();preview.dataset.base='satellite';preview.append(map);api.showSatellitePreview?.();
    $('#mobile-parameters-body').dataset.mobileInteractive='true';
@@ -65,14 +84,18 @@ export function createMobileUI(api){
    if(globalThis.confirm&&!globalThis.confirm('Uscire senza confermare le modifiche?'))return;
    cancel();return;
   }
-  screen=next;document.body.dataset.mobileScreen=next;root.dataset.screen=next;closeSheet();$('#mobile-notice').hidden=true;placeMap(next);
+  choices.close(false);screen=next;document.body.dataset.mobileScreen=next;root.dataset.screen=next;closeSheet();$('#mobile-notice').hidden=true;placeMap(next);
   root.querySelectorAll('[data-screen]').forEach(node=>node.hidden=node.dataset.screen!==next);
   root.querySelectorAll('[data-view]').forEach(button=>button.setAttribute('aria-current',button.dataset.view===(next==='detail'?'fields':next)?'page':'false'));
   $('#mobile-pages').scrollTop=0;
   if(next!=='editor'){api.stopTools();drawing=false;editing=false;}
   placeOrientation();renderField();
   if(next==='fields')renderFields();if(next==='detail')renderDetail();if(next==='projects')renderProjects();
-  api.resizeMap();if(next==='map')api.focusAll();if(next==='detail')api.focusField();
+  keyboard.update();api.resizeMap();if(next==='map')api.focusAll();
+  if(next==='detail'||next==='parameters'){
+   const focus=()=>{if(enabled&&screen===next)api.focusField();};
+   if(globalThis.requestAnimationFrame)globalThis.requestAnimationFrame(focus);else focus();
+  }
  }
  function placeOrientation(){
   const parent=screen==='editor'?sheet.querySelector('[data-content="orientation"]'):$('.step[data-step="2"]');
@@ -158,7 +181,7 @@ export function createMobileUI(api){
   }catch(error){showNotice(error.message);}
  }
  function renderField(){
-  if(!enabled)return;const field=api.getField();if(!field)return;
+  if(!enabled)return;choices.sync();const field=api.getField();if(!field)return;
   $('#mobile-active-field').textContent=field.geometry?`${field.label} · ${area(api.getMetrics(field).areaM2)} ›`:'I tuoi campi sulla mappa';
   $('#mobile-active-field').disabled=!field.geometry;
   $('#mobile-editor-next').disabled=!field.geometry&&!drawing;
@@ -177,23 +200,28 @@ export function createMobileUI(api){
   const next=api.isMobile();
   if(next===enabled){if(enabled)api.resizeMap();return;}
   enabled=next;
+  updateMapPresentation();
   if(next){
    document.body.classList.add('mobile-app-active');oldAdvancedOpen=$('.advanced').open;
    move(map,$('#mobile-map-host'));
-   move($('.field-manager'),$('#mobile-parameters-body'));move($('.step[data-step="2"]'),$('#mobile-parameters-body'));move($('.advanced'),$('#mobile-parameters-body'));$('.advanced').open=true;
+   move($('.field-manager'),$('[data-screen="parameters"]'));$('#mobile-parameters-preview').before($('.field-manager'));
+   move($('.step[data-step="2"]'),$('#mobile-parameters-body'));move($('.advanced'),$('#mobile-parameters-body'));$('.advanced').open=true;
    move($('.exclusion-panel'),sheet.querySelector('[data-content="cuts"]'));
    for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button','#select-cadastre-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
    move($('#close-perimeter-button'),$('#mobile-drawing-actions'));
-   move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));move($('#north-button'),$('.mobile-home-tools'));
-   oldNorthHtml=$('#north-button').innerHTML;$('#north-button').innerHTML=icon('north');
+   move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));
+   const compass=$('.maplibregl-ctrl-compass');
+   if(compass){oldCompassLabel=compass.getAttribute('aria-label');move(compass,$('.mobile-home-tools'));compass.setAttribute('aria-label','Bussola: ripristina il Nord');}
+   choices.activate();
    $('#mobile-project-name').value=api.getField()?.localProjectName||'Il mio impianto';
    screen='map';navigate('map');
   }else{
-   api.stopTools();closeSheet();if(oldNorthHtml)$('#north-button').innerHTML=oldNorthHtml;for(const [node,anchor] of homes)anchor.after(node);
+   api.stopTools();closeSheet();choices.deactivate();keyboard.reset();for(const [node,anchor] of homes)anchor.after(node);
+   const compass=$('.maplibregl-ctrl-compass');if(compass){if(oldCompassLabel===null)compass.removeAttribute('aria-label');else compass.setAttribute('aria-label',oldCompassLabel);}
    $('.advanced').open=oldAdvancedOpen;
    document.body.classList.remove('mobile-app-active','mobile-drawing','mobile-editing');delete document.body.dataset.mobileScreen;
-   map.classList.remove('fullscreen-map');document.body.classList.remove('map-fullscreen-open');
-   api.resizeMap();
+   map.classList.remove('fullscreen-map','mobile-viewer-only');document.body.classList.remove('map-fullscreen-open');
+   api.restoreBaseMap?.();api.resizeMap();
   }
  }
  root.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.dataset.view)navigate(button.dataset.view);if(button.dataset.go)navigate(button.dataset.go);if(button.dataset.sheet)openSheet(button.dataset.sheet);});
@@ -214,17 +242,26 @@ export function createMobileUI(api){
   if(b.closest('[data-content="perimeter"]')||['exclude-line-button','exclude-zone-button'].includes(b.id)||b.textContent==='Modifica')closeSheet();
   if(['remove-vertex-button','select-cadastre-button'].includes(b.id))editingState({active:true});
  });
- let forwardingTouch=false,lastTouchButton=null,lastTouchAt=0;
+ let forwardingTouch=false,lastTouchButton=null,lastTouchAt=0,touchGesture=null;
  root.addEventListener('click',(event)=>{
   const button=event.target.closest?.('button');
-  if(!forwardingTouch&&button===lastTouchButton&&Date.now()-lastTouchAt<700){event.preventDefault();event.stopImmediatePropagation?.();}
+  if(button&&!forwardingTouch&&button===lastTouchButton&&Date.now()-lastTouchAt<700&&(event.detail>0||event.pointerType==='touch')){event.preventDefault();event.stopImmediatePropagation?.();}
  },true);
+ root.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='touch')touchGesture={id:event.pointerId,x:event.clientX,y:event.clientY,button:event.target.closest?.('button'),moved:false};
+ },true);
+ root.addEventListener('pointermove',event=>{
+  if(touchGesture&&event.pointerId===touchGesture.id&&Math.hypot(event.clientX-touchGesture.x,event.clientY-touchGesture.y)>10)touchGesture.moved=true;
+ },true);
+ root.addEventListener('pointercancel',()=>{if(touchGesture)touchGesture.moved=true;},true);
  root.addEventListener('pointerup',(event)=>{
   if(event.pointerType!=='touch')return;
-  const button=event.target.closest?.('button');if(!button||button.disabled)return;
+  const button=event.target.closest?.('button'),gesture=touchGesture;touchGesture=null;
+  if(!enabled||!button||button.disabled||button.closest('.map-wrap'))return;
+  if(gesture&&(gesture.moved||gesture.button!==button))return;
   event.preventDefault();lastTouchButton=button;lastTouchAt=Date.now();forwardingTouch=true;button.click();forwardingTouch=false;
  });
- for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').textContent=result.theoreticalPlants?`${n(result.theoreticalPlants)} barbatelle · ordine: ${n(result.commercialPlants25)} (multipli di 25)`:'Inserisci superficie e distanze valide';});
+ for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').innerHTML=result.theoreticalPlants?`<strong>${n(result.theoreticalPlants)}</strong><span>barbatelle stimate</span><small>Da ordinare: <b>${n(result.commercialPlants25)}</b> · multipli di 25</small>`:'Inserisci superficie e distanze valide';});
  protectNativeControls($('#mobile-pages'));protectNativeControls(sheet);
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();

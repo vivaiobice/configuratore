@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V20 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V26 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -228,8 +228,9 @@ Correzioni:
 ### V25 — menu iOS, eliminazione a scomparsa e scheda Campo LIVE
 
 - Richiesta: tutti i menu a tendina mobile devono tornare utilizzabili su Safari/iOS.
-- Causa corretta: la protezione dei controlli intercettava anche gli eventi touch/pointer dei `select`;
-  i menu ora seguono interamente il percorso nativo del browser senza `preventDefault` o stop della propagazione.
+- Il primo intervento ha rimosso l'intercettazione touch/pointer dai `select` per lasciarli al percorso
+  nativo del browser. Le prove successive dell'utente su iPhone hanno però mostrato che il problema
+  persisteva: non considerare quindi quella diagnosi come causa definitivamente dimostrata.
 - Nell’elenco Campi il comando elimina non è più sempre visibile: compare trascinando la scheda verso
   sinistra, in stile Mail, e mantiene la conferma prima della cancellazione.
 - La scheda del singolo campo resta invariata nei dati e nelle azioni, ma l’anteprima SVG statica è
@@ -238,6 +239,55 @@ Correzioni:
   il progetto si entra nell’editor oppure si torna alla Home Mappa.
 - Modifiche confinate a `src/mobile-ui.js`, `mobile.css`, cache/versione e test mobile; `styles.css`,
   calcoli, geometrie e comportamento desktop restano invariati.
+
+### V26 — fix numerati 1–13 e adattatore controlli mobile
+
+Richieste ricevute tramite quindici screenshot, tutte limitate alla versione mobile:
+
+1. rendere la selezione del dock conforme alla curvatura del contenitore e aumentare la trasparenza;
+2. evidenziare con immediatezza il numero di barbatelle nel calcolatore rapido;
+3. presentare Satellite, Stradale e Catasto come tre comandi equidistanti e coerenti;
+4. mantenere sempre visibile sopra la tastiera il campo testo/numerico in modifica;
+5. spostare il Nome campo sopra l'anteprima LIVE, avvicinando mappa e orientamento filari;
+6. correggere tutti i menu a tendina bloccati, problema indicato come grave;
+7. rendere attivabile la checkbox `Vendemmia meccanica prevista`;
+8. correggere in particolare Vitigno, Clone/selezione e Portainnesto (stesso problema del punto 6);
+9. rendere LIVE la mappa anche nella prima configurazione successiva alla chiusura del perimetro;
+10. secondo esempio del problema tastiera del punto 4;
+11. sostituire la freccia Nord con la vera bussola MapLibre live, circolare e nella colonna strumenti;
+12. schiarire il perimetro del campo, mantenendolo meno evidente dei filari;
+13. usare l'ultima icona trasparente approvata per WebApp, favicon e installazione iOS.
+
+Diagnosi e soluzione:
+
+- Il blocco dei menu nativi non è stato riprodotto in modo attendibile nell'ambiente desktop e non è
+  stato attribuito senza prova a una singola causa Safari. V26 introduce invece un selettore mobile
+  controllato dall'app: legge le opzioni reali, aggiorna il `select` originale e invia gli eventi
+  `input` e `change`. Il desktop conserva i controlli HTML originali e i relativi listener.
+- La vendemmia meccanica usa un toggle mobile collegato al checkbox originale e alle stesse regole,
+  compresa la normalizzazione della capezzagna.
+- `visualViewport` aggiorna altezza e offset della shell e scorre il contenitore necessario per tenere
+  l'input attivo sopra la tastiera; la chiusura ripristina lo stato normale.
+- L'anteprima parametri usa la medesima istanza MapLibre LIVE anche al primo inserimento, forzata sul
+  Satellite, navigabile e priva dei comandi cartografici. Toccare il campo nell'anteprima non cambia
+  schermata: per modificare il perimetro si usa il comando dedicato.
+- La bussola non è un'imitazione: viene trasferito lo stesso nodo creato da MapLibre, quindi rotazione
+  live, handler e ripristino Nord restano quelli della libreria. Uscendo dal mobile torna al suo posto.
+- I perimetri mobile usano un tratto chiaro, sottile e semitrasparente. All'uscita dal mobile vengono
+  ripristinati esattamente i valori di stile precedenti.
+- Il nuovo file icona conserva i pixel RGBA dell'immagine trasparente approvata. Per Apple Touch Icon
+  è stata prodotta una variante 180×180 su fondo verde, perché iOS non conserva la trasparenza delle
+  icone Home e può altrimenti generare un alone bianco. I nomi file V26 evitano la cache precedente.
+- È stato corretto anche un difetto riproducibile: trascinare un pulsante mobile poteva attivarlo come
+  un tocco; oltre 10 px di movimento il gesto non genera più il click di fallback.
+
+Vincoli rispettati:
+
+- `styles.css` desktop resta byte-identico alla base approvata (SHA-256
+  `a6ecdd2c230c382f8a3351f5755d93d7244719b6ad4a00f43acabbc7acaeee90`).
+- Nessuna modifica a `src/map.js`, geometria, calcolo filari, barbatelle o pali.
+- Il badge desktop resta V25 intenzionalmente; il badge interno alla shell mobile mostra V26.
+- I filari curvi, pendenze e modello 3D del terreno restano una roadmap successiva, non parte di V26.
 
 ## Errori già incontrati e correzioni
 
@@ -279,6 +329,7 @@ Correzioni:
 - `mobile.css`: interfaccia mobile V19.
 - `src/app.js`: stato, eventi, collegamento UI/mappa/cloud e transazioni mobile.
 - `src/mobile-ui.js`: router e schermate mobile.
+- `src/mobile-controls.js`: selettori/checkbox mobile e gestione della tastiera tramite Visual Viewport.
 - `src/map.js`: disegno, modifica, quote, passaggi, esclusioni, catasto e mappe base.
 - `src/geometry.js`: geometria e taglio filari.
 - `src/project-calculator.js`: KPI quantitativi.
@@ -300,10 +351,11 @@ Correzioni:
 8. Non dichiarare “testato su iPhone” senza prova reale su Safari iOS.
 9. Conservare lo ZIP precedente tramite cronologia versioni; sostituire l'identità persistente corrente.
 
-## Stato di verifica e limitazioni alla V25
+## Stato di verifica e limitazioni alla V26
 
-- Test unitari/DOM automatizzati: vedere l'output dell'ultima esecuzione e `README.md`.
-- Test nativo Safari iPhone: ancora necessario dopo la consegna della V25.
+- Test unitari/DOM automatizzati: **260 superati**, vedere `README.md` e `V26-VERIFICA.md`.
+- Test nativo Safari iPhone: ancora necessario dopo la consegna della V26, in particolare apertura
+  dei selettori, checkbox, movimento/zoom/rotazione della prima anteprima e comportamento tastiera.
 - Il browser remoto non può raggiungere il server locale del workspace; una verifica DOM automatizzata
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta

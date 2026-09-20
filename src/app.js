@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=25';
+import { createMobileUI } from './mobile-ui.js?v=26';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=20';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -142,6 +142,8 @@ try {
     enableTouchRotation:isMobileMap,
     onFieldSelect:(fieldId)=>{
       if (!isMobileMap()) return;
+      // Preview gestures must not switch fields or leave the parameters transaction.
+      if (mobileUi && !mobileUi.isHome()) return;
       if (fieldId) { state={...state,project:switchProjectField(state.project,fieldId)};persist();loadActiveFieldOnMap(); }
       mobileUi?.openField(state.project.activeFieldId);
     },
@@ -510,6 +512,7 @@ function removeMobileField(fieldId) {
 }
 
 mobileUi = createMobileUI({
+  getMap:()=>mapApi?.map,
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
   resizeMap:()=>requestAnimationFrame(()=>mapApi?.map?.resize?.()), focusAll:()=>mapApi?.focusAllFields?.(), focusField:()=>mapApi?.focusActiveField(),
   showSatellitePreview:()=>mapApi?.setBaseMap('satellite'), restoreBaseMap:()=>mapApi?.setBaseMap(state.map?.base ?? 'satellite'),

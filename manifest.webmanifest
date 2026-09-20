@@ -7,7 +7,7 @@
   "theme_color": "#16251c",
   "icons": [
     {
-      "src": "./assets/vivai-obice-app-icon.png?v=24.2",
+      "src": "./assets/vivai-obice-icon-v26.png",
       "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"

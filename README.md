@@ -2,7 +2,23 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V25 WebApp.
+Stato: ambiente TEST · release V26 WebApp.
+
+## V26 — affidabilità dei controlli e rifinitura iPhone
+
+- Selettori mobile dedicati per inquadramento, vitigno, clone e portainnesto, collegati agli stessi
+  controlli e allo stesso stato dell'applicazione; il checkbox della vendemmia meccanica usa un
+  comando touch esplicito. Tornando al desktop vengono ripristinati i controlli originali.
+- Campo Nome spostato sopra l'anteprima; la mappa satellitare è LIVE già alla prima configurazione,
+  con pan, pinch-zoom e rotazione e senza pulsanti cartografici nel riquadro.
+- Gestione `visualViewport` per mantenere il campo attivo sopra la tastiera iOS.
+- Risultato del calcolatore rapido reso immediato: barbatelle in evidenza e ordine ×25 separato.
+- Satellite, Stradale e Catasto presentati come tre scelte uniformi.
+- Bussola MapLibre reale spostata nella colonna strumenti e resa circolare: conserva l'orientamento
+  live e il ripristino del Nord. Perimetri mobili più chiari e visivamente subordinati ai filari.
+- Dock più trasparente con selezione interna coerente con la curvatura esterna.
+- Icona V26 cache-busted; Apple Touch Icon preparata dalla stessa immagine approvata senza alone bianco.
+- Il foglio desktop `styles.css`, la geometria e le regole di calcolo non sono stati modificati.
 
 ## V25 — interazioni mobile e scheda Campo LIVE
 
@@ -48,7 +64,8 @@ Stato: ambiente TEST · release V25 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-249 test automatici verificati, compresi menu Safari, swipe eliminazione, scheda Campo LIVE,
+260 test automatici verificati, compresi selettori/checkbox mobile, tastiera visual viewport,
+calcolatore rapido, bussola MapLibre, swipe eliminazione, scheda Campo LIVE,
 flusso mobile a schermate, archivio progetti,
 navigazione sul DOM, ripristino desktop e calcolo dei tagli.
 Il browser remoto di verifica non raggiunge la copia locale: resa visiva, gesti e rotazione vanno ancora verificati su Safari iPhone reale.
