@@ -1,5 +1,5 @@
 const FIELD_KEYS = [
-  'label','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked',
+  'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked',
   'locationLabel','municipality','province','region','headlandWidthM','postSpacingM','mechanizedHarvest','projectContextType',
   'projectContextNote','grapeVariety','rootstock','cloneSelection','materialRequestNote','exclusions'
 ];
@@ -10,9 +10,14 @@ function newId() {
 }
 
 export function createDefaultField(id = newId(), index = 1, overrides = {}) {
+  const label = String(overrides.label ?? `Campo ${index}`);
+  const labelCustomized = Object.prototype.hasOwnProperty.call(overrides, 'labelCustomized')
+    ? Boolean(overrides.labelCustomized)
+    : !/^Campo\s+\d+$/i.test(label.trim());
   return {
     id,
-    label:`Campo ${index}`,
+    label,
+    labelCustomized,
     geometry:null,
     sourceType:'manual',
     cadastralRefs:[],
@@ -88,7 +93,17 @@ export function removeActiveProjectField(project) {
 }
 
 export function renameActiveProjectField(project, label) {
-  return updateActiveFieldProject(project, { label:String(label ?? '').trim() || 'Campo' });
+  return updateActiveFieldProject(project, { label:String(label ?? '').trim() || 'Campo', labelCustomized:true });
+}
+
+export function autoNameActiveProjectField(project) {
+  const base = ensureProjectFields(project);
+  const index = base.fields.findIndex((field) => field.id === base.activeFieldId);
+  const active = base.fields[index] ?? base.fields[0];
+  if (active.labelCustomized) return base;
+  const parts = [active.grapeVariety, active.rootstock].map(value=>String(value ?? '').trim()).filter(Boolean);
+  const label = parts.length ? parts.join(' · ') : `Campo ${Math.max(0,index)+1}`;
+  return updateActiveFieldProject(base, { label, labelCustomized:false });
 }
 
 export function activeField(project) {

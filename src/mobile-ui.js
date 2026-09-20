@@ -15,7 +15,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V27</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V28</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -56,13 +56,16 @@ export function createMobileUI(api){
  function showNotice(message){$('#mobile-notice').textContent=message;$('#mobile-notice').hidden=false;}
  function placeMap(next){
   const preview=$('#mobile-parameters-preview');
+  const center=$('#center-field-button'),homeTools=$('.mobile-home-tools');
   map.classList.toggle('mobile-viewer-only',next==='detail'||next==='parameters');
   if(next==='parameters'){
-   preview.replaceChildren();preview.dataset.base='satellite';preview.append(map);api.showSatellitePreview?.();
+   preview.replaceChildren();preview.dataset.base='satellite';preview.append(map);if(center)preview.append(center);api.showSatellitePreview?.();
    $('#mobile-parameters-body').dataset.mobileInteractive='true';
   }else if(next==='detail'){
+   if(center&&homeTools)homeTools.append(center);
    const detail=$('#mobile-detail-map');detail.replaceChildren();detail.dataset.base='satellite';detail.append(map);api.showSatellitePreview?.();
   }else{
+   if(center&&homeTools)homeTools.append(center);
    const host=$('#mobile-map-host');host.append(map);delete preview.dataset.base;
    if(next==='fields'){host.dataset.base='satellite';api.showSatellitePreview?.();}
    else{delete host.dataset.base;api.restoreBaseMap?.();}

@@ -2,7 +2,20 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V27 WebApp.
+Stato: ambiente TEST · release V28 WebApp.
+
+## V28 — mappe LIVE, checkbox e nome automatico
+
+- Nella mappa LIVE di `Imposta l’impianto` compare un solo comando: ricentra sul campo. È presente
+  sia nella prima configurazione sia quando si riapre l'impianto per modificarlo.
+- Checkbox vendemmia meccanizzata resa quadrata e più visibile: 34×34 px dentro un target touch
+  accessibile di 44×44 px.
+- Il nome predefinito del campo si aggiorna in `Varietà · Portainnesto` quando vengono selezionati.
+  Se è disponibile una sola selezione, viene mostrata quella; se l'utente scrive un nome personale,
+  gli aggiornamenti automatici vengono definitivamente sospesi per quel campo.
+- I campi salvati in precedenza con nomi personalizzati vengono riconosciuti e protetti; i nomi
+  `Campo 1`, `Campo 2`, ecc. restano invece automatici.
+- Desktop invariato.
 
 ## V27 — navigazione dell'editor ed esclusioni
 
@@ -74,7 +87,8 @@ Stato: ambiente TEST · release V27 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-264 test automatici verificati, compresi navigazione dell'editor, modifica esclusioni,
+268 test automatici verificati, compresi nome automatico protetto, ricentraggio nelle mappe LIVE,
+navigazione dell'editor, modifica esclusioni,
 selettori/checkbox mobile, tastiera visual viewport,
 calcolatore rapido, bussola MapLibre, swipe eliminazione, scheda Campo LIVE,
 flusso mobile a schermate, archivio progetti,

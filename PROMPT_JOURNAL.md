@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V27 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V28 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -316,6 +316,30 @@ Correzioni V27:
 - checkbox visuale portata a 28×28 px dentro un target touch invariato di 44×44 px;
 - desktop preservato: il pan resta bloccato durante il disegno come nelle release precedenti.
 
+### V28 — comando unico nelle mappe LIVE e denominazione automatica
+
+Richieste:
+
+1. nelle mappe LIVE di `Imposta l’impianto`, sia in creazione sia in modifica, lasciare come unico
+   pulsante quello che riporta al punto in cui si trova l'impianto;
+2. correggere la checkbox della vendemmia meccanizzata, risultata troppo piccola e rettangolare;
+3. rinominare automaticamente i campi ancora denominati `Campo 1`, `Campo 2`, ecc. usando Varietà e
+   Portainnesto, senza sovrascrivere un nome impostato dall'utente.
+
+Implementazione:
+
+- il pulsante esistente `center-field-button` viene trasferito nel riquadro LIVE dei parametri; tutti
+  gli altri controlli MapLibre/editor restano nascosti. Uscendo dalla schermata il medesimo nodo torna
+  nella colonna strumenti, senza duplicare listener o logica cartografica;
+- la checkbox conserva un target touch di 44×44 px, ma mostra un quadrato interno 34×34 px con
+  rapporto 1:1 esplicito;
+- ogni campo conserva `labelCustomized`. I dati precedenti vengono migrati senza intervento utente:
+  un nome nel formato `Campo N` è considerato automatico, qualsiasi altro nome precedente è protetto;
+- finché il nome è automatico, le selezioni producono `Varietà · Portainnesto`; con una sola selezione
+  viene usato il valore disponibile e cancellando entrambe si ripristina `Campo N`;
+- il primo evento di modifica manuale del Nome campo imposta `labelCustomized=true` e impedisce ogni
+  successiva sovrascrittura automatica.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
@@ -378,11 +402,11 @@ Correzioni V27:
 8. Non dichiarare “testato su iPhone” senza prova reale su Safari iOS.
 9. Conservare lo ZIP precedente tramite cronologia versioni; sostituire l'identità persistente corrente.
 
-## Stato di verifica e limitazioni alla V27
+## Stato di verifica e limitazioni alla V28
 
-- Test unitari/DOM automatizzati: **264 superati**, vedere `README.md` e `V27-VERIFICA.md`.
-- Test nativo Safari iPhone: ancora necessario dopo la consegna della V27, in particolare pan durante
-  disegno/modifica, ritorno dalla modifica esclusione, selettori, checkbox e comportamento tastiera.
+- Test unitari/DOM automatizzati: **268 superati**, vedere `README.md` e `V28-VERIFICA.md`.
+- Test nativo Safari iPhone: ancora necessario dopo la consegna della V28, in particolare posizione
+  del ricentraggio, resa della checkbox, nome automatico e persistenza dopo riapertura.
 - Il browser remoto non può raggiungere il server locale del workspace; una verifica DOM automatizzata
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta

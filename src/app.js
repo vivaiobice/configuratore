@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=27';
+import { createMobileUI } from './mobile-ui.js?v=28';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -10,7 +10,7 @@ import { createCloudService } from './cloud.js';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField } from './fields.js';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js';
 
@@ -126,6 +126,11 @@ function syncOrientationControl() {
   if (output) output.value = `${state.project.orientationDeg ?? 0}°`;
 }
 function patchProject(patch) { state = mergeProjectState(state, patch); persist(); calculateAndRender(); }
+function patchMaterialProject(patch) {
+  state = mergeProjectState(state, patch);
+  state = { ...state, project:autoNameActiveProjectField(state.project) };
+  persist(); calculateAndRender(); renderFieldManager();
+}
 function patchGeometry(geometry, patch = {}) {
   const proposed = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
   state = { ...state, project:updateActiveFieldProject(state.project, { ...patch, geometry:proposed.geometry, orientationDeg:proposed.orientationDeg, orientationLocked:proposed.orientationLocked }) };
@@ -559,19 +564,19 @@ $('#grape-variety')?.addEventListener('change', (event) => {
   const grapeVariety = event.target.value;
   const cloneSelection = isKnownCloneForVariety(grapeVariety, state.project.cloneSelection) ? state.project.cloneSelection : '';
   const rootstock = isKnownRootstockForSelection(grapeVariety, cloneSelection, state.project.rootstock) ? state.project.rootstock : '';
-  patchProject({ grapeVariety, cloneSelection, rootstock });
+  patchMaterialProject({ grapeVariety, cloneSelection, rootstock });
   renderMaterialSelectors();
   track('plant_material_changed', { field:'grape_variety', defined:Boolean(grapeVariety) });
 });
 $('#clone-selection')?.addEventListener('change', (event) => {
   const cloneSelection = event.target.value;
   const rootstock = isKnownRootstockForSelection(state.project.grapeVariety, cloneSelection, state.project.rootstock) ? state.project.rootstock : '';
-  patchProject({ cloneSelection, rootstock });
+  patchMaterialProject({ cloneSelection, rootstock });
   renderMaterialSelectors();
   track('plant_material_changed', { field:'clone_selection', defined:Boolean(cloneSelection) });
 });
 $('#rootstock')?.addEventListener('change', (event) => {
-  patchProject({ rootstock:event.target.value });
+  patchMaterialProject({ rootstock:event.target.value });
   renderMaterialSelectors();
   track('plant_material_changed', { field:'rootstock', defined:Boolean(event.target.value) });
 });
