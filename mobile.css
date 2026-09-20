@@ -1,4 +1,4 @@
-/* V26: mobile application shell. Desktop declarations are untouched. */
+/* V27: mobile application shell. Desktop declarations are untouched. */
 .mobile-only{display:none}
 @media(max-width:800px), (max-width:1100px) and (pointer:coarse){
  body.mobile-app-active{margin:0;padding:0;overflow:hidden;height:100dvh;background:#edf2ed}
@@ -95,8 +95,10 @@
  #mobile-app .mobile-select-trigger{display:flex;justify-content:space-between;width:100%;margin-top:6px;min-height:48px;background:#fff;border:1px solid #ccd8c9;border-radius:10px;text-align:left;font-size:16px;font-weight:600;padding:12px;color:#193b29;touch-action:pan-y}
  #mobile-app .mobile-select-trigger::after{content:'⌄';margin-left:10px;font-size:20px;color:#58715d}
  #mobile-app .advanced-body>.check-row{display:flex;align-items:center;gap:10px;min-height:44px}
- #mobile-app .mobile-check-toggle{width:44px;height:44px;flex-shrink:0;min-height:44px;border:1px solid #819888;background:white;padding:0;border-radius:10px}
- #mobile-app .mobile-check-toggle[aria-checked="true"]{background:#225939;color:white;border-color:#225939}
+ #mobile-app .mobile-check-toggle{width:44px;height:44px;flex-shrink:0;min-height:44px;border:0;background:transparent;padding:0;border-radius:10px}
+ #mobile-app .mobile-check-toggle::before{content:"";display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:1.5px solid #819888;background:#fff;border-radius:7px;color:#fff;font-size:18px;line-height:1;box-sizing:border-box}
+ #mobile-app .mobile-check-toggle[aria-checked="true"]{background:transparent;color:white;border-color:transparent}
+ #mobile-app .mobile-check-toggle[aria-checked="true"]::before{content:"✓";background:#225939;border-color:#225939}
  #mobile-app .mobile-check-toggle[aria-checked="true"]::after{content:'✓';font-size:25px}
  .mobile-choice-dialog{position:absolute;inset:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));z-index:50;display:flex;flex-direction:column;background:#fff;border-radius:23px;padding:16px;box-shadow:0 12px 50px #17302380;overflow:auto;overscroll-behavior:contain}
  .mobile-choice-dialog header{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:19px;margin-bottom:14px}

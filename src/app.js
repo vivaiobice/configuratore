@@ -1,7 +1,7 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=26';
+import { createMobileUI } from './mobile-ui.js?v=27';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
-import { initMap } from './map.js?v=20';
+import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
@@ -140,6 +140,7 @@ try {
     container: 'map',
     requiresLinearConfirmation:isMobileMap,
     enableTouchRotation:isMobileMap,
+    allowPanWhileEditing:isMobileMap,
     onFieldSelect:(fieldId)=>{
       if (!isMobileMap()) return;
       // Preview gestures must not switch fields or leave the parameters transaction.
@@ -441,6 +442,11 @@ const mapFullscreenButton = $('#map-fullscreen-button');
 if (mapFullscreenButton) mapWrap?.append(mapFullscreenButton);
 function setMapFullscreen(active) {
   const next = Boolean(active);
+  if (next && mobileUi?.isActive?.()) {
+    mobileUi.navigate?.('editor');
+    requestAnimationFrame(()=>mapApi?.map?.resize?.());
+    return;
+  }
   if (!mapWrap || next === mapWrap.classList.contains('fullscreen-map')) return;
   if (next) {
     fullscreenScrollY=window.scrollY;

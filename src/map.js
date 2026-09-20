@@ -51,7 +51,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -115,7 +115,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     canvas.classList?.toggle('drawing-active', manualDrawing);
     canvas.style.cursor = manualDrawing ? 'url("./assets/pencil-cursor.svg") 2 24, crosshair' : '';
     if (manualDrawing) {
-      map.dragPan.disable();
+      if (allowPanWhileEditing()) map.dragPan.enable();
+      else map.dragPan.disable();
       map.doubleClickZoom?.disable?.();
     } else {
       map.dragPan.enable();
@@ -707,7 +708,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     editRing = committedGeometry.map(p=>[...p]);
     vertexEditing = true;
     draw?.deleteAll({silent:true});
-    map.dragPan.disable();
+    if (allowPanWhileEditing()) map.dragPan.enable();
+    else map.dragPan.disable();
     onEditingState({active:true});
     renderEditHandles();
     onStatus('Trascina i punti; premi + per aggiungerne uno. Poi premi “Fine modifica”.');
@@ -741,7 +743,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     editRing = item.geometry.map(p=>[...p]);
     vertexEditing = true;
     draw?.deleteAll({silent:true});
-    map.dragPan.disable();
+    if (allowPanWhileEditing()) map.dragPan.enable();
+    else map.dragPan.disable();
     onEditingState({active:true, exclusionId:id});
     renderEditHandles();
     onStatus('Modifica zona esclusa: trascina i vertici o aggiungi punti con +. Poi “Fine modifica”.');
@@ -779,7 +782,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
         const {lng,lat}=marker.getLngLat();
         editRing[index]=[lng,lat];
         editRing[editRing.length-1]=[...editRing[0]];
-        publishEditRing(); renderEditHandles(); map.dragPan.disable();
+        publishEditRing(); renderEditHandles();
+        if (allowPanWhileEditing()) map.dragPan.enable();
+        else map.dragPan.disable();
       });
       editMarkers.push(marker);
       const next=points[(index+1)%points.length];

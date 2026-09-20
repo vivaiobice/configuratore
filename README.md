@@ -2,7 +2,17 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V26 WebApp.
+Stato: ambiente TEST · release V27 WebApp.
+
+## V27 — navigazione dell'editor ed esclusioni
+
+- Pan della mappa abilitato su mobile durante disegno del perimetro, modifica dei vertici e modifica
+  delle aree escluse. Un trascinamento sullo sfondo sposta la mappa; un trascinamento sulla maniglia
+  continua a spostare il punto selezionato.
+- Corretto il percorso `campo → area esclusa → Modifica`: la WebApp mobile non richiama più il vecchio
+  fullscreen, quindi `Annulla` e `Fine modifica` restano raggiungibili.
+- Checkbox della vendemmia meccanica ridotta visivamente a 28 px, mantenendo un target touch di 44 px.
+- Desktop invariato: durante il disegno conserva il blocco dello sfondo già esistente.
 
 ## V26 — affidabilità dei controlli e rifinitura iPhone
 
@@ -64,7 +74,8 @@ Stato: ambiente TEST · release V26 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-260 test automatici verificati, compresi selettori/checkbox mobile, tastiera visual viewport,
+264 test automatici verificati, compresi navigazione dell'editor, modifica esclusioni,
+selettori/checkbox mobile, tastiera visual viewport,
 calcolatore rapido, bussola MapLibre, swipe eliminazione, scheda Campo LIVE,
 flusso mobile a schermate, archivio progetti,
 navigazione sul DOM, ripristino desktop e calcolo dei tagli.

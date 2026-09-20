@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V26 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V27 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -289,6 +289,33 @@ Vincoli rispettati:
 - Il badge desktop resta V25 intenzionalmente; il badge interno alla shell mobile mostra V26.
 - I filari curvi, pendenze e modello 3D del terreno restano una roadmap successiva, non parte di V26.
 
+### V27 — navigazione durante l'editing e ritorno dalle esclusioni
+
+Segnalazioni dopo la prova della V26:
+
+- nell'editor perimetro funzionava lo zoom, ma la porzione satellitare restava fissa e non si poteva
+  navigare in tutte le direzioni;
+- la checkbox della vendemmia meccanizzata risultava visivamente troppo grande;
+- percorso riproducibile bloccante: creare campo → creare area esclusa → aprire Modifica esclusione;
+  a quel punto non era possibile spostare la mappa né tornare indietro correttamente.
+
+Cause verificate:
+
+- `src/map.js` disabilitava esplicitamente `dragPan` sia nel disegno manuale sia durante la modifica
+  dei vertici; lo zoom rimaneva invece disponibile;
+- il pulsante `Modifica` dell'esclusione richiamava ancora il vecchio fullscreen responsive, che
+  spostava fisicamente la mappa fuori dalla shell WebApp V26 e separava la mappa dai comandi mobile.
+
+Correzioni V27:
+
+- aggiunta l'opzione cartografica `allowPanWhileEditing`, attiva esclusivamente sul layout mobile;
+  durante perimetro ed esclusioni il trascinamento dello sfondo muove la mappa, mentre le maniglie
+  trascinabili continuano a modificare i punti;
+- la shell WebApp attiva rifiuta il vecchio percorso fullscreen e mantiene la mappa nell'editor con
+  `Annulla` in alto e `Fine modifica` in basso;
+- checkbox visuale portata a 28×28 px dentro un target touch invariato di 44×44 px;
+- desktop preservato: il pan resta bloccato durante il disegno come nelle release precedenti.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
@@ -351,11 +378,11 @@ Vincoli rispettati:
 8. Non dichiarare “testato su iPhone” senza prova reale su Safari iOS.
 9. Conservare lo ZIP precedente tramite cronologia versioni; sostituire l'identità persistente corrente.
 
-## Stato di verifica e limitazioni alla V26
+## Stato di verifica e limitazioni alla V27
 
-- Test unitari/DOM automatizzati: **260 superati**, vedere `README.md` e `V26-VERIFICA.md`.
-- Test nativo Safari iPhone: ancora necessario dopo la consegna della V26, in particolare apertura
-  dei selettori, checkbox, movimento/zoom/rotazione della prima anteprima e comportamento tastiera.
+- Test unitari/DOM automatizzati: **264 superati**, vedere `README.md` e `V27-VERIFICA.md`.
+- Test nativo Safari iPhone: ancora necessario dopo la consegna della V27, in particolare pan durante
+  disegno/modifica, ritorno dalla modifica esclusione, selettori, checkbox e comportamento tastiera.
 - Il browser remoto non può raggiungere il server locale del workspace; una verifica DOM automatizzata
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta
