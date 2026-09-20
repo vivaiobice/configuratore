@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V28 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V29 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -340,6 +340,22 @@ Implementazione:
 - il primo evento di modifica manuale del Nome campo imposta `labelCustomized=true` e impedisce ogni
   successiva sovrascrittura automatica.
 
+### V29 — correzioni esclusivamente visive
+
+Screenshot iPhone hanno evidenziato:
+
+- simbolo del pulsante `Torna al campo` non perfettamente centrato;
+- checkbox vendemmia meccanizzata vuota e selezionata in due posizioni differenti.
+
+Cause e correzioni:
+
+- il ricentraggio usava il carattere tipografico `⌖`, la cui metrica varia con il font di sistema;
+  è stato sostituito con un SVG 24×24 centrato tramite griglia nel pulsante 44×44;
+- lo stato selezionato della checkbox generava sia il segno in `::before` sia un secondo `::after`.
+  Il secondo elemento partecipava al layout flex e spostava il quadrato. V29 usa sempre un solo
+  elemento 34×34 e cambia esclusivamente contenuto e colore nello stato selezionato;
+- nessuna logica applicativa è stata modificata.
+
 ## Errori già incontrati e correzioni
 
 - **Download ZIP non partiva:** consegnare sempre link `sandbox:` diretto a `/mnt/data/...zip` e
@@ -402,11 +418,11 @@ Implementazione:
 8. Non dichiarare “testato su iPhone” senza prova reale su Safari iOS.
 9. Conservare lo ZIP precedente tramite cronologia versioni; sostituire l'identità persistente corrente.
 
-## Stato di verifica e limitazioni alla V28
+## Stato di verifica e limitazioni alla V29
 
-- Test unitari/DOM automatizzati: **268 superati**, vedere `README.md` e `V28-VERIFICA.md`.
-- Test nativo Safari iPhone: ancora necessario dopo la consegna della V28, in particolare posizione
-  del ricentraggio, resa della checkbox, nome automatico e persistenza dopo riapertura.
+- Test unitari/DOM automatizzati: **269 superati**, vedere `README.md` e `V29-VERIFICA.md`.
+- Test nativo Safari iPhone: verificare visivamente centratura del ricentraggio e posizione identica
+  della checkbox nei due stati.
 - Il browser remoto non può raggiungere il server locale del workspace; una verifica DOM automatizzata
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta

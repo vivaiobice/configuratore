@@ -2,7 +2,15 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V28 WebApp.
+Stato: ambiente TEST · release V29 WebApp.
+
+## V29 — allineamenti visivi
+
+- Icona del comando `Torna al campo` sostituita con un SVG 24×24 centrato geometricamente nel
+  pulsante circolare della mappa LIVE.
+- Checkbox vendemmia meccanizzata stabilizzata: vuota e selezionata occupano la stessa posizione.
+  Rimosso il secondo segno di spunta che, nello stato attivo, spostava il quadrato verso sinistra.
+- Nessuna modifica a funzioni, dati, calcoli, geometria o desktop.
 
 ## V28 — mappe LIVE, checkbox e nome automatico
 
@@ -87,7 +95,8 @@ Stato: ambiente TEST · release V28 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-268 test automatici verificati, compresi nome automatico protetto, ricentraggio nelle mappe LIVE,
+269 test automatici verificati, compresi allineamento stabile della checkbox, centratura SVG,
+nome automatico protetto, ricentraggio nelle mappe LIVE,
 navigazione dell'editor, modifica esclusioni,
 selettori/checkbox mobile, tastiera visual viewport,
 calcolatore rapido, bussola MapLibre, swipe eliminazione, scheda Campo LIVE,
