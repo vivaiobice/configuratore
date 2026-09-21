@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#16251c" />
+  <link rel="manifest" href="./manifest.webmanifest?v=31" />
+  <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
+  <title>Configuratore | Vivai Obice</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
+  <link rel="stylesheet" href="./styles.css?v=18" />
+  <link rel="stylesheet" href="./mobile.css?v=31" />
+  <link rel="stylesheet" href="./profile.css?v=31" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Vivai Obice">
+      <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
+      <span class="brand-caption">Configuratore</span>
+    </a>
+    <div class="topbar-actions"><span class="test-badge">AMBIENTE TEST · V31</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="panel" aria-label="Configurazione vigneto">
+      <div class="panel-scroll">
+      <div class="panel-intro">
+        <p class="eyebrow">PROGETTA IL TUO VIGNETO</p>
+        <h1>Dal terreno a una prima ipotesi d’impianto.</h1>
+        <p>Trova l’appezzamento, definisci il perimetro e imposta il sesto. Il progetto si aggiorna in tempo reale.</p>
+      </div>
+
+      <section class="step" data-step="1">
+        <div class="step-heading"><span>01</span><div><h2>Trova il terreno</h2><p>Cerca una località oppure usa la posizione attuale.</p></div></div>
+        <div class="search-shell">
+          <form id="search-form" class="search-row">
+            <input id="search-input" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="search-suggestions" placeholder="Comune, località o indirizzo" />
+            <button class="icon-button" aria-label="Cerca" title="Cerca">⌕</button>
+          </form>
+          <div id="search-suggestions" class="search-suggestions" role="listbox" hidden></div>
+        </div>
+        <div class="button-row">
+          <button id="gps-button" class="secondary-button" type="button">◎ Posizione attuale</button>
+          <button id="draw-button" class="primary-button" type="button">Disegna terreno</button>
+        </div>
+        <div class="field-manager" aria-label="Gestione campi">
+          <label>Campo attivo<select id="field-select"></select></label>
+          <label class="field-name-label">Nome campo<input id="field-name" class="control-input" type="text" maxlength="80" placeholder="es. Vigneto Cascina" /></label>
+          <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">＋ Campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">− Campo</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="2">
+        <div class="step-heading"><span>02</span><div><h2>Sesto d’impianto</h2><p>Imposta le distanze principali.</p></div></div>
+        <div class="field-grid">
+          <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
+          <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
+        </div>
+        <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
+          <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Inserisci la superficie: usa il sesto impostato qui sopra.</span></div></div>
+          <label class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
+          <div class="manual-calculator-results" aria-live="polite">
+            <div><span>Barbatelle teoriche</span><strong id="manual-theoretical">—</strong></div>
+            <div class="manual-commercial"><span>Quantità commerciale ×25</span><strong id="manual-commercial">—</strong></div>
+          </div>
+        </div>
+        <label class="range-field">Orientamento filari <output id="orientation-output">0°</output>
+          <input id="orientation" type="range" min="0" max="179" step="1" value="0" />
+        </label>
+        <div class="orientation-presets" aria-label="Orientamenti rapidi">
+          <button data-angle="0">N–S</button><button data-angle="45">NE–SO</button><button data-angle="90">E–O</button><button data-angle="135">SE–NO</button>
+        </div>
+      </section>
+
+      <details class="advanced">
+        <summary>Affina il progetto <span>+</span></summary>
+        <div class="advanced-body">
+          <div class="field-grid">
+            <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
+            <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" value="4.50" placeholder="es. 4,5" /></label>
+          </div>
+          <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
+          <label>Inquadramento del progetto
+            <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
+          </label>
+          <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
+          <hr class="soft-divider" />
+          <h3>Scelta del materiale vegetale</h3>
+          <label>Vitigno
+            <select id="grape-variety"><option value="">Da definire</option></select>
+          </label>
+          <div class="field-grid material-grid">
+            <label>Clone / selezione
+              <select id="clone-selection"><option value="">Da definire</option></select>
+            </label>
+            <label>Portainnesto
+              <select id="rootstock"><option value="">Consigliami</option></select>
+            </label>
+          </div>
+          <label id="material-request-wrap" class="material-request-wrap" hidden>Richiesta particolare / materiale desiderato
+            <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. Pinot Bianco su 420A, clone specifico o altra combinazione da verificare"></textarea>
+            <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
+          </label>
+        </div>
+      </details>
+        <div class="exclusion-panel">
+          <div class="exclusion-heading"><strong>Aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
+          <div id="exclusion-list" class="exclusion-list"><p class="empty-exclusions">Nessuna area esclusa.</p></div>
+        </div>
+
+      <section id="project-advice" class="project-advice" aria-live="polite" hidden></section>
+
+      <aside id="map-summary" class="map-summary" aria-label="Riepilogo progetto">
+        <div class="map-summary-grid">
+          <div class="summary-secondary"><span>Superficie</span><strong id="summary-area">—</strong></div>
+          <div class="summary-secondary"><span>Perimetro</span><strong id="summary-perimeter">—</strong></div>
+          <div class="summary-secondary"><span>Filari</span><strong id="summary-rows">—</strong></div>
+          <div class="summary-secondary"><span>Metri lineari</span><strong id="summary-linear">—</strong></div>
+          <div class="summary-secondary"><span>Pali totali</span><strong id="summary-posts">0</strong></div>
+          <div class="summary-secondary"><span>Di cui pali di testa</span><strong id="summary-head-posts">0</strong></div>
+          <div class="summary-primary"><span>Barbatelle stimate</span><strong id="summary-plants">—</strong><small id="summary-commercial">Quantità commerciale: —</small></div>
+        </div>
+        <button id="summary-save-project" class="primary-button wide" type="button">Salva il progetto</button>
+        <div class="summary-action-row">
+          <button id="summary-open-report" class="secondary-button" type="button">Proposta / PDF</button>
+          <button id="summary-request-quote" class="secondary-button" type="button">Richiedi preventivo</button>
+        </div>
+        <p class="summary-disclaimer">Stima preliminare e indicativa: quantità, filari, pali e materiali vanno verificati in fase di progettazione definitiva. I dati cliente sono richiesti solo per salvataggio definitivo, proposta PDF e preventivo.</p>
+      </aside>
+      </div>
+    </aside>
+
+    <section class="map-wrap" aria-label="Mappa del progetto">
+      <div id="map"></div>
+      <div class="map-watermark-layer" aria-hidden="true"></div>
+      <div class="map-toolbar">
+        <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
+        <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
+        <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Cancella campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button><button id="center-field-button" class="tool-button icon-only" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
+        <div class="map-rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
+          <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
+          <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
+          <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
+        </div>
+      </div>
+      <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
+      <details id="fullscreen-exclusions"><summary>Aree escluse</summary><div id="fullscreen-exclusions-content"></div></details>
+    </section>
+  </main>
+
+  <div id="consent-banner" class="consent-banner" hidden>
+    <div><strong>Privacy e utilizzo</strong><p>Usiamo i dati tecnici necessari al funzionamento. Con il tuo consenso possiamo anche misurare l’utilizzo e riconoscere le visite successive per migliorare il servizio.</p></div>
+    <div class="consent-actions"><button id="consent-necessary" class="secondary-button" type="button">Solo necessari</button><button id="consent-analytics" class="primary-button" type="button">Accetta analisi</button></div>
+  </div>
+
+  <dialog id="contact-dialog" class="contact-dialog">
+    <form id="contact-form">
+      <div class="dialog-heading"><div><p class="eyebrow">SALVA PROGETTO</p><h2>I tuoi riferimenti</h2><p>Li inserisci una volta sola e restano associati a questo progetto.</p></div><button id="close-dialog" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
+      <label>Azienda<input name="company" autocomplete="organization" required /></label>
+      <div class="field-grid"><label>Nome<input name="firstName" autocomplete="given-name" required /></label><label>Cognome<input name="lastName" autocomplete="family-name" required /></label></div>
+      <label>Telefono<input name="phone" type="tel" autocomplete="tel" required /></label>
+      <label>E-mail<input name="email" type="email" autocomplete="email" required /></label>
+      <label class="check-row"><input name="privacy" type="checkbox" required /> Ho letto l’informativa privacy necessaria alla gestione del progetto.</label>
+      <label class="check-row optional-consent"><input name="marketing" type="checkbox" /> Desidero ricevere comunicazioni e aggiornamenti commerciali da Vivai Obice (facoltativo).</label>
+      <button class="primary-button wide" type="submit">Associa i dati al progetto</button>
+      <p id="contact-feedback" class="form-feedback" role="status"></p>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
+  <script type="module" src="./src/app.js?v=31"></script>
+</body>
+</html>
