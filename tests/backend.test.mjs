@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateContact, toProjectRow, toSessionRow, projectPayloadToState } from '../src/backend.js';
+import { createBackend, validateContact, toProjectRow, toSessionRow, projectPayloadToState } from '../src/backend.js';
+
+function fakeRpcClient(data) {
+  const calls = [];
+  return {
+    calls,
+    async rpc(name, args) {
+      calls.push(['rpc', name, args]);
+      return { data, error:null };
+    }
+  };
+}
 
 test('validateContact requires company, first name, last name, phone and valid email', () => {
   assert.equal(validateContact({ companyName:'Vivai Obice', firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, true);
@@ -120,4 +131,57 @@ test('multi-field plans are persisted and restored through project payloads', ()
   assert.equal(restored.project.fields.length, 2);
   assert.equal(restored.project.activeFieldId, 'field-b');
   assert.equal(restored.project.postSpacingM, 5);
+});
+
+test('applyProjectOperation forwards an idempotent atomic RPC request', async () => {
+  const client = fakeRpcClient({ status:'applied', projectId:'p1', version:3 });
+  const backend = createBackend(client);
+  const result = await backend.applyProjectOperation({
+    operationId:'00000000-0000-4000-8000-000000000001',
+    expectedVersion:2,
+    snapshot:{ schemaVersion:2 }
+  });
+  assert.deepEqual(client.calls[0], ['rpc','apply_project_operation',{
+    p_operation_id:'00000000-0000-4000-8000-000000000001',
+    p_expected_version:2,
+    p_snapshot:{ schemaVersion:2 }
+  }]);
+  assert.equal(result.version, 3);
+});
+
+test('revision and recovery methods call only public RPC wrappers', async () => {
+  const client = fakeRpcClient({ status:'restored', projectId:'p1' });
+  const backend = createBackend(client);
+  await backend.createProjectRevision({
+    operationId:'00000000-0000-4000-8000-000000000002', projectId:'p1',
+    expectedVersion:3, snapshot:{ schemaVersion:2 }, reason:'manual_save'
+  });
+  await backend.softDeleteProject({ operationId:'00000000-0000-4000-8000-000000000003', projectId:'p1' });
+  await backend.restoreProject({ operationId:'00000000-0000-4000-8000-000000000004', projectId:'p1' });
+  await backend.restoreProjectRevision({
+    operationId:'00000000-0000-4000-8000-000000000005', projectId:'p1', revisionNumber:2
+  });
+  assert.deepEqual(client.calls.map((call) => call[1]), [
+    'create_project_revision','soft_delete_project','restore_project','restore_project_revision'
+  ]);
+  assert.deepEqual(client.calls[2], ['rpc','restore_project',{
+    p_operation_id:'00000000-0000-4000-8000-000000000004', p_project_id:'p1'
+  }]);
+});
+
+test('upsertProfile derives no authorization and writes the supplied protected classification', async () => {
+  const calls = [];
+  const client = {
+    from(table) {
+      return {
+        upsert(row, options) {
+          calls.push([table,row,options]);
+          return { select(){ return { single:async () => ({ data:row, error:null }) }; } };
+        }
+      };
+    }
+  };
+  const backend = createBackend(client);
+  await backend.upsertProfile({ user_id:'u1', owner_kind:'guest' });
+  assert.deepEqual(calls[0], ['profiles',{ user_id:'u1', owner_kind:'guest' },{ onConflict:'user_id' }]);
 });

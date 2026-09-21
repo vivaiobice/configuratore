@@ -2,7 +2,18 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V29 WebApp.
+Stato: ambiente TEST · release V30 WebApp.
+
+## V30 — archivio cloud e storico in TEST
+
+- Pubblicata in Ambiente TEST la Fase A dell'archivio cloud: progetti e campi Guest vengono salvati
+  nel database con proprietà isolata, identificativi stabili e controllo di versione.
+- Il comando `Salva` crea una revisione storica; autosalvataggi, retry idempotenti e coda IndexedDB
+  proteggono anche il caso di connessione persa dopo un commit già eseguito.
+- Admin può filtrare, recuperare progetti eliminati e ripristinare revisioni attraverso RPC protette.
+- Predisposta la migrazione una tantum da FieldArea GeoJSON, senza importatore pubblico.
+- Cache bust e badge aggiornati a V30. `styles.css` resta alla V18: il desktop e i calcoli non sono
+  stati modificati da questa release.
 
 ## V29 — allineamenti visivi
 
@@ -95,7 +106,8 @@ Stato: ambiente TEST · release V29 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-269 test automatici verificati, compresi allineamento stabile della checkbox, centratura SVG,
+318 test automatici verificati, compresi archivio cloud, coda offline, revisione differita,
+allineamento stabile della checkbox, centratura SVG,
 nome automatico protetto, ricentraggio nelle mappe LIVE,
 navigazione dell'editor, modifica esclusioni,
 selettori/checkbox mobile, tastiera visual viewport,
@@ -103,6 +115,23 @@ calcolatore rapido, bussola MapLibre, swipe eliminazione, scheda Campo LIVE,
 flusso mobile a schermate, archivio progetti,
 navigazione sul DOM, ripristino desktop e calcolo dei tagli.
 Il browser remoto di verifica non raggiunge la copia locale: resa visiva, gesti e rotazione vanno ancora verificati su Safari iPhone reale.
+
+## Fase A — archivio cloud e storico (solo Ambiente TEST)
+
+La release V30 include una persistenza cloud normalizzata con identificativi client stabili, campi,
+revisioni immutabili, coda IndexedDB e controllo di versione ottimistico. Il primo salvataggio cloud
+avviene soltanto dopo un perimetro valido; le modifiche aggiornano lo stato corrente e il comando
+esplicito Salva crea una revisione. I dati V29 locali vengono migrati in memoria senza sovrascrivere
+archivi corrotti e restano disponibili durante problemi di rete.
+
+La migrazione SQL è `supabase/migrations/202609210001_cloud_archive_history.sql`. Non contiene chiavi
+segrete. Prima dell'uso deve essere applicata e verificata esclusivamente sul progetto Supabase TEST.
+L'Admin dispone di filtri per campagna, origine, tipo proprietario ed eliminati; recupero e ripristino
+revisioni passano solo da RPC protette. Il normalizzatore FieldArea accetta GeoJSON geografico valido,
+ma non esiste ancora un pulsante di importazione pubblico e nessuna migrazione reale è stata eseguita.
+
+Stato e limiti operativi sono registrati in `FASE-A-VERIFICA.md` e `V30-VERIFICA.md`. La pubblicazione
+rimane confinata all'Ambiente TEST; LIVE non è stato modificato.
 
 Prova consigliata su iPhone: apri Mappa, disegna un campo, conferma, modifica punti, aggiungi un passaggio,
 modifica/elimina un'esclusione, torna al Progetto e ruota il telefono. Controlla anche il riepilogo espanso.

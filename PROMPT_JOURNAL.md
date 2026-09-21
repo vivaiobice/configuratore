@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V29 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V30 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -427,3 +427,88 @@ Cause e correzioni:
   non sostituisce la prova tattile su dispositivo.
 - L'archivio `Progetti` è locale al browser/dispositivo. La sincronizzazione cloud esistente resta
   utilizzata dalle azioni finali, ma non è stata estesa a un nuovo elenco account nella V19.
+
+## Studio successivo alla V29 — archivio cloud e storico
+
+Decisioni approvate il 21 settembre 2026, senza nuova release:
+
+- la WebApp dovrà conservare centralmente progetti Guest, utenti registrati e Admin;
+- una bozza cloud nasce alla conferma del primo perimetro valido;
+- le modifiche significative aggiornano automaticamente lo stato corrente;
+- il comando esplicito `Salva` crea una revisione storica permanente;
+- la copia locale resta come protezione offline e viene sincronizzata quando torna la rete;
+- Vivai Obice dispone di accesso amministrativo a tutti i progetti e di un registro per anno/campagna;
+- la voce `Profilo`, il login pubblico e i piani PRO saranno fasi successive;
+- i vecchi progetti FieldArea Measure verranno migrati una tantum da Vivai Obice, preferibilmente da
+  GeoJSON, senza un importatore pubblico nella prima fase;
+- l'importazione autonoma potrà diventare successivamente una funzione PRO;
+- nessuna modifica funzionale o grafica è autorizzata finché la specifica e il piano non saranno
+  approvati.
+
+Specifica tecnica: `docs/superpowers/specs/2026-09-21-cloud-archive-history-design.md`.
+
+La specifica è stata approvata dall'utente. Il piano TDD della Fase A è stato preparato in
+`docs/superpowers/plans/2026-09-21-cloud-archive-history.md`. Il piano impone quattro checkpoint,
+Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento release o ZIP.
+
+## Esecuzione Fase A — 21 settembre 2026
+
+- Implementati snapshot cloud v2, schema additivo, RLS, RPC idempotenti e versionamento ottimistico.
+- Guest, utenti permanenti e Admin sono classificati da claim protetti; nessun ruolo è ricavato da
+  `user_metadata` modificabile.
+- Implementata coda IndexedDB: un errore ambiguo conserva la stessa operation ID; i conflitti non
+  sovrascrivono lo stato server.
+- Il primo perimetro valido abilita il draft cloud; Salva crea una revisione immutabile.
+- Migrazione locale V29 non distruttiva: envelope v1 letti, v2 scritti, progetti incompleti preservati.
+- Admin esteso con campagna, origine, tipo proprietario, eliminati, KPI e ripristino tramite RPC.
+- Preparato import FieldArea GeoJSON una tantum con validazione e fingerprint SHA-256; nessuna UI
+  pubblica e nessuna importazione reale.
+- Desktop e mobile non hanno ricevuto modifiche grafiche durante l'implementazione della Fase A.
+- Gate locale finale: test e syntax check registrati in `FASE-A-VERIFICA.md`.
+- Blocco deliberato: migrazione remota TEST, sonde RLS reali e prove Safari richiedono ambiente e
+  autorizzazione operativa; LIVE non deve essere toccato.
+
+## Collaudo remoto Fase A — 21 settembre 2026
+
+- Applicate al solo progetto Supabase TEST le migrazioni archivio cloud e i follow-up di sicurezza;
+  LIVE non è stato modificato.
+- Corretto un difetto emerso dalla prima sonda: i wrapper RPC pubblici non potevano attraversare lo
+  schema privato. Soluzione finale: wrapper `SECURITY INVOKER`, `USAGE` ristretto e `EXECUTE`
+  esplicito sulle sole implementazioni autorizzate.
+- Corrette due policy profilo segnalate dall'advisor per il ricalcolo per-riga del JWT e aggiunto
+  l'indice della foreign key `sync_operations.project_id`.
+- Abilitato e verificato Supabase Anonymous Sign-In per il flusso Guest. La prova ha creato un utente
+  anonimo reale tramite API pubblica; il record di collaudo è stato eliminato subito dopo.
+- Sonde SQL con identità separate superate: owner vede 1/1/1, secondo Guest vede 0/0/0, Admin vede
+  1/1/1 per progetti/campi/revisioni.
+- Verificati retry idempotente, conflitto di versione, revisione manuale, soft delete e restore,
+  ripristino Admin di una revisione e archiviazione di una bozza Guest inattiva da 91 giorni.
+- Pulizia finale confermata: 0 progetti, 0 campi, 0 revisioni, 0 operazioni e 0 profili di test.
+- Gate locale ripetuto dopo le migrazioni: `npm run check` superato; `npm test` 317/317.
+- Restano prima della release: prova offline reale su desktop e Safari iPhone, poi approvazione
+  esplicita per incremento versione/cache bust e ZIP.
+
+## Fix salvataggio offline differito — 21 settembre 2026
+
+- Il nuovo test di accettazione ha riprodotto Save senza rete seguito da riavvio e ritorno online.
+- RED verificato: la coda conteneva soltanto `autosave`; l'intenzione esplicita di creare la revisione
+  manuale veniva persa quando il flush iniziale falliva.
+- Correzione: Save conserva una `manual_revision` differita dietro l'autosalvataggio; project ID e
+  versione vengono risolti soltanto dopo l'ack dell'operazione precedente.
+- Il test simula anche il caso ambiguo più critico: il server ha già eseguito il commit, ma la risposta
+  di rete si perde. Il retry riutilizza la stessa operation ID e produce un solo progetto e una sola
+  revisione, anche dopo la ricreazione del coordinatore.
+- GREEN verificato: test mirato 6/6; suite completa `npm test` 318/318; `npm run check` superato.
+- Nessuna modifica grafica mobile/desktop nel fix offline.
+- Resta distinta la prova visiva/tattile reale su desktop e Safari iPhone; non viene dichiarata come
+  eseguita da un test Node.
+
+## V30 — pubblicazione della Fase A in Ambiente TEST
+
+- Approvazione esplicita ricevuta per incremento release, cache bust e creazione ZIP.
+- Badge mobile e fallback desktop allineati a `AMBIENTE TEST · V30`; manifest, `mobile.css`, entrypoint
+  `app.js` e import di `mobile-ui.js` hanno cache bust V30.
+- Il foglio desktop `styles.css` resta invariato e mantiene il cache bust V18.
+- Incluse le quattro migrazioni Supabase già applicate e collaudate sul solo progetto TEST.
+- Gate obbligatorio: `npm run check`, suite completa 318/318 e controllo contenuto archivio.
+- LIVE non è stato modificato. La verifica visiva/tattile su Safari iPhone resta da eseguire sulla V30.

@@ -1,10 +1,11 @@
 const DRAFT_KEY = 'vivai-obice:configuratore:draft';
 const CONSENT_KEY = 'vivai-obice:configuratore:consent';
-const DRAFT_VERSION = 1;
+const DRAFT_VERSION = 2;
+import { migrateDraftEnvelope } from './local-migrations.js';
 
 export function saveDraft(storage, state) {
   if (!storage?.setItem) return false;
-  const envelope = { version: DRAFT_VERSION, savedAt: new Date().toISOString(), state };
+  const envelope = migrateDraftEnvelope({ version: DRAFT_VERSION, savedAt: new Date().toISOString(), state });
   storage.setItem(DRAFT_KEY, JSON.stringify(envelope));
   return true;
 }
@@ -15,8 +16,7 @@ export function loadDraft(storage) {
     const raw = storage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const envelope = JSON.parse(raw);
-    if (envelope?.version !== DRAFT_VERSION || !envelope?.state || typeof envelope.state !== 'object') return null;
-    return envelope.state;
+    return migrateDraftEnvelope(envelope).state;
   } catch {
     return null;
   }

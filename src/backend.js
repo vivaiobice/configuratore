@@ -166,6 +166,11 @@ export function toQuoteRequestRow({ projectId, contactId, ownerUserId, environme
 
 export function createBackend(client) {
   if (!client) throw new TypeError('Supabase client required');
+  async function rpc(name, args) {
+    const result = await client.rpc(name, args);
+    if (result.error) throw result.error;
+    return result.data;
+  }
   return {
     async ensureAnonymousSession() {
       const existing = await client.auth.getSession();
@@ -183,6 +188,40 @@ export function createBackend(client) {
       const result = await client.from('sessions').upsert(row).select('id').single();
       if (result.error) throw result.error;
       return result.data;
+    },
+    async upsertProfile(row) {
+      const result = await client.from('profiles').upsert(row, { onConflict:'user_id' }).select('*').single();
+      if (result.error) throw result.error;
+      return result.data;
+    },
+    async applyProjectOperation({ operationId, expectedVersion, snapshot }) {
+      return rpc('apply_project_operation', {
+        p_operation_id:operationId,
+        p_expected_version:expectedVersion,
+        p_snapshot:snapshot
+      });
+    },
+    async createProjectRevision({ operationId, projectId, expectedVersion, snapshot, reason = 'manual_save' }) {
+      return rpc('create_project_revision', {
+        p_operation_id:operationId,
+        p_project_id:projectId,
+        p_expected_version:expectedVersion,
+        p_snapshot:snapshot,
+        p_reason:reason
+      });
+    },
+    async softDeleteProject({ operationId, projectId }) {
+      return rpc('soft_delete_project', { p_operation_id:operationId, p_project_id:projectId });
+    },
+    async restoreProject({ operationId, projectId }) {
+      return rpc('restore_project', { p_operation_id:operationId, p_project_id:projectId });
+    },
+    async restoreProjectRevision({ operationId, projectId, revisionNumber }) {
+      return rpc('restore_project_revision', {
+        p_operation_id:operationId,
+        p_project_id:projectId,
+        p_revision_number:revisionNumber
+      });
     },
     async upsertProject(row) {
       const result = await client.from('projects').upsert(row).select('id,public_code,status').single();
@@ -205,10 +244,9 @@ export function createBackend(client) {
       return result.data;
     },
     async claimProject(publicCode, token) {
-      const result = await client.rpc('claim_project', { p_public_code: publicCode, p_token: token });
-      if (result.error) throw result.error;
-      if (!result.data) throw new Error('Project resume link is invalid or expired');
-      return result.data;
+      const data = await rpc('claim_project', { p_public_code: publicCode, p_token: token });
+      if (!data) throw new Error('Project resume link is invalid or expired');
+      return data;
     },
     async loadContact(id) {
       if (!id) return null;

@@ -28,6 +28,10 @@ function render() {
     grapeVariety: $('#filter-variety').value,
     rootstock: $('#filter-rootstock').value,
     contextType: $('#filter-context').value,
+    campaignYear:$('#filter-campaign').value,
+    origin:$('#filter-origin').value,
+    ownerKind:$('#filter-owner').value,
+    includeDeleted:$('#filter-deleted').checked,
     minPlants: $('#filter-plants').value,
     minArea: $('#filter-area').value
   });
@@ -37,6 +41,10 @@ function render() {
   $('#kpi-quotes').textContent = kpi.quoteRequests.toLocaleString('it-IT');
   $('#kpi-clients').textContent = kpi.clients.toLocaleString('it-IT');
   $('#kpi-plants').textContent = kpi.totalPlants.toLocaleString('it-IT', { useGrouping:true });
+  $('#kpi-guests').textContent = kpi.guestProjects.toLocaleString('it-IT');
+  $('#kpi-users').textContent = kpi.registeredProjects.toLocaleString('it-IT');
+  $('#kpi-fieldarea').textContent = kpi.fieldAreaProjects.toLocaleString('it-IT');
+  $('#kpi-area').textContent = `${Math.round(kpi.totalAreaM2).toLocaleString('it-IT')} m²`;
 
   const body = $('#admin-projects');
   body.replaceChildren();
@@ -171,5 +179,17 @@ $('#detail-note-form').addEventListener('submit', async (event) => {
     $('#detail-feedback').textContent = 'Nota aggiunta.';
   } catch (error) { $('#detail-feedback').textContent = `Nota non salvata: ${error.message}`; }
 });
-for (const id of ['#filter-environment','#filter-status','#filter-zone','#filter-company','#filter-variety','#filter-rootstock','#filter-context','#filter-plants','#filter-area']) document.querySelector(id).addEventListener('input', render);
+$('#detail-restore-project').addEventListener('click', async()=>{
+  if(!selectedProjectId)return;
+  try { await service.restoreProject(crypto.randomUUID(),selectedProjectId); await loadProjects(); $('#detail-feedback').textContent='Progetto ripristinato.'; }
+  catch(error){ $('#detail-feedback').textContent=`Ripristino non riuscito: ${error.message}`; }
+});
+$('#detail-restore-revision').addEventListener('click', async()=>{
+  if(!selectedProjectId)return;
+  const revisionNumber=Number($('#detail-revision-number').value);
+  if(!Number.isInteger(revisionNumber)||revisionNumber<1){ $('#detail-feedback').textContent='Indica una revisione valida.'; return; }
+  try { await service.restoreRevision(crypto.randomUUID(),selectedProjectId,revisionNumber); await loadProjects(); $('#detail-feedback').textContent='Revisione ripristinata come nuovo stato corrente.'; }
+  catch(error){ $('#detail-feedback').textContent=`Ripristino revisione non riuscito: ${error.message}`; }
+});
+for (const id of ['#filter-environment','#filter-status','#filter-zone','#filter-company','#filter-variety','#filter-rootstock','#filter-context','#filter-plants','#filter-area','#filter-campaign','#filter-origin','#filter-owner','#filter-deleted']) document.querySelector(id).addEventListener('input', render);
 init();

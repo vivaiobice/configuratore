@@ -10,3 +10,15 @@ test('mergeCloudSnapshot persists secure resume data without dropping existing c
   assert.equal(next.cloud.resumeToken, 'secret');
   assert.equal(next.cloud.extra, 'keep');
 });
+
+test('mergeCloudSnapshot persists archive identity and synchronization acknowledgments', () => {
+  const next = mergeCloudSnapshot({ cloud:{ extra:'keep' } }, {
+    clientProjectId:'client-1', version:4, latestRevisionNumber:2,
+    syncState:'synced', lastSyncedAt:'2026-09-21T10:00:00.000Z'
+  });
+  assert.equal(next.cloud.clientProjectId, 'client-1');
+  assert.equal(next.cloud.version, 4);
+  assert.equal(next.cloud.latestRevisionNumber, 2);
+  assert.equal(next.cloud.syncState, 'synced');
+  assert.equal(next.cloud.extra, 'keep');
+});

@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=29';
+import { createMobileUI } from './mobile-ui.js?v=30';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -8,6 +8,9 @@ import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
 import { createCloudService } from './cloud.js';
 import { mergeCloudSnapshot } from './cloud-state.js';
+import { createSyncQueue } from './sync-queue.js';
+import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
+import { createProjectSync } from './project-sync.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';
@@ -26,6 +29,7 @@ let mapApi = null;
 let mobileUi = null;
 let vertexEditingActive = false;
 let cloudService = null;
+let projectSync = null;
 let latestMetrics = null;
 let pendingFinalAction = null;
 let mobileTransactionSnapshot = null;
@@ -125,11 +129,11 @@ function syncOrientationControl() {
   if (control) control.value = state.project.orientationDeg ?? 0;
   if (output) output.value = `${state.project.orientationDeg ?? 0}°`;
 }
-function patchProject(patch) { state = mergeProjectState(state, patch); persist(); calculateAndRender(); }
+function patchProject(patch) { state = mergeProjectState(state, patch); persist(); calculateAndRender(); projectSync?.schedule('project_changed'); }
 function patchMaterialProject(patch) {
   state = mergeProjectState(state, patch);
   state = { ...state, project:autoNameActiveProjectField(state.project) };
-  persist(); calculateAndRender(); renderFieldManager();
+  persist(); calculateAndRender(); renderFieldManager(); projectSync?.schedule('material_changed');
 }
 function patchGeometry(geometry, patch = {}) {
   const proposed = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
@@ -137,6 +141,7 @@ function patchGeometry(geometry, patch = {}) {
   syncOrientationControl();
   persist();
   calculateAndRender();
+  void projectSync?.flush();
 }
 function bindNumberInput(selector, key) { $(selector)?.addEventListener('input', (event) => patchProject({ [key]: numberOrNull(event.target.value) })); }
 
@@ -500,6 +505,7 @@ function cancelMobileEdit() {
 async function saveMobileProject(name = '') {
   ensureLocalProjectIdentity(name || state.project.localProjectName || 'Il mio impianto');
   writeLocalProject(globalThis.localStorage, state.project, state.project.localProjectName);
+  await projectSync?.saveRevision();
   mobileTransactionSnapshot = null;
 }
 function loadMobileProject(item) {
@@ -619,6 +625,7 @@ async function runFinalAction(action) {
     $('#contact-feedback').textContent = 'Richiesta preventivo registrata.';
     return;
   }
+  if (action === 'save') await projectSync?.saveRevision();
   if (cloudService) {
     await saveCloudProject('saved');
     $('#contact-feedback').textContent = 'Progetto salvato.';
@@ -659,7 +666,10 @@ $('#contact-form')?.addEventListener('submit', async (event) => {
     const action = pendingFinalAction;
     pendingFinalAction = null;
     if (action && action !== 'save') await runFinalAction(action);
-    if (action === 'save' && cloudService) $('#contact-feedback').textContent = 'Progetto salvato.';
+    if (action === 'save') {
+      await projectSync?.saveRevision();
+      if (cloudService) $('#contact-feedback').textContent = 'Progetto salvato.';
+    }
     setTimeout(() => contactDialog?.close(), action === 'report' ? 250 : 900);
   } catch (error) {
     console.error(error);
@@ -673,8 +683,9 @@ async function initializeCloud() {
     if (!client) return;
     const resumeRequest = parseResumeParams(globalThis.location.href);
     const resumeBaseUrl = `${globalThis.location.origin}${globalThis.location.pathname}`;
+    const backend = createBackend(client);
     cloudService = createCloudService({
-      backend:createBackend(client),
+      backend,
       sessionId,
       environment:state.environment ?? APP_CONFIG.environment,
       consentState:getConsentState(globalThis.localStorage) ?? 'necessary',
@@ -695,13 +706,31 @@ async function initializeCloud() {
       return;
     }
     await persistCloudSnapshot(snapshot);
+    try {
+      const queueAdapter = await createIndexedDbSyncAdapter(globalThis.indexedDB);
+      projectSync = createProjectSync({
+        backend,
+        queue:createSyncQueue(queueAdapter),
+        getState:() => state,
+        getMetrics:(field) => calculateFieldProject(field ?? state.project),
+        onSnapshot:(cloud) => { state=mergeCloudSnapshot(state,cloud); persist(); }
+      });
+      await projectSync.retryPending();
+      if (state.project.geometry) projectSync.schedule('startup_reconcile');
+    } catch (syncError) {
+      console.warn('Cloud archive queue unavailable; local persistence remains active',syncError);
+    }
     await cloudService.trackEvent('configurator_opened', { device:matchMedia('(max-width: 760px)').matches ? 'mobile' : 'desktop' });
-    setStatus('Backend TEST collegato. La bozza viene sincronizzata quando salvi il progetto.');
+    setStatus('Backend TEST collegato. La bozza locale resta sempre disponibile.');
   } catch (error) {
     console.error(error);
     setStatus('Backend temporaneamente non disponibile. La bozza locale resta attiva.');
   }
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') persist();
+});
 
 renderFieldManager();
 renderExclusions();

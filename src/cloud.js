@@ -16,6 +16,7 @@ export function createCloudService({
   if (!backend) throw new TypeError('backend required');
   let activeConsentState = consentState;
   let ownerUserId = null;
+  let ownerKind = null;
   let projectId = initialCloud?.projectId ?? null;
   let publicCode = initialCloud?.publicCode ?? null;
   let contactId = initialCloud?.contactId ?? null;
@@ -30,7 +31,7 @@ export function createCloudService({
   }
 
   function snapshot(extra = {}) {
-    return { ownerUserId, projectId, publicCode, contactId, visitorId, resumeToken, resumeUrl, restoredState, ...extra };
+    return { ownerUserId, ownerKind, projectId, publicCode, contactId, visitorId, resumeToken, resumeUrl, restoredState, ...extra };
   }
 
   async function initialize() {
@@ -38,6 +39,16 @@ export function createCloudService({
     const session = await backend.ensureAnonymousSession();
     ownerUserId = session?.user?.id ?? null;
     if (!ownerUserId) throw new Error('Anonymous owner unavailable');
+    ownerKind = session.user.is_anonymous === true
+      ? 'guest'
+      : (session.user.app_metadata?.role === 'admin' ? 'admin' : 'user');
+    if (typeof backend.upsertProfile === 'function') {
+      await backend.upsertProfile({
+        user_id:ownerUserId,
+        owner_kind:ownerKind,
+        last_seen_at:new Date().toISOString()
+      });
+    }
     if (activeConsentState === 'analytics') {
       const visitor = await backend.upsertVisitor(toVisitorRow({ ownerUserId, analyticsConsent:true }));
       visitorId = visitor.id;

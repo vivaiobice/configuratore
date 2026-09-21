@@ -1,0 +1,8 @@
+{
+  "type":"FeatureCollection",
+  "features":[{
+    "type":"Feature",
+    "properties":{"name":"Campo storico 1","area":2397},
+    "geometry":{"type":"Polygon","coordinates":[[[8.211,44.706],[8.214,44.706],[8.214,44.708],[8.211,44.706]]]}
+  }]
+}
