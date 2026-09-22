@@ -1,6 +1,7 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=35';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=35';
+import { createMobileUI } from './mobile-ui.js?v=36';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=36';
+import { createDesktopQuickCalculator, createSaveFeedback } from './desktop-ux.js?v=36';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=34';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -44,6 +45,8 @@ let perimeterEventSent = Boolean(state.project.geometry);
 const authBridge=createAuthBridge();
 const profileUi=createProfileUI({authService:authBridge,document});
 profileUi.mount();
+createDesktopQuickCalculator({document}).mount();
+const summarySaveFeedback=createSaveFeedback($('#summary-save-project'));
 const sessionId = (() => {
   const existing = globalThis.sessionStorage?.getItem('vivai-obice:configuratore:session');
   if (existing) return existing;
@@ -139,15 +142,17 @@ function syncOrientationControl() {
   if (control) control.value = state.project.orientationDeg ?? 0;
   if (output) output.value = `${state.project.orientationDeg ?? 0}°`;
 }
-function patchProject(patch) { state = mergeProjectState(state, patch); persist(); calculateAndRender(); projectSync?.schedule('project_changed'); }
+function patchProject(patch) { state = mergeProjectState(state, patch); summarySaveFeedback.dirty(); persist(); calculateAndRender(); projectSync?.schedule('project_changed'); }
 function patchMaterialProject(patch) {
   state = mergeProjectState(state, patch);
   state = { ...state, project:autoNameActiveProjectField(state.project) };
+  summarySaveFeedback.dirty();
   persist(); calculateAndRender(); renderFieldManager(); projectSync?.schedule('material_changed');
 }
 function patchGeometry(geometry, patch = {}) {
   const proposed = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
   state = { ...state, project:updateActiveFieldProject(state.project, { ...patch, geometry:proposed.geometry, orientationDeg:proposed.orientationDeg, orientationLocked:proposed.orientationLocked }) };
+  summarySaveFeedback.dirty();
   syncOrientationControl();
   persist();
   calculateAndRender();
@@ -235,6 +240,7 @@ $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
 $('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
 $('#project-context').value = state.project.projectContextType || 'new_planting';
 $('#project-context-note').value = state.project.projectContextNote ?? '';
+$('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
 renderMaterialSelectors();
 const newPlantingOption = $('#project-context')?.querySelector('option[value="new_planting"]');
 if (newPlantingOption) newPlantingOption.dataset.context = 'new_planting', newPlantingOption.textContent = 'Nuovo Impianto';
@@ -288,6 +294,7 @@ function syncProjectControls() {
   $('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
   $('#project-context').value = state.project.projectContextType || 'new_planting';
   $('#project-context-note').value = state.project.projectContextNote ?? '';
+  $('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
   renderMaterialSelectors();
 }
 
@@ -344,14 +351,19 @@ function loadActiveFieldOnMap() {
 $('#field-select')?.addEventListener('change', (event) => { state = { ...state, project:switchProjectField(state.project, event.target.value) }; persist(); loadActiveFieldOnMap(); });
 $('#field-name')?.addEventListener('input', (event) => {
   state = { ...state, project:renameActiveProjectField(state.project, event.target.value) };
+  summarySaveFeedback.dirty();
   persist();
   const selected = $('#field-select')?.selectedOptions?.[0];
   if (selected) selected.textContent = state.project.label;
   mapApi?.setActiveFieldLabel(state.project.label);
   syncOtherFieldsOnMap();
 });
-$('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
-$('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) }; persist(); loadActiveFieldOnMap(); });
+$('#campaign-year')?.addEventListener('input',(event)=>{
+  const value=Number(event.target.value);
+  if(Number.isInteger(value)&&value>=2000&&value<=2100)patchProject({campaignYear:value});
+});
+$('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; summarySaveFeedback.dirty();persist(); loadActiveFieldOnMap(); });
+$('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
 
 function isMobileMap() { return Boolean(globalThis.matchMedia?.('(max-width: 800px), (max-width: 1100px) and (pointer: coarse)')?.matches); }
 function startDrawingField() { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); }
@@ -652,6 +664,8 @@ async function saveCloudProject(status = null) {
 }
 
 async function runFinalAction(action) {
+  if(action==='save')summarySaveFeedback.saving();
+  try{
   if (action === 'report') {
     if (cloudService) { await saveCloudProject('pdf_downloaded'); track('pdf_generated'); }
     globalThis.open('./report.html', '_blank', 'noopener');
@@ -676,6 +690,8 @@ async function runFinalAction(action) {
   } else {
     $('#contact-feedback').textContent = 'Progetto salvato su questo dispositivo.';
   }
+  if(action==='save')summarySaveFeedback.saved();
+  }catch(error){if(action==='save')summarySaveFeedback.error();throw error;}
 }
 
 function requestFinalAction(action) {
@@ -697,6 +713,7 @@ $('#contact-form')?.addEventListener('submit', async (event) => {
   if (!event.currentTarget.reportValidity()) return;
   const data = new FormData(event.currentTarget);
   const contact = { companyName: data.get('company'), firstName: data.get('firstName'), lastName: data.get('lastName'), phone: data.get('phone'), email: data.get('email'), privacyVersion:'v1', marketingConsent:data.get('marketing') === 'on' };
+  const submittedAction=pendingFinalAction;
   state = { ...state, contact };
   persist();
   try {
@@ -707,15 +724,18 @@ $('#contact-form')?.addEventListener('submit', async (event) => {
     } else {
       $('#contact-feedback').textContent = 'Dati associati alla bozza su questo dispositivo.';
     }
-    const action = pendingFinalAction;
+    const action = submittedAction;
     pendingFinalAction = null;
     if (action && action !== 'save') await runFinalAction(action);
     if (action === 'save') {
+      summarySaveFeedback.saving();
       await projectSync?.saveRevision();
       if (cloudService) $('#contact-feedback').textContent = 'Progetto salvato.';
+      summarySaveFeedback.saved();
     }
     setTimeout(() => contactDialog?.close(), action === 'report' ? 250 : 900);
   } catch (error) {
+    if(submittedAction==='save')summarySaveFeedback.error();
     console.error(error);
     $('#contact-feedback').textContent = 'Salvataggio cloud non riuscito. La bozza resta disponibile su questo dispositivo.';
   }

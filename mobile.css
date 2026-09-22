@@ -91,7 +91,7 @@
  .mobile-label{display:grid;gap:6px;margin-bottom:15px}
  #mobile-app .field-manager{background:#fff;border:1px solid #e0e6dc;border-radius:16px;padding:16px;margin:0 0 14px;display:block}
  #mobile-parameters-body{position:relative;z-index:20;pointer-events:auto;isolation:isolate;touch-action:auto}
- #mobile-app .field-manager>label:first-child,#mobile-app .field-manager-actions{display:none}
+ #mobile-app .field-manager>.field-select-label,#mobile-app .field-manager-actions{display:none}
  #mobile-app .field-name-label{display:block}
  #mobile-app .step[data-step="2"],#mobile-app .advanced{margin:0 0 14px;padding:17px;border:1px solid #e0e6dc;border-radius:16px;background:#fff}
  #mobile-app .step-heading{margin-bottom:16px}#mobile-app .step-heading>span,#mobile-app .step-heading p,#mobile-app .manual-calculator{display:none}

@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V35 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V36 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -635,3 +635,22 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - Collaudo reale consigliato: login Admin su iPhone e Mac, refresh in Campi/Progetti, apertura dello
   stesso progetto sui due dispositivi; su desktop verificare Campi/Progetti e Admin con mappa satellitare,
   selezione utente e ritorno al configuratore.
+
+## V36 — riordino desktop, annata e feedback salvataggio
+
+- Richiesta desktop: il pannello laterale deve iniziare con Nome campo e i comandi espliciti
+  `Aggiungi campo` / `Elimina campo`; deve poi mostrare GPS/Trova terreno, sesto d’impianto e
+  immediatamente sotto orientamento filari.
+- Il Calcolo rapido desktop è stato tolto dalla barra laterale e spostato in un dialogo richiamabile
+  dalla barra superiore. Il flusso mobile già esistente non è stato alterato.
+- Aggiunta Annata impianto sia su desktop sia nella schermata mobile dei parametri. È un dato unico
+  di progetto, memorizzato nell’esistente `campaignYear`, con intervallo ammesso 2000–2100 e anno
+  corrente come valore iniziale per i progetti nuovi. Non serve alcuna migrazione database.
+- Il pulsante Salva progetto desktop ora comunica lo stato: `Salvataggio…`,
+  `✓ Progetto salvato` oppure errore. Una modifica ai dati lo riporta allo stato iniziale.
+- Le aggiunte desktop sono isolate in `desktop-v36.css` e `desktop-ux.js`; `styles.css` storico,
+  geometrie e formule non sono stati modificati.
+- TDD: aggiunti contratti su ordine del pannello, etichette, validazione annata, dialogo calcolatore,
+  stati di salvataggio e trasferimento del controllo condiviso nella schermata mobile. Gate finale
+  `378/378`; `npm run check` e syntax check dei moduli modificati superati.
+- Cache bust e badge portati a V36. Ambiente TEST; nessun intervento su Supabase LIVE.

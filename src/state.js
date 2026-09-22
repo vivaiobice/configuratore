@@ -6,6 +6,7 @@ export function createInitialState() {
     environment: 'TEST',
     map: { base: 'satellite', cadastralVisible: false },
     project: {
+      campaignYear: new Date().getFullYear(),
       geometry: null,
       sourceType: 'manual',
       cadastralRefs: [],

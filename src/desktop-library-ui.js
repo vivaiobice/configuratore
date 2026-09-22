@@ -1,3 +1,4 @@
+import {createSaveFeedback} from './desktop-ux.js?v=36';
 const text=(value)=>String(value??'');
 
 export function createDesktopLibraryUI(api){
@@ -47,7 +48,12 @@ export function createDesktopLibraryUI(api){
       catch(error){root.querySelector('#desktop-library-feedback').textContent=`Sincronizzazione non riuscita: ${text(error.message)}`;}
       finally{busy=false;refreshButton.disabled=false;}
     });
-    root.querySelector('#desktop-library-save').addEventListener('click',async()=>{await api.saveProject?.();render();});
+    const saveButton=root.querySelector('#desktop-library-save'),saveFeedback=createSaveFeedback(saveButton,{idleLabel:'Salva progetto'});
+    saveButton.addEventListener('click',async()=>{
+      saveFeedback.saving();
+      try{await api.saveProject?.();render();saveFeedback.saved();root.querySelector('#desktop-library-feedback').textContent='Progetto salvato correttamente.';}
+      catch(error){saveFeedback.error();root.querySelector('#desktop-library-feedback').textContent=`Salvataggio non riuscito: ${text(error.message)}`;}
+    });
     root.querySelector('#desktop-library-new').addEventListener('click',()=>{api.newProject?.();close();});
   }
   return{mount,open,close,render};

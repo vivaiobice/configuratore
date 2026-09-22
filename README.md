@@ -2,7 +2,22 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V35 WebApp.
+Stato: ambiente TEST · release V36 WebApp.
+
+## V36 — flusso desktop e annata d’impianto
+
+- Desktop: il gruppo **Nome campo** apre ora la barra laterale, con i comandi rinominati
+  **Aggiungi campo** e **Elimina campo**; seguono GPS/Trova terreno, sesto d’impianto e
+  orientamento filari.
+- Il calcolatore rapido è stato rimosso dalla barra laterale desktop e si apre a richiesta dalla
+  barra superiore, senza modificare il calcolatore mobile.
+- Aggiunta l’**annata d’impianto** a livello di progetto, modificabile sia da desktop sia dalla
+  schermata parametri mobile. Sono accettati gli anni dal 2000 al 2100 e il valore usa il campo
+  persistente `campaignYear` già previsto dal backend.
+- Il comando desktop **Salva progetto** mostra gli stati `Salvataggio…`, `✓ Progetto salvato` ed
+  eventuale errore; una modifica successiva ripristina lo stato da salvare.
+- Gate locale: suite `378/378` e controlli sintattici superati. Nessuna modifica a geometria,
+  calcoli viticoli, database, Supabase LIVE o `styles.css` storico.
 
 ## V35 — aggiornamento manuale, archivio desktop e Admin
 

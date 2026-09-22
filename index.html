@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=35" />
+  <link rel="manifest" href="./manifest.webmanifest?v=36" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -12,9 +12,10 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=35" />
+  <link rel="stylesheet" href="./mobile.css?v=36" />
   <link rel="stylesheet" href="./profile.css?v=31" />
-  <link rel="stylesheet" href="./desktop-library.css?v=35" />
+  <link rel="stylesheet" href="./desktop-library.css?v=36" />
+  <link rel="stylesheet" href="./desktop-v36.css?v=36" />
 </head>
 <body>
   <header class="topbar">
@@ -22,7 +23,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><span class="test-badge">AMBIENTE TEST · V35</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V36</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -32,6 +33,13 @@
         <p class="eyebrow">PROGETTA IL TUO VIGNETO</p>
         <h1>Dal terreno a una prima ipotesi d’impianto.</h1>
         <p>Trova l’appezzamento, definisci il perimetro e imposta il sesto. Il progetto si aggiorna in tempo reale.</p>
+      </div>
+
+      <div class="field-manager" aria-label="Gestione campi">
+        <label class="field-name-label">Nome campo<input id="field-name" class="control-input" type="text" maxlength="80" placeholder="es. Vigneto Cascina" /></label>
+        <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">Aggiungi campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">Elimina campo</button></div>
+        <label class="field-select-label">Campo attivo<select id="field-select"></select></label>
+        <label class="campaign-year-label">Annata dell’impianto<input id="campaign-year" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
       </div>
 
       <section class="step" data-step="1">
@@ -47,11 +55,6 @@
           <button id="gps-button" class="secondary-button" type="button">◎ Posizione attuale</button>
           <button id="draw-button" class="primary-button" type="button">Disegna terreno</button>
         </div>
-        <div class="field-manager" aria-label="Gestione campi">
-          <label>Campo attivo<select id="field-select"></select></label>
-          <label class="field-name-label">Nome campo<input id="field-name" class="control-input" type="text" maxlength="80" placeholder="es. Vigneto Cascina" /></label>
-          <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">＋ Campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">− Campo</button></div>
-        </div>
       </section>
 
       <section class="step" data-step="2">
@@ -59,14 +62,6 @@
         <div class="field-grid">
           <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
           <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
-        </div>
-        <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
-          <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Inserisci la superficie: usa il sesto impostato qui sopra.</span></div></div>
-          <label class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
-          <div class="manual-calculator-results" aria-live="polite">
-            <div><span>Barbatelle teoriche</span><strong id="manual-theoretical">—</strong></div>
-            <div class="manual-commercial"><span>Quantità commerciale ×25</span><strong id="manual-commercial">—</strong></div>
-          </div>
         </div>
         <label class="range-field">Orientamento filari <output id="orientation-output">0°</output>
           <input id="orientation" type="range" min="0" max="179" step="1" value="0" />
@@ -152,6 +147,20 @@
     </section>
   </main>
 
+  <dialog id="quick-calculator-dialog" class="quick-calculator-dialog">
+    <div class="quick-calculator-card">
+      <div class="dialog-heading"><div><p class="eyebrow">STRUMENTO RAPIDO</p><h2>Calcolo barbatelle</h2><p>Stima senza disegnare il terreno.</p></div><button id="quick-calculator-close" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
+      <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
+        <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Il calcolo usa le distanze impostate nel progetto.</span></div></div>
+        <label class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
+        <div class="manual-calculator-results" aria-live="polite">
+          <div><span>Barbatelle teoriche</span><strong id="manual-theoretical">—</strong></div>
+          <div class="manual-commercial"><span>Quantità commerciale ×25</span><strong id="manual-commercial">—</strong></div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <div id="consent-banner" class="consent-banner" hidden>
     <div><strong>Privacy e utilizzo</strong><p>Usiamo i dati tecnici necessari al funzionamento. Con il tuo consenso possiamo anche misurare l’utilizzo e riconoscere le visite successive per migliorare il servizio.</p></div>
     <div class="consent-actions"><button id="consent-necessary" class="secondary-button" type="button">Solo necessari</button><button id="consent-analytics" class="primary-button" type="button">Accetta analisi</button></div>
@@ -173,6 +182,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=35"></script>
+  <script type="module" src="./src/app.js?v=36"></script>
 </body>
 </html>
