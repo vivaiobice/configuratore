@@ -52,9 +52,10 @@
  .mobile-profile-avatar{width:64px;height:64px;margin:auto;border-radius:50%;display:grid;place-items:center;background:#1f6745;color:#fff;font-size:28px;font-weight:800}
  .mobile-auth-feedback{margin:0 20px;color:#1d6242;font-weight:700}.mobile-auth-feedback.error{color:#a12b2b}
  body[data-mobile-screen="map"] #mobile-pages,body[data-mobile-screen="editor"] #mobile-pages{display:none}
- .mobile-page-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 20px}
- .mobile-page-heading h1{font-size:25px;letter-spacing:-.04em;margin:0;flex:1}
- .mobile-page-heading>button:first-child:not(:last-child){padding:8px}
+.mobile-page-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 20px}
+.mobile-page-heading h1{font-size:25px;letter-spacing:-.04em;margin:0;flex:1}
+.mobile-page-heading>button:first-child:not(:last-child){padding:8px}
+.mobile-heading-actions{display:flex;align-items:center;gap:8px}.mobile-heading-actions button{min-width:44px;min-height:44px;padding:8px 12px}.mobile-heading-actions button[aria-busy="true"] svg{animation:mobile-refresh-spin .8s linear infinite}@keyframes mobile-refresh-spin{to{transform:rotate(360deg)}}
  #mobile-fields-total{padding:19px;border-radius:18px;background:#225939;color:white;margin-bottom:18px;display:grid;gap:7px}
  #mobile-fields-total strong{font-size:20px}#mobile-fields-total span{font-size:14px}#mobile-fields-total small{font-size:12px;color:#d7e5d4}
  #mobile-fields-list,#mobile-projects-list{display:grid;gap:12px}

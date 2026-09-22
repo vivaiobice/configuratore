@@ -2,7 +2,21 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V34 WebApp.
+Stato: ambiente TEST · release V35 WebApp.
+
+## V35 — aggiornamento manuale, archivio desktop e Admin
+
+- Mobile: pulsante di aggiornamento nelle sezioni Campi e Progetti; forza prima il salvataggio delle
+  modifiche in coda e poi scarica l’archivio dell’account. Le bozze soltanto locali restano conservate.
+- Mobile: l’accesso all’Amministrazione resta volutamente nascosto; è disponibile soltanto dal desktop.
+- Desktop: comandi Campi e Progetti nella barra superiore aprono un archivio separato senza smontare
+  né modificare l’editor principale. Da Progetti si può aggiornare, salvare, creare o riaprire un progetto.
+- Admin: mappa satellitare, scroll pagina ripristinato e visualizzazione di tutti i perimetri presenti
+  nei `field_plans`, con fallback ai vecchi progetti dotati della sola geometria principale.
+- Admin: KPI selezionabili, elenco reale degli utenti registrati, filtro dei progetti per utente e
+  collegamento per tornare al configuratore.
+- Gate locale: suite `373/373`; controlli sintattici superati. Nessuna modifica a editor, calcoli,
+  geometria o `styles.css` V18. Nessuna modifica al database e nessun intervento su LIVE.
 
 ## V34 — sincronizzazione archivio personale
 
@@ -166,7 +180,8 @@ Stato: ambiente TEST · release V34 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-356 test automatici verificati, compresi promozione Guest server-side, messaggi Edge leggibili e il controllo che impedisce di pubblicare nuovamente il
+373 test automatici verificati, compresi refresh archivio, sezioni desktop, mappa Admin multi-campo,
+profili selezionabili, promozione Guest server-side, messaggi Edge leggibili e il controllo che impedisce di pubblicare nuovamente il
 modulo di sincronizzazione senza cache bust, autenticazione profilo, trasferimento Guest idempotente,
 archivio cloud, coda offline, revisione differita,
 allineamento stabile della checkbox, centratura SVG,

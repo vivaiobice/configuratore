@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V34 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V35 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -608,3 +608,30 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - Collaudo richiesto dopo pubblicazione: aprire V34 su un dispositivo senza cache, fare login Admin,
   verificare 3 progetti in Progetti e 11 campi complessivi; aprire un progetto, modificarne solo il
   nome o un parametro, salvare e confermare sull'altro dispositivo che non nasca un duplicato.
+
+## V35 — refresh manuale, archivio desktop e correzioni Admin
+
+- Richiesta mobile: aggiungere un aggiornamento manuale accanto al `+` sia in Campi sia in Progetti.
+  Il comando usa lo stesso archivio proprietario della V34, esegue prima il flush della coda e poi
+  aggiorna la copia locale; non elimina le bozze presenti soltanto sul dispositivo.
+- Decisione UX: la sezione Amministrazione resta desktop-only. Il collegamento non viene più mostrato
+  nella scheda Profilo mobile anche quando l’utente ha ruolo Admin.
+- Richiesta desktop differita dalla V34: aggiunti Campi e Progetti nella barra principale. Sono pannelli
+  isolati in `desktop-library-ui.js` e `desktop-library.css`; l’editor esistente rimane montato e il
+  foglio storico `styles.css` V18 non cambia.
+- Diagnosi Admin: lo scroll era bloccato da `body{overflow:hidden}` ereditato dal configuratore; la
+  mappa usava ancora OpenStreetMap e `projectsToFeatureCollection()` ignorava `field_plans`, mostrando
+  soltanto i vecchi progetti dotati di `project.geometry`.
+- Correzione Admin: override locale dello scroll, Esri World Imagery, una feature per ogni campo
+  salvato e fallback alla geometria legacy. La tabella mostra anche il numero dei campi.
+- I KPI Progetti, Preventivi, Clienti, Guest e FieldArea applicano filtri navigabili. Utenti registrati
+  apre l’elenco reale dei profili; scegliendo un profilo vengono mostrati i suoi progetti tramite
+  `owner_user_id`. Aggiunto il ritorno esplicito al configuratore.
+- Sicurezza/ambiente: nessuna migrazione, scrittura manuale sul database o modifica a Supabase LIVE.
+  Tutta la release resta `AMBIENTE TEST`.
+- TDD: test RED iniziali per refresh, archivio desktop, immagini satellitari, scroll, profili e
+  geometrie multi-campo; GREEN finale `373/373`. Syntax check superato.
+- Cache bust portato a V35 per manifest, mobile CSS, entrypoint, mobile UI e nuovo foglio desktop.
+- Collaudo reale consigliato: login Admin su iPhone e Mac, refresh in Campi/Progetti, apertura dello
+  stesso progetto sui due dispositivi; su desktop verificare Campi/Progetti e Admin con mappa satellitare,
+  selezione utente e ritorno al configuratore.

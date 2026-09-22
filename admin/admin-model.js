@@ -9,6 +9,7 @@ export function filterProjects(projects, filters = {}) {
   const rootstock = text(filters.rootstock);
   const contextType = text(filters.contextType);
   const ownerKind = text(filters.ownerKind);
+  const ownerUserId = String(filters.ownerUserId ?? '').trim();
   const origin = text(filters.origin);
   const campaignYear = Number(filters.campaignYear) || 0;
   const minPlants = Number(filters.minPlants) || 0;
@@ -26,6 +27,7 @@ export function filterProjects(projects, filters = {}) {
     if (rootstock && !text(project.rootstock).includes(rootstock)) return false;
     if (contextType && text(project.project_context_type) !== contextType) return false;
     if (ownerKind && text(project.owner_kind) !== ownerKind) return false;
+    if (ownerUserId && String(project.owner_user_id ?? '') !== ownerUserId) return false;
     if (origin && text(project.origin) !== origin) return false;
     if (campaignYear && Number(project.campaign_year) !== campaignYear) return false;
     if ((Number(project.commercial_plants_25) || 0) < minPlants) return false;
@@ -62,18 +64,29 @@ export function isValidProjectStatus(status) {
 }
 
 export function projectsToFeatureCollection(projects) {
+  const features=[];
+  for(const project of projects ?? []){
+    const common={
+      projectId:project.id,
+      publicCode:project.public_code ?? '',
+      status:project.status ?? '',
+      company:project.company_name ?? project.contacts?.company_name ?? ''
+    };
+    const fields=(project.field_plans ?? []).filter((field)=>Array.isArray(field?.geometry)&&field.geometry.length>=4);
+    if(fields.length){
+      for(const field of fields)features.push({
+        type:'Feature',id:`${project.id}:${field.id ?? features.length}`,
+        properties:{...common,fieldId:field.id ?? '',fieldLabel:field.label ?? 'Campo'},
+        geometry:{type:'Polygon',coordinates:[field.geometry]}
+      });
+      continue;
+    }
+    if(project?.geometry?.type === 'Polygon' && Array.isArray(project.geometry.coordinates))features.push({
+      type:'Feature',id:project.id,properties:{...common,fieldId:'',fieldLabel:'Campo'},geometry:project.geometry
+    });
+  }
   return {
     type:'FeatureCollection',
-    features:(projects ?? []).filter((project) => project?.geometry?.type === 'Polygon' && Array.isArray(project.geometry.coordinates)).map((project) => ({
-      type:'Feature',
-      id:project.id,
-      properties:{
-        projectId:project.id,
-        publicCode:project.public_code ?? '',
-        status:project.status ?? '',
-        company:project.company_name ?? project.contacts?.company_name ?? ''
-      },
-      geometry:project.geometry
-    }))
+    features
   };
 }

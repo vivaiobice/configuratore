@@ -15,7 +15,7 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
   if (!globalThis.maplibregl) return null;
   const map = new globalThis.maplibregl.Map({
     container,
-    style:{ version:8, sources:{ street:{ type:'raster', tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256, attribution:'© OpenStreetMap contributors' } }, layers:[{ id:'street', type:'raster', source:'street' }] },
+    style:{ version:8, sources:{ satellite:{ type:'raster', tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize:256, attribution:'Esri World Imagery' } }, layers:[{ id:'satellite', type:'raster', source:'satellite' }] },
     center:[8.2,44.7], zoom:8.5, attributionControl:true
   });
   map.addControl(new globalThis.maplibregl.NavigationControl(), 'top-right');

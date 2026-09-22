@@ -10,7 +10,9 @@ let client = null;
 let service = null;
 let currentUser = null;
 let projects = [];
+let profiles = [];
 let selectedProjectId = null;
+let selectedOwnerUserId = '';
 let adminMap = null;
 
 function td(value) {
@@ -31,6 +33,7 @@ function render() {
     campaignYear:$('#filter-campaign').value,
     origin:$('#filter-origin').value,
     ownerKind:$('#filter-owner').value,
+    ownerUserId:selectedOwnerUserId,
     includeDeleted:$('#filter-deleted').checked,
     minPlants: $('#filter-plants').value,
     minArea: $('#filter-area').value
@@ -42,7 +45,7 @@ function render() {
   $('#kpi-clients').textContent = kpi.clients.toLocaleString('it-IT');
   $('#kpi-plants').textContent = kpi.totalPlants.toLocaleString('it-IT', { useGrouping:true });
   $('#kpi-guests').textContent = kpi.guestProjects.toLocaleString('it-IT');
-  $('#kpi-users').textContent = kpi.registeredProjects.toLocaleString('it-IT');
+  $('#kpi-users').textContent = profiles.filter((profile)=>profile.owner_kind === 'user').length.toLocaleString('it-IT');
   $('#kpi-fieldarea').textContent = kpi.fieldAreaProjects.toLocaleString('it-IT');
   $('#kpi-area').textContent = `${Math.round(kpi.totalAreaM2).toLocaleString('it-IT')} m²`;
 
@@ -54,6 +57,7 @@ function render() {
       td(new Date(project.created_at).toLocaleDateString('it-IT')),
       td(project.company_name ?? '—'),
       td(STATUS_LABELS[project.status] ?? project.status),
+      td((project.field_plans ?? []).filter((field)=>Array.isArray(field?.geometry)&&field.geometry.length>=4).length || (project.geometry ? 1 : 0)),
       td(`${Math.round(project.gross_area_m2 || 0).toLocaleString('it-IT')} m²`),
       td((project.commercial_plants_25 || 0).toLocaleString('it-IT',{useGrouping:true})),
       td(project.grape_variety ?? '—'),
@@ -61,6 +65,21 @@ function render() {
     );
     tr.addEventListener('click', () => showProject(project.id));
     body.append(tr);
+  }
+}
+
+function renderProfiles(){
+  const list=$('#admin-users-list');list.replaceChildren();
+  const registered=profiles.filter((profile)=>profile.owner_kind === 'user');
+  if(!registered.length){list.textContent='Nessun profilo registrato.';return;}
+  for(const profile of registered){
+    const button=document.createElement('button');button.type='button';button.className='admin-user';button.dataset.userId=profile.user_id;
+    const count=projects.filter((project)=>project.owner_user_id===profile.user_id&&!project.deleted_at).length;
+    const name=document.createElement('strong');name.textContent=profile.display_name||profile.username||'Utente';
+    const username=document.createElement('span');username.textContent=profile.username?`@${profile.username}`:'Username non indicato';
+    const total=document.createElement('small');total.textContent=`${count} progetti`;button.append(name,username,total);
+    button.addEventListener('click',()=>{selectedOwnerUserId=profile.user_id;$('#filter-owner').value='';$('#admin-users').hidden=true;render();$('#admin-project-list').scrollIntoView({behavior:'smooth',block:'start'});});
+    list.append(button);
   }
 }
 
@@ -93,6 +112,8 @@ async function showProject(id) {
   selectedProjectId = id;
   const contact = project.contacts ?? {};
   const activeField = Array.isArray(project.field_plans) ? (project.field_plans.find((field) => field.id === project.active_field_id) || project.field_plans[0] || {}) : {};
+  const savedFields=Array.isArray(project.field_plans)?project.field_plans.filter((field)=>Array.isArray(field?.geometry)&&field.geometry.length>=4):[];
+  const fieldSummary=savedFields.length?savedFields.map((field)=>field.label||'Campo').join(', '):(project.geometry?'Campo':'—');
   $('#detail-title').textContent = `${contact.company_name ?? 'Progetto'} · ${project.public_code ?? id.slice(0,8)}`;
   $('#detail-status').value = project.status;
   const grid = $('#detail-grid');
@@ -112,6 +133,7 @@ async function showProject(id) {
     detailItem('Richiesta materiale', activeField.materialRequestNote || '—'),
     detailItem('Contesto', project.project_context_type || '—'),
     detailItem('Fonte perimetro', project.source_type || '—'),
+    detailItem('Campi salvati', `${savedFields.length || (project.geometry?1:0)} · ${fieldSummary}`),
     detailItem('Preventivo', project.quote_requested ? 'Richiesto' : '—')
   );
   $('#admin-detail').hidden = false;
@@ -121,8 +143,10 @@ async function showProject(id) {
 }
 
 async function loadProjects() {
-  const data = await service.loadProjects();
+  const [data,profileRows] = await Promise.all([service.loadProjects(),service.loadProfiles()]);
   projects = data.map((p) => ({ ...p, company_name:p.contacts?.company_name ?? null, quote_requested:(p.quote_requests?.length ?? 0)>0 }));
+  profiles=profileRows;
+  renderProfiles();
   render();
 }
 
@@ -157,6 +181,18 @@ $('#admin-login-form').addEventListener('submit', async (event) => {
 });
 
 $('#admin-logout').addEventListener('click', async () => { await client?.auth.signOut(); location.reload(); });
+$('#admin-users-close').addEventListener('click',()=>{$('#admin-users').hidden=true;});
+for(const card of document.querySelectorAll('[data-kpi]'))card.addEventListener('click',()=>{
+  const kind=card.dataset.kpi;
+  if(kind==='users'){renderProfiles();$('#admin-users').hidden=false;$('#admin-users').scrollIntoView({behavior:'smooth',block:'start'});return;}
+  selectedOwnerUserId='';
+  if(kind==='projects'){$('#filter-status').value='';$('#filter-owner').value='';$('#filter-origin').value='';}
+  if(kind==='quotes')$('#filter-status').value='quote_requested';
+  if(kind==='clients')$('#filter-status').value='client';
+  if(kind==='guests')$('#filter-owner').value='guest';
+  if(kind==='fieldarea')$('#filter-origin').value='fieldarea';
+  render();$('#admin-project-list').scrollIntoView({behavior:'smooth',block:'start'});
+});
 $('#detail-close').addEventListener('click', () => { selectedProjectId = null; $('#admin-detail').hidden = true; });
 $('#detail-save-status').addEventListener('click', async () => {
   if (!selectedProjectId) return;
@@ -191,5 +227,5 @@ $('#detail-restore-revision').addEventListener('click', async()=>{
   try { await service.restoreRevision(crypto.randomUUID(),selectedProjectId,revisionNumber); await loadProjects(); $('#detail-feedback').textContent='Revisione ripristinata come nuovo stato corrente.'; }
   catch(error){ $('#detail-feedback').textContent=`Ripristino revisione non riuscito: ${error.message}`; }
 });
-for (const id of ['#filter-environment','#filter-status','#filter-zone','#filter-company','#filter-variety','#filter-rootstock','#filter-context','#filter-plants','#filter-area','#filter-campaign','#filter-origin','#filter-owner','#filter-deleted']) document.querySelector(id).addEventListener('input', render);
+for (const id of ['#filter-environment','#filter-status','#filter-zone','#filter-company','#filter-variety','#filter-rootstock','#filter-context','#filter-plants','#filter-area','#filter-campaign','#filter-origin','#filter-owner','#filter-deleted']) document.querySelector(id).addEventListener('input', ()=>{selectedOwnerUserId='';render();});
 init();

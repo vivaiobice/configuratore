@@ -1,7 +1,7 @@
 import { isValidProjectStatus } from './admin-model.js';
 
 const PROJECT_SELECT = [
-  'id','client_project_id','public_code','name','campaign_year','origin','owner_kind','version','latest_revision_number','deleted_at',
+  'id','owner_user_id','client_project_id','public_code','name','campaign_year','origin','owner_kind','version','latest_revision_number','deleted_at',
   'geometry','created_at','updated_at','environment','status','source_type','cadastral_refs',
   'location_label','municipality','province','region',
   'gross_area_m2','net_area_m2','perimeter_m','vertex_count','row_spacing_m','plant_spacing_m',
@@ -35,6 +35,14 @@ export function createAdminService(client) {
         .order('created_at', { ascending:false })
         .limit(500);
       if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+
+    async loadProfiles() {
+      const result=await client.from('profiles')
+        .select('user_id,display_name,username,owner_kind,created_at,last_seen_at')
+        .order('display_name',{ascending:true});
+      if(result.error)throw result.error;
       return result.data ?? [];
     },
 

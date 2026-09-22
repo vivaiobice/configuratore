@@ -1,5 +1,6 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=33';
+import { createMobileUI } from './mobile-ui.js?v=35';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=35';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=34';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -30,9 +31,12 @@ state = { ...state, project:updateActiveFieldProject(state.project, {
 }) };
 let mapApi = null;
 let mobileUi = null;
+let desktopLibraryUi = null;
 let vertexEditingActive = false;
 let cloudService = null;
 let projectSync = null;
+let cloudBackend = null;
+let accountAuthService = null;
 let latestMetrics = null;
 let pendingFinalAction = null;
 let mobileTransactionSnapshot = null;
@@ -542,6 +546,23 @@ function removeMobileField(fieldId) {
   mobileTransactionSnapshot = null; persist(); loadActiveFieldOnMap();
 }
 
+async function refreshOwnedArchive(){
+  if(!cloudBackend||!accountAuthService)return {projects:readLocalProjects(globalThis.localStorage),imported:0,guest:true};
+  const authState=await accountAuthService.refresh();
+  if(authState.kind!=='user'||!authState.user?.id)return {projects:readLocalProjects(globalThis.localStorage),imported:0,guest:true};
+  await projectSync?.flush();
+  const currentId=state.project.localProjectId;
+  const hydrated=await hydrateOwnedProjects({
+    backend:cloudBackend,ownerUserId:authState.user.id,storage:globalThis.localStorage,
+    currentProject:state.project,environment:state.environment??APP_CONFIG.environment
+  });
+  const currentCloud=hydrated.projects.find((item)=>item.id===currentId);
+  if(currentCloud)loadMobileProject(currentCloud);
+  else if(hydrated.activeProject)loadMobileProject(hydrated.activeProject);
+  desktopLibraryUi?.render();
+  return hydrated;
+}
+
 mobileUi = createMobileUI({
   auth:authBridge,
   getMap:()=>mapApi?.map,
@@ -553,8 +574,16 @@ mobileUi = createMobileUI({
   selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },
   removeField:removeMobileField,
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
+  refreshProjects:refreshOwnedArchive,
   finalAction:requestFinalAction
 });
+
+desktopLibraryUi=createDesktopLibraryUI({
+  document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
+  selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
+  loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject
+});
+desktopLibraryUi.mount();
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#post-spacing', 'postSpacingM');
 $('#headland')?.addEventListener('input', (event) => {
@@ -699,12 +728,14 @@ async function initializeCloud() {
     const resumeRequest = parseResumeParams(globalThis.location.href);
     const resumeBaseUrl = `${globalThis.location.origin}${globalThis.location.pathname}`;
     const backend = createBackend(client);
+    cloudBackend=backend;
     const authService=createAuthService({
       client,backend,storage:globalThis.localStorage,
       resetRedirectTo:`${globalThis.location.origin}${globalThis.location.pathname}`,
       beforeIdentityChange:() => projectSync?.suspend('identity_transfer'),
       afterIdentityChange:()=>globalThis.location.reload()
     });
+    accountAuthService=authService;
     authBridge.attach(authService);
     const authState=await authService.refresh();
     await authService.resumePendingTransfer().catch(()=>{});
