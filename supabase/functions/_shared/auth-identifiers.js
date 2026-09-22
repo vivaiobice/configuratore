@@ -17,6 +17,15 @@ export async function resolveIdentifierEmail(identifier,{resolveUsername}){
 
 export function publicAuthError(){return {status:401,body:{error:'Credenziali non valide'}};}
 
+export function resolvePromotionTarget({currentUserId,conflictingUserId=null,pendingCredentialsVerified=false}={}){
+  if(!currentUserId)throw new TypeError('guest_required');
+  if(!conflictingUserId||conflictingUserId===currentUserId){
+    return {targetUserId:currentUserId,transferCurrentGuest:false};
+  }
+  if(!pendingCredentialsVerified)throw new Error('username_conflict');
+  return {targetUserId:conflictingUserId,transferCurrentGuest:true};
+}
+
 export async function rateLimitKey(ip,identifier){
   const input=`${String(ip??'unknown')}|${String(identifier??'').trim().toLowerCase()}`;
   const bytes=new TextEncoder().encode(input);

@@ -163,6 +163,21 @@ export function createProjectSync({
     suspended=false;syncState={...syncState,state:stateBeforeSuspend==='suspended'?'local':stateBeforeSuspend,lastError:null};publish();return syncState;
   }
 
+  function adoptCloudState(cloud = {}) {
+    if(timer){cancelTimer(timer);timer=null;}
+    suspended=false;
+    syncState={
+      state:cloud.syncState ?? (cloud.projectId ? 'synced' : 'local'),
+      serverVersion:Number(cloud.version) || 0,
+      projectId:cloud.projectId ?? null,
+      latestRevisionNumber:Number(cloud.latestRevisionNumber) || 0,
+      lastError:null
+    };
+    stateBeforeSuspend=syncState.state;
+    publish();
+    return syncState;
+  }
+
   return {
     schedule,
     flush,
@@ -170,6 +185,7 @@ export function createProjectSync({
     saveRevision,
     suspend,
     resume,
+    adoptCloudState,
     status:() => ({ ...syncState })
   };
 }

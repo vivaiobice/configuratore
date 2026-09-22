@@ -10,12 +10,26 @@ export function readLocalProjects(storage){
   throw new Error('Archivio progetti non leggibile. La bozza corrente è conservata.');
  }
 }
-export function writeLocalProject(storage,project,name){
+function clone(value){return globalThis.structuredClone?globalThis.structuredClone(value):JSON.parse(JSON.stringify(value));}
+function writeArchive(storage,projects){
+ storage.setItem(KEY,JSON.stringify(migrateProjectArchive({version:2,projects})));
+}
+export function writeLocalProject(storage,project,name,cloud={}){
  if(!storage?.setItem)throw new Error('Salvataggio sul dispositivo non disponibile.');
  if(!project?.localProjectId)throw new Error('Identificativo del progetto mancante.');
  const projects=readLocalProjects(storage);
- const item={id:project.localProjectId,name:String(name||'Il mio impianto').trim(),savedAt:new Date().toISOString(),project:JSON.parse(JSON.stringify(project))};
+ const item={id:project.localProjectId,name:String(name||'Il mio impianto').trim(),savedAt:new Date().toISOString(),project:clone(project),cloud:clone(cloud??{})};
  const next=[item,...projects.filter(p=>p.id!==item.id)];
- storage.setItem(KEY,JSON.stringify(migrateProjectArchive({version:2,projects:next})));
+ writeArchive(storage,next);
  return item;
+}
+export function mergeLocalProjects(storage,importedItems=[]){
+ if(!storage?.setItem)throw new Error('Salvataggio sul dispositivo non disponibile.');
+ const local=readLocalProjects(storage);
+ const imported=migrateProjectArchive({version:2,projects:clone(importedItems)}).projects;
+ const importedIds=new Set(imported.map((item)=>item.id));
+ const merged=[...imported,...local.filter((item)=>!importedIds.has(item.id))]
+  .sort((a,b)=>String(b.savedAt??'').localeCompare(String(a.savedAt??'')));
+ writeArchive(storage,merged);
+ return readLocalProjects(storage);
 }

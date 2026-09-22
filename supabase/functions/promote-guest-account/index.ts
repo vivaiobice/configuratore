@@ -1,5 +1,5 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.57.4';
-import {rateLimitKey} from '../_shared/auth-identifiers.js';
+import {rateLimitKey,resolvePromotionTarget} from '../_shared/auth-identifiers.js';
 
 const cors={'access-control-allow-origin':'*','access-control-allow-headers':'authorization, x-client-info, apikey, content-type','content-type':'application/json'};
 const reply=(status:number,body:unknown)=>new Response(JSON.stringify(body),{status,headers:cors});
@@ -35,17 +35,48 @@ Deno.serve(async request=>{
     if(limited.error||limited.data!==true)return reply(429,{error:'Troppi tentativi. Riprova più tardi'});
     const conflict=await service.from('profiles').select('user_id').ilike('username',payload.username).neq('user_id',user.id).maybeSingle();
     if(conflict.error)return reply(400,{error:'Registrazione non riuscita'});
-    if(conflict.data)return reply(409,{error:'Username già utilizzato'});
-    const reserved=await service.from('profiles').upsert({user_id:user.id,owner_kind:'guest',display_name:payload.displayName,username:payload.username,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    let pendingCredentialsVerified=false;
+    if(conflict.data){
+      const verified=await service.rpc('verify_pending_registration',{
+        p_user_id:conflict.data.user_id,
+        p_email:payload.email,
+        p_username:payload.username,
+        p_password:payload.password
+      });
+      if(verified.error)return reply(400,{error:'Registrazione non riuscita'});
+      pendingCredentialsVerified=verified.data===true;
+    }
+    let plan;
+    try{
+      plan=resolvePromotionTarget({currentUserId:user.id,conflictingUserId:conflict.data?.user_id,pendingCredentialsVerified});
+    }catch{
+      return reply(409,{error:'Username già utilizzato'});
+    }
+    let transferToken:string|null=null;
+    if(plan.transferCurrentGuest){
+      const grant=await service.rpc('create_guest_transfer_grant_for',{p_guest_user_id:user.id});
+      if(grant.error||!grant.data)return reply(400,{error:'Registrazione non riuscita'});
+      transferToken=grant.data;
+    }
+    const reserved=await service.from('profiles').upsert({user_id:plan.targetUserId,owner_kind:'guest',display_name:payload.displayName,username:payload.username,updated_at:new Date().toISOString()},{onConflict:'user_id'});
     if(reserved.error)return reply(reserved.error.code==='23505'?409:400,{error:reserved.error.code==='23505'?'Username già utilizzato':'Registrazione non riuscita'});
-    const promoted=await service.auth.admin.updateUserById(user.id,{email:payload.email,password:payload.password,email_confirm:true,user_metadata:{display_name:payload.displayName}});
+    const promoted=await service.auth.admin.updateUserById(plan.targetUserId,{email:payload.email,password:payload.password,email_confirm:true,user_metadata:{display_name:payload.displayName}});
     if(promoted.error)return reply(409,{error:'E-mail già utilizzata o non disponibile'});
-    const profile=await service.from('profiles').update({owner_kind:'user',display_name:payload.displayName,updated_at:new Date().toISOString()}).eq('user_id',user.id);
+    const profile=await service.from('profiles').update({owner_kind:'user',display_name:payload.displayName,updated_at:new Date().toISOString()}).eq('user_id',plan.targetUserId);
     if(profile.error)return reply(500,{error:'Profilo non aggiornato'});
     const authClient=createClient(url,publishableKey,{auth:{persistSession:false,autoRefreshToken:false}});
     const signed=await authClient.auth.signInWithPassword({email:payload.email,password:payload.password});
     if(signed.error||!signed.data.session)return reply(500,{error:'Account creato. Accedi nuovamente'});
-    return reply(200,{session:signed.data.session});
+    let transfer=null;
+    if(transferToken){
+      const targetClient=createClient(url,publishableKey,{
+        global:{headers:{authorization:`Bearer ${signed.data.session.access_token}`}},
+        auth:{persistSession:false,autoRefreshToken:false}
+      });
+      const moved=await targetClient.rpc('consume_guest_transfer_grant',{p_token:transferToken});
+      transfer=moved.error?{status:'pending'}:moved.data;
+    }
+    return reply(200,{session:signed.data.session,transfer});
   }catch{
     return reply(400,{error:'Dati di registrazione non validi'});
   }

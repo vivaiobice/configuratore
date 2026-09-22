@@ -124,6 +124,10 @@ export function projectPayloadToState(payload, contact = null, { resumeToken = n
     marketingConsent: Boolean(contact.marketing_consent)
   } : null;
   const legacyProject = {
+      localProjectId: payload?.client_project_id ?? payload?.id ?? undefined,
+      localProjectName: payload?.name ?? 'Il mio impianto',
+      campaignYear: payload?.campaign_year ?? undefined,
+      origin: payload?.origin === 'fieldarea' ? 'fieldarea' : 'native',
       geometry: ring,
       sourceType: payload?.source_type ?? 'manual',
       cadastralRefs: Array.isArray(payload?.cadastral_refs) ? payload.cadastral_refs : [],
@@ -153,11 +157,27 @@ export function projectPayloadToState(payload, contact = null, { resumeToken = n
     ...(restoredContact ? { contact: restoredContact } : {}),
     cloud: {
       projectId: payload?.id ?? null,
+      clientProjectId: payload?.client_project_id ?? payload?.id ?? null,
       publicCode: payload?.public_code ?? null,
       contactId: payload?.contact_id ?? contact?.id ?? null,
+      version: Number(payload?.version) || 0,
+      latestRevisionNumber: Number(payload?.latest_revision_number) || 0,
       resumeToken,
       resumeUrl
     }
+  };
+}
+
+export function projectPayloadToArchiveItem(payload) {
+  const state = projectPayloadToState(payload);
+  const id = state.cloud.clientProjectId;
+  if (!id) throw new TypeError('Cloud project client identity is missing');
+  return {
+    id,
+    name:state.project.localProjectName,
+    savedAt:payload?.updated_at ?? new Date().toISOString(),
+    project:state.project,
+    cloud:state.cloud
   };
 }
 
@@ -207,6 +227,17 @@ export function createBackend(client) {
       const result = await client.from('profiles').select('display_name,username,owner_kind').eq('user_id', userId).maybeSingle();
       if (result.error) throw result.error;
       return result.data;
+    },
+    async listOwnedProjects(ownerUserId, environment = 'TEST') {
+      if (!ownerUserId) throw new TypeError('Owner user id required');
+      const result = await client.from('projects')
+        .select('id,client_project_id,public_code,contact_id,environment,name,campaign_year,origin,version,latest_revision_number,field_plans,active_field_id,source_type,cadastral_refs,geometry,location_label,municipality,province,region,row_spacing_m,plant_spacing_m,row_orientation_deg,headland_width_m,post_spacing_m,mechanization,project_context_type,project_context_note,grape_variety,rootstock,clone_selection,updated_at')
+        .eq('owner_user_id', ownerUserId)
+        .eq('environment', environment)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending:false });
+      if (result.error) throw result.error;
+      return result.data ?? [];
     },
     async setOwnProfile({ displayName, username }) {
       return rpc('set_own_profile', { p_display_name:displayName, p_username:username });

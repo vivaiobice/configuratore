@@ -1,5 +1,23 @@
-import { projectPayloadToState, toProjectRow, toQuoteRequestRow, toSessionRow, toVisitorRow } from './backend.js';
+import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toQuoteRequestRow, toSessionRow, toVisitorRow } from './backend.js';
+import { mergeLocalProjects } from './local-projects.js';
 import { buildResumeUrl, newResumeToken, sha256Hex } from './resume.js';
+
+function projectHasGeometry(project) {
+  return (Array.isArray(project?.geometry) && project.geometry.length >= 3)
+    || (Array.isArray(project?.fields) && project.fields.some((field) => Array.isArray(field?.geometry) && field.geometry.length >= 3));
+}
+
+export async function hydrateOwnedProjects({ backend, ownerUserId, storage, currentProject, environment = 'TEST' }) {
+  if (!backend || !ownerUserId) return { projects:[], imported:0, activeProject:null };
+  const payloads = await backend.listOwnedProjects(ownerUserId, environment);
+  const importedItems = payloads.map(projectPayloadToArchiveItem);
+  const projects = mergeLocalProjects(storage, importedItems);
+  return {
+    projects,
+    imported:importedItems.length,
+    activeProject:projectHasGeometry(currentProject) ? null : (importedItems[0] ?? null)
+  };
+}
 
 export function createCloudService({
   backend,
@@ -181,5 +199,15 @@ export function createCloudService({
     return snapshot({ quoteRequestId: quote.id, status: 'quote_requested' });
   }
 
-  return { initialize, updateConsent, trackEvent, saveProject, saveContactAndProject, requestQuote, snapshot };
+  function selectProject(cloud = {}) {
+    projectId = cloud.projectId ?? null;
+    publicCode = cloud.publicCode ?? null;
+    contactId = cloud.contactId ?? null;
+    resumeToken = cloud.resumeToken ?? null;
+    resumeUrl = cloud.resumeUrl ?? currentResumeUrl();
+    restoredState = null;
+    return snapshot();
+  }
+
+  return { initialize, updateConsent, trackEvent, saveProject, saveContactAndProject, requestQuote, selectProject, snapshot };
 }

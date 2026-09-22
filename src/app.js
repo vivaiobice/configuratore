@@ -1,16 +1,16 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
 import { createMobileUI } from './mobile-ui.js?v=33';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=34';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend } from './backend.js?v=33';
-import { createCloudService } from './cloud.js';
+import { connectSupabase, createBackend } from './backend.js?v=34';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=34';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=33';
+import { createProjectSync } from './project-sync.js?v=34';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';
@@ -510,17 +510,25 @@ function cancelMobileEdit() {
 }
 async function saveMobileProject(name = '') {
   ensureLocalProjectIdentity(name || state.project.localProjectName || 'Il mio impianto');
-  writeLocalProject(globalThis.localStorage, state.project, state.project.localProjectName);
   await projectSync?.saveRevision();
+  writeLocalProject(globalThis.localStorage, state.project, state.project.localProjectName, state.cloud);
   mobileTransactionSnapshot = null;
 }
 function loadMobileProject(item) {
   if (!item?.project) return;
-  state = { ...state, project:ensureProjectFields(JSON.parse(JSON.stringify(item.project))), cloud:undefined };
+  state = {
+    ...state,
+    project:ensureProjectFields(JSON.parse(JSON.stringify(item.project))),
+    cloud:item.cloud ? JSON.parse(JSON.stringify(item.cloud)) : undefined
+  };
+  cloudService?.selectProject(state.cloud);
+  projectSync?.adoptCloudState(state.cloud);
   mobileTransactionSnapshot = null; persist(); loadActiveFieldOnMap();
 }
 function newMobileProject() {
   state = { ...state, project:createInitialState().project, cloud:undefined };
+  cloudService?.selectProject({});
+  projectSync?.adoptCloudState({});
   ensureLocalProjectIdentity('Il mio impianto'); mobileTransactionSnapshot = null; loadActiveFieldOnMap();
 }
 function removeMobileField(fieldId) {
@@ -698,8 +706,19 @@ async function initializeCloud() {
       afterIdentityChange:()=>globalThis.location.reload()
     });
     authBridge.attach(authService);
-    await authService.refresh();
+    const authState=await authService.refresh();
     await authService.resumePendingTransfer().catch(()=>{});
+    if (authState.user && authState.kind === 'user') {
+      const hydrated=await hydrateOwnedProjects({
+        backend,
+        ownerUserId:authState.user.id,
+        storage:globalThis.localStorage,
+        currentProject:state.project,
+        environment:state.environment ?? APP_CONFIG.environment
+      });
+      if (hydrated.activeProject) loadMobileProject(hydrated.activeProject);
+      mobileUi?.sync();
+    }
     cloudService = createCloudService({
       backend,
       sessionId,

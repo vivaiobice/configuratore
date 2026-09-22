@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V33 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V34 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -563,3 +563,48 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   identico; utente temporaneo eliminato (`remaining=0`). Edge Function ACTIVE, LIVE non modificato.
 - Gate locale: suite `356/356`, syntax check superato; cache bust V33 su `backend.js`,
   `auth-service.js` e `project-sync.js`.
+
+## V33 hotfix — recupero sicuro della registrazione interrotta
+
+- Il collaudo utente successivo alla V33 continuava a non creare l'account su mobile e desktop.
+- Diagnosi sul TEST: il primo tentativo V31/V32 aveva già prenotato username `vivaiobice`, impostato
+  `email_change` e password hash, ma l'utente era ancora anonimo e senza identità; possedeva inoltre
+  1 progetto e 2 campi. I nuovi tentativi venivano quindi respinti come conflitto username.
+- Non è stato cancellato alcun dato reale. La migrazione
+  `202609220001_v34_pending_registration_recovery.sql` introduce una verifica service-role-only di
+  username, e-mail e password dell'account parziale e un grant monouso per l'eventuale Guest corrente.
+- `promote-guest-account` V2 recupera l'UID originale, completa la promozione e trasferisce gli
+  eventuali progetti del Guest corrente. Password hash e controlli restano esclusivamente server-side.
+- TDD: aggiunto test di regressione per la scelta sicura dell'UID; RED osservato per funzione assente,
+  poi GREEN. Suite completa `357/357` e syntax check superati.
+- Collaudo end-to-end TEST: account parziale simulato, recupero HTTP 200 da un secondo Guest, login
+  username HTTP 200, UID originale preservato, progetto trasferito e classificato `owner_kind=user`.
+  Utenti e progetto tecnici eliminati (`users_remaining=0`, `projects_remaining=0`).
+- Edge Function e migrazione applicate esclusivamente al progetto TEST. LIVE non modificato.
+
+## V34 — sincronizzazione account tra dispositivi
+
+- Segnalazione reale: login Admin riuscito su iPhone e Mac, ma campi e progetti salvati non comparivano
+  sull'altro dispositivo.
+- Diagnosi: il backend conteneva i dati, mentre il client implementava soltanto il push/autosalvataggio
+  e il recupero tramite link segreto; mancava la lettura dell'archivio del proprietario dopo login.
+- Secondo difetto collegato: `loadMobileProject()` azzerava `state.cloud`; inoltre
+  `writeLocalProject()` non archiviava metadati cloud. Riaprire e salvare poteva quindi generare un
+  nuovo record anziché aggiornare quello esistente.
+- Correzione: query `listOwnedProjects()` filtrata sempre per `owner_user_id`, ambiente TEST e
+  `deleted_at is null`; anche l'Admin importa nella propria sezione personale soltanto i propri record.
+- I payload cloud vengono convertiti in elementi locali con `client_project_id`, `projectId`, versione
+  e revisione. Il merge sostituisce la copia con lo stesso ID ma conserva ogni bozza soltanto locale.
+- Su dispositivo senza disegni viene aperto il progetto cloud più recente. Un progetto locale con
+  geometria non viene mai sovrascritto automaticamente.
+- Selezione progetto e nuovo progetto riallineano sia il servizio cloud sia il coordinatore di sync;
+  il salvataggio locale avviene dopo l'ack/retry e conserva la versione server aggiornata.
+- Verifica diretta TEST al 22/09/2026: account Admin con 3 progetti attivi, versioni 23/6/5 e 11 campi
+  complessivi. I dati erano integri; non è stata eseguita alcuna mutazione del database.
+- TDD: 9 test inizialmente RED per mapping, query proprietario, merge, selezione e versione; poi GREEN.
+  Gate completo: `366/366`, `npm run check` superato.
+- Cache bust e badge portati a V34. Nessuna modifica a editor, calcoli, geometria o `styles.css` V18.
+  Supabase LIVE non modificato.
+- Collaudo richiesto dopo pubblicazione: aprire V34 su un dispositivo senza cache, fare login Admin,
+  verificare 3 progetti in Progetti e 11 campi complessivi; aprire un progetto, modificarne solo il
+  nome o un parametro, salvare e confermare sull'altro dispositivo che non nasca un duplicato.

@@ -2,7 +2,33 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V33 WebApp.
+Stato: ambiente TEST · release V34 WebApp.
+
+## V34 — sincronizzazione archivio personale
+
+- Dopo login, l'app scarica i progetti attivi appartenenti all'account e li unisce all'archivio del
+  dispositivo usando l'identificativo stabile `client_project_id`.
+- Le bozze presenti soltanto sul dispositivo non vengono eliminate. Se il dispositivo è vuoto,
+  viene aperto il progetto cloud aggiornato più recentemente; una bozza locale già disegnata non
+  viene mai sostituita automaticamente.
+- Aprendo un progetto dalla sezione Progetti vengono ripristinati `projectId`, versione e numero di
+  revisione cloud: il salvataggio aggiorna lo stesso record invece di crearne uno duplicato.
+- La vista personale dell'Admin applica comunque il filtro esplicito sul proprio `owner_user_id` e
+  non importa i progetti degli altri utenti.
+- Verifica dati TEST: 3 progetti Admin attivi e 11 campi disponibili; nessun dato è stato perso.
+- Gate locale: suite `366/366` e controllo sintattico superati. Nessuna modifica a editor, calcoli,
+  geometria o foglio desktop V18. LIVE non modificato.
+
+## V33 — hotfix recupero registrazione interrotta
+
+- La registrazione riconosce ora un account Guest rimasto parzialmente configurato da V31/V32 e lo
+  completa sul suo UID originale, senza eliminare progetti o campi già salvati.
+- Il recupero è consentito soltanto se coincidono username, e-mail e password già registrata; la
+  verifica dell'hash resta server-side e non è accessibile al client.
+- Se il tentativo arriva da un nuovo Guest/dispositivo, i relativi progetti cloud vengono trasferiti
+  all'account recuperato mediante il grant monouso già previsto.
+- Hotfix applicato soltanto al backend TEST; nessuna modifica all'interfaccia, all'editor, ai calcoli
+  o al foglio desktop V18.
 
 ## V33 — conversione Guest completa
 
