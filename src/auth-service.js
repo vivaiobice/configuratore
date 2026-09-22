@@ -22,11 +22,10 @@ export function createAuthService({client,backend,storage=globalThis.localStorag
     await beforeIdentityChange();
     try{
     const value=validateRegistration(input);
-    const result=await client.auth.updateUser({email:value.email,password:value.password,data:{display_name:value.displayName}});
-    if(result.error)throw result.error;
-    const profile=await backend.setOwnProfile({displayName:value.displayName,username:value.username});
-    const session={user:result.data.user};
-    return emit({...profileView(session,profile),transfer:null,verificationRequired:!result.data.user?.email_confirmed_at});
+    const promoted=await backend.promoteGuestAccount(value);
+    const signed=await client.auth.setSession({access_token:promoted.session.access_token,refresh_token:promoted.session.refresh_token});
+    if(signed.error)throw signed.error;
+    return refresh(signed.data.session);
     }finally{await afterIdentityChange();}
   }
 

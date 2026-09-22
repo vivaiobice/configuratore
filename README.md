@@ -2,7 +2,18 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V32 WebApp.
+Stato: ambiente TEST · release V33 WebApp.
+
+## V33 — conversione Guest completa
+
+- Corretta la registrazione che lasciava e-mail in attesa e account ancora anonimo.
+- La conversione avviene ora nella Edge Function protetta `promote-guest-account`: verifica il JWT
+  Guest, conserva lo stesso UID, riserva lo username, imposta e conferma e-mail/password e restituisce
+  una sessione permanente.
+- Gli errori delle Edge Function vengono letti dal relativo payload: l'interfaccia mostra ora il
+  motivo utile invece del generico `Edge Function returned a non-2xx status code`.
+- Collaudo reale TEST superato: Guest → account → login con username, stesso UID in tutti i passaggi.
+- Nessuna modifica a editor, calcoli, geometria o foglio desktop V18.
 
 ## V32 — hotfix login e registrazione
 
@@ -129,7 +140,7 @@ Stato: ambiente TEST · release V32 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-354 test automatici verificati, compreso il controllo che impedisce di pubblicare nuovamente il
+356 test automatici verificati, compresi promozione Guest server-side, messaggi Edge leggibili e il controllo che impedisce di pubblicare nuovamente il
 modulo di sincronizzazione senza cache bust, autenticazione profilo, trasferimento Guest idempotente,
 archivio cloud, coda offline, revisione differita,
 allineamento stabile della checkbox, centratura SVG,

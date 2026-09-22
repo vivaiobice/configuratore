@@ -1,6 +1,15 @@
 import { ensureProjectFields } from './fields.js';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+async function edgeFunctionError(error,fallback){
+  try{
+    const context=error?.context?.clone?.()??error?.context;
+    const payload=await context?.json?.();
+    if(payload?.error)return new Error(String(payload.error));
+  }catch{}
+  return new Error(error?.message||fallback);
+}
+
 export function validateContact(contact) {
   const required = ['companyName', 'firstName', 'lastName', 'phone', 'email'];
   const missing = required.filter((key) => !String(contact?.[key] ?? '').trim());
@@ -202,6 +211,12 @@ export function createBackend(client) {
     async setOwnProfile({ displayName, username }) {
       return rpc('set_own_profile', { p_display_name:displayName, p_username:username });
     },
+    async promoteGuestAccount({ email, username, displayName, password }) {
+      const result = await client.functions.invoke('promote-guest-account', { body:{ email, username, displayName, password } });
+      if (result.error) throw await edgeFunctionError(result.error,'Registrazione non riuscita');
+      if (!result.data?.session) throw new Error('Registrazione non riuscita');
+      return result.data;
+    },
     async createGuestTransferGrant() {
       return rpc('create_guest_transfer_grant', {});
     },
@@ -210,7 +225,8 @@ export function createBackend(client) {
     },
     async loginByIdentifier({ identifier, password }) {
       const result = await client.functions.invoke('login-by-identifier', { body:{ identifier, password } });
-      if (result.error || !result.data?.session) throw result.error ?? new Error('Credenziali non valide');
+      if (result.error) throw await edgeFunctionError(result.error,'Credenziali non valide');
+      if (!result.data?.session) throw new Error('Credenziali non valide');
       return result.data.session;
     },
     async applyProjectOperation({ operationId, expectedVersion, snapshot }) {

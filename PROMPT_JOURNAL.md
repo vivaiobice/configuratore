@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V32 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V33 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -545,3 +545,21 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - Fix minimo: import `project-sync.js?v=32`; aggiornati shell, badge e cache bust della release.
 - Test di regressione eseguito prima in RED e poi in GREEN; suite completa `354/354` e syntax check
   superati. Nessuna modifica al backend, al database, ai calcoli o al desktop V18.
+
+## V33 — promozione Guest server-side
+
+- Secondo collaudo reale: registrazione mobile tornava alla Home ancora come Guest; login con username
+  mostrava il messaggio opaco `Edge Function returned a non-2xx status code`.
+- Verifica diretta del database: `vivaiobice` era un profilo Guest con password hash presente, ma
+  `email` nulla, e-mail ferma in `email_change` e `is_anonymous=true`.
+- Root cause: per convertire un Guest Supabase occorre verificare prima l'e-mail e solo dopo impostare
+  la password; la V31/V32 tentava entrambe con una sola `updateUser()`.
+- Nuova Edge Function `promote-guest-account`, protetta da JWT e rate limit: autentica il Guest,
+  controlla e riserva lo username, promuove lo stesso UID con e-mail confermata e password, aggiorna
+  il profilo e restituisce la sessione permanente.
+- Il client ora estrae il JSON degli errori Edge, quindi mostra messaggi come `Username già utilizzato`
+  invece della stringa generica dell'SDK.
+- Prova end-to-end sul TEST: promozione HTTP 200, login tramite username HTTP 200, UID Guest/account/login
+  identico; utente temporaneo eliminato (`remaining=0`). Edge Function ACTIVE, LIVE non modificato.
+- Gate locale: suite `356/356`, syntax check superato; cache bust V33 su `backend.js`,
+  `auth-service.js` e `project-sync.js`.
