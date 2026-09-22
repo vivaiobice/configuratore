@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=31';
+import { createMobileUI } from './mobile-ui.js?v=32';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -10,7 +10,7 @@ import { createCloudService } from './cloud.js';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js';
+import { createProjectSync } from './project-sync.js?v=32';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';

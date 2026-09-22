@@ -2,7 +2,16 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V31 WebApp.
+Stato: ambiente TEST · release V32 WebApp.
+
+## V32 — hotfix login e registrazione
+
+- Corretto l'errore browser `projectSync?.suspend is not a function` che interrompeva registrazione
+  e login prima del cambio identità.
+- Causa: GitHub Pages poteva riutilizzare dalla cache il modulo V30 `project-sync.js`, mentre
+  `app.js` V31 richiedeva il nuovo metodo `suspend()`.
+- Applicato cache bust esplicito a `project-sync.js?v=32`, oltre a shell, entrypoint e badge V32.
+- Nessuna modifica a database, editor, calcoli, geometria o foglio desktop V18.
 
 ## V31 — Profilo, login e trasferimento Guest
 
@@ -120,7 +129,8 @@ Stato: ambiente TEST · release V31 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-353 test automatici verificati, compresi autenticazione profilo, trasferimento Guest idempotente,
+354 test automatici verificati, compreso il controllo che impedisce di pubblicare nuovamente il
+modulo di sincronizzazione senza cache bust, autenticazione profilo, trasferimento Guest idempotente,
 archivio cloud, coda offline, revisione differita,
 allineamento stabile della checkbox, centratura SVG,
 nome automatico protetto, ricentraggio nelle mappe LIVE,

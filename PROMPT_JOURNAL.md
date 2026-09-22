@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V31 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V32 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -533,3 +533,15 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   consumato una sola volta anche al retry. Record di prova eliminato; transazione dati annullata.
 - Gate locale: `npm test` 353/353 e `npm run check` superati. Test visivo/tattile reale su Safari
   iPhone ancora necessario.
+
+## V32 — hotfix cache autenticazione
+
+- Collaudo reale V31: registrazione mobile ricaricava la Home ma lasciava Profilo nello stato Guest;
+  login e registrazione desktop mostravano `projectSync?.suspend is not a function`.
+- Root cause verificata: `app.js?v=31` importava `project-sync.js` senza query di versione. Il browser
+  poteva quindi eseguire il vecchio modulo V30, privo del metodo `suspend` aggiunto dalla V31.
+- La registrazione si arrestava nel hook `beforeIdentityChange`, prima di aggiornare l'utente: le
+  credenziali provate su mobile non risultano quindi necessariamente create e vanno registrate di nuovo.
+- Fix minimo: import `project-sync.js?v=32`; aggiornati shell, badge e cache bust della release.
+- Test di regressione eseguito prima in RED e poi in GREEN; suite completa `354/354` e syntax check
+  superati. Nessuna modifica al backend, al database, ai calcoli o al desktop V18.
