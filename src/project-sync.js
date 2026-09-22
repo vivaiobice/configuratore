@@ -27,6 +27,8 @@ export function createProjectSync({
     lastError:null
   };
   let timer = null;
+  let suspended = false;
+  let stateBeforeSuspend = syncState.state;
 
   function publish(extra = {}) {
     const update = {
@@ -96,6 +98,7 @@ export function createProjectSync({
   }
 
   async function flush() {
+    if (suspended) return syncState;
     if (timer) {
       cancelTimer(timer);
       timer = null;
@@ -110,6 +113,7 @@ export function createProjectSync({
   }
 
   function schedule() {
+    if (suspended) return;
     if (timer) cancelTimer(timer);
     timer = scheduleTimer(async () => {
       timer = null;
@@ -118,6 +122,7 @@ export function createProjectSync({
   }
 
   async function retryPending() {
+    if (suspended) return syncState;
     for (const operation of await queue.pending()) {
       const result = await send(operation);
       if (result.state === 'error' || result.state === 'conflict') break;
@@ -126,6 +131,7 @@ export function createProjectSync({
   }
 
   async function saveRevision() {
+    if (suspended) return syncState;
     const applied = await flush();
     const snapshot = currentSnapshot();
     if (applied.state === 'conflict') return applied;
@@ -147,11 +153,23 @@ export function createProjectSync({
     return send(operation);
   }
 
+  function suspend(reason='manual') {
+    if (!suspended) stateBeforeSuspend=syncState.state;
+    suspended=true;syncState={...syncState,state:'suspended',lastError:reason};
+    if(timer){cancelTimer(timer);timer=null;}publish();return syncState;
+  }
+
+  function resume() {
+    suspended=false;syncState={...syncState,state:stateBeforeSuspend==='suspended'?'local':stateBeforeSuspend,lastError:null};publish();return syncState;
+  }
+
   return {
     schedule,
     flush,
     retryPending,
     saveRevision,
+    suspend,
+    resume,
     status:() => ({ ...syncState })
   };
 }

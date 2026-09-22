@@ -2,7 +2,21 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V30 WebApp.
+Stato: ambiente TEST · release V31 WebApp.
+
+## V31 — Profilo, login e trasferimento Guest
+
+- Mobile: nuova sezione `Profilo` nella barra inferiore. Desktop: `Login` in alto a destra; dopo
+  l'accesso mostra il nome profilo con menu Profilo, Esci e Amministrazione per i soli Admin.
+- Registrazione con e-mail, password, username e nome profilo. Lo username può essere composto solo
+  da numeri e mantiene gli zeri iniziali; non viene trattato come numero telefonico.
+- La registrazione promuove l'identità Guest esistente. L'accesso a un account già creato trasferisce
+  una sola volta i progetti locali/cloud mediante token temporaneo hashato e ripetibile in sicurezza.
+- Risoluzione username→e-mail e rate limit restano sul server; gli errori di login sono volutamente
+  generici per non rivelare l'esistenza di un account.
+- Migrazioni ed Edge Function applicate soltanto al progetto Supabase TEST. LIVE non modificato.
+- `styles.css` resta byte-identico alla versione desktop V18; le aggiunte desktop sono isolate in
+  `profile.css`.
 
 ## V30 — archivio cloud e storico in TEST
 
@@ -106,7 +120,8 @@ Stato: ambiente TEST · release V30 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-318 test automatici verificati, compresi archivio cloud, coda offline, revisione differita,
+353 test automatici verificati, compresi autenticazione profilo, trasferimento Guest idempotente,
+archivio cloud, coda offline, revisione differita,
 allineamento stabile della checkbox, centratura SVG,
 nome automatico protetto, ricentraggio nelle mappe LIVE,
 navigazione dell'editor, modifica esclusioni,
@@ -118,7 +133,7 @@ Il browser remoto di verifica non raggiunge la copia locale: resa visiva, gesti 
 
 ## Fase A — archivio cloud e storico (solo Ambiente TEST)
 
-La release V30 include una persistenza cloud normalizzata con identificativi client stabili, campi,
+La release V31 include la persistenza cloud normalizzata introdotta in V30 con identificativi client stabili, campi,
 revisioni immutabili, coda IndexedDB e controllo di versione ottimistico. Il primo salvataggio cloud
 avviene soltanto dopo un perimetro valido; le modifiche aggiornano lo stato corrente e il comando
 esplicito Salva crea una revisione. I dati V29 locali vengono migrati in memoria senza sovrascrivere

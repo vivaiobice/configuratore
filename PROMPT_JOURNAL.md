@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V30 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V31 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -512,3 +512,24 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - Incluse le quattro migrazioni Supabase già applicate e collaudate sul solo progetto TEST.
 - Gate obbligatorio: `npm run check`, suite completa 318/318 e controllo contenuto archivio.
 - LIVE non è stato modificato. La verifica visiva/tattile su Safari iPhone resta da eseguire sulla V30.
+
+## V31 — Profilo e autenticazione in Ambiente TEST
+
+- Aggiunta la quarta voce `Profilo` alla navigazione mobile e il comando `Login` in alto a destra sul
+  desktop. Dopo l'accesso il comando mostra il nome profilo e apre Profilo / Esci / Amministrazione.
+- Identificatore di accesso: e-mail oppure username. Lo username può essere numerico e resta testo,
+  quindi `000123` non viene trasformato in `123`; nessun flusso SMS o telefono è stato introdotto.
+- Registrazione Guest nello stesso UID; login verso un account esistente con grant temporaneo di 15
+  minuti, conservato soltanto come hash nel database e consumabile una sola volta.
+- Prima del cambio identità la coda cloud viene sospesa; dopo trasferimento riuscito l'app ricarica lo
+  stato. Un esito di rete ambiguo conserva il grant e ripete in modo idempotente il consumo.
+- Ruolo Admin derivato esclusivamente da `app_metadata.role`, mai da metadati modificabili dall'utente.
+- Edge Function `login-by-identifier` con risoluzione privata username→e-mail, rate limit e messaggio
+  generico. Nessun segreto viene incluso nel client o nello ZIP.
+- Migrazioni `202609210005_v31_profile_auth.sql` e
+  `202609210006_v31_profile_auth_advisor_fixes.sql` applicate al solo progetto TEST; Edge Function
+  attiva con verifica JWT. LIVE non toccato.
+- Sonda transazionale TEST superata: 1 progetto trasferito, username `000123` conservato, grant
+  consumato una sola volta anche al retry. Record di prova eliminato; transazione dati annullata.
+- Gate locale: `npm test` 353/353 e `npm run check` superati. Test visivo/tattile reale su Safari
+  iPhone ancora necessario.

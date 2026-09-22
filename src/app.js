@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=30';
+import { createMobileUI } from './mobile-ui.js?v=31';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=19';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
@@ -16,6 +16,9 @@ import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js';
+import { createAuthService } from './auth-service.js';
+import { createAuthBridge } from './auth-bridge.js';
+import { createProfileUI } from './profile-ui.js';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
@@ -34,6 +37,9 @@ let latestMetrics = null;
 let pendingFinalAction = null;
 let mobileTransactionSnapshot = null;
 let perimeterEventSent = Boolean(state.project.geometry);
+const authBridge=createAuthBridge();
+const profileUi=createProfileUI({authService:authBridge,document});
+profileUi.mount();
 const sessionId = (() => {
   const existing = globalThis.sessionStorage?.getItem('vivai-obice:configuratore:session');
   if (existing) return existing;
@@ -529,6 +535,7 @@ function removeMobileField(fieldId) {
 }
 
 mobileUi = createMobileUI({
+  auth:authBridge,
   getMap:()=>mapApi?.map,
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
   resizeMap:()=>requestAnimationFrame(()=>mapApi?.map?.resize?.()), focusAll:()=>mapApi?.focusAllFields?.(), focusField:()=>mapApi?.focusActiveField(),
@@ -684,6 +691,15 @@ async function initializeCloud() {
     const resumeRequest = parseResumeParams(globalThis.location.href);
     const resumeBaseUrl = `${globalThis.location.origin}${globalThis.location.pathname}`;
     const backend = createBackend(client);
+    const authService=createAuthService({
+      client,backend,storage:globalThis.localStorage,
+      resetRedirectTo:`${globalThis.location.origin}${globalThis.location.pathname}`,
+      beforeIdentityChange:() => projectSync?.suspend('identity_transfer'),
+      afterIdentityChange:()=>globalThis.location.reload()
+    });
+    authBridge.attach(authService);
+    await authService.refresh();
+    await authService.resumePendingTransfer().catch(()=>{});
     cloudService = createCloudService({
       backend,
       sessionId,

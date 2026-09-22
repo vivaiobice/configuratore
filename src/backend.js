@@ -194,6 +194,25 @@ export function createBackend(client) {
       if (result.error) throw result.error;
       return result.data;
     },
+    async getProfile(userId) {
+      const result = await client.from('profiles').select('display_name,username,owner_kind').eq('user_id', userId).maybeSingle();
+      if (result.error) throw result.error;
+      return result.data;
+    },
+    async setOwnProfile({ displayName, username }) {
+      return rpc('set_own_profile', { p_display_name:displayName, p_username:username });
+    },
+    async createGuestTransferGrant() {
+      return rpc('create_guest_transfer_grant', {});
+    },
+    async consumeGuestTransferGrant(token) {
+      return rpc('consume_guest_transfer_grant', { p_token:token });
+    },
+    async loginByIdentifier({ identifier, password }) {
+      const result = await client.functions.invoke('login-by-identifier', { body:{ identifier, password } });
+      if (result.error || !result.data?.session) throw result.error ?? new Error('Credenziali non valide');
+      return result.data.session;
+    },
     async applyProjectOperation({ operationId, expectedVersion, snapshot }) {
       return rpc('apply_project_operation', {
         p_operation_id:operationId,
