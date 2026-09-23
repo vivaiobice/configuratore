@@ -3,6 +3,14 @@ function formatItalianInteger(value){
  return integer>0?String(integer).replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'—';
 }
 
+export function setToolButtonLabel(button,label,{icon}={}){
+ if(!button)return;
+ const labelNode=button.querySelector?.('.tool-label');
+ const iconNode=button.querySelector?.('.tool-icon');
+ if(labelNode){labelNode.textContent=label;if(icon!==undefined&&iconNode)iconNode.textContent=icon;return;}
+ button.textContent=icon===undefined?label:`${icon} ${label}`;
+}
+
 export function createDesktopQuickCalculator({document=globalThis.document,calculate=null,onCalculate=()=>{}}={}){
  const dialog=document?.querySelector?.('#quick-calculator-dialog');
  const trigger=document?.querySelector?.('#quick-calculator-trigger');

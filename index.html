@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=38" />
+  <link rel="manifest" href="./manifest.webmanifest?v=39" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
   <link rel="stylesheet" href="./desktop-v38.css?v=38" />
+  <link rel="stylesheet" href="./desktop-v39.css?v=39" />
 </head>
 <body>
   <header class="topbar">
@@ -25,7 +26,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V38</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V39</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -80,25 +81,19 @@
       <details class="advanced">
         <summary>Affina il progetto <span>+</span></summary>
         <div class="advanced-body">
-          <div class="field-grid advanced-spacing">
-            <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
-            <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" value="4.50" placeholder="es. 4,5" /></label>
-          </div>
-          <div class="advanced-mechanization">
-            <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
-            <p id="mechanized-advice" class="desktop-mechanization-advice" hidden></p>
-          </div>
-          <div class="advanced-context">
-            <label>Inquadramento dell’impianto
-              <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
-            </label>
-          </div>
-          <div class="advanced-notes">
-            <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
-          </div>
-          <div class="advanced-material">
-            <hr class="soft-divider" />
-            <h3>Scelta del materiale vegetale</h3>
+          <section class="advanced-card advanced-plant" data-refinement="plant">
+            <h3>Caratteristiche dell’impianto</h3>
+            <div class="field-grid advanced-spacing">
+              <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
+              <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" value="4.50" placeholder="es. 4,5" /></label>
+            </div>
+            <div class="advanced-mechanization">
+              <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
+              <p id="mechanized-advice" class="desktop-mechanization-advice" hidden></p>
+            </div>
+          </section>
+          <section class="advanced-card advanced-material" data-refinement="material">
+            <h3><span class="mobile-material-prefix">Scelta del </span>Materiale vegetale</h3>
             <label>Vitigno
               <select id="grape-variety"><option value="">Da definire</option></select>
             </label>
@@ -114,8 +109,19 @@
               <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. Pinot Bianco su 420A, clone specifico o altra combinazione da verificare"></textarea>
               <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
             </label>
-          </div>
-          <label class="campaign-year-label desktop-campaign-year">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
+          </section>
+          <section class="advanced-card advanced-information" data-refinement="information">
+            <h3>Informazioni</h3>
+            <label class="campaign-year-label desktop-campaign-year">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
+            <div class="advanced-context">
+              <label>Inquadramento dell’impianto
+                <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
+              </label>
+            </div>
+            <div class="advanced-notes">
+              <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
+            </div>
+          </section>
         </div>
       </details>
         <div class="exclusion-panel">
@@ -155,20 +161,21 @@
         </div>
         <div class="desktop-tool-rail" aria-label="Strumenti mappa">
           <div class="map-tool-group map-tools-editor" data-map-tools="editor" aria-label="Modifica campo">
-            <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
-            <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Elimina campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button>
-            <button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button>
+            <button id="draw-map-button" class="tool-button" type="button"><span class="tool-icon" aria-hidden="true">✎</span><span class="tool-label">Disegna terreno</span></button>
+            <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false"><span class="tool-icon" aria-hidden="true">✥</span><span class="tool-label">Modifica punti</span></button><button id="clear-field-button" class="tool-button danger-soft" type="button"><span class="tool-icon" aria-hidden="true">⌫</span><span class="tool-label">Elimina campo</span></button><button id="remove-vertex-button" class="tool-button" type="button"><span class="tool-icon" aria-hidden="true">−</span><span class="tool-label">Punto</span></button>
+            <button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo"><span class="tool-icon" aria-hidden="true">⛶</span><span class="tool-label">Mappa</span></button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled><span class="tool-icon" aria-hidden="true">✓</span><span class="tool-label">Chiudi perimetro</span></button>
           </div>
-          <div class="map-tool-group map-tools-positioning" data-map-tools="positioning" aria-label="Posizionamento"><button id="map-search-button" class="tool-button" type="button" aria-label="Cerca una località" title="Cerca una località">⌕ Cerca località</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="center-field-button" class="tool-button" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖ Vai al campo</button></div>
-          <div class="map-tool-group map-tools-exclusions" data-map-tools="exclusions" aria-label="Gestione aree escluse"><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button></div>
+          <div class="map-tool-group map-tools-positioning" data-map-tools="positioning" aria-label="Posizionamento"><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale"><span class="tool-icon" aria-hidden="true">◎</span><span class="tool-label">GPS</span></button><button id="center-field-button" class="tool-button" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled><span class="tool-icon" aria-hidden="true">⌖</span><span class="tool-label">Vai al campo</span></button></div>
+          <div class="map-tool-group map-tools-exclusions" data-map-tools="exclusions" aria-label="Gestione aree escluse"><button id="exclude-zone-button" class="tool-button" type="button"><span class="tool-icon" aria-hidden="true">⊖</span><span class="tool-label">Escludi zona</span></button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m"><span class="tool-icon" aria-hidden="true">↔</span><span class="tool-label">Passaggio 1,50 m</span></button></div>
         </div>
+        <div class="map-search-control map-tool-group" aria-label="Ricerca località"><button id="map-search-button" class="tool-button" type="button" aria-label="Cerca una località" title="Cerca una località">⌕</button></div>
         <div class="map-rotation map-tool-group" data-map-tools="rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
           <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
           <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
           <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
         </div>
       </div>
-      <label class="map-field-picker">Campo selezionato<select id="map-field-select" aria-label="Campo selezionato sulla mappa"></select></label>
+      <label class="map-field-picker"><select id="map-field-select" aria-label="Campo selezionato sulla mappa"></select></label>
       <button id="map-add-field-button" class="map-add-field-button" type="button"><b aria-hidden="true">＋</b><span>Aggiungi campo</span></button>
       <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
       <details id="fullscreen-exclusions"><summary>Aree escluse</summary><div id="fullscreen-exclusions-content"></div></details>
@@ -214,6 +221,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=38"></script>
+  <script type="module" src="./src/app.js?v=39"></script>
 </body>
 </html>

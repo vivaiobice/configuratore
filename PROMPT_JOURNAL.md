@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V38 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V39 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -703,3 +703,29 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   `superficie / (distanza piante × distanza filari)` con quantità commerciale arrotondata a 25.
 - TDD: RED osservato per controller, markup, contratto CSS e versione shell; GREEN finale `397/397`.
   `npm run check` superato. Nessuna modifica a formule, geometrie, schema database o Supabase LIVE.
+
+## V39 — rifinitura visuale desktop
+
+- Ambito approvato: modifiche visuali desktop; nessuna variazione a calcoli, formule, geometrie,
+  persistenza o funzionamento mobile.
+- Difformità segnalate e corrette:
+  - selettori Vitigno, Clone/selezione e Portainnesto non omogenei;
+  - testo Vendemmia meccanica prevista troppo grande rispetto alla barra laterale;
+  - nomi degli strumenti visibili anche nello stato compatto;
+  - titolo Campo selezionato superfluo sopra il selettore della mappa;
+  - Affina il progetto privo di card distinte per tipologia;
+  - ricerca località mescolata al gruppo Posizionamento.
+- La toolbar usa elementi separati `.tool-icon` e `.tool-label`. Le etichette hanno larghezza e
+  opacità zero nello stato normale e si espandono soltanto sul singolo pulsante in hover/focus.
+- Aggiunto `setToolButtonLabel()` per aggiornare i nomi dinamici senza rimuovere gli elementi necessari
+  all'animazione. Coperti i cambi di stato Modifica punti e Chiudi perimetro/esclusione/passaggio.
+- La lente è un controllo isolato in alto a destra. I gruppi nella rail restano Editor,
+  Posizionamento e Gestione aree escluse.
+- Il selettore campo centrale contiene soltanto il menu; sincronizzazione e inquadramento restano quelli
+  approvati nella V38.
+- Affina il progetto contiene tre card: Caratteristiche dell'impianto; Materiale vegetale;
+  Informazioni. L'ordine della card Informazioni è Annata, Inquadramento dell'impianto, Riferimento/note.
+- Gli override sono isolati in `desktop-v39.css`. Nel breakpoint mobile le card vengono appiattite e
+  l'ordine precedente dei controlli viene preservato.
+- TDD: 8 test specifici V39 scritti e osservati RED sulla V38; GREEN finale della suite `405/405`.
+  Nessuna migrazione e nessun intervento su Supabase LIVE.

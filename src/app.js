@@ -1,7 +1,7 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=38';
+import { createMobileUI } from './mobile-ui.js?v=39';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction } from './desktop-ux.js?v=38';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
 import { initMap } from './map.js?v=27';
@@ -204,7 +204,7 @@ try {
       if (closeButton) {
         closeButton.hidden = !active;
         closeButton.disabled = !canClose;
-        closeButton.textContent = mode === 'linear-exclusion' ? '✓ Conferma passaggio' : mode === 'exclusion' ? '✓ Chiudi esclusione' : '✓ Chiudi perimetro';
+        setToolButtonLabel(closeButton,mode === 'linear-exclusion' ? 'Conferma passaggio' : mode === 'exclusion' ? 'Chiudi esclusione' : 'Chiudi perimetro',{icon:'✓'});
       }
       $('#exclude-zone-button')?.classList.toggle('active', Boolean(active && mode === 'exclusion'));
       $('#exclude-line-button')?.classList.toggle('active', Boolean(active && mode === 'linear-exclusion'));
@@ -216,7 +216,7 @@ try {
       const button = $('#edit-vertices-button');
       if (button) {
         button.classList.toggle('active', vertexEditingActive);
-        button.textContent = vertexEditingActive ? '✓ Fine modifica' : '✥ Modifica punti';
+        setToolButtonLabel(button,vertexEditingActive ? 'Fine modifica' : 'Modifica punti',{icon:vertexEditingActive?'✓':'✥'});
         button.setAttribute('aria-pressed', String(vertexEditingActive));
       }
     },

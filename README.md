@@ -2,7 +2,24 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V38 WebApp.
+Stato: ambiente TEST · release V39 WebApp.
+
+## V39 — rifinitura visuale desktop
+
+- La toolbar laterale mostra ora soltanto riquadri compatti con l'icona. Il nome del singolo comando
+  compare integralmente con uno slide su hover o focus e scompare nuovamente all'uscita.
+- La ricerca località è stata separata dai gruppi di strumenti e posizionata autonomamente in alto a
+  destra della mappa.
+- Il selettore centrale della mappa non mostra più il titolo `Campo selezionato`: restano il nome del
+  campo attivo e la possibilità di passare agli altri campi.
+- `Affina il progetto` è il titolo generale di tre card dedicate: Caratteristiche dell'impianto,
+  Materiale vegetale e Informazioni. Anno, inquadramento e note sono riuniti nella card Informazioni.
+- Vitigno, Clone/selezione e Portainnesto usano altezza, testo e spaziature coerenti. Il testo della
+  vendemmia meccanica è stato uniformato alla tipografia del pannello.
+- Le etichette dinamiche degli editor preservano la struttura icona/slide anche durante modifica punti,
+  chiusura perimetro, esclusione e passaggio.
+- Gate locale: suite `405/405` superata. Nessuna modifica a formule, geometrie, persistenza, database
+  o Supabase LIVE; il layout mobile resta protetto dal breakpoint esistente.
 
 ## V38 — barra strumenti desktop e campi disponibili
 
