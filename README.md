@@ -2,7 +2,22 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V36 WebApp.
+Stato: ambiente TEST · release V37 WebApp.
+
+## V37 — gestione progetti e strumenti mappa desktop
+
+- La sezione Progetti consente ora di aprire, rinominare ed eliminare ogni progetto, sia da desktop
+  sia da mobile. I progetti sincronizzati vengono rinominati o eliminati prima sul cloud e solo dopo
+  nell’archivio locale, evitando sparizioni apparenti o ricomparse al successivo aggiornamento.
+- Aggiunto **Nome progetto** nella schermata principale desktop, prima della gestione dei campi; il
+  valore viene usato dal salvataggio già esistente senza creare un nuovo flusso.
+- Sulla mappa desktop i comandi sono separati in gruppi: visualizzazione in alto, editor a sinistra,
+  esclusioni e posizionamento a destra, rotazione in basso a destra accanto ai controlli MapLibre.
+- `Catasto` è il comando principale; quando il layer è attivo apre il sottomenù **Trova particella**.
+- Il nuovo pulsante compatto **Aggiungi campo**, centrato in basso, avvia il disegno e diventa
+  **Chiudi perimetro** quando sono disponibili almeno tre vertici. Durante altri editor resta bloccato.
+- Gate locale: suite `388/388` e controlli sintattici superati. Formule, geometrie e schema database
+  non sono stati modificati; Supabase LIVE resta invariato.
 
 ## V36 — flusso desktop e annata d’impianto
 

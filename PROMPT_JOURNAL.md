@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V36 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V37 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -654,3 +654,29 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   stati di salvataggio e trasferimento del controllo condiviso nella schermata mobile. Gate finale
   `378/378`; `npm run check` e syntax check dei moduli modificati superati.
 - Cache bust e badge portati a V36. Ambiente TEST; nessun intervento su Supabase LIVE.
+
+## V37 — gestione archivio e riorganizzazione comandi mappa
+
+- Richiesta: rendere l’elenco Progetti realmente gestibile con apertura, rinomina ed eliminazione;
+  permettere inoltre di assegnare il nome del progetto direttamente nella schermata principale.
+- La gestione è disponibile su desktop e mobile. `renameLocalProject()` conserva ID, snapshot e
+  identità cloud; `removeLocalProject()` rimuove soltanto l’elemento richiesto.
+- Per un progetto sincronizzato la rinomina usa `apply_project_operation` con versione attesa e la
+  cancellazione usa `soft_delete_project`. Il locale viene mutato soltanto dopo la conferma cloud:
+  in caso di rete assente, conflitto o errore il progetto resta intatto e l’utente riceve il messaggio.
+- Aggiunto `Nome progetto` prima di Nome campo nel pannello desktop. Salva progetto continua a usare
+  `localProjectName`, quindi non è stato introdotto un secondo stato o un secondo archivio.
+- I controlli della mappa desktop sono stati distinti senza sostituire i relativi handler: gruppo
+  visualizzazione in alto; editor sul lato sinistro; esclusioni e posizionamento in gruppi separati
+  sul lato destro; rotazione in basso a destra vicino a zoom e bussola.
+- Precisazione utente: `Catasto` è il pulsante principale e `Trova particella` il suo sottomenù.
+  Disattivando Catasto il sottomenù si chiude e il comando particella torna disabilitato.
+- Il CTA compatto `Aggiungi campo` è centrato in basso. Se il campo corrente è vuoto lo riusa; se è
+  già disegnato crea il campo successivo. Durante il perimetro diventa `Chiudi perimetro` e usa
+  `finishDraw()` esistente; durante esclusioni/passaggi è disabilitato per evitare conflitti.
+- Mobile: nessuna modifica a editor o mappa; è stata aggiunta soltanto la gestione rinomina/elimina
+  nelle card Progetti. `styles.css` storico resta invariato; il layout desktop è isolato in
+  `desktop-v37.css`.
+- TDD: RED osservato per funzioni archivio, azioni UI, gruppi mappa, CTA, sottomenù Catasto e ordine
+  cloud→locale; GREEN finale `388/388`. `npm run check` superato.
+- Cache bust e badge portati a V37. Nessuna migrazione e nessuna modifica a Supabase LIVE.

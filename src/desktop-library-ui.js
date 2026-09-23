@@ -13,11 +13,30 @@ export function createDesktopLibraryUI(api){
     button.append(title,detail);button.addEventListener('click',()=>{api.selectField?.(field.id);close();});return button;
   }
   function projectButton(item){
-    const button=document.createElement('button');button.type='button';button.className='desktop-library-item';button.dataset.desktopProject=item.id;
+    const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopProject=item.id;
+    const main=document.createElement('div');main.className='desktop-library-item-main';
     const title=document.createElement('strong');title.textContent=item.name||'Progetto';
     const fields=(item.project?.fields??[]).filter((field)=>Array.isArray(field?.geometry)&&field.geometry.length>=4).length;
     const detail=document.createElement('span');detail.textContent=`${fields} campi · ${item.savedAt?new Date(item.savedAt).toLocaleDateString('it-IT'):'bozza locale'}`;
-    button.append(title,detail);button.addEventListener('click',()=>{api.loadProject?.(item);close();});return button;
+    main.append(title,detail);
+    const actions=document.createElement('div');actions.className='desktop-library-item-actions';
+    const open=document.createElement('button');open.type='button';open.dataset.projectAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.loadProject?.(item);close();});
+    const rename=document.createElement('button');rename.type='button';rename.dataset.projectAction='rename';rename.textContent='Rinomina';
+    const remove=document.createElement('button');remove.type='button';remove.dataset.projectAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
+    rename.addEventListener('click',()=>{
+      if(row.querySelector('.desktop-library-rename'))return;
+      const editor=document.createElement('div');editor.className='desktop-library-rename';
+      const input=document.createElement('input');input.value=item.name||'Progetto';input.maxLength=80;input.setAttribute('aria-label','Nuovo nome progetto');
+      const confirm=document.createElement('button');confirm.type='button';confirm.dataset.projectAction='confirm-rename';confirm.textContent='Salva';
+      const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annulla';cancel.addEventListener('click',()=>editor.remove());
+      confirm.addEventListener('click',async()=>{try{await api.renameProject?.(item,input.value);render();root.querySelector('#desktop-library-feedback').textContent='Progetto rinominato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Rinomina non riuscita: ${text(error.message)}`;}});
+      editor.append(input,confirm,cancel);row.append(editor);input.focus?.();input.select?.();
+    });
+    remove.addEventListener('click',async()=>{
+      const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;
+      try{await api.deleteProject?.(item);render();root.querySelector('#desktop-library-feedback').textContent='Progetto eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
+    });
+    actions.append(open,rename,remove);row.append(main,actions);return row;
   }
   function render(){
     if(!root)return;

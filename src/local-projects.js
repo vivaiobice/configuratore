@@ -33,3 +33,17 @@ export function mergeLocalProjects(storage,importedItems=[]){
  writeArchive(storage,merged);
  return readLocalProjects(storage);
 }
+export function renameLocalProject(storage,projectId,name){
+ const normalized=String(name??'').trim();
+ if(!normalized)throw new Error('Inserisci un nome per il progetto.');
+ const projects=readLocalProjects(storage),index=projects.findIndex(item=>item.id===projectId);
+ if(index<0)throw new Error('Progetto non trovato.');
+ const item=projects[index];
+ const renamed={...item,name:normalized,project:{...item.project,localProjectName:normalized}};
+ projects[index]=renamed;writeArchive(storage,projects);return renamed;
+}
+export function removeLocalProject(storage,projectId){
+ const projects=readLocalProjects(storage),removed=projects.find(item=>item.id===projectId)??null;
+ if(!removed)return null;
+ writeArchive(storage,projects.filter(item=>item.id!==projectId));return removed;
+}

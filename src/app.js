@@ -1,8 +1,9 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=36';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=36';
-import { createDesktopQuickCalculator, createSaveFeedback } from './desktop-ux.js?v=36';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=34';
+import { createMobileUI } from './mobile-ui.js?v=37';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu } from './desktop-ux.js?v=37';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
+import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
 import { initMap } from './map.js?v=27';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
@@ -13,6 +14,7 @@ import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
 import { createProjectSync } from './project-sync.js?v=34';
+import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';
@@ -201,6 +203,7 @@ try {
     onStatus: setStatus,
     onDrawingState: ({ active, canClose, mode, vertexCount }) => {
       mobileUi?.drawingState({active,vertexCount});
+      desktopMapFieldAction.drawingState({active,canClose,mode});
       const closeButton = $('#close-perimeter-button');
       if (closeButton) {
         closeButton.hidden = !active;
@@ -295,6 +298,8 @@ function syncProjectControls() {
   $('#project-context').value = state.project.projectContextType || 'new_planting';
   $('#project-context-note').value = state.project.projectContextNote ?? '';
   $('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
+  const projectName=$('#project-name');
+  if(projectName&&projectName.value!==(state.project.localProjectName??'Il mio impianto'))projectName.value=state.project.localProjectName??'Il mio impianto';
   renderMaterialSelectors();
 }
 
@@ -362,11 +367,18 @@ $('#campaign-year')?.addEventListener('input',(event)=>{
   const value=Number(event.target.value);
   if(Number.isInteger(value)&&value>=2000&&value<=2100)patchProject({campaignYear:value});
 });
+$('#project-name')?.addEventListener('input',(event)=>patchProject({localProjectName:event.target.value}));
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; summarySaveFeedback.dirty();persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
 
 function isMobileMap() { return Boolean(globalThis.matchMedia?.('(max-width: 800px), (max-width: 1100px) and (pointer: coarse)')?.matches); }
 function startDrawingField() { patchProject({ sourceType:'manual', cadastralRefs:[] }); mapApi?.beginDraw(); }
+function addFieldAndStartDrawing(){
+  if(state.project.geometry){state={...state,project:addProjectField(state.project)};summarySaveFeedback.dirty();persist();loadActiveFieldOnMap();}
+  startDrawingField();
+}
+const desktopMapFieldAction=createDesktopMapFieldAction({document,addField:addFieldAndStartDrawing,finishDraw:()=>mapApi?.finishDraw()});
+desktopMapFieldAction.mount();
 $('#draw-button')?.addEventListener('click', () => { if (isMobileMap()) setMapFullscreen(true); else startDrawingField(); });
 $('#draw-map-button')?.addEventListener('click', startDrawingField);
 $('#close-perimeter-button')?.addEventListener('click', () => mapApi?.finishDraw());
@@ -437,10 +449,12 @@ searchInput?.addEventListener('input', () => {
 });
 $('#search-form')?.addEventListener('submit', async (event) => { event.preventDefault(); hideSuggestions(); await runSearch(searchInput?.value ?? ''); });
 document.addEventListener('click', (event) => { if (!event.target.closest('.search-shell')) hideSuggestions(); });
-$('#cadastre-button')?.classList.toggle('active', Boolean(state.map?.cadastralVisible));
-$('#cadastre-button')?.addEventListener('click', (event) => { const next = !state.map.cadastralVisible; state = { ...state, map: { ...state.map, cadastralVisible: next } }; persist(); event.currentTarget.classList.toggle('active', next); $('#select-cadastre-button').disabled = !next; mapApi?.setCadastralVisible(next); track('cadastre_toggled', { visible:next }); });
-$('#select-cadastre-button').disabled = !state.map?.cadastralVisible;
-$('#select-cadastre-button')?.addEventListener('click', () => mapApi?.beginCadastralSelect());
+const cadastreMenu=createCadastreMenu({
+  document,isActive:()=>Boolean(state.map?.cadastralVisible),
+  setActive:(next)=>{state={...state,map:{...state.map,cadastralVisible:next}};persist();mapApi?.setCadastralVisible(next);track('cadastre_toggled',{visible:next});},
+  onSelect:()=>mapApi?.beginCadastralSelect()
+});
+cadastreMenu.mount();
 for (const button of document.querySelectorAll('[data-base]')) { button.classList.toggle('active', button.dataset.base === (state.map?.base ?? 'satellite')); button.addEventListener('click', () => { for (const sibling of document.querySelectorAll('[data-base]')) sibling.classList.remove('active'); button.classList.add('active'); const base = button.dataset.base; mapApi?.setBaseMap(base); state = { ...state, map: { ...state.map, base } }; persist(); track('base_map_changed', { base }); }); }
 $('#rotate-left')?.addEventListener('click', () => mapApi?.rotateBy(-15));
 $('#rotate-right')?.addEventListener('click', () => mapApi?.rotateBy(15));
@@ -558,6 +572,24 @@ function removeMobileField(fieldId) {
   mobileTransactionSnapshot = null; persist(); loadActiveFieldOnMap();
 }
 
+async function renameArchivedProject(item,name){
+  const saved=await renameArchivedProjectRecord({
+    storage:globalThis.localStorage,item,name,backend:cloudBackend,operationId:newSessionId,
+    buildSnapshot:(project,cloud)=>buildCloudSnapshot({environment:state.environment??APP_CONFIG.environment,project,cloud},field=>calculateFieldProject(field))
+  });
+  if(state.project.localProjectId===item.id){
+    state={...state,project:{...state.project,localProjectName:saved.name},cloud:saved.cloud};
+    cloudService?.selectProject(saved.cloud);projectSync?.adoptCloudState(saved.cloud);persist();syncProjectControls();
+  }
+  return saved;
+}
+
+async function deleteArchivedProject(item){
+  await deleteArchivedProjectRecord({storage:globalThis.localStorage,item,backend:cloudBackend,operationId:newSessionId});
+  if(state.project.localProjectId===item.id)newMobileProject();
+  return true;
+}
+
 async function refreshOwnedArchive(){
   if(!cloudBackend||!accountAuthService)return {projects:readLocalProjects(globalThis.localStorage),imported:0,guest:true};
   const authState=await accountAuthService.refresh();
@@ -586,6 +618,7 @@ mobileUi = createMobileUI({
   selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },
   removeField:removeMobileField,
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
+  renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,
   refreshProjects:refreshOwnedArchive,
   finalAction:requestFinalAction
 });
@@ -593,7 +626,8 @@ mobileUi = createMobileUI({
 desktopLibraryUi=createDesktopLibraryUI({
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
-  loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject
+  loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject,
+  renameProject:renameArchivedProject,deleteProject:deleteArchivedProject
 });
 desktopLibraryUi.mount();
 

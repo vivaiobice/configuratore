@@ -1,0 +1,36 @@
+.project-manager{margin:0 0 12px;padding:13px;border:1px solid #e0e6e1;border-radius:13px;background:#f7f9f7}
+.project-manager label{display:block;color:#58655d;font-size:11px;font-weight:750}
+.project-manager input{display:block;width:100%;margin-top:6px;border:1px solid #cfd7d1;border-radius:9px;background:#fff;padding:9px 10px;color:#142019;font:inherit;font-weight:750}
+.desktop-map-tools{position:absolute;z-index:5;inset:0;left:0;top:0;display:block;max-width:none;pointer-events:none}
+.map-tool-group{position:absolute;display:flex;gap:6px;padding:5px;border:1px solid rgba(255,255,255,.58);border-radius:14px;background:rgba(247,250,247,.88);box-shadow:0 8px 28px rgba(15,34,23,.18);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:auto}
+.map-tools-visual{left:18px;top:18px;align-items:center}
+.map-tools-editor{left:18px;top:50%;flex-direction:column;transform:translateY(-50%)}
+.map-tools-exclusions{right:18px;top:18px;flex-direction:column}
+.map-tools-positioning{right:18px;top:50%;flex-direction:column;transform:translateY(-50%)}
+.map-tools-positioning .tool-button{min-width:104px;text-align:left}
+.desktop-map-tools .tool-button,.desktop-map-tools .segmented button{box-shadow:none;white-space:nowrap}
+.desktop-map-tools .tool-button:hover,.desktop-map-tools .segmented button:hover{background:#e8efe9}
+.desktop-map-tools #draw-map-button,.desktop-map-tools #close-perimeter-button{display:none}
+.desktop-map-tools .map-rotation{right:10px;bottom:116px;left:auto;top:auto;display:flex;transform:none;padding:4px}
+.desktop-map-tools .map-rotation .tool-button{min-width:34px;padding:8px 9px}
+.cadastre-control{position:relative}
+.cadastre-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:150px;padding:5px;border:1px solid rgba(255,255,255,.7);border-radius:12px;background:rgba(247,250,247,.96);box-shadow:0 10px 28px rgba(15,34,23,.2)}
+.cadastre-menu[hidden]{display:none}
+.cadastre-menu .tool-button{width:100%;text-align:left}
+.map-add-field-button{position:absolute;z-index:6;left:50%;bottom:18px;display:flex;align-items:center;gap:7px;min-height:44px;padding:8px 15px;border:1px solid rgba(255,255,255,.55);border-radius:14px;background:#1c6040;color:#fff;box-shadow:0 9px 28px rgba(13,44,28,.32);transform:translateX(-50%);font:inherit;font-size:12px;font-weight:850;cursor:pointer}
+.map-add-field-button b{font-size:20px;line-height:1}
+.map-add-field-button:disabled{opacity:.55;cursor:not-allowed}
+.map-add-field-button.is-closing{background:#173f2a}
+.map-wrap>.map-status{bottom:76px}
+.desktop-library-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
+.desktop-library-item-main{min-width:0}
+.desktop-library-item-actions{display:flex;gap:6px}
+.desktop-library-item-actions button{min-height:34px;padding:0 10px;border:1px solid #d5ddd6;border-radius:9px;background:#f2f5f2;color:#183f28;font:inherit;font-size:11px;font-weight:800;cursor:pointer}
+.desktop-library-item-actions .danger-soft{color:#9b2f2f;background:#fff4f2}
+.desktop-library-rename{grid-column:1/-1;display:grid;grid-template-columns:1fr auto auto;gap:7px}
+.desktop-library-rename input{min-width:0;border:1px solid #bfcac1;border-radius:9px;padding:8px 10px;font:inherit}
+@media(max-width:800px),(max-width:1100px) and (pointer:coarse){
+ .project-manager{display:none}
+ .desktop-map-tools,.map-add-field-button{display:none!important}
+ .map-wrap>.map-status{bottom:12px}
+}

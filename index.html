@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=36" />
+  <link rel="manifest" href="./manifest.webmanifest?v=37" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -12,10 +12,11 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=36" />
+  <link rel="stylesheet" href="./mobile.css?v=37" />
   <link rel="stylesheet" href="./profile.css?v=31" />
-  <link rel="stylesheet" href="./desktop-library.css?v=36" />
+  <link rel="stylesheet" href="./desktop-library.css?v=37" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
+  <link rel="stylesheet" href="./desktop-v37.css?v=37" />
 </head>
 <body>
   <header class="topbar">
@@ -23,7 +24,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V36</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V37</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -33,6 +34,10 @@
         <p class="eyebrow">PROGETTA IL TUO VIGNETO</p>
         <h1>Dal terreno a una prima ipotesi d’impianto.</h1>
         <p>Trova l’appezzamento, definisci il perimetro e imposta il sesto. Il progetto si aggiorna in tempo reale.</p>
+      </div>
+
+      <div class="project-manager" aria-label="Gestione progetto">
+        <label>Nome progetto<input id="project-name" class="control-input" type="text" maxlength="80" placeholder="es. Impianto 2026" /></label>
       </div>
 
       <div class="field-manager" aria-label="Gestione campi">
@@ -132,16 +137,25 @@
     <section class="map-wrap" aria-label="Mappa del progetto">
       <div id="map"></div>
       <div class="map-watermark-layer" aria-hidden="true"></div>
-      <div class="map-toolbar">
-        <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
-        <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
-        <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Cancella campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button><button id="center-field-button" class="tool-button icon-only" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button><button id="cadastre-button" class="tool-button" type="button">▦ Catasto</button><button id="select-cadastre-button" class="tool-button" type="button">Seleziona particella</button>
-        <div class="map-rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
+      <div class="map-toolbar desktop-map-tools">
+        <div class="map-tool-group map-tools-visual" data-map-tools="visual" aria-label="Visualizzazione mappa">
+          <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
+          <div class="cadastre-control"><button id="cadastre-button" class="tool-button" type="button" aria-haspopup="true" aria-expanded="false" aria-pressed="false">▦ Catasto</button><div id="cadastre-menu" class="cadastre-menu" hidden><button id="select-cadastre-button" class="tool-button" type="button">⌖ Trova particella</button></div></div>
+        </div>
+        <div class="map-tool-group map-tools-editor" data-map-tools="editor" aria-label="Modifica campo">
+          <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
+          <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Elimina campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button>
+          <button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button>
+        </div>
+        <div class="map-tool-group map-tools-exclusions" data-map-tools="exclusions" aria-label="Esclusioni e passaggi"><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button></div>
+        <div class="map-tool-group map-tools-positioning" data-map-tools="positioning" aria-label="Posizionamento"><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="center-field-button" class="tool-button" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖ Vai al campo</button></div>
+        <div class="map-rotation map-tool-group" data-map-tools="rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
           <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
           <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
           <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
         </div>
       </div>
+      <button id="map-add-field-button" class="map-add-field-button" type="button"><b aria-hidden="true">＋</b><span>Aggiungi campo</span></button>
       <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
       <details id="fullscreen-exclusions"><summary>Aree escluse</summary><div id="fullscreen-exclusions-content"></div></details>
     </section>
@@ -182,6 +196,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=36"></script>
+  <script type="module" src="./src/app.js?v=37"></script>
 </body>
 </html>

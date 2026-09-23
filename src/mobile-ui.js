@@ -15,7 +15,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V36</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V37</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -182,7 +182,23 @@ export function createMobileUI(api){
  function renderProjects(){
   const list=$('#mobile-projects-list');list.replaceChildren();$('#mobile-project-name').value=api.getField().localProjectName||'Il mio impianto';
   try{const items=api.listProjects();if(!items.length)list.innerHTML='<p class="mobile-empty">Nessun progetto archiviato. La bozza corrente è conservata automaticamente.</p>';
-   for(const item of items){const button=document.createElement('button');button.type='button';button.className='mobile-project-card';button.innerHTML=`<strong>${escape(item.name)}</strong><span>${item.project.fields.filter(f=>f.geometry).length} campi · ${new Date(item.savedAt).toLocaleDateString('it-IT')}</span><small>Apri progetto ›</small>`;button.addEventListener('click',()=>{api.loadProject(item);navigate('fields');});list.append(button);}
+   for(const item of items){
+    const row=document.createElement('article');row.className='mobile-project-row';row.dataset.mobileProject=item.id;
+    const button=document.createElement('button');button.type='button';button.className='mobile-project-card';button.innerHTML=`<strong>${escape(item.name)}</strong><span>${item.project.fields.filter(f=>f.geometry).length} campi · ${new Date(item.savedAt).toLocaleDateString('it-IT')}</span><small>Apri progetto ›</small>`;button.addEventListener('click',()=>{api.loadProject(item);navigate('fields');});
+    const actions=document.createElement('div');actions.className='mobile-project-actions';
+    const rename=document.createElement('button');rename.type='button';rename.dataset.mobileProjectAction='rename';rename.textContent='Rinomina';
+    const remove=document.createElement('button');remove.type='button';remove.dataset.mobileProjectAction='delete';remove.textContent='Elimina';
+    rename.addEventListener('click',()=>{
+     if(row.querySelector('.mobile-project-rename'))return;
+     const editor=document.createElement('div');editor.className='mobile-project-rename';
+     const input=document.createElement('input');input.value=item.name||'Progetto';input.maxLength=80;input.setAttribute('aria-label','Nuovo nome progetto');
+     const confirm=document.createElement('button');confirm.type='button';confirm.dataset.mobileProjectAction='confirm-rename';confirm.textContent='Salva';
+     confirm.addEventListener('click',async()=>{try{await api.renameProject?.(item,input.value);renderProjects();showNotice('Progetto rinominato.');}catch(error){showNotice(`Rinomina non riuscita: ${error.message}`);}});
+     editor.append(input,confirm);row.append(editor);input.focus?.();
+    });
+    remove.addEventListener('click',async()=>{const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;try{await api.deleteProject?.(item);renderProjects();showNotice('Progetto eliminato.');}catch(error){showNotice(`Eliminazione non riuscita: ${error.message}`);}});
+    actions.append(rename,remove);row.append(button,actions);list.append(row);
+   }
   }catch(error){showNotice(error.message);}
  }
  function authFeedback(message,error=false){const node=$('#mobile-auth-feedback');node.textContent=message||'';node.classList.toggle('error',error);}
