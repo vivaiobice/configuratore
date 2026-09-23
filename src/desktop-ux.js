@@ -1,11 +1,61 @@
-export function createDesktopQuickCalculator({document=globalThis.document}={}){
+function formatItalianInteger(value){
+ const integer=Math.trunc(Number(value));
+ return integer>0?String(integer).replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'—';
+}
+
+export function createDesktopQuickCalculator({document=globalThis.document,calculate=null,onCalculate=()=>{}}={}){
  const dialog=document?.querySelector?.('#quick-calculator-dialog');
  const trigger=document?.querySelector?.('#quick-calculator-trigger');
  const closeButton=document?.querySelector?.('#quick-calculator-close');
+ const area=document?.querySelector?.('#manual-area');
+ const plantSpacing=document?.querySelector?.('#manual-plant-spacing');
+ const rowSpacing=document?.querySelector?.('#manual-row-spacing');
+ const theoretical=document?.querySelector?.('#manual-theoretical');
+ const commercial=document?.querySelector?.('#manual-commercial');
  const open=()=>{if(!dialog)return;if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');};
  const close=()=>{if(!dialog)return;if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open');};
- const mount=()=>{trigger?.addEventListener('click',open);closeButton?.addEventListener('click',close);dialog?.addEventListener('click',event=>{if(event.target===dialog)close();});};
- return{mount,open,close};
+ const render=()=>{
+  if(typeof calculate!=='function')return;
+  const result=calculate({areaM2:area?.value,rowSpacingM:rowSpacing?.value,plantSpacingM:plantSpacing?.value});
+  if(theoretical)theoretical.textContent=formatItalianInteger(result?.theoreticalPlants);
+  if(commercial)commercial.textContent=formatItalianInteger(result?.commercialPlants25);
+ };
+ const mount=()=>{
+  trigger?.addEventListener('click',()=>{open();render();});closeButton?.addEventListener('click',close);
+  dialog?.addEventListener('click',event=>{if(event.target===dialog)close();});
+  for(const input of [area,plantSpacing,rowSpacing])input?.addEventListener('input',render);
+  area?.addEventListener('change',()=>{const value=Number(area.value);if(Number.isFinite(value)&&value>0)onCalculate(value);});
+  return controller;
+ };
+ const controller={mount,open,close,render};return controller;
+}
+
+export function createDesktopFieldSelectors({document=globalThis.document,onSelect=()=>{}}={}){
+ const selectors=['#field-select','#map-field-select'];
+ const nodes=()=>selectors.map(selector=>document?.querySelector?.(selector)).filter(Boolean);
+ function render(fields=[],activeId=''){
+  for(const select of nodes()){
+   select.replaceChildren();
+   for(const field of fields){const option=document.createElement('option');option.value=field.id;option.textContent=field.label;option.selected=field.id===activeId;select.append(option);}
+  }
+ }
+ function mount(){
+  for(const select of nodes())select.addEventListener('change',event=>{
+   const target=event.target;
+   const value=target.value??target.selectedOptions?.[0]?.value??[...(target.options??[])].find(option=>option.selected)?.value;
+   if(value)onSelect(value);
+  });
+  return controller;
+ }
+ const controller={mount,render};return controller;
+}
+
+export function createDesktopMapSearchAction({document=globalThis.document}={}){
+ const button=document?.querySelector?.('#map-search-button');
+ const input=document?.querySelector?.('#search-input');
+ function activate(){input?.scrollIntoView?.({block:'center',behavior:'smooth'});input?.focus?.();input?.select?.();}
+ function mount(){button?.addEventListener('click',activate);return controller;}
+ const controller={mount,activate};return controller;
 }
 
 export function createSaveFeedback(button,{idleLabel='Salva il progetto'}={}){

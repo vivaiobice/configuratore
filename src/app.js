@@ -1,7 +1,7 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=37';
+import { createMobileUI } from './mobile-ui.js?v=38';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu } from './desktop-ux.js?v=37';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction } from './desktop-ux.js?v=38';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
 import { initMap } from './map.js?v=27';
@@ -47,7 +47,8 @@ let perimeterEventSent = Boolean(state.project.geometry);
 const authBridge=createAuthBridge();
 const profileUi=createProfileUI({authService:authBridge,document});
 profileUi.mount();
-createDesktopQuickCalculator({document}).mount();
+const desktopQuickCalculator=createDesktopQuickCalculator({document,calculate:calculateManualPlants,onCalculate:(areaM2)=>track('manual_area_calculated',{areaM2})});
+desktopQuickCalculator.mount();
 const summarySaveFeedback=createSaveFeedback($('#summary-save-project'));
 const sessionId = (() => {
   const existing = globalThis.sessionStorage?.getItem('vivai-obice:configuratore:session');
@@ -68,26 +69,21 @@ function formatMetres(value) { return value ? `${Math.round(value).toLocaleStrin
 function setText(selector, value) { const node = $(selector); if (node) node.textContent = value; }
 
 function renderManualAreaCalculation() {
-  const input = $('#manual-area');
-  if (!input) return;
-  const result = calculateManualPlants({
-    areaM2:input.value,
-    rowSpacingM:state.project.rowSpacingM,
-    plantSpacingM:state.project.plantSpacingM
-  });
-  setText('#manual-theoretical', result.theoreticalPlants ? result.theoreticalPlants.toLocaleString('it-IT') : '—');
-  setText('#manual-commercial', result.commercialPlants25 ? result.commercialPlants25.toLocaleString('it-IT') : '—');
+  desktopQuickCalculator.render();
 }
 
 function renderProjectAdvice(project) {
   const container = $('#project-advice');
   if (!container) return;
   const advice = adviseProject(project);
+  const mechanizedAdvice=$('#mechanized-advice');
+  const mechanizedItem=advice.find(item=>item.code==='mechanization_verify_machine'||item.code==='mechanization_headland_missing');
+  if(mechanizedAdvice){mechanizedAdvice.textContent=mechanizedItem?.message??'';mechanizedAdvice.hidden=!mechanizedItem;}
   container.replaceChildren();
   container.hidden = advice.length === 0;
   for (const item of advice) {
     const message = document.createElement('p');
-    message.className = `project-advice-item ${item.level === 'attention' ? 'attention' : 'info'}`;
+    message.className = `project-advice-item advice-${item.code} ${item.level === 'attention' ? 'attention' : 'info'}`;
     message.textContent = item.message;
     container.append(message);
   }
@@ -244,6 +240,7 @@ $('#headland').min = state.project.mechanizedHarvest ? '6' : '0';
 $('#project-context').value = state.project.projectContextType || 'new_planting';
 $('#project-context-note').value = state.project.projectContextNote ?? '';
 $('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
+$('#campaign-year-desktop').value = state.project.campaignYear ?? new Date().getFullYear();
 renderMaterialSelectors();
 const newPlantingOption = $('#project-context')?.querySelector('option[value="new_planting"]');
 if (newPlantingOption) newPlantingOption.dataset.context = 'new_planting', newPlantingOption.textContent = 'Nuovo Impianto';
@@ -298,19 +295,20 @@ function syncProjectControls() {
   $('#project-context').value = state.project.projectContextType || 'new_planting';
   $('#project-context-note').value = state.project.projectContextNote ?? '';
   $('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
+  $('#campaign-year-desktop').value = state.project.campaignYear ?? new Date().getFullYear();
   const projectName=$('#project-name');
   if(projectName&&projectName.value!==(state.project.localProjectName??'Il mio impianto'))projectName.value=state.project.localProjectName??'Il mio impianto';
   renderMaterialSelectors();
 }
 
+const desktopFieldSelectors=createDesktopFieldSelectors({document,onSelect:(id)=>{
+  state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();mapApi?.focusActiveField();
+}});
+desktopFieldSelectors.mount();
+
 function renderFieldManager() {
   mobileUi?.renderField();
-  const select = $('#field-select');
-  if (!select) return;
-  select.replaceChildren();
-  for (const field of state.project.fields ?? []) {
-    const option = document.createElement('option'); option.value = field.id; option.textContent = field.label; option.selected = field.id === state.project.activeFieldId; select.append(option);
-  }
+  desktopFieldSelectors.render(state.project.fields ?? [],state.project.activeFieldId);
   const remove = $('#remove-field-button'); if (remove) remove.disabled = (state.project.fields?.length ?? 1) <= 1;
   const fieldName = $('#field-name');
   if (fieldName && fieldName.value !== (state.project.label ?? '')) fieldName.value = state.project.label ?? '';
@@ -353,20 +351,20 @@ function loadActiveFieldOnMap() {
   syncProjectControls(); renderFieldManager(); renderExclusions(); calculateAndRender();
 }
 
-$('#field-select')?.addEventListener('change', (event) => { state = { ...state, project:switchProjectField(state.project, event.target.value) }; persist(); loadActiveFieldOnMap(); });
 $('#field-name')?.addEventListener('input', (event) => {
   state = { ...state, project:renameActiveProjectField(state.project, event.target.value) };
   summarySaveFeedback.dirty();
   persist();
-  const selected = $('#field-select')?.selectedOptions?.[0];
-  if (selected) selected.textContent = state.project.label;
+  desktopFieldSelectors.render(state.project.fields ?? [],state.project.activeFieldId);
   mapApi?.setActiveFieldLabel(state.project.label);
   syncOtherFieldsOnMap();
 });
-$('#campaign-year')?.addEventListener('input',(event)=>{
+function updateCampaignYear(event){
   const value=Number(event.target.value);
   if(Number.isInteger(value)&&value>=2000&&value<=2100)patchProject({campaignYear:value});
-});
+}
+$('#campaign-year')?.addEventListener('input',updateCampaignYear);
+$('#campaign-year-desktop')?.addEventListener('input',updateCampaignYear);
 $('#project-name')?.addEventListener('input',(event)=>patchProject({localProjectName:event.target.value}));
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; summarySaveFeedback.dirty();persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
@@ -398,6 +396,7 @@ $('#gps-button')?.addEventListener('click', () => locateFrom('panel_button'));
 $('#map-gps-button')?.addEventListener('click', () => locateFrom('map_button'));
 const searchInput = $('#search-input');
 const searchSuggestions = $('#search-suggestions');
+createDesktopMapSearchAction({document}).mount();
 let suggestionTimer = null;
 let suggestionRequest = 0;
 function hideSuggestions() { if (searchSuggestions) { searchSuggestions.hidden = true; searchSuggestions.replaceChildren(); } }
@@ -637,8 +636,6 @@ $('#headland')?.addEventListener('input', (event) => {
   if (state.project.mechanizedHarvest && normalized === 6 && Number(event.target.value) !== 6) event.target.value = '6';
   patchProject({ headlandWidthM:normalized });
 });
-$('#manual-area')?.addEventListener('input', renderManualAreaCalculation);
-$('#manual-area')?.addEventListener('change', (event) => { const areaM2 = Number(event.target.value); if (Number.isFinite(areaM2) && areaM2 > 0) track('manual_area_calculated', { areaM2 }); });
 $('#row-spacing')?.addEventListener('change', () => track('planting_spacing_changed', { rowSpacingM:state.project.rowSpacingM, plantSpacingM:state.project.plantSpacingM }));
 $('#plant-spacing')?.addEventListener('change', () => track('planting_spacing_changed', { rowSpacingM:state.project.rowSpacingM, plantSpacingM:state.project.plantSpacingM }));
 $('#headland')?.addEventListener('change', () => track('advanced_option_changed', { option:'headland', enabled:Boolean(state.project.headlandWidthM) }));

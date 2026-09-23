@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=37" />
+  <link rel="manifest" href="./manifest.webmanifest?v=38" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="./desktop-library.css?v=37" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
+  <link rel="stylesheet" href="./desktop-v38.css?v=38" />
 </head>
 <body>
   <header class="topbar">
@@ -24,7 +25,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V37</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V38</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -43,8 +44,8 @@
       <div class="field-manager" aria-label="Gestione campi">
         <label class="field-name-label">Nome campo<input id="field-name" class="control-input" type="text" maxlength="80" placeholder="es. Vigneto Cascina" /></label>
         <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">Aggiungi campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">Elimina campo</button></div>
-        <label class="field-select-label">Campo attivo<select id="field-select"></select></label>
-        <label class="campaign-year-label">Annata dell’impianto<input id="campaign-year" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
+        <label class="field-select-label">Campi disponibili<select id="field-select"></select></label>
+        <label class="campaign-year-label mobile-campaign-year">Annata dell’impianto<input id="campaign-year" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
       </div>
 
       <section class="step" data-step="1">
@@ -79,36 +80,46 @@
       <details class="advanced">
         <summary>Affina il progetto <span>+</span></summary>
         <div class="advanced-body">
-          <div class="field-grid">
+          <div class="field-grid advanced-spacing">
             <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
             <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" value="4.50" placeholder="es. 4,5" /></label>
           </div>
-          <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
-          <label>Inquadramento del progetto
-            <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
-          </label>
-          <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
-          <hr class="soft-divider" />
-          <h3>Scelta del materiale vegetale</h3>
-          <label>Vitigno
-            <select id="grape-variety"><option value="">Da definire</option></select>
-          </label>
-          <div class="field-grid material-grid">
-            <label>Clone / selezione
-              <select id="clone-selection"><option value="">Da definire</option></select>
-            </label>
-            <label>Portainnesto
-              <select id="rootstock"><option value="">Consigliami</option></select>
+          <div class="advanced-mechanization">
+            <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
+            <p id="mechanized-advice" class="desktop-mechanization-advice" hidden></p>
+          </div>
+          <div class="advanced-context">
+            <label>Inquadramento dell’impianto
+              <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
             </label>
           </div>
-          <label id="material-request-wrap" class="material-request-wrap" hidden>Richiesta particolare / materiale desiderato
-            <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. Pinot Bianco su 420A, clone specifico o altra combinazione da verificare"></textarea>
-            <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
-          </label>
+          <div class="advanced-notes">
+            <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
+          </div>
+          <div class="advanced-material">
+            <hr class="soft-divider" />
+            <h3>Scelta del materiale vegetale</h3>
+            <label>Vitigno
+              <select id="grape-variety"><option value="">Da definire</option></select>
+            </label>
+            <div class="field-grid material-grid">
+              <label>Clone / selezione
+                <select id="clone-selection"><option value="">Da definire</option></select>
+              </label>
+              <label>Portainnesto
+                <select id="rootstock"><option value="">Consigliami</option></select>
+              </label>
+            </div>
+            <label id="material-request-wrap" class="material-request-wrap" hidden>Richiesta particolare / materiale desiderato
+              <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. Pinot Bianco su 420A, clone specifico o altra combinazione da verificare"></textarea>
+              <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
+            </label>
+          </div>
+          <label class="campaign-year-label desktop-campaign-year">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
         </div>
       </details>
         <div class="exclusion-panel">
-          <div class="exclusion-heading"><strong>Aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
+          <div class="exclusion-heading"><strong>Gestione aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
           <div id="exclusion-list" class="exclusion-list"><p class="empty-exclusions">Nessuna area esclusa.</p></div>
         </div>
 
@@ -142,19 +153,22 @@
           <div class="segmented"><button class="active" data-base="satellite">Satellite</button><button data-base="street">Stradale</button></div>
           <div class="cadastre-control"><button id="cadastre-button" class="tool-button" type="button" aria-haspopup="true" aria-expanded="false" aria-pressed="false">▦ Catasto</button><div id="cadastre-menu" class="cadastre-menu" hidden><button id="select-cadastre-button" class="tool-button" type="button">⌖ Trova particella</button></div></div>
         </div>
-        <div class="map-tool-group map-tools-editor" data-map-tools="editor" aria-label="Modifica campo">
-          <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
-          <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Elimina campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button>
-          <button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button>
+        <div class="desktop-tool-rail" aria-label="Strumenti mappa">
+          <div class="map-tool-group map-tools-editor" data-map-tools="editor" aria-label="Modifica campo">
+            <button id="draw-map-button" class="tool-button" type="button">✎ Disegna terreno</button>
+            <button id="edit-vertices-button" class="tool-button" type="button" aria-pressed="false">✥ Modifica punti</button><button id="clear-field-button" class="tool-button danger-soft" type="button">⌫ Elimina campo</button><button id="remove-vertex-button" class="tool-button" type="button">− Punto</button>
+            <button id="map-fullscreen-button" class="tool-button map-fullscreen-button" type="button" aria-label="Apri la mappa a tutto schermo" aria-pressed="false" title="Mappa a tutto schermo">⛶ Mappa</button><button id="close-perimeter-button" class="tool-button close-perimeter-button" type="button" hidden disabled>✓ Chiudi perimetro</button>
+          </div>
+          <div class="map-tool-group map-tools-positioning" data-map-tools="positioning" aria-label="Posizionamento"><button id="map-search-button" class="tool-button" type="button" aria-label="Cerca una località" title="Cerca una località">⌕ Cerca località</button><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="center-field-button" class="tool-button" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖ Vai al campo</button></div>
+          <div class="map-tool-group map-tools-exclusions" data-map-tools="exclusions" aria-label="Gestione aree escluse"><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button></div>
         </div>
-        <div class="map-tool-group map-tools-exclusions" data-map-tools="exclusions" aria-label="Esclusioni e passaggi"><button id="exclude-zone-button" class="tool-button" type="button">⊖ Escludi zona</button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m">↔ Passaggio 1,50 m</button></div>
-        <div class="map-tool-group map-tools-positioning" data-map-tools="positioning" aria-label="Posizionamento"><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale">◎ GPS</button><button id="center-field-button" class="tool-button" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled>⌖ Vai al campo</button></div>
         <div class="map-rotation map-tool-group" data-map-tools="rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
           <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
           <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
           <button id="rotate-right" class="tool-button" type="button" aria-label="Ruota a destra" title="Ruota a destra">↷</button>
         </div>
       </div>
+      <label class="map-field-picker">Campo selezionato<select id="map-field-select" aria-label="Campo selezionato sulla mappa"></select></label>
       <button id="map-add-field-button" class="map-add-field-button" type="button"><b aria-hidden="true">＋</b><span>Aggiungi campo</span></button>
       <div id="map-status" class="map-status">Cerca la zona e disegna il perimetro dell’appezzamento.</div>
       <details id="fullscreen-exclusions"><summary>Aree escluse</summary><div id="fullscreen-exclusions-content"></div></details>
@@ -165,8 +179,12 @@
     <div class="quick-calculator-card">
       <div class="dialog-heading"><div><p class="eyebrow">STRUMENTO RAPIDO</p><h2>Calcolo barbatelle</h2><p>Stima senza disegnare il terreno.</p></div><button id="quick-calculator-close" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
       <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
-        <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Il calcolo usa le distanze impostate nel progetto.</span></div></div>
+        <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Usa un sesto indipendente dal progetto.</span></div></div>
         <label class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
+        <div class="field-grid manual-spacing-grid">
+          <label>Distanza piante <span>m</span><input id="manual-plant-spacing" inputmode="decimal" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
+          <label>Distanza filari <span>m</span><input id="manual-row-spacing" inputmode="decimal" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
+        </div>
         <div class="manual-calculator-results" aria-live="polite">
           <div><span>Barbatelle teoriche</span><strong id="manual-theoretical">—</strong></div>
           <div class="manual-commercial"><span>Quantità commerciale ×25</span><strong id="manual-commercial">—</strong></div>
@@ -196,6 +214,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=37"></script>
+  <script type="module" src="./src/app.js?v=38"></script>
 </body>
 </html>

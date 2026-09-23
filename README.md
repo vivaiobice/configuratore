@@ -2,7 +2,24 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V37 WebApp.
+Stato: ambiente TEST · release V38 WebApp.
+
+## V38 — barra strumenti desktop e campi disponibili
+
+- I comandi desktop Editor mappa, Posizionamento e Gestione aree escluse sono riuniti in una barra
+  laterale destra compatta. Le funzioni restano separate per gruppo e il testo compare espandendo
+  l'icona al passaggio o al focus; il gruppo Tipo di mappa non è stato modificato.
+- Rotazioni disposte in basso e controllo verticale MapLibre zoom/bussola affiancato a destra, senza
+  sovrapposizioni. Aggiunta nella barra la lente che porta alla ricerca della località.
+- `Campo attivo` è diventato **Campi disponibili**. Lo stesso selettore è presente in alto al centro
+  della mappa; entrambi caricano e inquadrano il campo scelto e restano sincronizzati con la rinomina.
+- L'annata dell'impianto è presentata nelle opzioni avanzate desktop mantenendo intatto il controllo
+  mobile. `Affina il progetto` segue l'ordine richiesto e l'avviso della vendemmia meccanica è sotto
+  la checkbox dedicata.
+- Il Calcolo rapido dispone ora di superficie, distanza piante e distanza filari proprie: non legge e
+  non modifica il sesto del progetto aperto.
+- Gate locale: suite `397/397` e controllo sintattico superati. Formule, geometrie, conteggi,
+  database e Supabase LIVE non sono stati modificati.
 
 ## V37 — gestione progetti e strumenti mappa desktop
 

@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V37 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V38 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -680,3 +680,26 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - TDD: RED osservato per funzioni archivio, azioni UI, gruppi mappa, CTA, sottomenù Catasto e ordine
   cloud→locale; GREEN finale `388/388`. `npm run check` superato.
 - Cache bust e badge portati a V37. Nessuna migrazione e nessuna modifica a Supabase LIVE.
+
+## V38 — compattazione strumenti e selezione campi desktop
+
+- Richiesta: conservare invariato il gruppo Tipo di mappa e riunire gli altri strumenti sul lato
+  destro in tre gruppi, nell'ordine Editor mappa, Posizionamento, Gestione aree escluse.
+- Realizzata una rail compatta a icone: i pulsanti partono larghi 44 px e si espandono verso sinistra
+  mostrando il nome della funzione al passaggio del mouse o al focus da tastiera.
+- Corretto il conflitto visivo tra rotazioni e controlli MapLibre: rotazioni orizzontali in basso,
+  zoom e bussola nel gruppo verticale affiancato sulla destra.
+- Aggiunta una lente sulla mappa che porta il focus alla ricerca località esistente, senza introdurre
+  un secondo motore di ricerca.
+- `Campo attivo` rinominato `Campi disponibili`; aggiunto un selettore gemello in alto al centro della
+  mappa. Entrambi usano lo stesso controller, cambiano il campo una sola volta e lo inquadrano.
+- L'annata è mostrata nelle opzioni avanzate desktop tramite un controllo sincronizzato; l'input
+  originale resta nella posizione già approvata per il percorso mobile.
+- Riordinata soltanto via CSS desktop la sezione avanzata: capezzagna/pali, vendemmia e avviso,
+  materiale vegetale, Inquadramento dell'impianto, note, annata. In mobile resta l'ordine precedente.
+- `Aree escluse` rinominato `Gestione aree escluse`, mantenendo la card e gli handler esistenti.
+- Il Calcolo rapido usa ora propri input per superficie, distanza piante e distanza filari. Questi
+  valori non leggono e non scrivono il sesto del campo selezionato; la formula resta
+  `superficie / (distanza piante × distanza filari)` con quantità commerciale arrotondata a 25.
+- TDD: RED osservato per controller, markup, contratto CSS e versione shell; GREEN finale `397/397`.
+  `npm run check` superato. Nessuna modifica a formule, geometrie, schema database o Supabase LIVE.
