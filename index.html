@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=39" />
+  <link rel="manifest" href="./manifest.webmanifest?v=40" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -12,13 +12,14 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=37" />
+  <link rel="stylesheet" href="./mobile.css?v=40" />
   <link rel="stylesheet" href="./profile.css?v=31" />
   <link rel="stylesheet" href="./desktop-library.css?v=37" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
   <link rel="stylesheet" href="./desktop-v38.css?v=38" />
   <link rel="stylesheet" href="./desktop-v39.css?v=39" />
+  <link rel="stylesheet" href="./desktop-v40.css?v=40" />
 </head>
 <body>
   <header class="topbar">
@@ -26,7 +27,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V39</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V40</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -50,7 +51,7 @@
       </div>
 
       <section class="step" data-step="1">
-        <div class="step-heading"><span>01</span><div><h2>Trova il terreno</h2><p>Cerca una località oppure usa la posizione attuale.</p></div></div>
+        <div class="step-heading"><div><h2>Trova il terreno</h2><p>Cerca una località oppure usa la posizione attuale.</p></div></div>
         <div class="search-shell">
           <form id="search-form" class="search-row">
             <input id="search-input" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="search-suggestions" placeholder="Comune, località o indirizzo" />
@@ -65,7 +66,7 @@
       </section>
 
       <section class="step" data-step="2">
-        <div class="step-heading"><span>02</span><div><h2>Sesto d’impianto</h2><p>Imposta le distanze principali.</p></div></div>
+        <div class="step-heading"><div><h2>Sesto d’impianto</h2><p>Imposta le distanze principali.</p></div></div>
         <div class="field-grid">
           <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
           <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
@@ -139,7 +140,7 @@
           <div class="summary-secondary"><span>Metri lineari</span><strong id="summary-linear">—</strong></div>
           <div class="summary-secondary"><span>Pali totali</span><strong id="summary-posts">0</strong></div>
           <div class="summary-secondary"><span>Di cui pali di testa</span><strong id="summary-head-posts">0</strong></div>
-          <div class="summary-primary"><span>Barbatelle stimate</span><strong id="summary-plants">—</strong><small id="summary-commercial">Quantità commerciale: —</small></div>
+          <div class="summary-primary"><span>Quantità commerciale</span><strong id="summary-commercial">—</strong><small>Barbatelle calcolate: <b id="summary-plants">—</b></small></div>
         </div>
         <button id="summary-save-project" class="primary-button wide" type="button">Salva il progetto</button>
         <div class="summary-action-row">
@@ -221,6 +222,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=39"></script>
+  <script type="module" src="./src/app.js?v=40"></script>
 </body>
 </html>

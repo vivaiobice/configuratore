@@ -15,7 +15,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V39</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V40</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -142,8 +142,8 @@ export function createMobileUI(api){
   catch(error){showNotice(`Salvataggio non riuscito: ${error.message}`);}
   finally{saving=false;$('#mobile-save-field').disabled=false;}
  }
- function metricsHtml(field){const m=api.getMetrics(field);return `<dl class="mobile-metrics">${[
-  ['Superficie',area(m.areaM2)],['Superficie netta',area(m.netAreaM2)],['Barbatelle',n(m.simulatedPlants)],['Quantità commerciale',n(m.commercialPlants25)],['Pali intermedi',n(m.intermediatePosts)],['Pali di testa',n(m.headPosts)],['Pali totali',n(m.totalPosts)],['Tratti di filare',n(m.rowCount)],['Metri di filare',`${n(m.rowLinearM)} m`],['Perimetro',`${n(m.perimeterM)} m`]
+ function metricsHtml(field){const m=api.getMetrics(field);return `<section class="mobile-vines-summary"><span>Quantità commerciale</span><strong class="mobile-commercial-vines">${n(m.commercialPlants25)}</strong><small>Barbatelle calcolate: <b class="mobile-calculated-vines">${n(m.simulatedPlants)}</b></small></section><dl class="mobile-metrics">${[
+  ['Superficie',area(m.areaM2)],['Superficie netta',area(m.netAreaM2)],['Pali intermedi',n(m.intermediatePosts)],['Pali di testa',n(m.headPosts)],['Pali totali',n(m.totalPosts)],['Tratti di filare',n(m.rowCount)],['Metri di filare',`${n(m.rowLinearM)} m`],['Perimetro',`${n(m.perimeterM)} m`]
  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;}
  function preview(field){return renderProjectDiagramSvg({polygon:field.geometry,rows:api.getMetrics(field).rows});}
  function renderFields(){

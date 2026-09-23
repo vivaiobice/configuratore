@@ -434,7 +434,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.addLayer({ id:OTHER_FIELDS_FILL_ID, type:'fill', source:OTHER_FIELDS_SOURCE_ID, paint:{ 'fill-color':'#8aa893', 'fill-opacity':0.14 } });
     map.addLayer({ id:OTHER_FIELDS_LINE_ID, type:'line', source:OTHER_FIELDS_SOURCE_ID, layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#e8f1e9', 'line-width':3.5, 'line-dasharray':[2,1.2] } });
     map.addLayer({ id:PROJECT_GEOMETRY_FILL_ID, type:'fill', source:PROJECT_GEOMETRY_SOURCE_ID, paint:{ 'fill-color':'#b9d39d', 'fill-opacity':0.12 } });
-    map.addLayer({ id:PROJECT_GEOMETRY_LINE_ID, type:'line', source:PROJECT_GEOMETRY_SOURCE_ID, layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#1d6b45', 'line-width':4 } });
+    map.addLayer({ id:PROJECT_GEOMETRY_LINE_ID, type:'line', source:PROJECT_GEOMETRY_SOURCE_ID, layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#f5f6ed', 'line-width':1.1, 'line-opacity':0.62 } });
     map.addSource(EXCLUSIONS_SOURCE_ID, { type:'geojson', data:emptyCollection() });
     map.addLayer({ id:EXCLUSIONS_FILL_ID, type:'fill', source:EXCLUSIONS_SOURCE_ID, paint:{ 'fill-color':'#8a3f32', 'fill-opacity':0.22 } });
     map.addLayer({ id:EXCLUSIONS_LINE_ID, type:'line', source:EXCLUSIONS_SOURCE_ID, paint:{ 'line-color':'#fff1e7', 'line-width':2.5, 'line-dasharray':[1.5,1] } });

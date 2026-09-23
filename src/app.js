@@ -1,10 +1,10 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=39';
+import { createMobileUI } from './mobile-ui.js?v=40';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=27';
+import { initMap } from './map.js?v=40';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
@@ -110,6 +110,7 @@ function calculateAndRender() {
   const rowsText = result.rowCount ? result.rowCount.toLocaleString('it-IT') : '—';
   const linearText = formatMetres(result.rowLinearM);
   const plantsText = result.simulatedPlants ? result.simulatedPlants.toLocaleString('it-IT') : '—';
+  const commercialPlantsText = result.commercialPlants25 ? result.commercialPlants25.toLocaleString('it-IT') : '—';
   setText('#summary-area', areaText);
   setText('#summary-perimeter', perimeterText);
   setText('#summary-rows', rowsText);
@@ -117,7 +118,7 @@ function calculateAndRender() {
   setText('#summary-posts', result.totalPosts.toLocaleString('it-IT'));
   setText('#summary-head-posts', result.headPosts.toLocaleString('it-IT'));
   setText('#summary-plants', plantsText);
-  setText('#summary-commercial', result.commercialPlants25 ? `Quantità commerciale: ${result.commercialPlants25.toLocaleString('it-IT')} (multipli di 25)` : 'Quantità commerciale: —');
+  setText('#summary-commercial', commercialPlantsText);
   mobileUi?.renderField();
   renderManualAreaCalculation();
   mapApi?.setRows(result.rows);

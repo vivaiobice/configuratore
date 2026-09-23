@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V39 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V40 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -703,6 +703,21 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   `superficie / (distanza piante × distanza filari)` con quantità commerciale arrotondata a 25.
 - TDD: RED osservato per controller, markup, contratto CSS e versione shell; GREEN finale `397/397`.
   `npm run check` superato. Nessuna modifica a formule, geometrie, schema database o Supabase LIVE.
+
+## V40 — correzioni visuali raccolte dopo V39
+
+- Richiesta: non avviare ancora il documento cliente; stabilizzare prima i fix visuali raccolti.
+- Mobile: la nuova struttura interna icona/etichetta dei comandi desktop aveva alterato GPS e Vai al
+  campo. Ripristinata una resa mobile dedicata, con GPS centrato e ricentraggio a sola icona.
+- Desktop: il perimetro verde si perdeva sul satellite. Il layer attivo usa ora colore `#f5f6ed`,
+  larghezza `1.1` e opacità `0.62`, quindi resta più discreto dei filari.
+- Rimossi i numeri decorativi `01` e `02`, ritenuti ormai superflui nella nuova struttura laterale.
+- Quantità: la card principale mostra in grande la quantità commerciale e in piccolo le barbatelle
+  calcolate. Applicata la stessa gerarchia alle schede mobile senza modificare alcuna formula.
+- TDD: 6 test V40 osservati RED e poi GREEN. Gate completo `411/411`; nessuna migrazione database e
+  nessuna modifica a Supabase LIVE.
+- Passo successivo concordato, fuori dalla V40: progettazione del documento cliente stampabile,
+  salvabile in PDF e condivisibile tramite link controllato.
 
 ## V39 — rifinitura visuale desktop
 

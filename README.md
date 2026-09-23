@@ -2,7 +2,20 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V39 WebApp.
+Stato: ambiente TEST · release V40 WebApp.
+
+## V40 — correzioni visuali desktop e mobile
+
+- Ripristinati sulla mappa mobile i comandi GPS e Vai al campo: GPS torna centrato verticalmente,
+  mentre Vai al campo mostra soltanto il simbolo di ricentraggio nel pulsante circolare.
+- Il perimetro attivo desktop usa ora lo stesso tratto chiaro, sottile e subordinato ai filari già
+  approvato sul mobile, migliorando la lettura sopra l'immagine satellitare.
+- Rimossi i badge numerici decorativi `01` e `02` dalle intestazioni della barra laterale desktop.
+- Il riepilogo mette in evidenza la quantità commerciale arrotondata al multiplo di 25 e mostra in
+  piccolo le barbatelle calcolate. La stessa gerarchia è applicata alle schede mobile.
+- Formule, arrotondamento commerciale, geometrie, salvataggio e sincronizzazione non sono cambiati.
+- Release identificata come `AMBIENTE TEST · V40`; cache bust aggiornato per gli asset modificati.
+- Gate automatico: `411/411` test superati e controllo sintattico dei moduli completato.
 
 ## V39 — rifinitura visuale desktop
 
@@ -244,7 +257,7 @@ Stato: ambiente TEST · release V39 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-373 test automatici verificati, compresi refresh archivio, sezioni desktop, mappa Admin multi-campo,
+411 test automatici verificati, compresi i controlli visuali V40, refresh archivio, sezioni desktop, mappa Admin multi-campo,
 profili selezionabili, promozione Guest server-side, messaggi Edge leggibili e il controllo che impedisce di pubblicare nuovamente il
 modulo di sincronizzazione senza cache bust, autenticazione profilo, trasferimento Guest idempotente,
 archivio cloud, coda offline, revisione differita,
