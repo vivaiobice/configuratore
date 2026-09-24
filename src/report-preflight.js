@@ -32,6 +32,7 @@ function recipientFrom(contact = {}, profile = {}) {
     phone: firstValue(contact.phone, profile.phone),
     address: firstValue(contact.address, profile.address),
     plantLocation: firstValue(contact.plantLocation),
+    province: firstValue(contact.province, profile.province),
     reference: firstValue(contact.reference)
   };
 }

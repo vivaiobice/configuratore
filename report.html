@@ -8,10 +8,10 @@
   <title>Documento di progetto | Vivai Obice</title>
   <link rel="icon" href="./assets/favicon-v26.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./report.css?v=43">
-  <link rel="stylesheet" href="./report-print.css?v=43" media="print">
-  <link rel="stylesheet" href="./report-layout.css?v=43">
-  <link rel="stylesheet" href="./report-preview.css?v=43" media="screen">
+  <link rel="stylesheet" href="./report.css?v=44">
+  <link rel="stylesheet" href="./report-print.css?v=44" media="print">
+  <link rel="stylesheet" href="./report-layout.css?v=44">
+  <link rel="stylesheet" href="./report-preview.css?v=44" media="screen">
 </head>
 <body>
   <header class="report-app-header report-screen-only">
@@ -42,8 +42,9 @@
           <label>Cognome<input name="lastName" autocomplete="family-name"></label>
           <label>E-mail<input name="email" type="email" autocomplete="email"></label>
           <label>Telefono<input name="phone" autocomplete="tel"></label>
-          <label>Indirizzo<input name="address" autocomplete="street-address"></label>
+          <label class="report-address-field">Indirizzo completo<input name="address" autocomplete="street-address" aria-autocomplete="list" aria-expanded="false" aria-controls="report-address-suggestions"><span id="report-address-suggestions" class="report-address-suggestions" role="listbox" hidden></span></label>
           <label>Località impianto<input name="plantLocation"></label>
+          <label>Provincia<input name="province" autocomplete="address-level1" maxlength="2" placeholder="es. CN"></label>
           <label class="report-form-full">Riferimento<input name="reference"></label>
         </div>
       </form>
@@ -58,7 +59,8 @@
       <p id="report-warning" class="report-warning" role="alert" aria-live="assertive" hidden></p>
       <div class="report-actions" aria-label="Azioni documento">
         <button id="report-generate" class="report-primary" type="button" disabled>Genera anteprima</button>
-        <button id="report-print" type="button" disabled>Stampa / salva PDF</button>
+        <button id="report-print" type="button" disabled>Scarica PDF</button>
+        <button id="report-print-native" type="button" disabled>Stampa</button>
         <button id="report-copy-link" type="button" disabled>Copia link</button>
       </div>
     </section>
@@ -69,6 +71,7 @@
     <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
   </main>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="./src/report.js?v=43"></script>
+  <script src="./vendor/pdf-lib.min.js?v=44"></script>
+  <script type="module" src="./src/report.js?v=44"></script>
 </body>
 </html>

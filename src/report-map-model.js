@@ -1,4 +1,4 @@
-import { sideMeasurements as measureSides } from './geometry.js?v=42';
+import { sideMeasurements as measureSides } from './geometry.js?v=44';
 
 const MAX_MERCATOR_LAT = 85.05112878;
 
@@ -75,7 +75,7 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
       const projected=coordinates.map(project);
       return {...row,coordinates:projected,start:projected[0],end:projected.at(-1)};
     });
-  const projectedExclusions = (Array.isArray(exclusions) ? exclusions : []).map((item, index) => {
+  const sourceExclusions = (Array.isArray(exclusions) ? exclusions : []).map((item, index) => {
     const geometry = normalizeRing(Array.isArray(item) ? item : item?.geometry);
     if (!geometry.length) return null;
     return {
@@ -83,9 +83,10 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
       type: Array.isArray(item) ? 'area' : (item.type === 'linear' ? 'linear' : 'area'),
       label: Array.isArray(item) ? '' : (item.label ?? ''),
       widthM: Array.isArray(item) ? null : (item.widthM ?? null),
-      points: geometry.map(project)
+      points: geometry
     };
   }).filter(Boolean);
+  const projectedExclusions = sourceExclusions.map((item) => ({...item,points:item.points.map(project)}));
   const projectedSides = measureSides(ring).map((side) => ({
     ...side,
     point: project(side.midpoint),
@@ -101,6 +102,12 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
     polygon: ring.map(project),
     rows: projectedRows,
     exclusions: projectedExclusions,
-    sideMeasurements: projectedSides
+    sideMeasurements: projectedSides,
+    geo:{
+      polygon:ring,
+      rows:(Array.isArray(rows)?rows:[]).map(row=>({...row,coordinates:rowCoordinates(row)})).filter(row=>row.coordinates.length>=2),
+      exclusions:sourceExclusions,
+      sideMeasurements:measureSides(ring).map(side=>({...side,point:side.midpoint,label:`${Math.round(side.lengthM).toLocaleString('it-IT')} m`}))
+    }
   };
 }

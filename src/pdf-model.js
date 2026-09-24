@@ -1,5 +1,5 @@
-import { isOtherMaterialSelection } from './plant-catalog.js';
-import { ensureProjectFields } from './fields.js?v=42';
+import { isOtherMaterialSelection } from './plant-catalog.js?v=44';
+import { ensureProjectFields } from './fields.js?v=44';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',
@@ -120,7 +120,8 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
     },
     plantMaterial:{
       grapeVariety:field.grapeVariety||'Da definire',
-      cloneSelection:field.cloneSelection||null,rootstock:field.rootstock||'Da definire'
+      cloneSelection:field.cloneSelection||null,rootstock:field.rootstock||'Da definire',
+      plantHeightCm:field.plantHeightCm===60?60:40
     },
     plantingYear:n(field.campaignYear??field.plantingYear??projectCampaignYear),
     context:{type:field.projectContextType||'',label:CONTEXT_LABELS[field.projectContextType]||'',note:field.projectContextNote||''},
@@ -135,6 +136,7 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
       totalPosts:n(metrics.totalPosts)??0
     },
     satelliteImage:mapAssets.satelliteImage??null,
+    satelliteOverlayMapModel:mapAssets.satelliteOverlayMapModel??null,
     mapAttribution:mapAssets.mapAttribution||'Imagery © Esri'
   };
 }
@@ -170,7 +172,7 @@ export function buildProjectReportModel({
     recipient:{
       firstName:recipient.firstName||'',lastName:recipient.lastName||'',companyName:recipient.companyName||'',
       email:recipient.email||'',phone:recipient.phone||'',address:recipient.address||'',
-      plantLocation:recipient.plantLocation||'',reference:recipient.reference||''
+      plantLocation:recipient.plantLocation||'',province:recipient.province||'',reference:recipient.reference||''
     },
     fields,
     summary:{

@@ -1,14 +1,14 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=42';
-import { createMobileUI } from './mobile-ui.js?v=42';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=44';
+import { createMobileUI } from './mobile-ui.js?v=44';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=42';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=42';
+import { initMap } from './map.js?v=44';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=44';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=42';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=44';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=34';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -17,16 +17,17 @@ import { createProjectSync } from './project-sync.js?v=34';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=42';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=44';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
-import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js';
+import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=44';
 import { createAuthService } from './auth-service.js?v=33';
 import { createAuthBridge } from './auth-bridge.js';
-import { createProfileUI } from './profile-ui.js';
-import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=42';
-import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=42';
-import { normalizeRowCurvePoints } from './row-curves.js?v=42';
-import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=42';
+import { createProfileUI } from './profile-ui.js?v=44';
+import { initializeTheme } from './theme.js?v=44';
+import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=44';
+import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=44';
+import { normalizeRowCurvePoints } from './row-curves.js?v=44';
+import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=44';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
@@ -51,6 +52,7 @@ let perimeterEventSent = Boolean(state.project.geometry);
 let curveEditingActive=false;
 let curveControlInteracting=false;
 const authBridge=createAuthBridge();
+initializeTheme();
 const profileUi=createProfileUI({authService:authBridge,document});
 profileUi.mount();
 const publicProjectDialog=$('#public-project-dialog');
@@ -319,9 +321,9 @@ function populateMaterialSelect(select, { placeholderValue = '', placeholderLabe
   select.replaceChildren();
   addSelectOption(select, placeholderValue, placeholderLabel);
   for (const value of values) addSelectOption(select, value);
-  if (includeOther) addSelectOption(select, OTHER_MATERIAL_VALUE, 'Altro');
   const available = new Set([placeholderValue, ...values, ...(includeOther ? [OTHER_MATERIAL_VALUE] : [])]);
   if (selected && !available.has(selected)) addSelectOption(select, selected, `${selected} (selezione precedente)`);
+  if (includeOther) addSelectOption(select, OTHER_MATERIAL_VALUE, 'Altro');
   select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : placeholderValue;
 }
 
@@ -343,6 +345,7 @@ function renderMaterialSelectors() {
   const hasOther = [variety, clone, rootstock].some(isOtherMaterialSelection);
   if (requestWrap) requestWrap.hidden = !hasOther;
   if (requestNote && requestNote.value !== (state.project.materialRequestNote ?? '')) requestNote.value = state.project.materialRequestNote ?? '';
+  const heightSelect=$('#plant-height');if(heightSelect)heightSelect.value=String(state.project.plantHeightCm===60?60:40);
 }
 
 function syncProjectControls() {
@@ -753,6 +756,7 @@ $('#rootstock')?.addEventListener('change', (event) => {
   track('plant_material_changed', { field:'rootstock', defined:Boolean(event.target.value) });
 });
 $('#material-request-note')?.addEventListener('input', (event) => patchProject({ materialRequestNote:event.target.value }));
+$('#plant-height')?.addEventListener('change',event=>patchProject({plantHeightCm:event.target.value==='60'?60:40}));
 
 const consentBanner = $('#consent-banner');
 if (!getConsentState(globalThis.localStorage)) consentBanner.hidden = false;
@@ -786,7 +790,8 @@ async function runFinalAction(action) {
       return;
     }
     const materialRequest = String(state.project.materialRequestNote ?? '').trim();
-    const quoteMessage = materialRequest ? `Richiesta materiale da verificare: ${materialRequest}` : 'Richiesta dal Configuratore';
+    const heights=(state.project.fields??[]).filter(field=>Array.isArray(field.geometry)&&field.geometry.length>=4).map(field=>`${field.label}: ${field.plantHeightCm===60?60:40} cm`).join('; ');
+    const quoteMessage = `${materialRequest ? `Richiesta materiale da verificare: ${materialRequest}. ` : ''}Altezza barbatelle: ${heights||'40 cm'}.`;
     const snapshot = await cloudService.requestQuote(state, latestMetrics ?? {}, quoteMessage);
     await persistCloudSnapshot(snapshot);
     $('#contact-feedback').textContent = 'Richiesta preventivo registrata.';

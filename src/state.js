@@ -1,5 +1,5 @@
-import { suggestRowOrientation } from './geometry.js?v=42';
-import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=42';
+import { suggestRowOrientation } from './geometry.js?v=44';
+import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=44';
 
 export function createInitialState() {
   const state = {
@@ -28,7 +28,8 @@ export function createInitialState() {
       projectContextNote: '',
       grapeVariety: '',
       rootstock: '',
-      cloneSelection: ''
+      cloneSelection: '',
+      plantHeightCm:40
     }
   };
   state.project = ensureProjectFields(state.project);

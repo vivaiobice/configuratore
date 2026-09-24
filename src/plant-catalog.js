@@ -86,7 +86,7 @@ const rows = [
 ].map(([variety, clone, rootstock]) => ({ variety, clone, rootstock }));
 
 function unique(values) {
-  return [...new Set(values.filter(Boolean))];
+  return [...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'it',{sensitivity:'base',numeric:true}));
 }
 
 export function listVarieties() {

@@ -1,7 +1,7 @@
 const FIELD_KEYS = [
   'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints','maintainRowEquidistance',
   'locationLabel','municipality','province','region','headlandWidthM','postSpacingM','mechanizedHarvest','projectContextType',
-  'projectContextNote','grapeVariety','rootstock','cloneSelection','materialRequestNote','exclusions'
+  'projectContextNote','grapeVariety','rootstock','cloneSelection','plantHeightCm','materialRequestNote','exclusions'
 ];
 
 function newId() {
@@ -33,7 +33,7 @@ export function createDefaultField(id = newId(), index = 1, overrides = {}) {
     mechanizedHarvest:false,
     projectContextType:'new_planting',
     projectContextNote:'',
-    grapeVariety:'', rootstock:'', cloneSelection:'', materialRequestNote:'',
+    grapeVariety:'', rootstock:'', cloneSelection:'', plantHeightCm:40, materialRequestNote:'',
     exclusions:[],
     ...overrides,
     id

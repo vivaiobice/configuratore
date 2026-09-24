@@ -166,6 +166,37 @@ function trimPolyline(points,amount){
 
 function localToLonLat(point,frame){return toLonLat(rotate(point,-frame.angle),frame.ref);}
 
+function segmentGapSquared(a,b,c,d){
+  const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)return 0;
+  const gap=(point,start,end)=>{
+    const dx=end[0]-start[0],dy=end[1]-start[1],length2=dx*dx+dy*dy;
+    const t=length2?clamp(((point[0]-start[0])*dx+(point[1]-start[1])*dy)/length2,0,1):0;
+    return (point[0]-start[0]-t*dx)**2+(point[1]-start[1]-t*dy)**2;
+  };
+  return Math.min(gap(a,c,d),gap(b,c,d),gap(c,a,b),gap(d,a,b));
+}
+
+function unsafeRowSpacing(rows,minimum){
+  const tolerance2=minimum*minimum;
+  const boxes=rows.map(row=>{
+    const points=row.coordinates;
+    return {points,sourceDistance:row.sourceDistance,minX:Math.min(...points.map(p=>p[0])),maxX:Math.max(...points.map(p=>p[0])),minY:Math.min(...points.map(p=>p[1])),maxY:Math.max(...points.map(p=>p[1]))};
+  });
+  for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
+    const a=boxes[i],b=boxes[j];
+    if(a.sourceDistance===b.sourceDistance)continue;
+    if(a.minX>b.maxX+minimum||b.minX>a.maxX+minimum||a.minY>b.maxY+minimum||b.minY>a.maxY+minimum)continue;
+    for(let s=1;s<a.points.length;s++)for(let t=1;t<b.points.length;t++){
+      const u=a.points[s-1],v=a.points[s],w=b.points[t-1],z=b.points[t];
+      if(Math.min(u[0],v[0])>Math.max(w[0],z[0])+minimum||Math.min(w[0],z[0])>Math.max(u[0],v[0])+minimum)continue;
+      if(Math.min(u[1],v[1])>Math.max(w[1],z[1])+minimum||Math.min(w[1],z[1])>Math.max(u[1],v[1])+minimum)continue;
+      if(segmentGapSquared(u,v,w,z)<tolerance2)return true;
+    }
+  }
+  return false;
+}
+
 export function curvePointToLonLat({polygon,orientationDeg=0,point}={}){
   const frame=frameFor(polygon,orientationDeg);
   if(!frame)throw new TypeError('Perimetro non valido');
@@ -181,7 +212,7 @@ export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curv
   return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX}])[0];
 }
 
-export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true}={}){
+export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0}={}){
   const frame=frameFor(polygon,orientationDeg);
   const spacing=Number(rowSpacingM),points=normalizeRowCurvePoints(rowCurvePoints);
   if(!frame||!Number.isFinite(spacing)||spacing<=0||!points.length)return [];
@@ -199,11 +230,12 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
     const reach=Math.hypot(frame.maxX-frame.minX,frame.maxY-frame.minY)+maxOffset+spacing*2;
     const firstDistance=-Math.ceil(reach/spacing)*spacing;
     for(let distance=firstDistance;distance<=reach;distance+=spacing){
+      const blend=normalBlend*clamp((Math.abs(distance)-2*spacing)/Math.max(2*spacing,(frame.maxX-frame.minX)*.5),0,1);
       const candidate=guide.map(sample=>[
-        sample.point[0]+sample.normal[0]*distance,
-        sample.point[1]+sample.normal[1]*distance
+        sample.point[0]+(sample.normal[0]*(1-blend)+blend)*distance,
+        sample.point[1]+sample.normal[1]*(1-blend)*distance
       ]);
-      candidates.push(...splitSafeParallel(candidate,guide));
+      candidates.push(...splitSafeParallel(candidate,guide).map(coordinates=>({coordinates,sourceDistance:distance})));
     }
   }else{
     for(let baseX=firstBase;baseX<lastBase;baseX+=spacing){
@@ -212,11 +244,11 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
         const t=index/sampleCount;
         candidate.push([baseX+offsetAt(nodes,t),frame.minY+t*frame.spanY]);
       }
-      candidates.push(candidate);
+      candidates.push({coordinates:candidate,sourceDistance:baseX});
     }
   }
   for(const candidate of candidates){
-    const outerSegments=clipPolyline(candidate,point=>pointInRing(point,frame.points));
+    const outerSegments=clipPolyline(candidate.coordinates,point=>pointInRing(point,frame.points));
     for(const outer of outerSegments){
       const trimmed=trimPolyline(outer,headlandWidthM);
       if(trimmed.length<2)continue;
@@ -226,9 +258,12 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
         if(lengthM<.05)continue;
         const coordinates=segment.map(point=>localToLonLat(point,frame));
         const start=coordinates[0],end=coordinates.at(-1);
-        output.push({coordinates,start,end,lengthM});
+        output.push({coordinates,start,end,lengthM,localCoordinates:segment,sourceDistance:candidate.sourceDistance});
       }
     }
   }
-  return output;
+  if(maintainEquidistance!==false&&unsafeRowSpacing(output.map(row=>({coordinates:row.localCoordinates,sourceDistance:row.sourceDistance})),spacing*.45)){
+    return generateCurvedRows({polygon,rowSpacingM,orientationDeg,rowCurvePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25)});
+  }
+  return output.map(({localCoordinates,sourceDistance,...row})=>row);
 }

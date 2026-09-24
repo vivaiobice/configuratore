@@ -1,16 +1,19 @@
 import { loadDraft } from './storage.js';
-import { ensureProjectFields } from './fields.js?v=42';
-import { calculateProject } from './project-calculator.js?v=42';
-import { buildProjectReportModel } from './pdf-model.js?v=42';
-import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION } from './report-preflight.js';
-import { buildReportMapModel } from './report-map-model.js?v=42';
-import { captureSatelliteImage } from './report-satellite.js';
+import { ensureProjectFields } from './fields.js?v=44';
+import { calculateProject } from './project-calculator.js?v=44';
+import { buildProjectReportModel } from './pdf-model.js?v=44';
+import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION } from './report-preflight.js?v=44';
+import { buildReportMapModel } from './report-map-model.js?v=44';
+import { captureSatelliteImage } from './report-satellite.js?v=44';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=42';
+import { renderProjectReportHtml } from './report-template.js?v=44';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
+import { buildReportPdfFilename } from './report-filename.js?v=44';
+import { mountReportAddressAutocomplete } from './report-address.js?v=44';
+import { downloadProjectPdf } from './report-pdf-download.js?v=44';
 
 export { REPORT_HANDOFF_KEY };
 
@@ -54,7 +57,7 @@ export function createReportOrchestrator({
         const metrics=metricsForField(field);
         const mapModel=buildReportMapModel({polygon:field.geometry,rows:metrics.rows,exclusions:field.exclusions,width:1000,height:650,padding:62});
         const capture=await captureSatellite({container:hostForField?.(field),mapModel,field});
-        mapAssets[field.id??field.clientFieldId]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution};
+        mapAssets[field.id??field.clientFieldId]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution,satelliteOverlayMapModel:capture.overlayModel};
       }
 
       const token=tokenFactory();
@@ -113,6 +116,7 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   const accept=documentRef.querySelector('#report-disclaimer-accept');
   const generate=documentRef.querySelector('#report-generate');
   const print=documentRef.querySelector('#report-print');
+  const nativePrint=documentRef.querySelector('#report-print-native');
   const copy=documentRef.querySelector('#report-copy-link');
   const warning=documentRef.querySelector('#report-warning');
   const preview=documentRef.querySelector('#report-preview');
@@ -127,8 +131,9 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
     label.append(checkbox,caption);options.append(label);
   }
   for(const [key,value] of Object.entries(preflight.recipient)){const input=form.elements.namedItem(key);if(input)input.value=value;}
+  mountReportAddressAutocomplete({documentRef,form});
   let finalResult=null;
-  function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
+  function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;nativePrint.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
   options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});accept.checked=false;finalResult=null;refresh();});
   form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});accept.checked=false;finalResult=null;refresh();});
   accept.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'disclaimer/set',accepted:accept.checked});if(!accept.checked)finalResult=null;refresh();});
@@ -136,11 +141,19 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel})=>captureSatelliteImage({container,mapModel,maplibregl}),issueReport:payload=>backend.issueProjectReport(payload)}):null;
   generate.addEventListener('click',async()=>{
     warning.hidden=true;generate.disabled=true;generate.textContent='Generazione in corso…';
-    try{state=loadDraft(storage);finalResult=await orchestrator.generate({preflight,state,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;preview.scrollIntoView({behavior:'smooth',block:'start'});}
+    try{state=loadDraft(storage);finalResult=await orchestrator.generate({preflight,state,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}
     catch(error){finalResult=null;warning.textContent=error?.message||'Documento non generato.';warning.hidden=false;}
     finally{generate.textContent='Genera anteprima';refresh();}
   });
-  print.addEventListener('click',()=>{if(finalResult?.printEnabled)globalThis.print();});
+  print.addEventListener('click',async()=>{
+    if(!finalResult?.printEnabled)return;
+    print.disabled=true;
+    const label=print.textContent;print.textContent='Preparazione PDF…';
+    try{await downloadProjectPdf(finalResult.model,{documentRef});}
+    catch(error){warning.textContent=error?.message||'Impossibile scaricare il PDF.';warning.hidden=false;}
+    finally{print.textContent=label;refresh();}
+  });
+  nativePrint.addEventListener('click',()=>{if(finalResult?.printEnabled){documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');globalThis.print();}});
   copy.addEventListener('click',async()=>{if(finalResult?.shareUrl){await copyWithFallback(finalResult.shareUrl,documentRef);copy.textContent='Link copiato';setTimeout(()=>{copy.textContent='Copia link';},1600);}});
   refresh();return {getPreflight:()=>preflight};
 }

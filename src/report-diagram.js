@@ -1,4 +1,4 @@
-import { buildReportMapModel } from './report-map-model.js?v=42';
+import { buildReportMapModel } from './report-map-model.js?v=44';
 
 function pathFromPoints(points) {
   if (!Array.isArray(points) || !points.length) return '';
@@ -38,12 +38,12 @@ export function renderProjectDiagramSvg({ mapModel, polygon, rows = [], exclusio
   const north = `<g class="north" transform="translate(${width - 48} 38)"><text x="0" y="0" text-anchor="middle">N</text><path d="M0 8 L11 36 L0 29 L-11 36 Z"/></g>`;
 
   return `<svg class="${rootClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${overlay ? 'Sovrapposizione cartografica del progetto' : 'Schema tecnico del progetto vigneto'}" xmlns="http://www.w3.org/2000/svg">${defs}${background}${parcel}${exclusionShapes}${rowLines}${labels}${north}<style>
-    .parcel{fill:${overlay ? 'none' : '#dce8d7'};stroke:${overlay ? '#f7f4cd' : '#355f45'};stroke-width:${overlay ? '2.2' : '2.6'};vector-effect:non-scaling-stroke}
-    .vine-row{stroke:${overlay ? '#fffbd4' : '#8b7d45'};stroke-width:${overlay ? '1.8' : '1.35'};opacity:.94;vector-effect:non-scaling-stroke}
-    .excluded-area{fill:${overlay ? 'rgba(141,55,38,.32)' : 'url(#excluded-hatch)'};stroke:${overlay ? '#ffd6cb' : '#8f5a49'};stroke-width:1.8;vector-effect:non-scaling-stroke}
-    .linear-passage{fill:${overlay ? 'rgba(255,255,255,.22)' : '#faf7eb'};stroke:${overlay ? '#ffffff' : '#7a7152'};stroke-width:1.8;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
-    .side-label rect{fill:${overlay ? 'rgba(255,255,255,.94)' : '#ffffff'};stroke:${overlay ? 'rgba(24,63,40,.3)' : '#cbd5cc'};stroke-width:1}
-    .side-label text,.north{font-family:Arial,sans-serif;fill:#183f28;font-size:13px;font-weight:700}
-    .north text{font-size:16px}.north path{fill:#183f28}
+    .${rootClass} .parcel{fill:${overlay ? 'none' : '#dce8d7'};stroke:${overlay ? '#f7f4cd' : '#355f45'};stroke-width:${overlay ? '2.2' : '2.6'};vector-effect:non-scaling-stroke}
+    .${rootClass} .vine-row{stroke:${overlay ? '#fffbd4' : '#8b7d45'};stroke-width:${overlay ? '1.8' : '1.35'};opacity:.94;vector-effect:non-scaling-stroke}
+    .${rootClass} .excluded-area{fill:${overlay ? 'rgba(141,55,38,.32)' : 'url(#excluded-hatch)'};stroke:${overlay ? '#ffd6cb' : '#8f5a49'};stroke-width:1.8;vector-effect:non-scaling-stroke}
+    .${rootClass} .linear-passage{fill:${overlay ? 'rgba(255,255,255,.22)' : '#faf7eb'};stroke:${overlay ? '#ffffff' : '#7a7152'};stroke-width:1.8;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
+    .${rootClass} .side-label rect{fill:${overlay ? 'rgba(255,255,255,.94)' : '#ffffff'};stroke:${overlay ? 'rgba(24,63,40,.3)' : '#cbd5cc'};stroke-width:1}
+    .${rootClass} .side-label text,.${rootClass} .north{font-family:Arial,sans-serif;fill:#183f28;font-size:13px;font-weight:700}
+    .${rootClass} .north text{font-size:16px}.${rootClass} .north path{fill:#183f28}
   </style></svg>`;
 }

@@ -1,5 +1,8 @@
 #project-context,#plant-height{color:var(--ink);font-weight:700}
 #plant-height{margin-top:6px}
+.topbar-theme{display:inline-flex;align-items:center;gap:7px;color:var(--ink);font-size:12px;font-weight:700;white-space:nowrap}
+.topbar-theme select{min-height:36px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:5px 8px;font:inherit}
+@media(max-width:900px){.topbar-theme{display:none}}
 .profile-theme-label,.mobile-theme-setting{display:grid;gap:7px;padding:12px;color:var(--ink);font-size:12px;font-weight:700}
 .profile-theme-label select,.mobile-theme-setting select{min-height:42px;width:100%;border-radius:11px;border:1px solid var(--line);padding:8px;color:var(--ink);background:var(--surface)}
 .mobile-theme-setting{margin:12px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--line)}

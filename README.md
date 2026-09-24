@@ -393,3 +393,6 @@ Verifica su iPhone reale ancora richiesta: i test automatici non equivalgono a S
 - Zone escluse: elenco visibile, Modifica ed Elimina.
 - Capezzagne solo esterne: passaggi e zone interne producono tagli netti.
 - Riepilogo del campo attivo: pali totali e di cui pali di testa.
+# Release TEST V44 (24 settembre 2026)
+
+Per modifiche, pacchetto e controlli dopo il caricamento, leggere `V44-VERIFICA.md`. La stampa con nome stabile si ottiene tramite **Scarica PDF**. La cartografia del PDF viene catturata come un'unica immagine MapLibre georeferenziata con filari e perimetro; la prova finale richiede confronto visivo sui dispositivi.

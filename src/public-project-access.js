@@ -2,7 +2,7 @@ const CODE_PATTERN=/^VO-[0-9]{7}$/;
 
 export function normalizePublicProjectCode(value){
   const raw=String(value??'').trim().toUpperCase();
-  const normalized=/^[0-9]{7}$/.test(raw)?`VO-${raw}`:raw;
+  const normalized=/^(?:VO)?[0-9]{7}$/.test(raw)?`VO-${raw.replace(/^VO/,'')}`:raw;
   return CODE_PATTERN.test(normalized)?normalized:'';
 }
 
