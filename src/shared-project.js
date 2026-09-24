@@ -80,6 +80,24 @@ export function buildSharedPrintModel(payload,profile={},mapAssets={}){
 
 export function renderSharedPrintHtml(model){return renderProjectReportHtml(model);}
 
+async function captureSharedMapAssets({ payload, documentRef, maplibregl, captureSatellite }) {
+  const mapAssets={};
+  for(const [index,field] of (payload?.fields??[]).entries()){
+    const item=fieldPresentation(field,index);
+    if(!item.mapModel.valid)continue;
+    const host=documentRef.createElement('div');
+    host.className='shared-satellite-capture';
+    documentRef.body.append(host);
+    try{
+      const capture=await captureSatellite({container:host,maplibregl,mapModel:item.mapModel,documentRef});
+      if(capture?.dataUrl)mapAssets[item.id]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution};
+    }catch{
+      // The document remains consultable if the satellite provider is temporarily unavailable.
+    }finally{host.remove();}
+  }
+  return mapAssets;
+}
+
 export function renderSharedProjectHtml({ payload, canEdit = false } = {}) {
   if (!payload || !Array.isArray(payload.fields)) return `<section class="shared-unavailable"><h1>Documento non disponibile</h1><p>${SHARED_UNAVAILABLE_MESSAGE}</p></section>`;
   const fields = payload.fields.map(fieldPresentation);
@@ -133,8 +151,9 @@ export async function bootSharedProjectPage({ documentRef = globalThis.document,
   root.innerHTML='<p class="shared-loading">Caricamento documento…</p>';
   const result = await loadSharedProject({url:locationHref,backend});
   if (result.state !== 'ready') { root.innerHTML=renderSharedProjectHtml({}); return result; }
-  root.innerHTML=renderSharedProjectHtml(result);
-  const maps=mountSharedSatelliteMaps({root,payload:result.payload,maplibregl});
+  const mapAssets=await captureSharedMapAssets({payload:result.payload,documentRef,maplibregl,captureSatellite});
+  let previewModel=buildSharedPrintModel(result.payload,{},mapAssets);
+  root.innerHTML=renderSharedPrintHtml(previewModel);
   const accept=documentRef.querySelector('#shared-disclaimer-accept');
   const print=documentRef.querySelector('#shared-print');
   const modal=documentRef.querySelector('#shared-auth-dialog');
@@ -181,19 +200,8 @@ export async function bootSharedProjectPage({ documentRef = globalThis.document,
     try{
       const profileState=authService.getState();
       const profile=profileState.user?.id?await backend?.getProfile?.(profileState.user.id):null;
-      const mapAssets={};
-      for(const [index,field] of result.payload.fields.entries()){
-        const item=fieldPresentation(field,index);
-        if(!item.mapModel.valid)continue;
-        const host=documentRef.createElement('div');
-        host.className='shared-satellite-capture';
-        documentRef.body.append(host);
-        try{
-          const capture=await captureSatellite({container:host,maplibregl,mapModel:item.mapModel,documentRef});
-          mapAssets[item.id]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution};
-        }finally{host.remove();}
-      }
       const model=buildSharedPrintModel(result.payload,{...profileState,...profile},mapAssets);
+      previewModel=model;
       await printReport(model);
     }catch(error){
       const feedback=documentRef.querySelector('#shared-print-feedback');
@@ -201,5 +209,5 @@ export async function bootSharedProjectPage({ documentRef = globalThis.document,
     }finally{print.textContent=previous;refresh();}
   });
   authService?.subscribe?.(refresh);refresh();
-  return {...result,maps};
+  return {...result,previewModel,mapAssets};
 }
