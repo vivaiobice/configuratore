@@ -2,7 +2,29 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V40 WebApp.
+Stato: ambiente TEST · release V41 WebApp.
+
+## V41 — filari curvi, orientamento preciso e documento cliente
+
+- L’orientamento dei filari accetta ora un valore manuale con un decimale, oltre al cursore e alle
+  direzioni rapide già presenti. Il valore viene salvato per campo e riportato con la stessa precisione
+  nel documento.
+- Aggiunti punti di curvatura multipli per modellare filari ad arco o a S. Ogni punto può essere
+  spostato sulla mappa o regolato dai controlli; i punti appartengono al singolo campo e sono rimovibili
+  o azzerabili.
+- Lunghezze dei filari, barbatelle e pali sono ricalcolati sulle polilinee curve effettive. Se non sono
+  presenti punti di curvatura, il motore storico dei filari rettilinei resta invariato.
+- Anteprime mobile, mappa principale, pagina condivisa, schema tecnico e documento stampabile
+  rappresentano l’intera curva e non soltanto i due estremi.
+- Disponibile il documento professionale intestato Vivai Obice: selezione di uno o più campi,
+  destinatario modificabile e precompilato, mappa satellitare, schema, dati tecnici, QR alla revisione
+  condivisa, disclaimer obbligatorio e stampa/salvataggio PDF dal browser.
+- I collegamenti condivisi sono in sola lettura per i Guest; la modifica è proposta soltanto a
+  proprietario autenticato o Admin dopo verifica server-side. Le revisioni emesse restano datate.
+- Gli esempi della richiesta materiale sono volutamente generici e non derivano da corrispondenza o
+  dati cliente.
+- Release identificata come `AMBIENTE TEST · V41`, con cache bust degli asset e dei moduli modificati.
+- Gate automatico: `480/480` test superati; controllo sintattico completato.
 
 ## V40 — correzioni visuali desktop e mobile
 
@@ -257,7 +279,8 @@ Stato: ambiente TEST · release V40 WebApp.
 Caricare tutti i file di questo archivio nella cartella del sito, sostituendo la versione precedente.
 Aprire tramite HTTP/HTTPS, non direttamente come file locale. Non serve una compilazione per pubblicare.
 Per i test di sviluppo: `npm ci`, `npm test`, `npm run check`.
-411 test automatici verificati, compresi i controlli visuali V40, refresh archivio, sezioni desktop, mappa Admin multi-campo,
+480 test automatici verificati, compresi filari curvi multipunto, orientamento decimale, documento e condivisione V41,
+controlli visuali V40, refresh archivio, sezioni desktop, mappa Admin multi-campo,
 profili selezionabili, promozione Guest server-side, messaggi Edge leggibili e il controllo che impedisce di pubblicare nuovamente il
 modulo di sincronizzazione senza cache bust, autenticazione profilo, trasferimento Guest idempotente,
 archivio cloud, coda offline, revisione differita,
@@ -289,6 +312,40 @@ rimane confinata all'Ambiente TEST; LIVE non è stato modificato.
 
 Prova consigliata su iPhone: apri Mappa, disegna un campo, conferma, modifica punti, aggiungi un passaggio,
 modifica/elimina un'esclusione, torna al Progetto e ruota il telefono. Controlla anche il riepilogo espanso.
+
+## Documento di progetto in sviluppo — Ambiente TEST
+
+Il comando `Stampa / PDF` apre una schermata separata. Si possono includere tutti i campi validi o
+solo quelli selezionati; il destinatario viene precompilato dal contatto del progetto e dal profilo,
+ma ogni modifica in questa schermata riguarda soltanto il documento. Dopo la presa visione obbligatoria
+dell'avvertenza viene creata una revisione immutabile, acquisita una base satellitare separata dalla
+mappa di lavoro per ciascun campo, emesso un documento A4 con frontespizio, schede, schema tecnico,
+quantità commerciali, QR e piè di pagina Vivai Obice, e abilitati stampa/PDF e copia link.
+
+Il QR contiene un token casuale ad alta entropia; il database conserva soltanto il suo hash. La pagina
+`shared-project.html` è pubblicamente consultabile tramite token ma non espone il destinatario, i
+contatti o i dati del profilo. Soltanto un account permanente proprietario o Admin, verificato con
+RPC lato server, può vedere il collegamento all'editor. La versione stampata resta distinta dalle
+modifiche successive; il token può essere revocato dal proprietario/Admin tramite RPC. Lo storico
+registra autore, data e riepilogo delle modifiche. Il disclaimer è identificato dalla versione
+`VO-DISC-2026-01`; testo e limiti devono ricevere revisione tecnica/legale prima di LIVE.
+
+Migrazioni `supabase/migrations/202609240001_project_reports_and_audit.sql`,
+`202609240002_remove_report_direct_select.sql` e `202609240003_fix_public_report_lookup.sql`
+applicate soltanto al progetto Supabase TEST il 24/09/2026. Aggiungono metadati di audit, emissioni e revoche, RPC di
+condivisione e controllo di accesso, senza concedere accesso diretto alla tabella dei documenti.
+La verifica SQL eseguita come ruolo `anon` conferma che un token inesistente non apre il link e
+non c'è lettura diretta della tabella; un chiamante non autenticato non può modificare il progetto.
+Gli advisor mostrano avvisi già presenti su altre tabelle e sulla protezione delle password, oltre
+alla nota informativa attesa per la tabella dei documenti senza policy di lettura diretta.
+Restano da fare i test reali con Guest/proprietario/Admin. La funzionalità
+non va pubblicata né considerata pronta all'uso prima di tali verifiche.
+
+Verifiche manuali TEST ancora necessarie: selezione di uno e tre campi, salvataggio A4 da Chrome,
+stampa da Safari iPhone, leggibilità dei QR, attribuzione Esri, sovrapposizione satellitare/filari,
+validazione della checkbox, link Guest sola lettura, accesso proprietario/Admin, token revocato,
+gestione di mappe senza tile/CORS e resa delle pagine senza ritagli. I test automatici non sostituiscono
+questa verifica visiva e di sicurezza remota.
 
 Mobile: anteprima con Satellite, Stradale, Catasto, GPS, centra campo e zoom.
 Apri mappa a tutto schermo → Disegna terreno → tocca i vertici → Chiudi perimetro.

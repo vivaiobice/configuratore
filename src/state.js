@@ -1,5 +1,5 @@
-import { suggestRowOrientation } from './geometry.js';
-import { ensureProjectFields, updateActiveFieldProject } from './fields.js';
+import { suggestRowOrientation } from './geometry.js?v=41';
+import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=41';
 
 export function createInitialState() {
   const state = {
@@ -14,6 +14,7 @@ export function createInitialState() {
       plantSpacingM: 0.9,
       orientationDeg: 0,
       orientationLocked: false,
+      rowCurvePoints: [],
       locationLabel: '',
       municipality: '',
       province: '',

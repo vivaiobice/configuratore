@@ -239,6 +239,16 @@ export function createBackend(client) {
       if (result.error) throw result.error;
       return result.data ?? [];
     },
+    async loadEditableProject(projectId) {
+      const allowed=await rpc('can_edit_project',{p_project_id:projectId});
+      if(allowed!==true)throw new Error('Accesso al progetto non autorizzato.');
+      const result=await client.from('projects')
+        .select('id,client_project_id,public_code,contact_id,environment,name,campaign_year,origin,version,latest_revision_number,field_plans,active_field_id,source_type,cadastral_refs,geometry,location_label,municipality,province,region,row_spacing_m,plant_spacing_m,row_orientation_deg,headland_width_m,post_spacing_m,mechanization,project_context_type,project_context_note,grape_variety,rootstock,clone_selection,updated_at')
+        .eq('id',projectId).is('deleted_at',null).maybeSingle();
+      if(result.error)throw result.error;
+      if(!result.data)throw new Error('Progetto non disponibile.');
+      return result.data;
+    },
     async setOwnProfile({ displayName, username }) {
       return rpc('set_own_profile', { p_display_name:displayName, p_username:username });
     },
@@ -267,14 +277,47 @@ export function createBackend(client) {
         p_snapshot:snapshot
       });
     },
-    async createProjectRevision({ operationId, projectId, expectedVersion, snapshot, reason = 'manual_save' }) {
+    async createProjectRevision({ operationId, projectId, expectedVersion, snapshot, reason = 'manual_save', changeSummary = {} }) {
       return rpc('create_project_revision', {
         p_operation_id:operationId,
         p_project_id:projectId,
         p_expected_version:expectedVersion,
         p_snapshot:snapshot,
-        p_reason:reason
+        p_reason:reason,
+        p_change_summary:changeSummary
       });
+    },
+    async loadLatestProjectRevision(projectId) {
+      const result=await client.from('project_revisions')
+        .select('revision_number,snapshot,reason,created_at,created_by_label,change_summary')
+        .eq('project_id',projectId)
+        .order('revision_number',{ascending:false})
+        .limit(1);
+      if(result.error)throw result.error;
+      return result.data?.[0]??null;
+    },
+    async issueProjectReport({ projectId, revisionNumber, selectedFieldIds, recipient, disclaimerVersion, acceptedAt, tokenHash }) {
+      return rpc('issue_project_report', {
+        p_project_id:projectId,
+        p_revision_number:revisionNumber,
+        p_selected_field_ids:selectedFieldIds,
+        p_recipient_snapshot:recipient??{},
+        p_disclaimer_version:disclaimerVersion,
+        p_disclaimer_accepted_at:acceptedAt,
+        p_token_hash:tokenHash
+      });
+    },
+    async getSharedProjectReport(reportId,token) {
+      return rpc('get_shared_project_report',{p_report_id:reportId,p_token:token});
+    },
+    async canEditProject(projectId) {
+      return rpc('can_edit_project',{p_project_id:projectId});
+    },
+    async revokeProjectReport(reportId) {
+      return rpc('revoke_project_report',{p_report_id:reportId});
+    },
+    async listProjectRevisionHistory(projectId) {
+      return rpc('list_project_revision_history',{p_project_id:projectId});
     },
     async softDeleteProject({ operationId, projectId }) {
       return rpc('soft_delete_project', { p_operation_id:operationId, p_project_id:projectId });

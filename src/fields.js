@@ -1,5 +1,5 @@
 const FIELD_KEYS = [
-  'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked',
+  'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints',
   'locationLabel','municipality','province','region','headlandWidthM','postSpacingM','mechanizedHarvest','projectContextType',
   'projectContextNote','grapeVariety','rootstock','cloneSelection','materialRequestNote','exclusions'
 ];
@@ -25,6 +25,7 @@ export function createDefaultField(id = newId(), index = 1, overrides = {}) {
     plantSpacingM:0.9,
     orientationDeg:0,
     orientationLocked:false,
+    rowCurvePoints:[],
     locationLabel:'', municipality:'', province:'', region:'',
     headlandWidthM:null,
     postSpacingM:4.5,
@@ -43,6 +44,7 @@ function legacyField(project, index = 1) {
   for (const key of FIELD_KEYS) if (key in (project ?? {})) overrides[key] = project[key];
   if (!Number.isFinite(Number(overrides.postSpacingM)) || Number(overrides.postSpacingM) <= 0) overrides.postSpacingM = 4.5;
   if (!Array.isArray(overrides.exclusions)) overrides.exclusions = [];
+  if (!Array.isArray(overrides.rowCurvePoints)) overrides.rowCurvePoints = [];
   return createDefaultField(project?.activeFieldId || 'field-1', index, overrides);
 }
 

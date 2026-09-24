@@ -1,4 +1,5 @@
-import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=16';
+import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=41';
+import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=41';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);
@@ -31,7 +32,7 @@ function emptyResult() {
   };
 }
 
-export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, postSpacingM = null, headlandWidthM = null }) {
+export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, rowCurvePoints = [], postSpacingM = null, headlandWidthM = null }) {
   if (!Array.isArray(polygon) || polygon.length < 4) return emptyResult();
   const rowSpacing = Number(rowSpacingM);
   const plantSpacing = Number(plantSpacingM);
@@ -40,10 +41,14 @@ export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantS
   const metrics = polygonMetrics(polygon);
   const validExclusions = (Array.isArray(exclusions) ? exclusions : []).filter((item) => Array.isArray(item) && item.length >= 4);
   const excludedAreaM2 = Math.min(metrics.areaM2, validExclusions.reduce((sum, item) => sum + polygonMetrics(item).areaM2, 0));
-  const rawRows = generateRows(polygon, rowSpacing, Number(orientationDeg) || 0, { exclusions:validExclusions });
+  const curvePoints=normalizeRowCurvePoints(rowCurvePoints);
+  const rowGenerator=(headland)=>curvePoints.length
+    ? generateCurvedRows({polygon,rowSpacingM:rowSpacing,orientationDeg:Number(orientationDeg)||0,rowCurvePoints:curvePoints,exclusions:validExclusions,headlandWidthM:headland})
+    : generateRows(polygon,rowSpacing,Number(orientationDeg)||0,{exclusions:validExclusions,headlandWidthM:headland});
+  const rawRows = rowGenerator(0);
   const headlandWidth = Number(headlandWidthM);
   const effectiveHeadland = Number.isFinite(headlandWidth) && headlandWidth > 0 ? headlandWidth : 0;
-  const rows = generateRows(polygon, rowSpacing, Number(orientationDeg) || 0, { exclusions:validExclusions, headlandWidthM:effectiveHeadland });
+  const rows = rowGenerator(effectiveHeadland);
   const rawRowLinearM = rawRows.reduce((sum, row) => sum + row.lengthM, 0);
   const rowLinearM = rows.reduce((sum, row) => sum + row.lengthM, 0);
   const removedLinearM = Math.max(0, rawRowLinearM - rowLinearM);

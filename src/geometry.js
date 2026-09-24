@@ -199,7 +199,7 @@ export function rowsToFeatureCollection(rows) {
       type: 'Feature',
       id: index,
       properties: { lengthM: row.lengthM },
-      geometry: { type: 'LineString', coordinates: [row.start, row.end] }
+      geometry: { type: 'LineString', coordinates: Array.isArray(row.coordinates) && row.coordinates.length >= 2 ? row.coordinates : [row.start, row.end] }
     }))
   };
 }

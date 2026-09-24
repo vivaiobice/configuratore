@@ -1,0 +1,10 @@
+@page{size:A4 portrait;margin:12mm 12mm 14mm}
+html,body{margin:0!important;padding:0!important;background:#fff!important}
+body{-webkit-print-color-adjust:exact;print-color-adjust:exact;color:#16241b}
+.report-screen-only,.report-satellite-host{display:none!important}
+.report-workspace,.report-preview,.report-document{display:block!important;width:auto!important;max-width:none!important;margin:0!important;padding:0!important}
+.report-page{position:relative;width:186mm;height:269mm;min-height:269mm;max-height:269mm;aspect-ratio:auto;padding:0 0 18mm;margin:0;box-shadow:none!important;border-radius:0!important;break-after:page;page-break-after:always;overflow:hidden}
+.document-footer{left:0;right:0;bottom:0}.document-disclaimer-short{left:0}.document-qr{right:0}
+.report-page:last-child{break-after:auto;page-break-after:auto}
+.report-map-panel,.report-data-card,.report-disclaimer-block,.report-signature{break-inside:avoid;page-break-inside:avoid}
+.report-document img,.report-document svg{max-width:100%;height:auto}

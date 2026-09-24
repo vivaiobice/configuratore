@@ -1,14 +1,14 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js';
-import { createMobileUI } from './mobile-ui.js?v=40';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=41';
+import { createMobileUI } from './mobile-ui.js?v=41';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=40';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=16';
+import { initMap } from './map.js?v=41';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=41';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend } from './backend.js?v=34';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=41';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=34';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -17,12 +17,15 @@ import { createProjectSync } from './project-sync.js?v=34';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=28';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=41';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js';
 import { createAuthService } from './auth-service.js?v=33';
 import { createAuthBridge } from './auth-bridge.js';
 import { createProfileUI } from './profile-ui.js';
+import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=41';
+import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=41';
+import { normalizeRowCurvePoints } from './row-curves.js?v=41';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
@@ -44,6 +47,8 @@ let latestMetrics = null;
 let pendingFinalAction = null;
 let mobileTransactionSnapshot = null;
 let perimeterEventSent = Boolean(state.project.geometry);
+let curveEditingActive=false;
+let curveControlInteracting=false;
 const authBridge=createAuthBridge();
 const profileUi=createProfileUI({authService:authBridge,document});
 profileUi.mount();
@@ -96,6 +101,7 @@ function calculateFieldProject(project) {
     rowSpacingM:project?.rowSpacingM,
     plantSpacingM:project?.plantSpacingM,
     orientationDeg:project?.orientationDeg,
+    rowCurvePoints:project?.rowCurvePoints,
     postSpacingM:project?.postSpacingM,
     headlandWidthM:project?.headlandWidthM
   });
@@ -128,6 +134,8 @@ function calculateAndRender() {
   const centerButton = $('#center-field-button');
   if (centerButton) centerButton.disabled = !project.geometry;
   renderProjectAdvice(project);
+  if(!curveControlInteracting)renderCurveControls();
+  syncCurveEditor();
   if (project.geometry && result.vertexCount) {
     const posts = result.totalPosts ? ` · ${result.totalPosts} pali stimati` : '';
     const excluded = result.excludedAreaM2 ? ` · ${formatArea(result.excludedAreaM2)} esclusi` : '';
@@ -138,8 +146,38 @@ function calculateAndRender() {
 function syncOrientationControl() {
   const control = $('#orientation');
   const output = $('#orientation-output');
-  if (control) control.value = state.project.orientationDeg ?? 0;
-  if (output) output.value = `${state.project.orientationDeg ?? 0}°`;
+  const value=normalizeOrientationDeg(state.project.orientationDeg);
+  if (control) control.value = String(value);
+  if (output&&document.activeElement!==output) output.value = formatOrientationDeg(value);
+}
+
+function curveId(){return globalThis.crypto?.randomUUID?.()??`curve-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;}
+function nextCurvePosition(points){
+  const positions=[0,...points.map(point=>point.position),1].sort((a,b)=>a-b);let best=[0,1];
+  for(let index=1;index<positions.length;index++)if(positions[index]-positions[index-1]>best[1]-best[0])best=[positions[index-1],positions[index]];
+  return Math.round(((best[0]+best[1])/2)*100)/100;
+}
+function syncCurveEditor(){mapApi?.setRowCurveEditor?.({geometry:state.project.geometry,orientationDeg:state.project.orientationDeg,points:state.project.rowCurvePoints??[],active:curveEditingActive});}
+function patchCurvePoints(points,{preserveControls=false}={}){curveControlInteracting=preserveControls;try{patchProject({rowCurvePoints:normalizeRowCurvePoints(points)});}finally{curveControlInteracting=false;}}
+function renderCurveControls(){
+  const list=$('#curve-points-list');if(!list)return;
+  const points=normalizeRowCurvePoints(state.project.rowCurvePoints);
+  list.replaceChildren();
+  const add=$('#curve-add-button'),edit=$('#curve-edit-button'),reset=$('#curve-reset-button');
+  if(add)add.disabled=!state.project.geometry||points.length>=8;
+  if(edit){edit.disabled=!state.project.geometry||!points.length;edit.setAttribute('aria-pressed',String(curveEditingActive));edit.textContent=curveEditingActive?'Fine modifica':'Modifica sulla mappa';}
+  if(reset)reset.disabled=!points.length;
+  if(!points.length){const empty=document.createElement('p');empty.className='curve-points-empty';empty.textContent=state.project.geometry?'Filari rettilinei. Aggiungi un punto per curvarli.':'Disegna prima il perimetro del campo.';list.append(empty);return;}
+  points.forEach((point,index)=>{
+    const card=document.createElement('div');card.className='curve-point-card';
+    const heading=document.createElement('div');heading.className='curve-point-heading';
+    const title=document.createElement('strong');title.textContent=`Punto ${index+1}`;
+    const remove=document.createElement('button');remove.type='button';remove.className='curve-point-remove';remove.textContent='Elimina';remove.addEventListener('click',()=>patchCurvePoints(points.filter(item=>item.id!==point.id)));
+    heading.append(title,remove);
+    const position=document.createElement('label');position.textContent='Posizione lungo il filare';const positionValue=document.createElement('output');positionValue.textContent=`${Math.round(point.position*100)}%`;const positionInput=document.createElement('input');positionInput.type='range';positionInput.min='.02';positionInput.max='.98';positionInput.step='.01';positionInput.value=String(point.position);positionInput.addEventListener('input',()=>{positionValue.textContent=`${Math.round(Number(positionInput.value)*100)}%`;patchCurvePoints(points.map(item=>item.id===point.id?{...item,position:Number(positionInput.value)}:item),{preserveControls:true});});positionInput.addEventListener('change',renderCurveControls);position.append(positionValue,positionInput);
+    const offset=document.createElement('label');offset.textContent='Spostamento laterale';const offsetValue=document.createElement('output');offsetValue.textContent=`${point.offsetM.toLocaleString('it-IT',{maximumFractionDigits:1})} m`;const offsetInput=document.createElement('input');offsetInput.type='range';offsetInput.min='-100';offsetInput.max='100';offsetInput.step='.5';offsetInput.value=String(point.offsetM);offsetInput.addEventListener('input',()=>{offsetValue.textContent=`${Number(offsetInput.value).toLocaleString('it-IT',{maximumFractionDigits:1})} m`;patchCurvePoints(points.map(item=>item.id===point.id?{...item,offsetM:Number(offsetInput.value)}:item),{preserveControls:true});});offsetInput.addEventListener('change',renderCurveControls);offset.append(offsetValue,offsetInput);
+    card.append(heading,position,offset);list.append(card);
+  });
 }
 function patchProject(patch) { state = mergeProjectState(state, patch); summarySaveFeedback.dirty(); persist(); calculateAndRender(); projectSync?.schedule('project_changed'); }
 function patchMaterialProject(patch) {
@@ -190,6 +228,7 @@ try {
     onExclusionChange: (id, geometry) => {
       patchProject({exclusions:(state.project.exclusions ?? []).map(item=>item.id===id ? {...item,geometry} : item)});
     },
+    onRowCurvePointsChange:(points)=>patchCurvePoints(points),
     onCadastralParcel: (parcel, selection) => {
       patchGeometry(selection?.coordinates ?? parcel.coordinates, {
         sourceType:'cadastral',
@@ -232,8 +271,7 @@ try {
 
 $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
 $('#plant-spacing').value = state.project.plantSpacingM ?? 0.9;
-$('#orientation').value = state.project.orientationDeg ?? 0;
-$('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
+syncOrientationControl();
 $('#headland').value = state.project.headlandWidthM ?? '';
 $('#post-spacing').value = state.project.postSpacingM ?? 4.5;
 $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
@@ -287,8 +325,7 @@ function renderMaterialSelectors() {
 function syncProjectControls() {
   $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
   $('#plant-spacing').value = state.project.plantSpacingM ?? 0.9;
-  $('#orientation').value = state.project.orientationDeg ?? 0;
-  $('#orientation-output').value = `${state.project.orientationDeg ?? 0}°`;
+  syncOrientationControl();
   $('#headland').value = state.project.headlandWidthM ?? '';
   $('#post-spacing').value = state.project.postSpacingM ?? 4.5;
   $('#mechanized').checked = Boolean(state.project.mechanizedHarvest);
@@ -345,6 +382,8 @@ function syncOtherFieldsOnMap() {
 }
 
 function loadActiveFieldOnMap() {
+  curveEditingActive=false;
+  mapApi?.finishRowCurveEditing?.();
   mapApi?.clearGeometry();
   syncOtherFieldsOnMap();
   if (state.project.geometry) mapApi?.setGeometry(state.project.geometry);
@@ -641,9 +680,23 @@ $('#row-spacing')?.addEventListener('change', () => track('planting_spacing_chan
 $('#plant-spacing')?.addEventListener('change', () => track('planting_spacing_changed', { rowSpacingM:state.project.rowSpacingM, plantSpacingM:state.project.plantSpacingM }));
 $('#headland')?.addEventListener('change', () => track('advanced_option_changed', { option:'headland', enabled:Boolean(state.project.headlandWidthM) }));
 $('#post-spacing')?.addEventListener('change', () => track('advanced_option_changed', { option:'post_spacing', enabled:Boolean(state.project.postSpacingM) }));
-$('#orientation')?.addEventListener('input', (event) => { const value = Number(event.target.value); $('#orientation-output').value = `${value}°`; patchProject({ orientationDeg:value, orientationLocked:true }); });
+function applyOrientationValue(raw,{trackChange=false}={}){
+  const value=normalizeOrientationDeg(raw,state.project.orientationDeg);
+  patchProject({orientationDeg:value,orientationLocked:true});syncOrientationControl();
+  if(trackChange)track('orientation_changed',{degrees:value});
+}
+$('#orientation')?.addEventListener('input',(event)=>applyOrientationValue(event.target.value));
 $('#orientation')?.addEventListener('change', () => track('orientation_changed', { degrees:state.project.orientationDeg }));
-for (const button of document.querySelectorAll('[data-angle]')) { button.addEventListener('click', () => { const value = Number(button.dataset.angle); $('#orientation').value = value; $('#orientation-output').value = `${value}°`; patchProject({ orientationDeg:value, orientationLocked:true }); track('orientation_changed', { degrees:value }); }); }
+$('#orientation-output')?.addEventListener('input',(event)=>{if(event.target.value.trim()!=='')applyOrientationValue(event.target.value);});
+$('#orientation-output')?.addEventListener('change',(event)=>applyOrientationValue(event.target.value,{trackChange:true}));
+for (const button of document.querySelectorAll('[data-angle]')) button.addEventListener('click',()=>applyOrientationValue(button.dataset.angle,{trackChange:true}));
+$('#curve-add-button')?.addEventListener('click',()=>{
+  if(!state.project.geometry)return;
+  const points=normalizeRowCurvePoints(state.project.rowCurvePoints);if(points.length>=8)return;
+  curveEditingActive=true;patchCurvePoints([...points,{id:curveId(),position:nextCurvePosition(points),offsetM:0}]);
+});
+$('#curve-edit-button')?.addEventListener('click',()=>{if(!state.project.geometry||!state.project.rowCurvePoints?.length)return;curveEditingActive=!curveEditingActive;renderCurveControls();syncCurveEditor();});
+$('#curve-reset-button')?.addEventListener('click',()=>{curveEditingActive=false;mapApi?.finishRowCurveEditing?.();patchCurvePoints([]);});
 $('#mechanized')?.addEventListener('input', (event) => {
   const enabled = event.target.checked;
   const headlandWidthM = normalizeHeadlandForMechanization(state.project.headlandWidthM, enabled);
@@ -699,8 +752,7 @@ async function runFinalAction(action) {
   if(action==='save')summarySaveFeedback.saving();
   try{
   if (action === 'report') {
-    if (cloudService) { await saveCloudProject('pdf_downloaded'); track('pdf_generated'); }
-    globalThis.open('./report.html', '_blank', 'noopener');
+    openReportPopup();
     return;
   }
   if (action === 'quote') {
@@ -726,7 +778,31 @@ async function runFinalAction(action) {
   }catch(error){if(action==='save')summarySaveFeedback.error();throw error;}
 }
 
+function openReportPopup() {
+  persist();
+  const requestId=globalThis.crypto.randomUUID();
+  globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'opened'}));
+  const popup=globalThis.open(`./report.html?handoff=${requestId}`, '_blank');
+  if(!popup){setStatus('Il browser ha bloccato la finestra del documento. Consenti i popup per questo sito e riprova.');return;}
+  const onReportRequest=async(event)=>{
+    if(event.key!==REPORT_HANDOFF_KEY)return;
+    let request;
+    try{request=JSON.parse(event.newValue);}catch{return;}
+    if(request?.requestId!==requestId||request.status!=='requested')return;
+    globalThis.removeEventListener('storage',onReportRequest);
+    globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'syncing'}));
+    try{
+      if(!projectSync)throw new Error('Sincronizzazione cloud non disponibile. Riprova quando il backend è collegato.');
+      const revision=await projectSync.saveRevision({reason:'report_issue'});
+      if(revision.state!=='synced'||!revision.projectId||!(Number(revision.latestRevisionNumber)>0))throw new Error(revision.state==='conflict'?'Conflitto di versione. Aggiorna il progetto e riprova.':'Sincronizzazione non riuscita. La bozza resta su questo dispositivo.');
+      globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'ready',projectId:revision.projectId,revisionNumber:revision.latestRevisionNumber}));
+    }catch(error){globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'error',message:error.message}));}
+  };
+  globalThis.addEventListener('storage',onReportRequest);
+}
+
 function requestFinalAction(action) {
+  if(action==='report'){openReportPopup();return;}
   pendingFinalAction = action;
   if (!state.contact) {
     $('#contact-feedback').textContent = action === 'quote' ? 'Inserisci i dati obbligatori per richiedere un preventivo.' : 'Inserisci i dati obbligatori per completare questa azione.';
@@ -801,6 +877,19 @@ async function initializeCloud() {
       });
       if (hydrated.activeProject) loadMobileProject(hydrated.activeProject);
       mobileUi?.sync();
+    }
+    const requestedProjectId=new URL(globalThis.location.href).searchParams.get('openProject');
+    if(requestedProjectId && authState.kind === 'user') {
+      try {
+        const authorizedProject=await backend.loadEditableProject(requestedProjectId);
+        loadMobileProject(projectPayloadToArchiveItem(authorizedProject));
+        const cleanUrl=new URL(globalThis.location.href);
+        cleanUrl.searchParams.delete('openProject');
+        globalThis.history.replaceState({},'',cleanUrl);
+      } catch(error) {
+        console.warn('Apertura progetto condiviso non autorizzata o non disponibile',error);
+        setStatus('Non è possibile aprire questo progetto: verifica di essere il proprietario o un Admin.');
+      }
     }
     cloudService = createCloudService({
       backend,

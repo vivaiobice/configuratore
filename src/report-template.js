@@ -1,4 +1,4 @@
-import { renderProjectDiagramSvg } from './report-diagram.js';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=41';
 
 function esc(value) {
   return String(value ?? '')
@@ -64,7 +64,7 @@ ${row('Vertici', number(geometry.vertexCount))}
 <section><h2>Impianto</h2>
 ${row('Distanza filari', `${number(layout.rowSpacingM, 2)} m`)}
 ${row('Distanza piante', `${number(layout.plantSpacingM, 2)} m`)}
-${row('Orientamento', `${number(layout.orientationDeg)}°`)}
+${row('Orientamento', `${number(layout.orientationDeg,1)}°`)}
 ${row('Filari', number(layout.rowCount))}
 ${row('Metri lineari', `${number(layout.rowLinearM)} m`)}
 ${row('Pali stimati', number(layout.totalPosts))}
@@ -81,4 +81,61 @@ ${material.requestNote ? row('Richiesta particolare', `${material.requestNote}${
 <div class="foot">${esc(model.disclaimer)}</div><div class="cta">${esc(model.cta)}</div>
 ${model.resumeUrl ? `<div class="foot">Riapri progetto: ${esc(model.resumeUrl)}</div>` : ''}
 </body></html>`;
+}
+
+function reportNumber(value, digits=0){
+  if(value===null||value===undefined||value==='')return 'Da definire';
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?parsed.toLocaleString('it-IT',{minimumFractionDigits:digits,maximumFractionDigits:digits}):'Da definire';
+}
+
+function valueOrFallback(value){return String(value??'').trim()||'Da definire';}
+
+function pageHeader(){
+  return '<header class="document-letterhead"><img src="./assets/logo-vivai-obice-lineare.png" alt="Vivai Obice"><span>Studio preliminare di impianto viticolo</span></header>';
+}
+
+function pageFooter(model,page,total){
+  const company=model.company??{};
+  return `<footer class="document-footer"><div><strong>${esc(company.name||'VIVAI OBICE S.S.A.')}</strong> · ${esc(company.address||'')}<br>${esc(company.email||'')} · ${esc(company.phone||'')} · P. IVA ${esc(company.vat||'')} · SDI ${esc(company.sdi||'')}</div><div>Progetto ${esc(model.project?.code||'—')} · Rev. ${esc(model.project?.revisionNumber??'—')}<br>Pagina ${page} di ${total}</div></footer>`;
+}
+
+function coverBody(model){
+  const recipient=model.recipient??{};
+  const qr=String(model.qrSvg??'').trim().startsWith('<svg')?model.qrSvg:'<div class="report-qr-placeholder">QR non disponibile</div>';
+  return `<section class="document-cover"><p class="document-kicker">Elaborato Vivai Obice</p><h1>${esc(model.title)}</h1><h2>${esc(model.project?.name||'Progetto viticolo')}</h2><dl class="document-meta"><div><dt>Codice progetto</dt><dd>${esc(model.project?.code||'—')}</dd></div><div><dt>Revisione</dt><dd>${esc(model.project?.revisionNumber??'—')}</dd></div><div><dt>Documento</dt><dd>${esc(model.project?.documentId||'Bozza')}</dd></div><div><dt>Data</dt><dd>${esc(new Date(model.project?.generatedAt??Date.now()).toLocaleDateString('it-IT'))}</dd></div></dl><section class="document-recipient"><h3>Destinatario</h3><strong>${esc(valueOrFallback(recipient.companyName))}</strong><span>${esc(`${recipient.firstName||''} ${recipient.lastName||''}`.trim())}</span><span>${esc(recipient.address||'')}</span><span>${esc(recipient.plantLocation||'')}</span></section><div class="document-qr">${qr}<p>Inquadra per consultare il progetto</p></div><p class="document-disclaimer-short">${esc(model.disclaimer?.short||'')}</p></section>`;
+}
+
+function summaryBody(model){
+  const summary=model.summary??{};
+  const fieldList=model.fields.map(field=>`<li><strong>${esc(field.label)}</strong><span>${esc(field.plantMaterial?.grapeVariety||'Da definire')} · ${reportNumber(field.metrics?.netAreaM2)} m²</span></li>`).join('');
+  return `<section class="document-summary"><p class="document-kicker">Quadro generale</p><h1>Riepilogo dei campi</h1><ul class="document-field-list">${fieldList}</ul><div class="document-summary-grid"><div><span>Campi</span><strong>${reportNumber(summary.fieldCount)}</strong></div><div><span>Superficie netta</span><strong>${reportNumber(summary.netAreaM2)} m²</strong></div><div><span>Filari</span><strong>${reportNumber(summary.rowCount)}</strong></div><div><span>Metri lineari</span><strong>${reportNumber(summary.rowLinearM)} m</strong></div><div class="quantity-commercial"><span>Quantità commerciale</span><strong>${reportNumber(summary.commercialPlants)}</strong></div><div class="quantity-calculated"><span>Barbatelle calcolate</span><strong>${reportNumber(summary.calculatedPlants)}</strong></div><div><span>Pali totali</span><strong>${reportNumber(summary.totalPosts)}</strong></div></div></section>`;
+}
+
+function fieldMapBody(field,index,total){
+  const mapModel={polygon:field.geometry,rows:field.rows,exclusions:field.exclusions,width:1000,height:650,padding:62};
+  const satellite=/^data:image\/png;base64,/i.test(String(field.satelliteImage??''))?`<img src="${esc(field.satelliteImage)}" alt="Immagine satellitare del campo ${esc(field.label)}">`:'<div class="report-map-unavailable">Immagine satellitare non disponibile</div>';
+  return `<section class="document-field-map"><p class="document-kicker">Campo ${index+1} di ${total}</p><h1>${esc(field.label)}</h1><p>${esc(field.location?.label||field.location?.municipality||'')}</p><figure class="report-map-panel"><h2>Mappa satellitare</h2><div class="report-satellite-composite">${satellite}${renderProjectDiagramSvg({...mapModel,mode:'overlay'})}</div><figcaption>${esc(field.mapAttribution||'Imagery © Esri')}</figcaption></figure><figure class="report-map-panel"><h2>Schema tecnico</h2>${renderProjectDiagramSvg({...mapModel,mode:'technical'})}</figure></section>`;
+}
+
+function fieldDataBody(field,index,total){
+  const m=field.metrics??{},l=field.layout??{},p=field.plantMaterial??{};
+  const dataRow=(label,value,css='')=>`<div class="document-data-row ${css}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
+  return `<section class="document-field-data"><p class="document-kicker">Campo ${index+1} di ${total}</p><h1>Dati · ${esc(field.label)}</h1><div class="document-data-columns"><section><h2>Geometria e filari</h2>${dataRow('Superficie lorda',`${reportNumber(m.grossAreaM2)} m²`)}${dataRow('Superficie netta',`${reportNumber(m.netAreaM2)} m²`)}${dataRow('Perimetro',`${reportNumber(m.perimeterM)} m`)}${dataRow('Distanza piante',`${reportNumber(l.plantSpacingM,2)} m`)}${dataRow('Distanza filari',`${reportNumber(l.rowSpacingM,2)} m`)}${dataRow('Orientamento',`${reportNumber(l.orientationDeg,1)}°`)}${dataRow('Capezzagna',`${reportNumber(l.headlandWidthM,1)} m`)}${dataRow('Filari',reportNumber(m.rowCount))}${dataRow('Metri lineari',`${reportNumber(m.rowLinearM)} m`)}</section><section><h2>Materiale e quantità</h2>${dataRow('Quantità commerciale',reportNumber(m.commercialPlants),'quantity-commercial')}${dataRow('Barbatelle calcolate',reportNumber(m.calculatedPlants),'quantity-calculated')}${dataRow('Pali intermedi',reportNumber(m.intermediatePosts))}${dataRow('Pali di testa',reportNumber(m.headPosts))}${dataRow('Pali totali',reportNumber(m.totalPosts))}${dataRow('Vitigno',valueOrFallback(p.grapeVariety))}${dataRow('Clone / selezione',valueOrFallback(p.cloneSelection))}${dataRow('Portinnesto',valueOrFallback(p.rootstock))}${dataRow('Annata impianto',valueOrFallback(field.plantingYear))}${dataRow('Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No')}</section></div><section class="document-notes"><h2>Inquadramento e note</h2><p><strong>${esc(valueOrFallback(field.context?.label))}</strong></p><p>${esc(field.context?.note||field.notes||'Nessuna nota.')}</p></section></section>`;
+}
+
+function disclaimerBody(model){
+  const qr=String(model.qrSvg??'').trim().startsWith('<svg')?model.qrSvg:'';
+  return `<section class="document-disclaimer-page"><p class="document-kicker">Validità e consultazione</p><h1>Avvertenze</h1><p>${esc(model.disclaimer?.full||'')}</p><div class="document-final-qr">${qr}<div><strong>Consulta questa versione del progetto</strong><span>${esc(model.shareUrl||'Collegamento non disponibile')}</span></div></div><p>Versione disclaimer: ${esc(model.disclaimer?.version||'—')} · Revisione progetto: ${esc(model.project?.revisionNumber??'—')} · Documento: ${esc(model.project?.documentId||'—')}</p></section>`;
+}
+
+export function renderProjectReportHtml(model){
+  if(!model?.fields?.length)throw new TypeError('Il documento richiede almeno un campo.');
+  const bodies=[coverBody(model)];
+  if(model.fields.length>1)bodies.push(summaryBody(model));
+  model.fields.forEach((field,index)=>{bodies.push(fieldMapBody(field,index,model.fields.length));bodies.push(fieldDataBody(field,index,model.fields.length));});
+  bodies.push(disclaimerBody(model));
+  const total=bodies.length;
+  const pages=bodies.map((body,index)=>`<section class="report-page report-page-${index+1}">${pageHeader()}<div class="document-page-body">${body}</div>${pageFooter(model,index+1,total)}</section>`).join('');
+  return `<article class="report-document">${pages}</article>`;
 }

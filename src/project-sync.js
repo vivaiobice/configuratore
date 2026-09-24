@@ -1,5 +1,6 @@
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { createOperation } from './sync-queue.js';
+import { summarizeRevisionChanges } from './revision-summary.js';
 
 const SUCCESS = new Set(['applied','revision_created']);
 
@@ -29,6 +30,7 @@ export function createProjectSync({
   let timer = null;
   let suspended = false;
   let stateBeforeSuspend = syncState.state;
+  let lastRevisionSnapshot = null;
 
   function publish(extra = {}) {
     const update = {
@@ -55,7 +57,8 @@ export function createProjectSync({
             projectId:operation.payload.projectId ?? syncState.projectId,
             expectedVersion:operation.payload.deferred ? syncState.serverVersion : operation.expectedVersion,
             snapshot:operation.payload.snapshot,
-            reason:operation.payload.reason ?? 'manual_save'
+            reason:operation.payload.reason ?? 'manual_save',
+            changeSummary:operation.payload.changeSummary ?? {}
           })
         : await backend.applyProjectOperation({
             operationId:operation.id,
@@ -130,15 +133,20 @@ export function createProjectSync({
     return syncState;
   }
 
-  async function saveRevision() {
+  async function saveRevision({ reason='manual_save' } = {}) {
     if (suspended) return syncState;
     const applied = await flush();
     const snapshot = currentSnapshot();
     if (applied.state === 'conflict') return applied;
+    if (!lastRevisionSnapshot && applied.projectId && backend.loadLatestProjectRevision) {
+      const latest=await backend.loadLatestProjectRevision(applied.projectId);
+      lastRevisionSnapshot=latest?.snapshot??null;
+    }
+    const changeSummary=summarizeRevisionChanges(lastRevisionSnapshot,snapshot);
     if (applied.state === 'error' || !applied.projectId) {
       const deferred = operationFactory(
         'manual_revision', snapshot.clientProjectId,
-        { projectId:null, snapshot, reason:'manual_save', deferred:true },
+        { projectId:null, snapshot, reason, changeSummary, deferred:true },
         applied.serverVersion, idFactory
       );
       await queue.enqueue(deferred);
@@ -146,11 +154,13 @@ export function createProjectSync({
     }
     const operation = operationFactory(
       'manual_revision', snapshot.clientProjectId,
-      { projectId:applied.projectId, snapshot, reason:'manual_save' },
+      { projectId:applied.projectId, snapshot, reason, changeSummary },
       applied.serverVersion, idFactory
     );
     await queue.enqueue(operation);
-    return send(operation);
+    const result=await send(operation);
+    if(result.state==='synced')lastRevisionSnapshot=snapshot;
+    return result;
   }
 
   function suspend(reason='manual') {
@@ -174,6 +184,7 @@ export function createProjectSync({
       lastError:null
     };
     stateBeforeSuspend=syncState.state;
+    lastRevisionSnapshot=null;
     publish();
     return syncState;
   }

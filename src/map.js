@@ -1,7 +1,8 @@
 import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js';
-import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js';
+import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=41';
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 import { installTrackpadRotation } from './map-gestures.js';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=41';
 
 const SATELLITE_ID = 'base-satellite';
 const STREET_ID = 'base-street';
@@ -51,7 +52,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -101,6 +102,35 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let lastTouchEnd = -Infinity;
   let previousPerimeter = null;
   let toolsVersion = 0;
+  let curveControlMarkers=[];
+  let rowCurveEditor={geometry:null,orientationDeg:0,points:[],active:false};
+
+  function clearCurveControlMarkers(){for(const marker of curveControlMarkers)marker.remove?.();curveControlMarkers=[];}
+
+  function setRowCurveEditor({geometry=null,orientationDeg=0,points=[],active=false}={}){
+    clearCurveControlMarkers();
+    const normalized=normalizeRowCurvePoints(points);
+    rowCurveEditor={geometry,orientationDeg:Number(orientationDeg)||0,points:normalized,active:Boolean(active)};
+    if(!rowCurveEditor.active||!Array.isArray(geometry)||geometry.length<4)return false;
+    normalized.forEach((point,index)=>{
+      const element=document.createElement('button');element.type='button';element.className='curve-control-marker';element.textContent=String(index+1);element.title=`Punto di curvatura ${index+1}`;element.setAttribute?.('aria-label',element.title);
+      element.addEventListener?.('pointerdown',event=>event.stopPropagation?.());
+      element.addEventListener?.('touchstart',event=>event.stopPropagation?.(),{passive:true});
+      const coordinate=curvePointToLonLat({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,point});
+      const marker=new globalThis.maplibregl.Marker({element,draggable:true,anchor:'center'}).setLngLat(coordinate).addTo(map);
+      marker.on?.('dragend',()=>{
+        const position=marker.getLngLat();
+        const moved=lonLatToCurvePoint({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,coordinate:[position.lng,position.lat],id:point.id});
+        const updated=normalizeRowCurvePoints(rowCurveEditor.points.map(item=>item.id===point.id?moved:item));
+        rowCurveEditor={...rowCurveEditor,points:updated};
+        onRowCurvePointsChange(updated);
+      });
+      curveControlMarkers.push(marker);
+    });
+    return true;
+  }
+
+  function finishRowCurveEditing(){const wasActive=rowCurveEditor.active||curveControlMarkers.length>0;clearCurveControlMarkers();rowCurveEditor={...rowCurveEditor,active:false};return Boolean(wasActive);}
 
   const emitDrawingState = () => onDrawingState({
     active:manualDrawing,
@@ -993,11 +1023,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     if (manualDrawing) cancelManualDrawing();
     finishVertexEditing();
     clearVertexRemovalMarkers();
+    finishRowCurveEditing();
   }
   function undoDrawPoint() {
     if (!manualDrawing || !manualVertices.length || linearFinishPending) return;
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, focusActiveField, focusAllFields, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

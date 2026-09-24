@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V40 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V41 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -704,6 +704,22 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - TDD: RED osservato per controller, markup, contratto CSS e versione shell; GREEN finale `397/397`.
   `npm run check` superato. Nessuna modifica a formule, geometrie, schema database o Supabase LIVE.
 
+## V41 — filari curvi multipunto e documento cliente
+
+- Orientamento filari impostabile manualmente a decimi di grado, mantenendo cursore e scelte rapide.
+- Punti di curvatura multipli salvati per campo; un punto produce un arco, offset alternati permettono
+  una S. I punti sono trascinabili sulla mappa e regolabili/rimovibili dai controlli.
+- Calcolo viticolo aggiornato sulle lunghezze reali delle polilinee curve, inclusi tagli per esclusioni,
+  barbatelle e pali. Senza punti di curvatura viene richiamato il motore rettilineo storico.
+- Curve propagate a mappa, anteprime, link condiviso e documento; il renderer SVG usa l’intera
+  polilinea. L’orientamento nel documento conserva un decimale.
+- Completato il documento intestato Vivai Obice con selezione campi, destinatario precompilato,
+  immagini satellite, schema tecnico, dati, QR a revisione, disclaimer e stampa/PDF dal browser.
+- Condivisione Guest in sola lettura; modifica consentita soltanto dopo autorizzazione server-side a
+  proprietario permanente o Admin. Migrazioni report applicate esclusivamente all’ambiente TEST.
+- Placeholder della richiesta materiale reso generico, senza combinazioni tratte da comunicazioni.
+- TDD finale: `480/480`; controllo sintattico e verifica del pacchetto eseguiti prima della consegna.
+
 ## V40 — correzioni visuali raccolte dopo V39
 
 - Richiesta: non avviare ancora il documento cliente; stabilizzare prima i fix visuali raccolti.
@@ -718,6 +734,26 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   nessuna modifica a Supabase LIVE.
 - Passo successivo concordato, fuori dalla V40: progettazione del documento cliente stampabile,
   salvabile in PDF e condivisibile tramite link controllato.
+
+## Documento preliminare stampabile — confluito nella V41 TEST
+
+- Specifica approvata il 24 settembre 2026: un campo, selezione multipla o intero progetto;
+  carta intestata VIVAI OBICE S.S.A., mappe satellite e schema tecnico, QR a revisione datata,
+  destinatario precompilato modificabile soltanto nel documento, disclaimer con accettazione.
+- Guest consulta il link ma non modifica. Il controllo di modifica richiede account permanente
+  proprietario o Admin e viene imposto dalla RPC, non soltanto dal pulsante della pagina.
+- Non sono stati modificati calcoli, formule, geometrie o funzionamento dell'editor approvato.
+  Il pulsante di stampa apre una nuova pagina e crea la revisione al momento della generazione
+  dopo l'accettazione, non all'apertura del preflight.
+- Realizzati modello multi-campo, proiezione comune per satellitare e overlay, cattura MapLibre isolata,
+  QR locale vendorizzato, preflight, schema SQL, pagina condivisa, renderer A4 e test di contratto.
+- Gate locale aggiornato il 24/09/2026: `npm test` 463/463, `npm run check` e parsing del QR locale
+  superati. Tre migrazioni applicate solo a Supabase TEST: struttura report/audit, rimozione della
+  policy di lettura diretta e correzione della RPC pubblica per il ruolo `anon`. Verificato con SQL
+  nel ruolo `anon`: token inesistente → risposta nulla; lettura diretta della tabella → negata.
+  L'advisor non segnala nuove vulnerabilità ERROR; la tabella report senza policy dà una nota INFO.
+  Prove reali Guest/proprietario/Admin, Safari iPhone, stampa PDF A4 e scansione QR restano incluse
+  nel collaudo manuale V41. Non si è passati a Supabase LIVE.
 
 ## V39 — rifinitura visuale desktop
 

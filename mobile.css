@@ -108,6 +108,8 @@
  #mobile-app .advanced>summary span{display:none}#mobile-app .advanced-body{padding:0}
  #mobile-app .advanced-body>label{display:block;margin:12px 0}#mobile-app .advanced-body h3{font-size:17px;margin:18px 0 14px}
  #mobile-app .field-grid{gap:12px}#mobile-app .field-grid input{width:100%}#mobile-app .range-field{display:block;width:100%;margin-top:18px}
+ #mobile-app .orientation-control{display:grid;grid-template-columns:1fr auto}#mobile-app .orientation-control>input[type="range"]{grid-column:1/-1}#mobile-app .orientation-manual input{width:76px;min-height:40px;padding:7px}
+ #mobile-app .row-curve-controls{margin-top:12px;padding:12px}#mobile-app .row-curve-heading{align-items:flex-start}#mobile-app .row-curve-heading small{font-size:11px}#mobile-app .row-curve-controls button{min-height:42px;font-size:12px}#mobile-app .row-curve-actions{display:grid;grid-template-columns:1fr 1fr}#mobile-app .curve-point-card label{font-size:11px}
  #mobile-app input[type="range"]{padding:0;min-height:44px;width:100%;accent-color:#225939}
  #mobile-app input[type="checkbox"]{min-height:20px;width:20px;height:20px}
  #mobile-app .mobile-native-choice{display:none!important}

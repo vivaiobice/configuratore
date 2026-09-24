@@ -1,5 +1,73 @@
 <!doctype html>
 <html lang="it">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Proposta preliminare | Vivai Obice</title></head>
-<body><div id="report-root">Preparazione proposta…</div><script type="module" src="./src/report.js"></script></body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#153e28">
+  <meta name="referrer" content="no-referrer">
+  <title>Documento di progetto | Vivai Obice</title>
+  <link rel="icon" href="./assets/favicon-v26.png">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="./report.css?v=41">
+  <link rel="stylesheet" href="./report-print.css?v=41" media="print">
+  <link rel="stylesheet" href="./report-layout.css?v=41">
+</head>
+<body>
+  <header class="report-app-header report-screen-only">
+    <a href="./index.html" class="report-back" aria-label="Torna al configuratore">←</a>
+    <img src="./assets/logo-vivai-obice-v14.png" alt="Vivai Obice">
+    <div><strong>Documento di progetto</strong><span>Anteprima e condivisione</span></div>
+  </header>
+
+  <main id="report-root" class="report-workspace">
+    <section class="report-preflight report-screen-only" aria-labelledby="report-preflight-title">
+      <div class="report-preflight-heading">
+        <p class="report-eyebrow">Preparazione documento</p>
+        <h1 id="report-preflight-title">Studio preliminare d’impianto</h1>
+        <p>Seleziona i campi, verifica i dati del destinatario e accetta l’avvertenza prima di generare il documento.</p>
+      </div>
+
+      <fieldset id="report-field-selection" class="report-card">
+        <legend>Campi da includere</legend>
+        <div id="report-field-options" class="report-field-options" aria-live="polite"></div>
+      </fieldset>
+
+      <form id="report-recipient-form" class="report-card" novalidate>
+        <h2>Destinatario</h2>
+        <p class="report-form-note">Questi dati personalizzano soltanto il documento e non modificano il profilo.</p>
+        <div class="report-form-grid">
+          <label>Azienda<input name="companyName" autocomplete="organization"></label>
+          <label>Nome<input name="firstName" autocomplete="given-name"></label>
+          <label>Cognome<input name="lastName" autocomplete="family-name"></label>
+          <label>E-mail<input name="email" type="email" autocomplete="email"></label>
+          <label>Telefono<input name="phone" autocomplete="tel"></label>
+          <label>Indirizzo<input name="address" autocomplete="street-address"></label>
+          <label>Località impianto<input name="plantLocation"></label>
+          <label>Riferimento<input name="reference"></label>
+        </div>
+      </form>
+
+      <section id="report-disclaimer" class="report-card report-disclaimer" aria-labelledby="report-disclaimer-title">
+        <h2 id="report-disclaimer-title">Natura preliminare del documento</h2>
+        <p>Il documento è uno studio preliminare ed esemplificativo. Non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa o asseverazione.</p>
+        <details><summary>Leggi l’avvertenza completa</summary><p id="report-disclaimer-full"></p></details>
+        <label class="report-consent"><input id="report-disclaimer-accept" type="checkbox" required> <span>Ho letto e accetto l’avvertenza per generare, stampare o condividere questo documento.</span></label>
+      </section>
+
+      <p id="report-warning" class="report-warning" role="alert" aria-live="assertive" hidden></p>
+      <div class="report-actions" aria-label="Azioni documento">
+        <button id="report-generate" class="report-primary" type="button" disabled>Genera anteprima</button>
+        <button id="report-print" type="button" disabled>Stampa / salva PDF</button>
+        <button id="report-copy-link" type="button" disabled>Copia link</button>
+      </div>
+    </section>
+
+    <section id="report-preview" class="report-preview" aria-live="polite" aria-label="Anteprima documento">
+      <div class="report-preview-empty report-screen-only">L’anteprima comparirà qui dopo la verifica dei dati.</div>
+    </section>
+    <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="./src/report.js?v=41"></script>
+</body>
 </html>
