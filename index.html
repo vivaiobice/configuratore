@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=42" />
+  <link rel="manifest" href="./manifest.webmanifest?v=43" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -12,15 +12,16 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=42" />
-  <link rel="stylesheet" href="./profile.css?v=42" />
+  <link rel="stylesheet" href="./mobile.css?v=43" />
+  <link rel="stylesheet" href="./profile.css?v=43" />
   <link rel="stylesheet" href="./desktop-library.css?v=37" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
   <link rel="stylesheet" href="./desktop-v38.css?v=38" />
   <link rel="stylesheet" href="./desktop-v39.css?v=39" />
   <link rel="stylesheet" href="./desktop-v40.css?v=40" />
-  <link rel="stylesheet" href="./desktop-v41.css?v=42" />
+  <link rel="stylesheet" href="./desktop-v41.css?v=43" />
+  <link rel="stylesheet" href="./v43-visual.css?v=43" />
 </head>
 <body>
   <header class="topbar">
@@ -28,7 +29,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><button id="public-project-trigger" type="button">Carica progetto</button><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V42</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="public-project-trigger" type="button">Carica progetto</button><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V43</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -113,6 +114,9 @@
                 <select id="rootstock"><option value="">Consigliami</option></select>
               </label>
             </div>
+            <label>Altezza barbatella
+              <select id="plant-height"><option value="40">40 cm</option><option value="60">60 cm</option></select>
+            </label>
             <label id="material-request-wrap" class="material-request-wrap" hidden>Richiesta particolare / materiale desiderato
               <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. varietà, clone, portainnesto o altre caratteristiche richieste"></textarea>
               <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
@@ -238,6 +242,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=42"></script>
+  <script type="module" src="./src/app.js?v=43"></script>
 </body>
 </html>

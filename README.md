@@ -2,7 +2,20 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V42 WebApp.
+Stato: ambiente TEST · release V43 WebApp.
+
+## V43 — documento, accesso con codice e materiali
+
+- La geometria della foto satellitare è proiettata sulla stessa inquadratura acquisita per la stampa;
+  gli stili dello schema tecnico sono isolati dall’overlay trasparente.
+- Anteprima a schermo separata dall’impaginazione A4. Il nome proposto in stampa è
+  `Progetto_VO1234567_NomeCognome.pdf` (salvataggio PDF soggetto al browser).
+- La ricerca per ID apre anche i progetti salvati prima che esistessero revisioni del documento,
+  in sola lettura per Guest. La migrazione è applicata solo all’ambiente TEST.
+- I filari a S troppo stretti evitano gli incroci con un adattamento progressivo fino al tracciato
+  precedente; vitigni, cloni e portainnesti sono alfabetici, con `Altro` in fondo.
+- Selezione altezza barbatella 40/60 cm (40 predefinito), campi destinatario riordinati e tema
+  Chiaro/Scuro/Automatico. Vedere `V43-VERIFICA.md` per il collaudo.
 
 ## V42 — navigazione trackpad, filari equidistanti e ID progetto
 

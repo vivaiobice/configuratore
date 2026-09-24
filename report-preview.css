@@ -1,0 +1,4 @@
+/* Desktop/mobile screen preview only; report-print.css retains the A4 layout. */
+.report-preview{overflow-x:auto}
+.report-preview .report-page{width:760px;max-width:none;height:1075px;aspect-ratio:auto}
+.report-form-grid .report-form-full{grid-column:1/-1}

@@ -8,9 +8,10 @@
   <title>Documento di progetto | Vivai Obice</title>
   <link rel="icon" href="./assets/favicon-v26.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./report.css?v=42">
-  <link rel="stylesheet" href="./report-print.css?v=42" media="print">
-  <link rel="stylesheet" href="./report-layout.css?v=42">
+  <link rel="stylesheet" href="./report.css?v=43">
+  <link rel="stylesheet" href="./report-print.css?v=43" media="print">
+  <link rel="stylesheet" href="./report-layout.css?v=43">
+  <link rel="stylesheet" href="./report-preview.css?v=43" media="screen">
 </head>
 <body>
   <header class="report-app-header report-screen-only">
@@ -36,14 +37,14 @@
         <h2>Destinatario</h2>
         <p class="report-form-note">Questi dati personalizzano soltanto il documento e non modificano il profilo.</p>
         <div class="report-form-grid">
-          <label>Azienda<input name="companyName" autocomplete="organization"></label>
+          <label class="report-form-full">Azienda<input name="companyName" autocomplete="organization"></label>
           <label>Nome<input name="firstName" autocomplete="given-name"></label>
           <label>Cognome<input name="lastName" autocomplete="family-name"></label>
           <label>E-mail<input name="email" type="email" autocomplete="email"></label>
           <label>Telefono<input name="phone" autocomplete="tel"></label>
           <label>Indirizzo<input name="address" autocomplete="street-address"></label>
           <label>Località impianto<input name="plantLocation"></label>
-          <label>Riferimento<input name="reference"></label>
+          <label class="report-form-full">Riferimento<input name="reference"></label>
         </div>
       </form>
 
@@ -68,6 +69,6 @@
     <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
   </main>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="./src/report.js?v=42"></script>
+  <script type="module" src="./src/report.js?v=43"></script>
 </body>
 </html>

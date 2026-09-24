@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V42 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V43 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -770,6 +770,20 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - Migrazione applicata esclusivamente a Supabase TEST. Verifica SQL: 3 progetti, 3 codici distinti,
   nessun codice malformato, nessun accesso Guest diretto alle tabelle.
 - Gate automatico V42: `495/495` test e controllo sintattico completati.
+
+## V43 — PDF, ID, filari curvi e materiali
+
+- Cattura satellitare e overlay SVG condividono la proiezione effettiva della mappa; CSS SVG
+  circoscritto per evitare che lo schema tecnico riempia l’overlay trasparente.
+- Anteprima browser separata dal CSS A4; intestazione di stampa suggerisce il nome PDF
+  `Progetto_VO1234567_NomeCognome`.
+- RPC TEST: progetti già salvati ma privi di revisione consultabili per codice con campi validi;
+  restano ricerca limitata e Guest senza autorizzazione di modifica.
+- Filari curvi: adattamento progressivo al tracciato rettilineo quando l’offset equidistante
+  incrocia gli altri filari; ordinamento alfabetico materiali con Altro in fondo.
+- Altezza barbatella per campo (40 cm predefiniti / 60 cm), destinatario riordinato e selezione
+  tema chiaro, scuro o automatico su desktop e mobile.
+- Migrazione applicata solo a TEST; collaudo visivo di Safari e PDF richiesto dopo caricamento.
 
 ## V39 — rifinitura visuale desktop
 
