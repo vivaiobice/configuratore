@@ -27,7 +27,7 @@ test('mobile hides zoom buttons and exposes only the north reset control',()=>{
  assert.doesNotMatch(ui,/move\(\$\('#rotate-right'\)/);
 });
 test('release cache bust advances mobile files without changing desktop stylesheet',()=>{
- assert.match(html,/mobile\.css\?v=30/);assert.match(html,/src\/app\.js\?v=30/);assert.match(html,/styles\.css\?v=18/);
+ assert.match(html,/mobile\.css\?v=45/);assert.match(html,/src\/app\.js\?v=46/);assert.match(html,/styles\.css\?v=18/);
 });
 test('map fills the complete mobile viewport behind the floating dock',()=>{
  assert.match(css,/#mobile-map-host\{[^}]*inset:0/s);
@@ -53,15 +53,15 @@ test('native form controls retain automatic touch behavior above the map',()=>{
  assert.match(ui,/protectNativeControls/);
  assert.match(ui,/\['touchstart','touchend','pointerdown','pointerup'\]/);
 });
-test('V30 publishes the cloud archive test release and retains the dedicated iOS home icon',()=>{
- assert.match(html,/manifest\.webmanifest\?v=30/);
+test('current release retains Guest registration and the dedicated iOS home icon',()=>{
+ assert.match(html,/manifest\.webmanifest\?v=45/);
  assert.match(html,/apple-touch-icon-v26\.png/);
- assert.match(ui,/AMBIENTE TEST · V30/);
+ assert.match(ui,/AMBIENTE TEST · V45/);
 });
 test('favicon and web app use the approved transparent icon revision',()=>{
  const asset=fs.readFileSync(new URL('../assets/vivai-obice-icon-v26.png',import.meta.url));
  assert.equal(crypto.createHash('sha256').update(asset).digest('hex'),'c4664940e3842b7cc602c6e60ed0a4280ab13bfccd48af13e671f787d691fd74');
- assert.match(html,/manifest\.webmanifest\?v=30/);
+ assert.match(html,/manifest\.webmanifest\?v=45/);
  assert.match(html,/favicon-v26\.png/);
  assert.match(read('manifest.webmanifest'),/vivai-obice-icon-v26\.png/);
 });

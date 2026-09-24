@@ -4,7 +4,7 @@ import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=45';
+import { initMap } from './map.js?v=46';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
@@ -494,7 +494,13 @@ function renderSuggestions(items) {
     button.addEventListener('click', async () => {
       if (searchInput) searchInput.value = item.label;
       hideSuggestions();
-      await runSearch(item.label);
+      try {
+        const result=await mapApi?.searchSuggestion?.(item)??await mapApi?.search(item.label);
+        storeSearchResult(result);
+      } catch (error) {
+        console.error(error);
+        setStatus('Ricerca momentaneamente non disponibile. Puoi navigare manualmente sulla mappa.');
+      }
     });
     searchSuggestions.append(button);
   }

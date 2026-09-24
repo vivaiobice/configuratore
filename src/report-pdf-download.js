@@ -61,6 +61,12 @@ function line(page,label,value,x,y,width,fonts,colors){
   return y-22;
 }
 
+function metricCard(page,label,value,{x,y,width=155,height=76},fonts,colors,{highlight=false}={}){
+  page.drawRectangle({x,y,width,height,color:highlight?colors.green:colors.soft,borderColor:highlight?colors.green:colors.line,borderWidth:.6});
+  wrapped(page,label,{x:x+13,y:y+height-22,width:width-26,size:9,lineHeight:11,font:fonts.regular,color:highlight?colors.white:colors.muted,maxLines:2});
+  wrapped(page,String(value),{x:x+13,y:y+height-49,width:width-24,size:19,lineHeight:21,font:fonts.bold,color:highlight?colors.white:colors.green,maxLines:1});
+}
+
 function frame(pdf,model,index,total,images,fonts,colors){
   const page=pdf.addPage(A4),[width,height]=A4;
   if(images.watermark)page.drawImage(images.watermark,{x:127,y:235,width:340,height:340,opacity:.045});
@@ -70,8 +76,8 @@ function frame(pdf,model,index,total,images,fonts,colors){
   page.drawLine({start:{x:42,y:height-87},end:{x:553,y:height-87},color:colors.green,thickness:1});
   page.drawLine({start:{x:42,y:48},end:{x:553,y:48},color:colors.line,thickness:.7});
   const company=model.company??{};
-  wrapped(page,`${company.name||'VIVAI OBICE S.S.A.'} - ${company.address||''}\n${company.email||''} - ${company.phone||''} - P. IVA ${company.vat||''} - SDI ${company.sdi||''}`,{x:42,y:37,width:360,size:7,lineHeight:10,maxLines:2,font:fonts.regular,color:colors.muted});
-  page.drawText(`Progetto ${pdfText(model.project?.code||'-')}  |  ${index} / ${total}`,{x:405,y:32,size:7,font:fonts.regular,color:colors.muted});
+  wrapped(page,`${company.name||'VIVAI OBICE S.S.A.'} - ${company.address||''}\n${company.email||''} - ${company.phone||''} - P. IVA ${company.vat||''} - SDI ${company.sdi||''}`,{x:42,y:38,width:305,size:7,lineHeight:9,maxLines:3,font:fonts.regular,color:colors.muted});
+  page.drawText(`Progetto ${pdfText(model.project?.code||'-')}  |  ${index} / ${total}`,{x:420,y:32,size:7,font:fonts.regular,color:colors.muted});
   return page;
 }
 
@@ -108,27 +114,47 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
   const total=2+(model.fields.length>1?1:0)+model.fields.length*2;let current=0;
   const add=()=>frame(pdf,model,++current,total,images,fonts,colors);
   let page=add();let y=title(page,model.title||'Progetto viticolo',fonts,colors)-20;
-  y=wrapped(page,model.project?.name||'',{x:42,y,width:490,size:13,font:fonts.bold,color:colors.ink})-28;
-  y=line(page,'Codice progetto',model.project?.code,42,y,490,fonts,colors);
-  y=line(page,'Revisione',String(model.project?.revisionNumber??'-'),42,y,490,fonts,colors);
-  y=line(page,'Destinatario',[model.recipient?.firstName,model.recipient?.lastName].filter(Boolean).join(' '),42,y,490,fonts,colors);
-  y=line(page,'Azienda',model.recipient?.companyName,42,y,490,fonts,colors);
-  page.drawText('Indirizzo',{x:42,y,size:9,font:fonts.regular,color:colors.muted});
+  y=wrapped(page,model.project?.name||'',{x:42,y,width:490,size:13,font:fonts.bold,color:colors.ink})-12;
+  const meta=[['Codice progetto',model.project?.code||'-'],['Revisione',model.project?.revisionNumber??'-'],
+    ['Campi',model.fields.length],['Data',new Date(model.project?.generatedAt||Date.now()).toLocaleDateString('it-IT')]];
+  meta.forEach(([label,value],index)=>metricCard(page,label,value,
+    {x:42+(index%2)*252,y:y-57-Math.floor(index/2)*63,width:238,height:54},fonts,colors));
+  y-=153;
+  page.drawRectangle({x:42,y:y-169,width:490,height:185,color:colors.soft});
+  page.drawText('Destinatario',{x:54,y:y-8,size:11,font:fonts.bold,color:colors.green});
+  y-=35;
+  y=line(page,'Azienda',model.recipient?.companyName,54,y,466,fonts,colors);
+  y=line(page,'Nome e cognome',[model.recipient?.firstName,model.recipient?.lastName].filter(Boolean).join(' '),54,y,466,fonts,colors);
+  y-=3;
+  page.drawText('Indirizzo',{x:54,y,size:9,font:fonts.regular,color:colors.muted});
   const recipientAddress=[model.recipient?.address,[model.recipient?.addressPostalCode,model.recipient?.addressCity,model.recipient?.addressProvince].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  y=wrapped(page,recipientAddress||'Da definire',{x:192,y,width:340,size:9,lineHeight:12,maxLines:3,font:fonts.bold,color:colors.ink})-12;
-  page.drawLine({start:{x:42,y:y+5},end:{x:532,y:y+5},color:colors.line,thickness:.5});
+  const addressBottom=wrapped(page,recipientAddress||'Da definire',{x:195,y,width:322,size:9,lineHeight:12,maxLines:3,font:fonts.bold,color:colors.ink});
+  page.drawLine({start:{x:54,y:addressBottom-8},end:{x:520,y:addressBottom-8},color:colors.line,thickness:.5});
   const locality=`${model.recipient?.plantLocation||''}${model.recipient?.province?` (${model.recipient.province})`:''}`;
-  y=line(page,'Località impianto',locality,42,y,490,fonts,colors);
+  y=line(page,'Località impianto',locality,54,addressBottom-28,466,fonts,colors);
   if(images.qr)page.drawImage(images.qr,{x:43,y:125,width:130,height:130});
   wrapped(page,model.disclaimer?.short||'',{x:190,y:246,width:350,size:10,font:fonts.regular,color:colors.muted,maxLines:8});
 
   if(model.fields.length>1){
-    page=add();y=title(page,'Riepilogo dei campi',fonts,colors)-24;
-    for(const field of model.fields)y=line(page,field.label,`${Math.round(field.metrics?.netAreaM2||0)} m²  -  ${field.metrics?.commercialPlants||0} barbatelle`,42,y,490,fonts,colors);
-    y-=18;
-    y=line(page,'Campi',String(model.fields.length),42,y,490,fonts,colors);
-    y=line(page,'Superficie netta',`${Math.round(model.summary?.netAreaM2||0)} m²`,42,y,490,fonts,colors);
-    line(page,'Quantità commerciale',String(model.summary?.commercialPlants||0),42,y,490,fonts,colors);
+    page=add();y=title(page,'Riepilogo dei campi',fonts,colors)-15;
+    page.drawText('QUADRO GENERALE',{x:42,y:y+10,size:8,font:fonts.bold,color:colors.green});
+    const listed=Math.min(model.fields.length,7);
+    model.fields.slice(0,listed).forEach((field,index)=>{
+      const rowY=y-25-index*36;
+      page.drawRectangle({x:42,y:rowY-11,width:490,height:33,color:colors.soft});
+      wrapped(page,field.label,{x:53,y:rowY+4,width:254,size:10,font:fonts.bold,color:colors.green,maxLines:1});
+      const detail=`${Math.round(field.metrics?.netAreaM2||0)} m² · ${field.metrics?.commercialPlants||0} barbatelle`;
+      wrapped(page,detail,{x:323,y:rowY+4,width:197,size:9,font:fonts.regular,color:colors.ink,maxLines:1});
+    });
+    if(model.fields.length>listed)page.drawText(`Altri ${model.fields.length-listed} campi nelle pagine seguenti`,{x:48,y:y-29-listed*36,size:9,font:fonts.regular,color:colors.muted});
+    const cardsTop=y-70-listed*36;
+    const s=model.summary??{};
+    const cards=[['Campi',model.fields.length],['Superficie netta',`${Math.round(s.netAreaM2||0)} m²`],['Filari',s.rowCount||0],
+      ['Metri lineari',`${Math.round(s.rowLinearM||0)} m`],['Quantità commerciale',s.commercialPlants||0],['Barbatelle calcolate',s.calculatedPlants||0],['Pali totali',s.totalPosts||0]];
+    cards.forEach(([label,value],index)=>{
+      const column=index%3,row=Math.floor(index/3);
+      metricCard(page,label,value,{x:42+column*168,y:cardsTop-row*89,width:154,height:75},fonts,colors,{highlight:index===4});
+    });
   }
 
   for(const field of model.fields){

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeocodeUrl, buildSuggestionUrl, normalizeSuggestionResults, coordinatesFromDrawEvent } from '../src/map-adapters.js';
+import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent } from '../src/map-adapters.js';
+
+test('a selected suggestion resolves its provider key into a map coordinate',()=>{
+  const url=new URL(buildSuggestionPlaceUrl({label:'Borgo, Cuneo',magicKey:'key-123'}));
+  assert.match(url.pathname,/findAddressCandidates$/);
+  assert.equal(url.searchParams.get('magicKey'),'key-123');
+  assert.deepEqual(normalizeSuggestionPlaces({candidates:[{address:'Borgo, Cuneo',location:{x:8.2,y:44.7},attributes:{City:'Borgo',Subregion:'Cuneo'}}]}),
+    [{label:'Borgo, Cuneo',lon:8.2,lat:44.7,municipality:'Borgo',province:'Cuneo',region:''}]);
+});
 
 test('autocomplete suggestions use a provider designed for character-by-character suggest, limited to Italy', () => {
   const url = new URL(buildSuggestionUrl('Santo Ste'));

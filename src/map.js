@@ -1,4 +1,4 @@
-import { buildGeocodeUrl, buildSuggestionUrl, normalizeGeocodeResults, normalizeSuggestionResults, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js';
+import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 import { installTrackpadRotation } from './map-gestures.js';
@@ -948,6 +948,15 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     source?.setData(rowsToFeatureCollection(rows));
   }
 
+  function showSearchResult(result){
+    map.flyTo({center:[result.lon,result.lat],zoom:16.5,essential:true});
+    searchMarker?.remove();
+    searchMarker=new globalThis.maplibregl.Marker({color:'#183f28'}).setLngLat([result.lon,result.lat])
+      .setPopup(new globalThis.maplibregl.Popup({offset:22}).setText(result.label)).addTo(map);
+    onStatus('Zona trovata. Ora puoi disegnare il terreno.');
+    return result;
+  }
+
   async function search(query) {
     const normalized = String(query ?? '').trim();
     if (!normalized) return null;
@@ -959,14 +968,17 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       onStatus('Località non trovata. Prova con Comune + provincia o un indirizzo più completo.');
       return null;
     }
-    map.flyTo({ center: [result.lon, result.lat], zoom: 16.5, essential: true });
-    searchMarker?.remove();
-    searchMarker = new globalThis.maplibregl.Marker({ color: '#183f28' })
-      .setLngLat([result.lon, result.lat])
-      .setPopup(new globalThis.maplibregl.Popup({ offset: 22 }).setText(result.label))
-      .addTo(map);
-    onStatus('Zona trovata. Ora puoi disegnare il terreno.');
-    return result;
+    return showSearchResult(result);
+  }
+
+  async function searchSuggestion(item){
+    if(!item?.magicKey)return search(item?.label);
+    onStatus('Ricerca della zona…');
+    const response=await fetch(buildSuggestionPlaceUrl(item),{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error(`Ricerca non disponibile (${response.status})`);
+    const [result]=normalizeSuggestionPlaces(await response.json());
+    if(!result)return search(item.label);
+    return showSearchResult(result);
   }
 
   async function suggest(query) {
@@ -1030,5 +1042,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

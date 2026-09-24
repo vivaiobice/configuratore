@@ -28,6 +28,25 @@ export function buildSuggestionUrl(query) {
   return url.toString();
 }
 
+export function buildSuggestionPlaceUrl({label,magicKey}){
+  const url=new URL('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates');
+  url.searchParams.set('SingleLine',String(label??''));
+  if(magicKey)url.searchParams.set('magicKey',String(magicKey));
+  url.searchParams.set('countryCode','ITA');
+  url.searchParams.set('outFields','City,Subregion,Region');
+  url.searchParams.set('maxLocations','1');
+  url.searchParams.set('f','json');
+  return url.toString();
+}
+
+export function normalizeSuggestionPlaces(payload){
+  return (Array.isArray(payload?.candidates)?payload.candidates:[]).flatMap(item=>{
+    const lon=Number(item?.location?.x),lat=Number(item?.location?.y);
+    if(!Number.isFinite(lon)||!Number.isFinite(lat))return [];
+    return [{label:String(item.address??''),lon,lat,municipality:String(item.attributes?.City??''),province:String(item.attributes?.Subregion??''),region:String(item.attributes?.Region??'')}];
+  });
+}
+
 export function normalizeSuggestionResults(payload) {
   const items = Array.isArray(payload?.suggestions) ? payload.suggestions : [];
   return items.flatMap((item) => {

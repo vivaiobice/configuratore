@@ -7,13 +7,12 @@ import { buildReportMapModel } from './report-map-model.js?v=45';
 import { captureSatelliteImage } from './report-satellite.js?v=45';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=45';
+import { renderProjectReportHtml } from './report-template.js?v=46';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { mountReportAddressAutocomplete } from './report-address.js?v=45';
-import { downloadProjectPdf } from './report-pdf-download.js?v=45';
 
 export { REPORT_HANDOFF_KEY };
 
@@ -117,7 +116,6 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   const accept=documentRef.querySelector('#report-disclaimer-accept');
   const generate=documentRef.querySelector('#report-generate');
   const print=documentRef.querySelector('#report-print');
-  const nativePrint=documentRef.querySelector('#report-print-native');
   const copy=documentRef.querySelector('#report-copy-link');
   const warning=documentRef.querySelector('#report-warning');
   const preview=documentRef.querySelector('#report-preview');
@@ -144,7 +142,7 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   suggestPlantLocality();
   mountReportAddressAutocomplete({documentRef,form});
   let finalResult=null;
-  function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;nativePrint.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
+  function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
   options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});suggestPlantLocality();accept.checked=false;finalResult=null;refresh();});
   form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});if(['plantLocation','province'].includes(event.target.name))localityEdited=true;accept.checked=false;finalResult=null;refresh();});
   accept.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'disclaimer/set',accepted:accept.checked});if(!accept.checked)finalResult=null;refresh();});
@@ -156,15 +154,11 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
     catch(error){finalResult=null;warning.textContent=error?.message||'Documento non generato.';warning.hidden=false;}
     finally{generate.textContent='Genera anteprima';refresh();}
   });
-  print.addEventListener('click',async()=>{
+  print.addEventListener('click',()=>{
     if(!finalResult?.printEnabled)return;
-    print.disabled=true;
-    const label=print.textContent;print.textContent='Preparazione PDF…';
-    try{await downloadProjectPdf(finalResult.model,{documentRef});}
-    catch(error){warning.textContent=error?.message||'Impossibile scaricare il PDF.';warning.hidden=false;}
-    finally{print.textContent=label;refresh();}
+    documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');
+    globalThis.print?.();
   });
-  nativePrint.addEventListener('click',()=>{if(finalResult?.printEnabled){documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');globalThis.print();}});
   copy.addEventListener('click',async()=>{if(finalResult?.shareUrl){await copyWithFallback(finalResult.shareUrl,documentRef);copy.textContent='Link copiato';setTimeout(()=>{copy.textContent='Copia link';},1600);}});
   refresh();return {getPreflight:()=>preflight};
 }

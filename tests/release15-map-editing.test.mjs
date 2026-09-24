@@ -8,7 +8,7 @@ const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
 
 test('release 15 cache-busts changed application assets', () => {
   assert.match(html, /styles\.css\?v=18/);
-  assert.match(html, /src\/app\.js\?v=21/);
+  assert.match(html, /src\/app\.js\?v=46/);
 });
 
 test('map toolbar exposes an explicit perimeter vertex editing control', () => {
