@@ -1,5 +1,5 @@
-import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=44';
-import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=44';
+import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=45';
+import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=45';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);

@@ -1,4 +1,4 @@
-import { sideMeasurements as measureSides } from './geometry.js?v=44';
+import { sideMeasurements as measureSides } from './geometry.js?v=45';
 
 const MAX_MERCATOR_LAT = 85.05112878;
 

@@ -1,5 +1,5 @@
-import { buildReportMapModel } from './report-map-model.js?v=44';
-import { buildReportPdfFilename } from './report-filename.js?v=44';
+import { buildReportMapModel } from './report-map-model.js?v=45';
+import { buildReportPdfFilename } from './report-filename.js?v=45';
 
 const A4=[595.28,841.89];
 
@@ -114,7 +114,9 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
   y=line(page,'Destinatario',[model.recipient?.firstName,model.recipient?.lastName].filter(Boolean).join(' '),42,y,490,fonts,colors);
   y=line(page,'Azienda',model.recipient?.companyName,42,y,490,fonts,colors);
   page.drawText('Indirizzo',{x:42,y,size:9,font:fonts.regular,color:colors.muted});
-  y=wrapped(page,model.recipient?.address||'Da definire',{x:192,y,width:340,size:9,lineHeight:12,maxLines:3,font:fonts.bold,color:colors.ink})-12;
+  const recipientAddress=[model.recipient?.address,[model.recipient?.addressPostalCode,model.recipient?.addressCity,model.recipient?.addressProvince].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  y=wrapped(page,recipientAddress||'Da definire',{x:192,y,width:340,size:9,lineHeight:12,maxLines:3,font:fonts.bold,color:colors.ink})-12;
+  page.drawLine({start:{x:42,y:y+5},end:{x:532,y:y+5},color:colors.line,thickness:.5});
   const locality=`${model.recipient?.plantLocation||''}${model.recipient?.province?` (${model.recipient.province})`:''}`;
   y=line(page,'Località impianto',locality,42,y,490,fonts,colors);
   if(images.qr)page.drawImage(images.qr,{x:43,y:125,width:130,height:130});
@@ -131,6 +133,9 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
 
   for(const field of model.fields){
     page=add();y=title(page,field.label,fonts,colors)-12;
+    const fieldPlace=[field.location?.municipality,field.location?.province?`(${field.location.province})`:null].filter(Boolean).join(' ');
+    if(fieldPlace)page.drawText(pdfText(fieldPlace),{x:50,y:y+1,size:9,font:fonts.regular,color:colors.muted});
+    y-=14;
     page.drawText('Mappa satellitare e filari',{x:50,y,size:12,font:fonts.bold,color:colors.ink});
     if(/^data:image\/png;base64,/i.test(String(field.satelliteImage??''))){
       const satellite=await pdf.embedPng(field.satelliteImage);

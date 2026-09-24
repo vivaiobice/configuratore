@@ -1,8 +1,8 @@
 import { parseSharedReportUrl } from './report-share.js';
 import { parsePublicProjectCodeUrl } from './public-project-access.js';
-import { calculateProject } from './project-calculator.js?v=44';
-import { buildReportMapModel } from './report-map-model.js?v=44';
-import { renderProjectDiagramSvg } from './report-diagram.js?v=44';
+import { calculateProject } from './project-calculator.js?v=45';
+import { buildReportMapModel } from './report-map-model.js?v=45';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
 
 export const SHARED_UNAVAILABLE_MESSAGE = 'Collegamento non disponibile. Chiedi a Vivai Obice un nuovo collegamento.';
 const DISCLAIMER = 'Il presente documento è uno studio preliminare ed esemplificativo. Non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa, asseverazione o garanzia di realizzabilità. Prima dell’esecuzione devono essere verificati sul posto confini, quote, pendenze, vincoli, accessi e prescrizioni applicabili.';
@@ -55,8 +55,8 @@ export async function loadSharedProject({ url, backend } = {}) {
   }
 }
 
-export function sharedPrintAllowed({ accepted, payload } = {}) {
-  return accepted === true && Boolean(payload?.reportId||payload?.projectCode) && Array.isArray(payload?.fields) && payload.fields.length > 0;
+export function sharedPrintAllowed({ accepted, payload, authenticated = false } = {}) {
+  return authenticated === true && accepted === true && Boolean(payload?.reportId||payload?.projectCode) && Array.isArray(payload?.fields) && payload.fields.length > 0;
 }
 
 export function renderSharedProjectHtml({ payload, canEdit = false } = {}) {
@@ -106,7 +106,7 @@ export function mountSharedSatelliteMaps({ root, payload, maplibregl } = {}) {
   }).filter(Boolean);
 }
 
-export async function bootSharedProjectPage({ documentRef = globalThis.document, locationHref = globalThis.location?.href, backend, maplibregl = globalThis.maplibregl } = {}) {
+export async function bootSharedProjectPage({ documentRef = globalThis.document, locationHref = globalThis.location?.href, backend, authService, maplibregl = globalThis.maplibregl } = {}) {
   const root = documentRef?.querySelector?.('#shared-project-root');
   if (!root) return null;
   root.innerHTML='<p class="shared-loading">Caricamento documento…</p>';
@@ -116,7 +116,38 @@ export async function bootSharedProjectPage({ documentRef = globalThis.document,
   const maps=mountSharedSatelliteMaps({root,payload:result.payload,maplibregl});
   const accept=documentRef.querySelector('#shared-disclaimer-accept');
   const print=documentRef.querySelector('#shared-print');
-  const refresh=()=>{print.disabled=!sharedPrintAllowed({accepted:accept?.checked,payload:result.payload});};
-  accept?.addEventListener('change',refresh);print?.addEventListener('click',()=>globalThis.print?.());refresh();
+  const modal=documentRef.querySelector('#shared-auth-dialog');
+  const login=documentRef.querySelector('#shared-auth-login');
+  const register=documentRef.querySelector('#shared-auth-register');
+  const feedback=documentRef.querySelector('#shared-auth-feedback');
+  const authenticated=()=>authService?.getState?.()?.kind==='user';
+  const refresh=()=>{print.disabled=false;documentRef.documentElement.dataset.sharedAuthenticated=String(authenticated());};
+  const openAuth=()=>{if(!modal)return;modal.hidden=false;login.hidden=false;register.hidden=true;feedback.textContent='';login.querySelector('[name="identifier"]')?.focus?.();};
+  modal?.querySelector('#shared-auth-close')?.addEventListener('click',()=>{modal.hidden=true;});
+  modal?.addEventListener('click',event=>{
+    const view=event.target.closest?.('[data-auth-view]')?.dataset.authView;
+    if(view){login.hidden=view!=='login';register.hidden=view!=='register';feedback.textContent='';}
+  });
+  async function submitAuth(event,action){
+    event.preventDefault();feedback.textContent='Attendi…';
+    try{
+      if(!authService)throw new Error('Accesso temporaneamente non disponibile.');
+      if(action==='register'){
+        await backend?.ensureAnonymousSession?.();
+        await authService.register({displayName:register.elements.namedItem('displayName').value,email:register.elements.namedItem('email').value,username:register.elements.namedItem('username').value,password:register.elements.namedItem('password').value});
+      }
+      else await authService.login({identifier:login.elements.namedItem('identifier').value,password:login.elements.namedItem('password').value});
+      modal.hidden=true;refresh();
+    }catch(error){feedback.textContent=error.message||'Accesso non riuscito.';}
+  }
+  login?.addEventListener('submit',event=>submitAuth(event,'login'));
+  register?.addEventListener('submit',event=>submitAuth(event,'register'));
+  accept?.addEventListener('change',refresh);
+  print?.addEventListener('click',()=>{
+    if(!authenticated()){openAuth();return;}
+    if(!sharedPrintAllowed({accepted:accept?.checked,payload:result.payload,authenticated:true})){accept?.focus?.();return;}
+    globalThis.print?.();
+  });
+  authService?.subscribe?.(refresh);refresh();
   return {...result,maps};
 }

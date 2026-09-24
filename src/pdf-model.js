@@ -1,5 +1,5 @@
-import { isOtherMaterialSelection } from './plant-catalog.js?v=44';
-import { ensureProjectFields } from './fields.js?v=44';
+import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
+import { ensureProjectFields } from './fields.js?v=45';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',
@@ -106,8 +106,8 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
     label:String(field.label||`Campo ${index+1}`),
     geometryValid,
     location:{
-      label:field.locationLabel||'',municipality:field.municipality||'',
-      province:field.province||'',region:field.region||''
+      label:mapAssets.location?.label||field.locationLabel||'',municipality:mapAssets.location?.municipality||field.municipality||'',
+      province:mapAssets.location?.province||field.province||'',region:field.region||''
     },
     geometry:field.geometry??null,
     exclusions:Array.isArray(field.exclusions)?field.exclusions:[],
@@ -172,6 +172,7 @@ export function buildProjectReportModel({
     recipient:{
       firstName:recipient.firstName||'',lastName:recipient.lastName||'',companyName:recipient.companyName||'',
       email:recipient.email||'',phone:recipient.phone||'',address:recipient.address||'',
+      addressCity:recipient.addressCity||'',addressProvince:recipient.addressProvince||'',addressPostalCode:recipient.addressPostalCode||'',
       plantLocation:recipient.plantLocation||'',province:recipient.province||'',reference:recipient.reference||''
     },
     fields,

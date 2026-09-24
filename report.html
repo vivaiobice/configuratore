@@ -8,10 +8,10 @@
   <title>Documento di progetto | Vivai Obice</title>
   <link rel="icon" href="./assets/favicon-v26.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./report.css?v=44">
-  <link rel="stylesheet" href="./report-print.css?v=44" media="print">
-  <link rel="stylesheet" href="./report-layout.css?v=44">
-  <link rel="stylesheet" href="./report-preview.css?v=44" media="screen">
+  <link rel="stylesheet" href="./report.css?v=45">
+  <link rel="stylesheet" href="./report-print.css?v=45" media="print">
+  <link rel="stylesheet" href="./report-layout.css?v=45">
+  <link rel="stylesheet" href="./report-preview.css?v=45" media="screen">
 </head>
 <body>
   <header class="report-app-header report-screen-only">
@@ -42,9 +42,12 @@
           <label>Cognome<input name="lastName" autocomplete="family-name"></label>
           <label>E-mail<input name="email" type="email" autocomplete="email"></label>
           <label>Telefono<input name="phone" autocomplete="tel"></label>
-          <label class="report-address-field">Indirizzo completo<input name="address" autocomplete="street-address" aria-autocomplete="list" aria-expanded="false" aria-controls="report-address-suggestions"><span id="report-address-suggestions" class="report-address-suggestions" role="listbox" hidden></span></label>
-          <label>Località impianto<input name="plantLocation"></label>
-          <label>Provincia<input name="province" autocomplete="address-level1" maxlength="2" placeholder="es. CN"></label>
+          <label class="report-address-field">Indirizzo destinatario<input name="address" autocomplete="street-address" placeholder="es. Via dei Vigneti 6" aria-autocomplete="list" aria-expanded="false" aria-controls="report-address-suggestions"><span id="report-address-suggestions" class="report-address-suggestions" role="listbox" hidden></span></label>
+          <label>Località destinatario<input name="addressCity" autocomplete="address-level2" placeholder="es. Borgo"></label>
+          <label>CAP<input name="addressPostalCode" autocomplete="postal-code" inputmode="numeric" placeholder="es. 12000"></label>
+          <label>Provincia destinatario<input name="addressProvince" autocomplete="address-level1" placeholder="es. CN"></label>
+          <label>Località impianto<input name="plantLocation" placeholder="Proposta dalla posizione del campo"></label>
+          <label>Provincia impianto<input name="province" placeholder="Proposta dalla posizione del campo"></label>
           <label class="report-form-full">Riferimento<input name="reference"></label>
         </div>
       </form>
@@ -71,7 +74,7 @@
     <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
   </main>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="./vendor/pdf-lib.min.js?v=44"></script>
-  <script type="module" src="./src/report.js?v=44"></script>
+  <script src="./vendor/pdf-lib.min.js?v=45"></script>
+  <script type="module" src="./src/report.js?v=45"></script>
 </body>
 </html>

@@ -17,3 +17,41 @@ html[data-theme="dark"] #mobile-app,html[data-theme="dark"] #mobile-pages,html[d
 html[data-theme="dark"] #mobile-app[data-screen="fields"] #mobile-pages{background:rgba(20,38,28,.8)}
 html[data-theme="dark"] #mobile-app button:not(.mobile-primary):not(.mobile-navigation button):not(.mobile-home-tools button),html[data-theme="dark"] .mobile-auth-card button,html[data-theme="dark"] .mobile-profile-card button{background:#294d37;color:var(--ink)}
 html[data-theme="dark"] #mobile-app input,html[data-theme="dark"] #mobile-app select,html[data-theme="dark"] #mobile-app textarea{color:var(--ink);background:#243d2d;border-color:#4d6954}
+
+/* V45: the toggle sits next to Login; all paper panels receive their own dark surface. */
+#theme-toggle{width:38px;height:38px;display:grid;place-items:center;flex:none;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer;transition:transform .18s ease,background .18s ease}
+#theme-toggle:hover{transform:rotate(-12deg);background:var(--soft)}
+#theme-toggle:focus-visible{outline:3px solid #6bb886;outline-offset:3px}
+#theme-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#theme-toggle .theme-moon{fill:currentColor;stroke:none}
+#theme-toggle .theme-sun{display:none}
+html[data-theme="dark"] #theme-toggle .theme-moon{display:none}
+html[data-theme="dark"] #theme-toggle .theme-sun{display:block}
+html[data-theme="dark"]{--ink:#eef6ef;--muted:#c4d5c8;--line:#496353;--surface:#213629;--soft:#304b39;--green:#29583d;--green-2:#b5e3bf;background:#12231a}
+html[data-theme="dark"] .topbar{background:#1b3023;color:#eef6ef}
+html[data-theme="dark"] .topbar .brand-logo{background:white;border-radius:6px}
+html[data-theme="dark"] .panel-scroll,html[data-theme="dark"] .panel-intro,html[data-theme="dark"] .step[data-step="1"],html[data-theme="dark"] .step[data-step="2"],html[data-theme="dark"] .advanced,html[data-theme="dark"] .field-manager,html[data-theme="dark"] .map-summary{background:#213629!important;color:#eef6ef!important;border-color:#496353!important}
+html[data-theme="dark"] .panel-scroll{background:#182a1f!important}
+html[data-theme="dark"] .panel h1,html[data-theme="dark"] .panel h2,html[data-theme="dark"] .panel h3,html[data-theme="dark"] .panel label,html[data-theme="dark"] .panel legend,html[data-theme="dark"] .advanced>summary,html[data-theme="dark"] .row-curve-controls label,html[data-theme="dark"] .row-curve-heading,html[data-theme="dark"] .step-heading h2{color:#eef6ef!important}
+html[data-theme="dark"] .panel-intro p,html[data-theme="dark"] .step-heading p,html[data-theme="dark"] .row-curve-controls small,html[data-theme="dark"] .row-curve-controls p,html[data-theme="dark"] .summary-disclaimer{color:#c4d5c8!important}
+html[data-theme="dark"] .row-curve-controls,html[data-theme="dark"] .curve-point-card,html[data-theme="dark"] .material-request-wrap,html[data-theme="dark"] .advanced-material,html[data-theme="dark"] .advanced-information,html[data-theme="dark"] .advanced-headlands,html[data-theme="dark"] .advanced-exclusions{background:#263e2e!important;color:#eef6ef!important;border-color:#496353!important}
+html[data-theme="dark"] .map-summary-grid>div{background:#304638!important;color:#eef6ef!important;border-color:#496353!important}
+html[data-theme="dark"] .map-summary-grid>div span,html[data-theme="dark"] .map-summary-grid>div small{color:#c9daca!important}
+html[data-theme="dark"] .map-summary .summary-primary{background:#29583d!important;color:#fff!important}
+html[data-theme="dark"] .map-summary .summary-primary span,html[data-theme="dark"] .map-summary .summary-primary small{color:#e8f2e9!important}
+html[data-theme="dark"] .panel button:not(.primary-button):not([class*="danger"]),html[data-theme="dark"] .row-curve-controls button{background:#304b39!important;color:#eef6ef!important;border-color:#56705d!important}
+html[data-theme="dark"] #summary-save-project,html[data-theme="dark"] .panel .primary-button{background:#29583d!important;color:#fff!important}
+html[data-theme="dark"] .summary-secondary{background:#304638!important;color:#eef6ef!important;border-color:#496353!important}
+html[data-theme="dark"] .summary-secondary span{color:#c9daca!important}
+html[data-theme="dark"] .map-summary-grid .summary-primary{background:#29583d!important}
+html[data-theme="dark"] .panel button:disabled{color:#c4d5c8!important;opacity:.65}
+html[data-theme="dark"] input:not([type="range"]):not([type="checkbox"])::placeholder,html[data-theme="dark"] textarea::placeholder{color:#aec2b3;opacity:1}
+html[data-theme="dark"] #mobile-pages,html[data-theme="dark"] #mobile-app .mobile-sheet{background:#182a1f!important;color:#eef6ef!important}
+html[data-theme="dark"] #mobile-app .step[data-step="2"],html[data-theme="dark"] #mobile-app .advanced,html[data-theme="dark"] #mobile-app .field-manager,html[data-theme="dark"] #mobile-app .mobile-field-card,html[data-theme="dark"] #mobile-app .mobile-metrics>div,html[data-theme="dark"] #mobile-app .mobile-materials,html[data-theme="dark"] #mobile-app .mobile-profile-card,html[data-theme="dark"] #mobile-app .mobile-auth-card{background:#213629!important;color:#eef6ef!important;border-color:#496353!important}
+html[data-theme="dark"] #mobile-app label,html[data-theme="dark"] #mobile-app h2,html[data-theme="dark"] #mobile-app h3,html[data-theme="dark"] #mobile-app dt,html[data-theme="dark"] #mobile-app .mobile-field-card small{color:#d2e3d5!important}
+html[data-theme="dark"] #mobile-app .mobile-metrics dd,html[data-theme="dark"] #mobile-app .mobile-materials dd{color:#eef6ef!important}
+html[data-theme="dark"] #mobile-app .mobile-project-card,html[data-theme="dark"] #mobile-app .mobile-select-trigger,html[data-theme="dark"] #mobile-app .mobile-fields-list .mobile-field-card,html[data-theme="dark"] #mobile-app .mobile-theme-setting{background:#263e2e!important;color:#eef6ef!important;border-color:#496353!important}
+html[data-theme="dark"] #mobile-app .mobile-project-card span,html[data-theme="dark"] #mobile-app .mobile-field-card span,html[data-theme="dark"] #mobile-app .mobile-metrics span{color:#c4d5c8!important}
+html[data-theme="dark"] .desktop-library-card,html[data-theme="dark"] .desktop-library-item,html[data-theme="dark"] .desktop-library-actions button{background:#213629;color:#eef6ef;border-color:#496353}
+html[data-theme="dark"] .desktop-library-card h2,html[data-theme="dark"] .desktop-library-item strong{color:#eef6ef}
+html[data-theme="dark"] .desktop-library-item span,html[data-theme="dark"] .desktop-library-empty{color:#c4d5c8}

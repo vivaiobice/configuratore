@@ -1,5 +1,5 @@
-import {renderProjectDiagramSvg} from './report-diagram.js?v=44';
-import {calculateManualPlants} from './project-calculator.js?v=44';
+import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
+import {calculateManualPlants} from './project-calculator.js?v=45';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
 import {getTheme,setTheme} from './theme.js';
 
@@ -16,7 +16,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V44</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V45</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>

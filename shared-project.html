@@ -6,12 +6,13 @@
   <meta name="referrer" content="no-referrer">
   <link rel="icon" href="./assets/favicon-v26.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./report.css?v=44"><link rel="stylesheet" href="./shared-project.css?v=44"><link rel="stylesheet" href="./shared-v44.css?v=44"><link rel="stylesheet" href="./report-print.css?v=44" media="print">
+  <link rel="stylesheet" href="./report.css?v=45"><link rel="stylesheet" href="./shared-project.css?v=45"><link rel="stylesheet" href="./shared-v44.css?v=45"><link rel="stylesheet" href="./report-print.css?v=45" media="print">
 </head>
 <body>
   <header class="report-app-header report-screen-only"><a href="./index.html" class="report-back" aria-label="Vai al configuratore">←</a><img src="./assets/logo-vivai-obice-v14.png" alt="Vivai Obice"><div><strong>Progetto condiviso</strong><span>Consultazione in sola lettura</span></div></header>
   <main class="shared-workspace"><div id="shared-project-root" aria-live="polite"></div></main>
   <aside class="shared-print-gate report-screen-only"><label><input id="shared-disclaimer-accept" type="checkbox"> Ho letto l’avvertenza sulla natura preliminare del documento.</label><button id="shared-print" type="button" disabled>Stampa / salva PDF</button></aside>
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script><script type="module" src="./src/shared-project-entry.js?v=44"></script>
+  <div id="shared-auth-dialog" class="shared-auth-dialog report-screen-only" hidden><section role="dialog" aria-modal="true" aria-labelledby="shared-auth-title"><button id="shared-auth-close" class="shared-auth-close" aria-label="Chiudi" type="button">×</button><h2 id="shared-auth-title">Accedi per stampare</h2><p>Puoi consultare il progetto come Guest. Per stamparlo o salvarlo come PDF, accedi o crea un account.</p><form id="shared-auth-login"><label>E-mail o username<input name="identifier" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Accedi</button><button type="button" data-auth-view="register">Crea account</button></form><form id="shared-auth-register" hidden><label>Nome profilo<input name="displayName" autocomplete="name" required></label><label>E-mail<input name="email" type="email" autocomplete="email" required></label><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="new-password" required></label><button type="submit">Crea account</button><button type="button" data-auth-view="login">Ho già un account</button></form><p id="shared-auth-feedback" role="alert" aria-live="polite"></p></section></div>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script><script type="module" src="./src/shared-project-entry.js?v=45"></script>
 </body>
 </html>

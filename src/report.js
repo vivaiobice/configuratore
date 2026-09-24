@@ -1,19 +1,19 @@
 import { loadDraft } from './storage.js';
-import { ensureProjectFields } from './fields.js?v=44';
-import { calculateProject } from './project-calculator.js?v=44';
-import { buildProjectReportModel } from './pdf-model.js?v=44';
-import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION } from './report-preflight.js?v=44';
-import { buildReportMapModel } from './report-map-model.js?v=44';
-import { captureSatelliteImage } from './report-satellite.js?v=44';
+import { ensureProjectFields } from './fields.js?v=45';
+import { calculateProject } from './project-calculator.js?v=45';
+import { buildProjectReportModel } from './pdf-model.js?v=45';
+import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=45';
+import { buildReportMapModel } from './report-map-model.js?v=45';
+import { captureSatelliteImage } from './report-satellite.js?v=45';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=44';
+import { renderProjectReportHtml } from './report-template.js?v=45';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
-import { buildReportPdfFilename } from './report-filename.js?v=44';
-import { mountReportAddressAutocomplete } from './report-address.js?v=44';
-import { downloadProjectPdf } from './report-pdf-download.js?v=44';
+import { buildReportPdfFilename } from './report-filename.js?v=45';
+import { mountReportAddressAutocomplete } from './report-address.js?v=45';
+import { downloadProjectPdf } from './report-pdf-download.js?v=45';
 
 export { REPORT_HANDOFF_KEY };
 
@@ -42,7 +42,7 @@ export function createReportOrchestrator({
   now=()=>new Date()
 }={}){
   return {
-    async generate({preflight,state,hostForField,baseUrl=globalThis.location?.href??'https://vivaiobice.github.io/'}={}){
+    async generate({preflight,state,hostForField,fieldLocations={},baseUrl=globalThis.location?.href??'https://vivaiobice.github.io/'}={}){
       if(!canIssueReport(preflight))throw new Error('Accetta l’avvertenza e completa i dati richiesti prima di generare il documento.');
       const fields=selectedFields(state,preflight.selectedFieldIds);
       if(!sync?.saveRevision||typeof issueReport!=='function')throw new Error('Sincronizzazione documento non disponibile.');
@@ -57,7 +57,7 @@ export function createReportOrchestrator({
         const metrics=metricsForField(field);
         const mapModel=buildReportMapModel({polygon:field.geometry,rows:metrics.rows,exclusions:field.exclusions,width:1000,height:650,padding:62});
         const capture=await captureSatellite({container:hostForField?.(field),mapModel,field});
-        mapAssets[field.id??field.clientFieldId]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution,satelliteOverlayMapModel:capture.overlayModel};
+        mapAssets[field.id??field.clientFieldId]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution,satelliteOverlayMapModel:capture.overlayModel,location:fieldLocations[field.id??field.clientFieldId]};
       }
 
       const token=tokenFactory();
@@ -111,6 +111,7 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   let profile={};
   try{const session=(await client?.auth?.getSession?.())?.data?.session;const storedProfile=session?.user?.id?await backend.getProfile(session.user.id):null;profile={...storedProfile,displayName:storedProfile?.display_name,email:session?.user?.email};}catch{}
   let preflight=createReportPreflight({state,profile,contact:state.contact});
+  const fieldLocations=await resolveFieldLocations(ensureProjectFields(state.project).fields);
   const options=documentRef.querySelector('#report-field-options');
   const form=documentRef.querySelector('#report-recipient-form');
   const accept=documentRef.querySelector('#report-disclaimer-accept');
@@ -131,17 +132,27 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
     label.append(checkbox,caption);options.append(label);
   }
   for(const [key,value] of Object.entries(preflight.recipient)){const input=form.elements.namedItem(key);if(input)input.value=value;}
+  let localityEdited=Boolean(preflight.recipient.plantLocation);
+  function suggestPlantLocality(){
+    if(localityEdited)return;
+    const suggested=locationForSelection(preflight.selectedFieldIds,fieldLocations);
+    for(const [field,value] of Object.entries(suggested)){
+      preflight=updateReportPreflight(preflight,{type:'recipient/update',field,value});
+      const input=form.elements.namedItem(field);if(input)input.value=value;
+    }
+  }
+  suggestPlantLocality();
   mountReportAddressAutocomplete({documentRef,form});
   let finalResult=null;
   function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;nativePrint.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
-  options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});accept.checked=false;finalResult=null;refresh();});
-  form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});accept.checked=false;finalResult=null;refresh();});
+  options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});suggestPlantLocality();accept.checked=false;finalResult=null;refresh();});
+  form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});if(['plantLocation','province'].includes(event.target.name))localityEdited=true;accept.checked=false;finalResult=null;refresh();});
   accept.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'disclaimer/set',accepted:accept.checked});if(!accept.checked)finalResult=null;refresh();});
   const requestId=new URL(globalThis.location.href).searchParams.get('handoff');
   const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel})=>captureSatelliteImage({container,mapModel,maplibregl}),issueReport:payload=>backend.issueProjectReport(payload)}):null;
   generate.addEventListener('click',async()=>{
     warning.hidden=true;generate.disabled=true;generate.textContent='Generazione in corso…';
-    try{state=loadDraft(storage);finalResult=await orchestrator.generate({preflight,state,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}
+    try{state=loadDraft(storage);finalResult=await orchestrator.generate({preflight,state,fieldLocations,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}
     catch(error){finalResult=null;warning.textContent=error?.message||'Documento non generato.';warning.hidden=false;}
     finally{generate.textContent='Genera anteprima';refresh();}
   });

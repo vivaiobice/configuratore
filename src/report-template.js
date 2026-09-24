@@ -1,4 +1,4 @@
-import { renderProjectDiagramSvg } from './report-diagram.js?v=44';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
 
 function esc(value) {
   return String(value ?? '')
@@ -104,7 +104,8 @@ function coverBody(model){
   const recipient=model.recipient??{};
   const qr=String(model.qrSvg??'').trim().startsWith('<svg')?model.qrSvg:'<div class="report-qr-placeholder">QR non disponibile</div>';
   const location=[recipient.plantLocation,recipient.province?`(${recipient.province})`:null].filter(Boolean).join(' ');
-  return `<section class="document-cover"><p class="document-kicker">Elaborato Vivai Obice</p><h1>${esc(model.title)}</h1><h2>${esc(model.project?.name||'Progetto viticolo')}</h2><dl class="document-meta"><div><dt>Codice progetto</dt><dd>${esc(model.project?.code||'—')}</dd></div><div><dt>Revisione</dt><dd>${esc(model.project?.revisionNumber??'—')}</dd></div><div><dt>Documento</dt><dd>${esc(model.project?.documentId||'Bozza')}</dd></div><div><dt>Data</dt><dd>${esc(new Date(model.project?.generatedAt??Date.now()).toLocaleDateString('it-IT'))}</dd></div></dl><section class="document-recipient"><h3>Destinatario</h3><strong>${esc(valueOrFallback(recipient.companyName))}</strong><span>${esc(`${recipient.firstName||''} ${recipient.lastName||''}`.trim())}</span><span>${esc(recipient.address||'')}</span><span>${esc(location)}</span></section><div class="document-qr">${qr}<p>Inquadra per consultare il progetto</p></div><p class="document-disclaimer-short">${esc(model.disclaimer?.short||'')}</p></section>`;
+  const destination=[recipient.addressPostalCode,recipient.addressCity,recipient.addressProvince?`(${recipient.addressProvince})`:null].filter(Boolean).join(' ');
+  return `<section class="document-cover"><p class="document-kicker">Elaborato Vivai Obice</p><h1>${esc(model.title)}</h1><h2>${esc(model.project?.name||'Progetto viticolo')}</h2><dl class="document-meta"><div><dt>Codice progetto</dt><dd>${esc(model.project?.code||'—')}</dd></div><div><dt>Revisione</dt><dd>${esc(model.project?.revisionNumber??'—')}</dd></div><div><dt>Documento</dt><dd>${esc(model.project?.documentId||'Bozza')}</dd></div><div><dt>Data</dt><dd>${esc(new Date(model.project?.generatedAt??Date.now()).toLocaleDateString('it-IT'))}</dd></div></dl><section class="document-recipient"><h3>Destinatario</h3><strong>${esc(valueOrFallback(recipient.companyName))}</strong><span>${esc(`${recipient.firstName||''} ${recipient.lastName||''}`.trim())}</span><span>${esc(recipient.address||'')}</span><span>${esc(destination)}</span><span>Località impianto: ${esc(location||'Da definire')}</span></section><div class="document-qr">${qr}<p>Inquadra per consultare il progetto</p></div><p class="document-disclaimer-short">${esc(model.disclaimer?.short||'')}</p></section>`;
 }
 
 function summaryBody(model){

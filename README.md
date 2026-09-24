@@ -396,3 +396,7 @@ Verifica su iPhone reale ancora richiesta: i test automatici non equivalgono a S
 # Release TEST V44 (24 settembre 2026)
 
 Per modifiche, pacchetto e controlli dopo il caricamento, leggere `V44-VERIFICA.md`. La stampa con nome stabile si ottiene tramite **Scarica PDF**. La cartografia del PDF viene catturata come un'unica immagine MapLibre georeferenziata con filari e perimetro; la prova finale richiede confronto visivo sui dispositivi.
+
+# Release TEST V45 (24 settembre 2026)
+
+Per le modifiche e le verifiche successive al caricamento, leggere `V45-VERIFICA.md`. Il progetto condiviso resta consultabile dai Guest: il pulsante di stampa apre login o registrazione nella stessa pagina. Indirizzo del destinatario e località dell'impianto sono gestiti separatamente.

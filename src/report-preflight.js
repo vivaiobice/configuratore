@@ -1,6 +1,41 @@
 import { ensureProjectFields } from './fields.js';
+import { interiorLabelPoint } from './geometry.js';
 
 export const DISCLAIMER_VERSION = 'VO-DISC-2026-01';
+
+export async function resolveFieldLocations(fields,{fetchImpl=globalThis.fetch}={}){
+  const locations={};
+  await Promise.all((fields??[]).map(async(field)=>{
+    const id=String(field.id??field.clientFieldId??'');
+    if(!id)return;
+    const fallback={municipality:field.municipality||'',province:field.province||'',label:field.locationLabel||''};
+    locations[id]=fallback;
+    const point=interiorLabelPoint(field.geometry);
+    if(!point||typeof fetchImpl!=='function')return;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),6000);
+    try{
+      const url=new URL('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode');
+      url.searchParams.set('f','json');url.searchParams.set('location',point.join(','));
+      url.searchParams.set('langCode','it');url.searchParams.set('featureTypes','StreetInt,StreetAddress,Locality');
+      const response=await fetchImpl(url.toString(),{headers:{Accept:'application/json'},signal:controller.signal});
+      if(!response.ok)return;
+      const address=(await response.json())?.address??{};
+      const municipality=String(address.City||address.District||address.Neighborhood||'').trim();
+      const province=String(address.Subregion||'').trim();
+      if(municipality)locations[id]={municipality,province,label:municipality};
+    }catch{}finally{clearTimeout(timeout);}
+  }));
+  return locations;
+}
+
+export function locationForSelection(selectedFieldIds,locations){
+  const places=(selectedFieldIds??[]).map(id=>locations?.[id]).filter(item=>item?.municipality);
+  if(!places.length)return {plantLocation:'',province:''};
+  const unique=new Set(places.map(item=>`${item.municipality.toLocaleLowerCase('it-IT')}|${item.province.toLocaleLowerCase('it-IT')}`));
+  if(unique.size!==1||places.length!==selectedFieldIds.length)return {plantLocation:'Località diverse (vedi campi)',province:''};
+  return {plantLocation:places[0].municipality,province:places[0].province};
+}
 
 function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim());
@@ -15,7 +50,7 @@ function validGeometry(value) {
 }
 
 function firstValue(...values) {
-  return values.map((value) => String(value ?? '').trim()).find(Boolean) ?? '';
+  return values.map((value) => String(value ?? '').trim()).find(value=>value && !/^[01]$/.test(value)) ?? '';
 }
 
 function preferredEmail(contact, profile) {
@@ -31,8 +66,11 @@ function recipientFrom(contact = {}, profile = {}) {
     email: preferredEmail(contact, profile),
     phone: firstValue(contact.phone, profile.phone),
     address: firstValue(contact.address, profile.address),
+    addressCity: firstValue(contact.addressCity),
+    addressPostalCode: firstValue(contact.addressPostalCode),
+    addressProvince: firstValue(contact.addressProvince),
     plantLocation: firstValue(contact.plantLocation),
-    province: firstValue(contact.province, profile.province),
+    province: firstValue(contact.province),
     reference: firstValue(contact.reference)
   };
 }
