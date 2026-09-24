@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#16251c" />
-  <link rel="manifest" href="./manifest.webmanifest?v=41" />
+  <link rel="manifest" href="./manifest.webmanifest?v=42" />
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-v26.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v26.png" />
   <title>Configuratore | Vivai Obice</title>
@@ -12,15 +12,15 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=41" />
-  <link rel="stylesheet" href="./profile.css?v=31" />
+  <link rel="stylesheet" href="./mobile.css?v=42" />
+  <link rel="stylesheet" href="./profile.css?v=42" />
   <link rel="stylesheet" href="./desktop-library.css?v=37" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
   <link rel="stylesheet" href="./desktop-v38.css?v=38" />
   <link rel="stylesheet" href="./desktop-v39.css?v=39" />
   <link rel="stylesheet" href="./desktop-v40.css?v=40" />
-  <link rel="stylesheet" href="./desktop-v41.css?v=41" />
+  <link rel="stylesheet" href="./desktop-v41.css?v=42" />
 </head>
 <body>
   <header class="topbar">
@@ -28,7 +28,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V41</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><button id="public-project-trigger" type="button">Carica progetto</button><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V42</span><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -80,6 +80,7 @@
         </div>
         <section class="row-curve-controls" aria-labelledby="row-curve-title">
           <div class="row-curve-heading"><div><strong id="row-curve-title">Curvatura filari</strong><small>Aggiungi più punti per creare archi o forme a S.</small></div><button id="curve-add-button" type="button">＋ Punto</button></div>
+          <label class="curve-equidistance"><input id="curve-equidistance" type="checkbox" checked /> Mantieni equidistanza filari</label>
           <div id="curve-points-list" class="curve-points-list"></div>
           <div class="row-curve-actions"><button id="curve-edit-button" type="button" aria-pressed="false">Modifica sulla mappa</button><button id="curve-reset-button" type="button">Raddrizza filari</button></div>
         </section>
@@ -226,8 +227,17 @@
     </form>
   </dialog>
 
+  <dialog id="public-project-dialog" class="public-project-dialog">
+    <form id="public-project-form" method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">PROGETTO CONDIVISO</p><h2>Carica progetto</h2><p>Inserisci l’ID riportato sul documento.</p></div><button id="public-project-close" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
+      <label>ID progetto<input id="public-project-code" class="control-input" inputmode="text" autocomplete="off" maxlength="10" placeholder="VO-1234567" required /></label>
+      <button class="primary-button wide" type="submit">Visualizza progetto</button>
+      <p id="public-project-feedback" class="form-feedback" role="status"></p>
+    </form>
+  </dialog>
+
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=41"></script>
+  <script type="module" src="./src/app.js?v=42"></script>
 </body>
 </html>

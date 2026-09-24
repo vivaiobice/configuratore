@@ -1,7 +1,7 @@
 const GROUPS = {
   geometry:['geometry'],
   exclusions:['exclusions'],
-  layout:['rowSpacingM','plantSpacingM','orientationDeg','rowCurvePoints','headlandWidthM','postSpacingM','mechanizedHarvest'],
+  layout:['rowSpacingM','plantSpacingM','orientationDeg','rowCurvePoints','maintainRowEquidistance','headlandWidthM','postSpacingM','mechanizedHarvest'],
   material:['grapeVariety','cloneSelection','rootstock','plantingYear'],
   identity:['label','locationLabel','municipality','province','region'],
   notes:['projectContextType','projectContextNote','materialRequestNote']

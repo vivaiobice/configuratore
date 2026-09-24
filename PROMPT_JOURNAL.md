@@ -1,6 +1,6 @@
 # PROMPT JOURNAL — Configuratore vigneto Vivai Obice
 
-Documento di continuità per agenti e sviluppatori. Aggiornato alla **V41 WebApp TEST**.
+Documento di continuità per agenti e sviluppatori. Aggiornato alla **V42 WebApp TEST**.
 Prima di modificare il progetto, leggere questo file, `README.md`, i test della release e il codice interessato.
 Non ricostruire il progetto da memoria e non perdere le funzioni già approvate.
 
@@ -754,6 +754,22 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   L'advisor non segnala nuove vulnerabilità ERROR; la tabella report senza policy dà una nota INFO.
   Prove reali Guest/proprietario/Admin, Safari iPhone, stampa PDF A4 e scansione QR restano incluse
   nel collaudo manuale V41. Non si è passati a Supabase LIVE.
+
+## V42 — equidistanza, trackpad, documento e ID progetto
+
+- Pan desktop attivato sullo scroll pixel del trackpad, preservando pinch zoom e rotazione tramite
+  modificatore.
+- Aggiunta preferenza per campo `maintainRowEquidistance`, attiva di default: i filari curvi sono
+  generati come offset normali della curva guida e i tratti localmente invertiti vengono scartati.
+- Documento: overlay satellitare senza riempimento, filigrana su ogni pagina, URL esteso rimosso e
+  distinzione esplicita fra QR della revisione e ID dell’ultima versione.
+- Codici progetto migrati al formato casuale `VO-` + 7 cifre. Aggiunta ricerca Guest sanificata,
+  neutra sugli errori e limitata a 12 tentativi ogni 10 minuti.
+- `Carica progetto` disponibile sia nel desktop sia nel Profilo mobile; Guest in sola lettura,
+  modifica riservata al proprietario o Admin verificato lato server.
+- Migrazione applicata esclusivamente a Supabase TEST. Verifica SQL: 3 progetti, 3 codici distinti,
+  nessun codice malformato, nessun accesso Guest diretto alle tabelle.
+- Gate automatico V42: `495/495` test e controllo sintattico completati.
 
 ## V39 — rifinitura visuale desktop
 

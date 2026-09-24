@@ -1,13 +1,13 @@
 import { loadDraft } from './storage.js';
-import { ensureProjectFields } from './fields.js?v=41';
-import { calculateProject } from './project-calculator.js?v=41';
-import { buildProjectReportModel } from './pdf-model.js?v=41';
+import { ensureProjectFields } from './fields.js?v=42';
+import { calculateProject } from './project-calculator.js?v=42';
+import { buildProjectReportModel } from './pdf-model.js?v=42';
 import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION } from './report-preflight.js';
-import { buildReportMapModel } from './report-map-model.js?v=41';
+import { buildReportMapModel } from './report-map-model.js?v=42';
 import { captureSatelliteImage } from './report-satellite.js';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=41';
+import { renderProjectReportHtml } from './report-template.js?v=42';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
@@ -16,7 +16,7 @@ export { REPORT_HANDOFF_KEY };
 
 function metricsForField(field){
   const exclusions=(Array.isArray(field.exclusions)?field.exclusions:[]).map(item=>Array.isArray(item)?item:item?.geometry).filter(Array.isArray);
-  return calculateProject({polygon:field.geometry,exclusions,rowSpacingM:field.rowSpacingM,plantSpacingM:field.plantSpacingM,orientationDeg:field.orientationDeg,rowCurvePoints:field.rowCurvePoints,postSpacingM:field.postSpacingM,headlandWidthM:field.headlandWidthM});
+  return calculateProject({polygon:field.geometry,exclusions,rowSpacingM:field.rowSpacingM,plantSpacingM:field.plantSpacingM,orientationDeg:field.orientationDeg,rowCurvePoints:field.rowCurvePoints,maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:field.postSpacingM,headlandWidthM:field.headlandWidthM});
 }
 
 function selectedFields(state,ids){

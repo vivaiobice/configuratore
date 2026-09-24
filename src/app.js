@@ -1,14 +1,14 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=41';
-import { createMobileUI } from './mobile-ui.js?v=41';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=42';
+import { createMobileUI } from './mobile-ui.js?v=42';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=41';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=41';
+import { initMap } from './map.js?v=42';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=42';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=41';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=42';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=34';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -17,15 +17,16 @@ import { createProjectSync } from './project-sync.js?v=34';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=41';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=42';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js';
 import { createAuthService } from './auth-service.js?v=33';
 import { createAuthBridge } from './auth-bridge.js';
 import { createProfileUI } from './profile-ui.js';
-import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=41';
-import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=41';
-import { normalizeRowCurvePoints } from './row-curves.js?v=41';
+import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=42';
+import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=42';
+import { normalizeRowCurvePoints } from './row-curves.js?v=42';
+import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=42';
 
 const $ = (selector) => document.querySelector(selector);
 const stored = loadDraft(globalThis.localStorage);
@@ -52,6 +53,26 @@ let curveControlInteracting=false;
 const authBridge=createAuthBridge();
 const profileUi=createProfileUI({authService:authBridge,document});
 profileUi.mount();
+const publicProjectDialog=$('#public-project-dialog');
+function openPublicProjectDialog(){
+  const feedback=$('#public-project-feedback');
+  if(feedback)feedback.textContent='';
+  if(publicProjectDialog?.showModal)publicProjectDialog.showModal();
+  else publicProjectDialog?.setAttribute('open','');
+  requestAnimationFrame(()=>$('#public-project-code')?.focus?.());
+}
+$('#public-project-trigger')?.addEventListener('click',openPublicProjectDialog);
+$('#public-project-close')?.addEventListener('click',()=>publicProjectDialog?.close?.());
+$('#public-project-form')?.addEventListener('submit',(event)=>{
+  event.preventDefault();
+  const code=normalizePublicProjectCode($('#public-project-code')?.value);
+  if(!code){
+    const feedback=$('#public-project-feedback');
+    if(feedback)feedback.textContent='ID progetto non valido. Verifica il codice e riprova.';
+    return;
+  }
+  globalThis.location.href=buildPublicProjectUrl(globalThis.location.href,code);
+});
 const desktopQuickCalculator=createDesktopQuickCalculator({document,calculate:calculateManualPlants,onCalculate:(areaM2)=>track('manual_area_calculated',{areaM2})});
 desktopQuickCalculator.mount();
 const summarySaveFeedback=createSaveFeedback($('#summary-save-project'));
@@ -102,6 +123,7 @@ function calculateFieldProject(project) {
     plantSpacingM:project?.plantSpacingM,
     orientationDeg:project?.orientationDeg,
     rowCurvePoints:project?.rowCurvePoints,
+    maintainRowEquidistance:project?.maintainRowEquidistance!==false,
     postSpacingM:project?.postSpacingM,
     headlandWidthM:project?.headlandWidthM
   });
@@ -162,6 +184,7 @@ function patchCurvePoints(points,{preserveControls=false}={}){curveControlIntera
 function renderCurveControls(){
   const list=$('#curve-points-list');if(!list)return;
   const points=normalizeRowCurvePoints(state.project.rowCurvePoints);
+  const equidistance=$('#curve-equidistance');if(equidistance)equidistance.checked=state.project.maintainRowEquidistance!==false;
   list.replaceChildren();
   const add=$('#curve-add-button'),edit=$('#curve-edit-button'),reset=$('#curve-reset-button');
   if(add)add.disabled=!state.project.geometry||points.length>=8;
@@ -659,6 +682,7 @@ mobileUi = createMobileUI({
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,
   refreshProjects:refreshOwnedArchive,
+  openPublicProject:openPublicProjectDialog,
   finalAction:requestFinalAction
 });
 
@@ -697,6 +721,7 @@ $('#curve-add-button')?.addEventListener('click',()=>{
 });
 $('#curve-edit-button')?.addEventListener('click',()=>{if(!state.project.geometry||!state.project.rowCurvePoints?.length)return;curveEditingActive=!curveEditingActive;renderCurveControls();syncCurveEditor();});
 $('#curve-reset-button')?.addEventListener('click',()=>{curveEditingActive=false;mapApi?.finishRowCurveEditing?.();patchCurvePoints([]);});
+$('#curve-equidistance')?.addEventListener('change',event=>patchProject({maintainRowEquidistance:event.target.checked}));
 $('#mechanized')?.addEventListener('input', (event) => {
   const enabled = event.target.checked;
   const headlandWidthM = normalizeHeadlandForMechanization(state.project.headlandWidthM, enabled);

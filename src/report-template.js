@@ -1,4 +1,4 @@
-import { renderProjectDiagramSvg } from './report-diagram.js?v=41';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=42';
 
 function esc(value) {
   return String(value ?? '')
@@ -126,7 +126,7 @@ function fieldDataBody(field,index,total){
 
 function disclaimerBody(model){
   const qr=String(model.qrSvg??'').trim().startsWith('<svg')?model.qrSvg:'';
-  return `<section class="document-disclaimer-page"><p class="document-kicker">Validità e consultazione</p><h1>Avvertenze</h1><p>${esc(model.disclaimer?.full||'')}</p><div class="document-final-qr">${qr}<div><strong>Consulta questa versione del progetto</strong><span>${esc(model.shareUrl||'Collegamento non disponibile')}</span></div></div><p>Versione disclaimer: ${esc(model.disclaimer?.version||'—')} · Revisione progetto: ${esc(model.project?.revisionNumber??'—')} · Documento: ${esc(model.project?.documentId||'—')}</p></section>`;
+  return `<section class="document-disclaimer-page"><p class="document-kicker">Validità e consultazione</p><h1>Avvertenze</h1><p>${esc(model.disclaimer?.full||'')}</p><div class="document-final-qr">${qr}<div><strong>Consulta il progetto</strong><span>ID progetto: ${esc(model.project?.code||'—')}</span><small>Il QR apre questa versione; “Carica progetto” apre l’ultima versione disponibile.</small></div></div><p>Versione disclaimer: ${esc(model.disclaimer?.version||'—')} · Revisione progetto: ${esc(model.project?.revisionNumber??'—')} · Documento: ${esc(model.project?.documentId||'—')}</p></section>`;
 }
 
 export function renderProjectReportHtml(model){
@@ -136,6 +136,6 @@ export function renderProjectReportHtml(model){
   model.fields.forEach((field,index)=>{bodies.push(fieldMapBody(field,index,model.fields.length));bodies.push(fieldDataBody(field,index,model.fields.length));});
   bodies.push(disclaimerBody(model));
   const total=bodies.length;
-  const pages=bodies.map((body,index)=>`<section class="report-page report-page-${index+1}">${pageHeader()}<div class="document-page-body">${body}</div>${pageFooter(model,index+1,total)}</section>`).join('');
+  const pages=bodies.map((body,index)=>`<section class="report-page report-page-${index+1}"><img class="document-watermark" src="./assets/logo-filigrana.png" alt="" aria-hidden="true">${pageHeader()}<div class="document-page-body">${body}</div>${pageFooter(model,index+1,total)}</section>`).join('');
   return `<article class="report-document">${pages}</article>`;
 }

@@ -1,5 +1,5 @@
-import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=41';
-import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=41';
+import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=42';
+import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=42';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);
@@ -32,7 +32,7 @@ function emptyResult() {
   };
 }
 
-export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, rowCurvePoints = [], postSpacingM = null, headlandWidthM = null }) {
+export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, rowCurvePoints = [], maintainRowEquidistance = true, postSpacingM = null, headlandWidthM = null }) {
   if (!Array.isArray(polygon) || polygon.length < 4) return emptyResult();
   const rowSpacing = Number(rowSpacingM);
   const plantSpacing = Number(plantSpacingM);
@@ -43,7 +43,7 @@ export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantS
   const excludedAreaM2 = Math.min(metrics.areaM2, validExclusions.reduce((sum, item) => sum + polygonMetrics(item).areaM2, 0));
   const curvePoints=normalizeRowCurvePoints(rowCurvePoints);
   const rowGenerator=(headland)=>curvePoints.length
-    ? generateCurvedRows({polygon,rowSpacingM:rowSpacing,orientationDeg:Number(orientationDeg)||0,rowCurvePoints:curvePoints,exclusions:validExclusions,headlandWidthM:headland})
+    ? generateCurvedRows({polygon,rowSpacingM:rowSpacing,orientationDeg:Number(orientationDeg)||0,rowCurvePoints:curvePoints,maintainEquidistance:maintainRowEquidistance!==false,exclusions:validExclusions,headlandWidthM:headland})
     : generateRows(polygon,rowSpacing,Number(orientationDeg)||0,{exclusions:validExclusions,headlandWidthM:headland});
   const rawRows = rowGenerator(0);
   const headlandWidth = Number(headlandWidthM);

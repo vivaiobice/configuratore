@@ -65,6 +65,34 @@ function offsetAt(nodes,t){
   return (2*u3-3*u2+1)*a.offsetM+(u3-2*u2+u)*span*slopeA+(-2*u3+3*u2)*b.offsetM+(u3-u2)*span*slopeB;
 }
 
+function guideSample(nodes,frame,t){
+  const value=clamp(t,0,1),epsilon=.001;
+  const before=clamp(value-epsilon,0,1),after=clamp(value+epsilon,0,1);
+  const divisor=Math.max(1e-6,after-before);
+  const dx=(offsetAt(nodes,after)-offsetAt(nodes,before))/divisor;
+  const dy=frame.spanY;
+  const length=Math.max(1e-9,Math.hypot(dx,dy));
+  return {
+    point:[frame.centerX+offsetAt(nodes,value),frame.minY+value*frame.spanY],
+    tangent:[dx/length,dy/length],
+    normal:[dy/length,-dx/length]
+  };
+}
+
+function splitSafeParallel(candidate,guide){
+  if(candidate.length<2)return [];
+  const output=[];let current=[candidate[0]];
+  for(let index=1;index<candidate.length;index++){
+    const a=candidate[index-1],b=candidate[index],ga=guide[index-1].point,gb=guide[index].point;
+    const dx=b[0]-a[0],dy=b[1]-a[1],gdx=gb[0]-ga[0],gdy=gb[1]-ga[1];
+    const aligned=dx*gdx+dy*gdy>.02*Math.hypot(dx,dy)*Math.hypot(gdx,gdy);
+    if(aligned)current.push(b);
+    else{if(current.length>1)output.push(current);current=[b];}
+  }
+  if(current.length>1)output.push(current);
+  return output;
+}
+
 function close(points){return points.length?[...points,points[0]]:[];}
 
 function pointOnSegment(point,a,b,tolerance=1e-6){
@@ -153,7 +181,7 @@ export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curv
   return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX}])[0];
 }
 
-export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null}={}){
+export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true}={}){
   const frame=frameFor(polygon,orientationDeg);
   const spacing=Number(rowSpacingM),points=normalizeRowCurvePoints(rowCurvePoints);
   if(!frame||!Number.isFinite(spacing)||spacing<=0||!points.length)return [];
@@ -165,12 +193,29 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
   const firstBase=frame.minX+spacing/2-Math.ceil(maxOffset/spacing)*spacing;
   const lastBase=frame.maxX+maxOffset+spacing/2;
   const output=[];
-  for(let baseX=firstBase;baseX<lastBase;baseX+=spacing){
-    const candidate=[];
-    for(let index=0;index<=sampleCount;index++){
-      const t=index/sampleCount;
-      candidate.push([baseX+offsetAt(nodes,t),frame.minY+t*frame.spanY]);
+  const candidates=[];
+  if(maintainEquidistance!==false){
+    const guide=Array.from({length:sampleCount+1},(_,index)=>guideSample(nodes,frame,index/sampleCount));
+    const reach=Math.hypot(frame.maxX-frame.minX,frame.maxY-frame.minY)+maxOffset+spacing*2;
+    const firstDistance=-Math.ceil(reach/spacing)*spacing;
+    for(let distance=firstDistance;distance<=reach;distance+=spacing){
+      const candidate=guide.map(sample=>[
+        sample.point[0]+sample.normal[0]*distance,
+        sample.point[1]+sample.normal[1]*distance
+      ]);
+      candidates.push(...splitSafeParallel(candidate,guide));
     }
+  }else{
+    for(let baseX=firstBase;baseX<lastBase;baseX+=spacing){
+      const candidate=[];
+      for(let index=0;index<=sampleCount;index++){
+        const t=index/sampleCount;
+        candidate.push([baseX+offsetAt(nodes,t),frame.minY+t*frame.spanY]);
+      }
+      candidates.push(candidate);
+    }
+  }
+  for(const candidate of candidates){
     const outerSegments=clipPolyline(candidate,point=>pointInRing(point,frame.points));
     for(const outer of outerSegments){
       const trimmed=trimPolyline(outer,headlandWidthM);

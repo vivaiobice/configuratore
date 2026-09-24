@@ -2,7 +2,28 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V41 WebApp.
+Stato: ambiente TEST · release V42 WebApp.
+
+## V42 — navigazione trackpad, filari equidistanti e ID progetto
+
+- Il trackpad desktop sposta la mappa con lo scorrimento a due dita senza richiedere la pressione;
+  pinch zoom e rotazione con modificatore restano separati.
+- I filari curvi dispongono dell’opzione, attiva per impostazione predefinita, `Mantieni equidistanza
+  filari`. Le curve parallele sono calcolate lungo la normale e i tratti che produrrebbero cuspidi o
+  inversioni locali vengono esclusi in sicurezza. Disattivando l’opzione resta disponibile il
+  comportamento storico.
+- Nel documento la geometria sopra la foto satellitare è trasparente; lo schema tecnico conserva il
+  proprio riempimento. Ogni pagina A4 usa la filigrana Vivai Obice al 5% dietro ai contenuti.
+- Il documento non stampa più l’URL completo: mostra il QR della revisione e l’ID progetto umano nel
+  formato `VO-1234567`.
+- `Carica progetto` è disponibile nell’intestazione desktop e nel Profilo mobile. Il codice apre
+  l’ultima revisione pubblicabile in sola lettura; proprietario e Admin conservano il passaggio
+  protetto all’editor.
+- La ricerca pubblica è limitata a 12 tentativi in 10 minuti per richiedente, espone solo uno snapshot
+  tecnico sanificato e non concede accesso diretto alle tabelle.
+- Migrazione applicata esclusivamente all’ambiente Supabase TEST. Nessun intervento su LIVE.
+- Release identificata come `AMBIENTE TEST · V42`; gate automatico `495/495` e controllo sintattico
+  completati.
 
 ## V41 — filari curvi, orientamento preciso e documento cliente
 

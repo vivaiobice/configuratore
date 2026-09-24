@@ -1,5 +1,5 @@
 const FIELD_KEYS = [
-  'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints',
+  'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints','maintainRowEquidistance',
   'locationLabel','municipality','province','region','headlandWidthM','postSpacingM','mechanizedHarvest','projectContextType',
   'projectContextNote','grapeVariety','rootstock','cloneSelection','materialRequestNote','exclusions'
 ];
@@ -26,6 +26,7 @@ export function createDefaultField(id = newId(), index = 1, overrides = {}) {
     orientationDeg:0,
     orientationLocked:false,
     rowCurvePoints:[],
+    maintainRowEquidistance:true,
     locationLabel:'', municipality:'', province:'', region:'',
     headlandWidthM:null,
     postSpacingM:4.5,

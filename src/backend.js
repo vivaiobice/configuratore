@@ -310,6 +310,11 @@ export function createBackend(client) {
     async getSharedProjectReport(reportId,token) {
       return rpc('get_shared_project_report',{p_report_id:reportId,p_token:token});
     },
+    async getPublicProjectByCode(publicCode) {
+      const normalized=String(publicCode??'').trim().toUpperCase();
+      if(!/^VO-[0-9]{7}$/.test(normalized))return null;
+      return rpc('get_public_project_by_code',{p_public_code:normalized});
+    },
     async canEditProject(projectId) {
       return rpc('can_edit_project',{p_project_id:projectId});
     },

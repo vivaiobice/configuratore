@@ -1,7 +1,8 @@
 import { parseSharedReportUrl } from './report-share.js';
-import { calculateProject } from './project-calculator.js?v=41';
-import { buildReportMapModel } from './report-map-model.js?v=41';
-import { renderProjectDiagramSvg } from './report-diagram.js?v=41';
+import { parsePublicProjectCodeUrl } from './public-project-access.js';
+import { calculateProject } from './project-calculator.js?v=42';
+import { buildReportMapModel } from './report-map-model.js?v=42';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=42';
 
 export const SHARED_UNAVAILABLE_MESSAGE = 'Collegamento non disponibile. Chiedi a Vivai Obice un nuovo collegamento.';
 const DISCLAIMER = 'Il presente documento è uno studio preliminare ed esemplificativo. Non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa, asseverazione o garanzia di realizzabilità. Prima dell’esecuzione devono essere verificati sul posto confini, quote, pendenze, vincoli, accessi e prescrizioni applicabili.';
@@ -24,6 +25,7 @@ function fieldPresentation(field, index) {
     plantSpacingM: field?.plantSpacingM,
     orientationDeg: field?.orientationDeg,
     rowCurvePoints: field?.rowCurvePoints,
+    maintainRowEquidistance: field?.maintainRowEquidistance!==false,
     postSpacingM: field?.postSpacingM,
     headlandWidthM: field?.headlandWidthM
   });
@@ -34,8 +36,11 @@ function fieldPresentation(field, index) {
 export async function loadSharedProject({ url, backend } = {}) {
   try {
     const parsed = parseSharedReportUrl(url);
-    if (!parsed || !backend?.getSharedProjectReport) throw new Error('invalid');
-    const payload = await backend.getSharedProjectReport(parsed.reportId, parsed.token);
+    const publicCode=parsePublicProjectCodeUrl(url);
+    let payload=null;
+    if(parsed&&backend?.getSharedProjectReport)payload=await backend.getSharedProjectReport(parsed.reportId,parsed.token);
+    else if(publicCode&&backend?.getPublicProjectByCode)payload=await backend.getPublicProjectByCode(publicCode);
+    else throw new Error('invalid');
     if (!payload || !Array.isArray(payload.fields)) throw new Error('unavailable');
     let canEdit = false;
     try { canEdit = Boolean(await backend.canEditProject?.(payload.projectId)); } catch { canEdit = false; }
@@ -46,7 +51,7 @@ export async function loadSharedProject({ url, backend } = {}) {
 }
 
 export function sharedPrintAllowed({ accepted, payload } = {}) {
-  return accepted === true && Boolean(payload?.reportId) && Array.isArray(payload?.fields) && payload.fields.length > 0;
+  return accepted === true && Boolean(payload?.reportId||payload?.projectCode) && Array.isArray(payload?.fields) && payload.fields.length > 0;
 }
 
 export function renderSharedProjectHtml({ payload, canEdit = false } = {}) {
@@ -62,7 +67,7 @@ export function renderSharedProjectHtml({ payload, canEdit = false } = {}) {
       <section class="shared-metrics" aria-label="Dati del campo"><div><span>Superficie netta</span><strong>${Math.round(metrics.netAreaM2).toLocaleString('it-IT')} m²</strong></div><div><span>Quantità commerciale</span><strong>${Math.round(metrics.commercialPlants25).toLocaleString('it-IT')}</strong></div><div><span>Barbatelle calcolate</span><strong>${Math.round(metrics.simulatedPlants).toLocaleString('it-IT')}</strong></div><div><span>Filari</span><strong>${metrics.rowCount}</strong></div><div><span>Vitigno</span><strong>${escapeHtml(field.grapeVariety || 'Da definire')}</strong></div><div><span>Portinnesto</span><strong>${escapeHtml(field.rootstock || 'Da definire')}</strong></div></section>
     </article>`;
   }).join('');
-  return `<div class="shared-document"><section class="shared-cover report-page"><img src="./assets/logo-vivai-obice-lineare.png" alt="Vivai Obice"><p class="report-eyebrow">Documento condiviso · sola lettura</p><h1>Studio preliminare ed esemplificativo di impianto viticolo</h1><h2>${escapeHtml(payload.projectName || 'Progetto viticolo')}</h2><div class="shared-version"><span>Versione documento: ${escapeHtml(payload.revisionNumber)}</span><span>Versione attuale: ${escapeHtml(payload.currentRevisionNumber)}</span></div>${revisionChanged?'<p class="shared-version-warning">Il progetto è stato modificato dopo l’emissione di questo documento.</p>':''}${canEdit?`<a class="shared-edit" href="${editUrl}">Apri nel configuratore</a>`:''}<p class="shared-disclaimer-short">${DISCLAIMER}</p></section>${cards}<section class="shared-final report-page"><h2>Avvertenze e validità</h2><p>${DISCLAIMER}</p><p>Documento emesso il ${escapeHtml(new Date(payload.createdAt).toLocaleString('it-IT'))} · Revisione ${escapeHtml(payload.revisionNumber)}</p><footer><strong>VIVAI OBICE S.S.A.</strong><br>Via Cossano, 6 · 12058 Santo Stefano Belbo (CN)<br>info@vivaiobice.com · 393 892 9801 · P. IVA 01656710041 · SDI SUBM70N</footer></section></div>`;
+  return `<div class="shared-document"><section class="shared-cover report-page"><img src="./assets/logo-vivai-obice-lineare.png" alt="Vivai Obice"><p class="report-eyebrow">Documento condiviso · sola lettura</p><h1>Studio preliminare ed esemplificativo di impianto viticolo</h1><h2>${escapeHtml(payload.projectName || 'Progetto viticolo')}</h2>${payload.projectCode?`<p class="shared-project-code">ID progetto ${escapeHtml(payload.projectCode)}</p>`:''}<div class="shared-version"><span>Versione documento: ${escapeHtml(payload.revisionNumber)}</span><span>Versione attuale: ${escapeHtml(payload.currentRevisionNumber)}</span></div>${revisionChanged?'<p class="shared-version-warning">Il progetto è stato modificato dopo l’emissione di questo documento.</p>':''}${canEdit?`<a class="shared-edit" href="${editUrl}">Apri nel configuratore</a>`:''}<p class="shared-disclaimer-short">${DISCLAIMER}</p></section>${cards}<section class="shared-final report-page"><h2>Avvertenze e validità</h2><p>${DISCLAIMER}</p><p>Documento emesso il ${escapeHtml(new Date(payload.createdAt).toLocaleString('it-IT'))} · Revisione ${escapeHtml(payload.revisionNumber)}</p><footer><strong>VIVAI OBICE S.S.A.</strong><br>Via Cossano, 6 · 12058 Santo Stefano Belbo (CN)<br>info@vivaiobice.com · 393 892 9801 · P. IVA 01656710041 · SDI SUBM70N</footer></section></div>`;
 }
 
 export function mountSharedSatelliteMaps({ root, payload, maplibregl } = {}) {

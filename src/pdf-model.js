@@ -1,5 +1,5 @@
 import { isOtherMaterialSelection } from './plant-catalog.js';
-import { ensureProjectFields } from './fields.js?v=41';
+import { ensureProjectFields } from './fields.js?v=42';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',

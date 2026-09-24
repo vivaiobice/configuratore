@@ -1,5 +1,5 @@
-import {renderProjectDiagramSvg} from './report-diagram.js?v=41';
-import {calculateManualPlants} from './project-calculator.js?v=41';
+import {renderProjectDiagramSvg} from './report-diagram.js?v=42';
+import {calculateManualPlants} from './project-calculator.js?v=42';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
 
 const icons={map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5zm6-2v16m6-14v16',fields:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',projects:'M3 7h7l2-3h9v16H3z',profile:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0',plus:'M12 4v16M4 12h16',refresh:'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',layers:'M2 7l10-5 10 5-10 5zm0 5l10 5 10-5M2 17l10 5 10-5',calc:'M5 2h14v20H5zM8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1',back:'M15 4l-8 8 8 8',north:'M12 2l4.2 8.1L12 8.4 7.8 10.1 12 2zm0 20V8.4'};
@@ -15,7 +15,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V41</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V42</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -205,15 +205,17 @@ export function createMobileUI(api){
  function renderProfile(){
   const content=$('#mobile-profile-content');if(!content)return;
   if(authState.kind==='user'){
-   content.innerHTML=`<article class="mobile-profile-card"><div class="mobile-profile-avatar">${escape((authState.displayName||'P').slice(0,1).toUpperCase())}</div><h2>${escape(authState.displayName||'Profilo')}</h2><p>${escape(authState.username?`@${authState.username}`:'')}</p><small>${escape(authState.email||'')}</small><button id="mobile-auth-logout">Esci</button></article>`;
+   content.innerHTML=`<article class="mobile-profile-card"><div class="mobile-profile-avatar">${escape((authState.displayName||'P').slice(0,1).toUpperCase())}</div><h2>${escape(authState.displayName||'Profilo')}</h2><p>${escape(authState.username?`@${authState.username}`:'')}</p><small>${escape(authState.email||'')}</small><button id="mobile-public-project">Carica progetto con ID</button><button id="mobile-auth-logout">Esci</button></article>`;
+   $('#mobile-public-project')?.addEventListener('click',()=>api.openPublicProject?.());
    $('#mobile-auth-logout')?.addEventListener('click',async()=>{try{await api.auth.logout();authFeedback('Ora stai lavorando come Guest.');}catch(error){authFeedback(error.message,true);}});
    return;
   }
-  content.innerHTML=`<div class="mobile-auth-card"><p class="mobile-storage-note">Continua come Guest oppure accedi per ritrovare i progetti su altri dispositivi.</p><div id="mobile-login-form"><label>E-mail o username<input id="mobile-auth-identifier" autocomplete="username"/></label><label>Password<input id="mobile-auth-password" type="password" autocomplete="current-password"/></label><button id="mobile-auth-login" class="mobile-primary">Accedi</button><button id="mobile-show-register">Crea account</button><button id="mobile-auth-reset">Password dimenticata?</button></div><div id="mobile-register-form" hidden><label>Nome profilo<input id="mobile-register-name" autocomplete="name"/></label><label>E-mail<input id="mobile-register-email" type="email" autocomplete="email"/></label><label>Username<input id="mobile-register-username" autocomplete="username" placeholder="anche solo numeri"/></label><label>Password<input id="mobile-register-password" type="password" autocomplete="new-password"/></label><button id="mobile-auth-register" class="mobile-primary">Crea account</button><button id="mobile-show-login">Ho già un account</button></div></div>`;
+  content.innerHTML=`<div class="mobile-auth-card"><p class="mobile-storage-note">Continua come Guest oppure accedi per ritrovare i progetti su altri dispositivi.</p><button id="mobile-public-project">Carica progetto con ID</button><div id="mobile-login-form"><label>E-mail o username<input id="mobile-auth-identifier" autocomplete="username"/></label><label>Password<input id="mobile-auth-password" type="password" autocomplete="current-password"/></label><button id="mobile-auth-login" class="mobile-primary">Accedi</button><button id="mobile-show-register">Crea account</button><button id="mobile-auth-reset">Password dimenticata?</button></div><div id="mobile-register-form" hidden><label>Nome profilo<input id="mobile-register-name" autocomplete="name"/></label><label>E-mail<input id="mobile-register-email" type="email" autocomplete="email"/></label><label>Username<input id="mobile-register-username" autocomplete="username" placeholder="anche solo numeri"/></label><label>Password<input id="mobile-register-password" type="password" autocomplete="new-password"/></label><button id="mobile-auth-register" class="mobile-primary">Crea account</button><button id="mobile-show-login">Ho già un account</button></div></div>`;
   const run=async action=>{authFeedback('Attendi…');try{await action();authFeedback('Operazione completata.');}catch(error){authFeedback(error.message||'Operazione non riuscita',true);}};
   $('#mobile-auth-login').addEventListener('click',()=>run(()=>api.auth.login({identifier:$('#mobile-auth-identifier').value,password:$('#mobile-auth-password').value})));
   $('#mobile-auth-register').addEventListener('click',()=>run(()=>api.auth.register({displayName:$('#mobile-register-name').value,email:$('#mobile-register-email').value,username:$('#mobile-register-username').value,password:$('#mobile-register-password').value})));
   $('#mobile-auth-reset').addEventListener('click',()=>run(()=>api.auth.requestPasswordReset($('#mobile-auth-identifier').value)));
+  $('#mobile-public-project')?.addEventListener('click',()=>api.openPublicProject?.());
   $('#mobile-show-register').addEventListener('click',()=>{$('#mobile-login-form').hidden=true;$('#mobile-register-form').hidden=false;});
   $('#mobile-show-login').addEventListener('click',()=>{$('#mobile-register-form').hidden=true;$('#mobile-login-form').hidden=false;});
  }

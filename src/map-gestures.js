@@ -14,6 +14,14 @@ export function wheelRotationDelta(event) {
   return Math.round(axis * 0.18 * 1000) / 1000;
 }
 
+export function trackpadPanDelta(event) {
+  if (!event || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return null;
+  if (Number(event.deltaMode) !== 0) return null;
+  const dx=Number(event.deltaX)||0,dy=Number(event.deltaY)||0;
+  if (Math.abs(dx)<.01&&Math.abs(dy)<.01) return null;
+  return [dx,dy];
+}
+
 export function installTrackpadRotation(map, { touchRotation = false } = {}) {
   const container = map?.getCanvasContainer?.() ?? map?.getContainer?.();
   if (!container?.addEventListener) return () => {};
@@ -29,9 +37,15 @@ export function installTrackpadRotation(map, { touchRotation = false } = {}) {
 
   const onWheel = (event) => {
     const delta = wheelRotationDelta(event);
-    if (!delta) return;
+    if (delta) {
+      event.preventDefault?.();
+      map.setBearing?.(map.getBearing() + delta);
+      return;
+    }
+    const pan=trackpadPanDelta(event);
+    if (!pan) return;
     event.preventDefault?.();
-    map.setBearing?.(map.getBearing() + delta);
+    map.panBy?.(pan,{duration:0});
   };
 
   container.addEventListener('wheel', onWheel, { passive:false, capture:true });
