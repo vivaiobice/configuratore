@@ -67,7 +67,9 @@ export function polygonToWkt(ring) {
 
 export function toProjectRow(state, metrics, { ownerUserId, sessionId, projectId = undefined, contactId = undefined, resumeTokenHash = undefined } = {}) {
   const project = state?.project ?? {};
+  const clientProjectId = state?.cloud?.clientProjectId || project.localProjectId || null;
   const row = {
+    ...(clientProjectId ? { client_project_id:clientProjectId } : {}),
     owner_user_id: ownerUserId,
     last_session_id: sessionId,
     contact_id: contactId ?? null,
@@ -338,7 +340,11 @@ export function createBackend(client) {
       });
     },
     async upsertProject(row) {
-      const result = await client.from('projects').upsert(row).select('id,public_code,status').single();
+      const conflictColumn = row?.id ? 'id' : (row?.client_project_id ? 'client_project_id' : null);
+      const query = conflictColumn
+        ? client.from('projects').upsert(row,{ onConflict:conflictColumn })
+        : client.from('projects').upsert(row);
+      const result = await query.select('id,public_code,status').single();
       if (result.error) throw result.error;
       return result.data;
     },
