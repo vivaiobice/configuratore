@@ -32,6 +32,9 @@ export function profileView(session,profile={}){
   const displayName=String(profile?.display_name??'').trim()||String(user.email??'').split('@')[0]||'Profilo';
   return {
     kind:'user',displayName,username:profile?.username??null,email:user.email??null,
+    firstName:profile?.first_name??'',lastName:profile?.last_name??'',companyName:profile?.company_name??'',
+    address:profile?.address??'',postalCode:profile?.postal_code??'',city:profile?.city??'',province:profile?.province??'',
+    vatNumber:profile?.vat_number??'',phone:profile?.phone??'',
     isAdmin:user.app_metadata?.role==='admin',user
   };
 }

@@ -24,7 +24,6 @@
   <link rel="stylesheet" href="./v43-visual.css?v=45" />
   <link rel="stylesheet" href="./v46-fixes.css?v=46" />
   <link rel="stylesheet" href="./v48-fixes.css?v=48" />
-  <link rel="stylesheet" href="./v49-fixes.css?v=49" />
 </head>
 <body>
   <header class="topbar">
@@ -32,7 +31,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V49</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V48</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -183,7 +182,7 @@
           <div class="map-tool-group map-tools-positioning" data-map-tools="positioning" aria-label="Posizionamento"><button id="map-gps-button" class="tool-button" type="button" aria-label="Posizione attuale" title="Posizione attuale"><span class="tool-icon" aria-hidden="true">◎</span><span class="tool-label">GPS</span></button><button id="center-field-button" class="tool-button" type="button" aria-label="Torna al campo selezionato" title="Torna al campo selezionato" disabled><span class="tool-icon" aria-hidden="true">⌖</span><span class="tool-label">Vai al campo</span></button></div>
           <div class="map-tool-group map-tools-exclusions" data-map-tools="exclusions" aria-label="Gestione aree escluse"><button id="exclude-zone-button" class="tool-button" type="button"><span class="tool-icon" aria-hidden="true">⊖</span><span class="tool-label">Escludi zona</span></button><button id="exclude-line-button" class="tool-button" type="button" title="Escludi un passaggio rettilineo largo 1,50 m"><span class="tool-icon" aria-hidden="true">↔</span><span class="tool-label">Passaggio 1,50 m</span></button></div>
         </div>
-        <div class="map-search-control map-tool-group" aria-label="Ricerca località"><button id="map-search-button" class="tool-button" type="button" aria-label="Cerca una località" title="Cerca una località" aria-expanded="false" aria-controls="map-search-form">⌕</button><form id="map-search-form" class="map-search-form" hidden><input id="map-search-input" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="map-search-suggestions" placeholder="Comune, località o indirizzo" aria-label="Comune, località o indirizzo"><button type="submit" aria-label="Cerca">Cerca</button><div id="map-search-suggestions" class="map-search-suggestions" role="listbox" hidden></div></form></div>
+        <div class="map-search-control map-tool-group" aria-label="Ricerca località"><button id="map-search-button" class="tool-button" type="button" aria-label="Cerca una località" title="Cerca una località">⌕</button></div>
         <div class="map-rotation map-tool-group" data-map-tools="rotation" aria-label="Rotazione mappa" title="Desktop: Shift + scorrimento del trackpad; su mobile usa le frecce">
           <button id="rotate-left" class="tool-button" type="button" aria-label="Ruota a sinistra" title="Ruota a sinistra">↶</button>
           <button id="north-button" class="tool-button north-button" type="button" aria-label="Riporta il Nord in alto" title="Nord in alto">N</button>
@@ -216,7 +215,7 @@
   </dialog>
 
   <div id="consent-banner" class="consent-banner" hidden>
-    <div><strong>Privacy e utilizzo</strong><p>Per salvare e rendere disponibile il progetto memorizziamo i dati tecnici inseriti, inclusi perimetri, geometrie e coordinate geografiche della mappa, necessari al salvataggio e alla condivisione. Solo con il tuo consenso misuriamo anche l’utilizzo e riconosciamo le visite successive per migliorare il servizio.</p></div>
+    <div><strong>Privacy e utilizzo</strong><p>Usiamo i dati tecnici necessari al funzionamento. Con il tuo consenso possiamo anche misurare l’utilizzo e riconoscere le visite successive per migliorare il servizio.</p></div>
     <div class="consent-actions"><button id="consent-necessary" class="secondary-button" type="button">Solo necessari</button><button id="consent-analytics" class="primary-button" type="button">Accetta analisi</button></div>
   </div>
 
@@ -245,6 +244,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=49"></script>
+  <script type="module" src="./src/app.js?v=48"></script>
 </body>
 </html>

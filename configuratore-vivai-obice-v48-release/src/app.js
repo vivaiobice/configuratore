@@ -1,14 +1,14 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=45';
 import { createMobileUI } from './mobile-ui.js?v=45';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=49';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=49';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=37';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=39';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=49';
+import { initMap } from './map.js?v=46';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=49';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=48';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=48';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -20,9 +20,9 @@ import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=45';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
-import { createAuthService } from './auth-service.js?v=49';
+import { createAuthService } from './auth-service.js?v=33';
 import { createAuthBridge } from './auth-bridge.js';
-import { createProfileUI } from './profile-ui.js?v=49';
+import { createProfileUI } from './profile-ui.js?v=45';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
@@ -462,17 +462,10 @@ $('#gps-button')?.addEventListener('click', () => locateFrom('panel_button'));
 $('#map-gps-button')?.addEventListener('click', () => locateFrom('map_button'));
 const searchInput = $('#search-input');
 const searchSuggestions = $('#search-suggestions');
-const mapSearchInput=$('#map-search-input');
-const mapSearchSuggestions=$('#map-search-suggestions');
-const mapSearchAction=createDesktopMapSearchAction({document});mapSearchAction.mount();
-const searchSurfaces=[
-  {input:searchInput,suggestions:searchSuggestions,form:$('#search-form')},
-  {input:mapSearchInput,suggestions:mapSearchSuggestions,form:$('#map-search-form')}
-].filter(surface=>surface.input&&surface.suggestions&&surface.form);
+createDesktopMapSearchAction({document}).mount();
 let suggestionTimer = null;
 let suggestionRequest = 0;
-function hideSuggestions() { for(const {suggestions} of searchSurfaces){suggestions.hidden=true;suggestions.replaceChildren();} }
-function syncSearchInputs(value,source=null){for(const {input} of searchSurfaces)if(input!==source)input.value=value;}
+function hideSuggestions() { if (searchSuggestions) { searchSuggestions.hidden = true; searchSuggestions.replaceChildren(); } }
 function storeSearchResult(result) {
   if (!result) return;
   patchProject({ locationLabel:result.locationLabel ?? result.label ?? '', municipality:result.municipality ?? '', province:result.province ?? '', region:result.region ?? '' });
@@ -489,9 +482,9 @@ async function runSearch(query) {
     return null;
   }
 }
-function renderSuggestions(items,input,suggestions) {
-  if (!suggestions) return;
-  suggestions.replaceChildren();
+function renderSuggestions(items) {
+  if (!searchSuggestions) return;
+  searchSuggestions.replaceChildren();
   for (const item of items) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -499,7 +492,7 @@ function renderSuggestions(items,input,suggestions) {
     button.setAttribute('role', 'option');
     button.textContent = item.label;
     button.addEventListener('click', async () => {
-      input.value=item.label;syncSearchInputs(item.label,input);
+      if (searchInput) searchInput.value = item.label;
       hideSuggestions();
       try {
         const result=await mapApi?.searchSuggestion?.(item)??await mapApi?.search(item.label);
@@ -509,20 +502,24 @@ function renderSuggestions(items,input,suggestions) {
         setStatus('Ricerca momentaneamente non disponibile. Puoi navigare manualmente sulla mappa.');
       }
     });
-    suggestions.append(button);
+    searchSuggestions.append(button);
   }
-  suggestions.hidden = items.length === 0;
+  searchSuggestions.hidden = items.length === 0;
 }
-for(const surface of searchSurfaces){
-  surface.input.addEventListener('input',()=>{
-    const query=surface.input.value.trim();syncSearchInputs(surface.input.value,surface.input);clearTimeout(suggestionTimer);
-    if(query.length<3){hideSuggestions();return;}
-    const requestId=++suggestionRequest;
-    suggestionTimer=setTimeout(async()=>{try{const items=await mapApi?.suggest(query)??[];if(requestId===suggestionRequest&&surface.input.value.trim()===query)renderSuggestions(items,surface.input,surface.suggestions);}catch{if(requestId===suggestionRequest)hideSuggestions();}},280);
-  });
-  surface.form.addEventListener('submit',async event=>{event.preventDefault();hideSuggestions();await runSearch(surface.input.value??'');});
-}
-document.addEventListener('click',event=>{if(!event.target.closest('.search-shell,.map-search-control')){hideSuggestions();mapSearchAction.close();}});
+searchInput?.addEventListener('input', () => {
+  const query = searchInput.value.trim();
+  clearTimeout(suggestionTimer);
+  if (query.length < 3) { hideSuggestions(); return; }
+  const requestId = ++suggestionRequest;
+  suggestionTimer = setTimeout(async () => {
+    try {
+      const items = await mapApi?.suggest(query) ?? [];
+      if (requestId === suggestionRequest && searchInput.value.trim() === query) renderSuggestions(items);
+    } catch { if (requestId === suggestionRequest) hideSuggestions(); }
+  }, 280);
+});
+$('#search-form')?.addEventListener('submit', async (event) => { event.preventDefault(); hideSuggestions(); await runSearch(searchInput?.value ?? ''); });
+document.addEventListener('click', (event) => { if (!event.target.closest('.search-shell')) hideSuggestions(); });
 const cadastreMenu=createCadastreMenu({
   document,isActive:()=>Boolean(state.map?.cadastralVisible),
   setActive:(next)=>{state={...state,map:{...state.map,cadastralVisible:next}};persist();mapApi?.setCadastralVisible(next);track('cadastre_toggled',{visible:next});},
@@ -701,8 +698,6 @@ mobileUi = createMobileUI({
 desktopLibraryUi=createDesktopLibraryUI({
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
-  renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
-  deleteField:(field)=>removeMobileField(field.id),
   loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject
 });

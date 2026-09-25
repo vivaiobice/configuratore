@@ -60,10 +60,12 @@ export function createDesktopFieldSelectors({document=globalThis.document,onSele
 
 export function createDesktopMapSearchAction({document=globalThis.document}={}){
  const button=document?.querySelector?.('#map-search-button');
- const input=document?.querySelector?.('#search-input');
- function activate(){input?.scrollIntoView?.({block:'center',behavior:'smooth'});input?.focus?.();input?.select?.();}
+ const panel=document?.querySelector?.('#map-search-form');
+ const input=document?.querySelector?.('#map-search-input');
+ function setOpen(open){if(!panel)return;panel.hidden=!open;button?.setAttribute?.('aria-expanded',String(open));button?.closest?.('.map-search-control')?.classList?.toggle('is-open',open);if(open){input?.focus?.();input?.select?.();}}
+ function activate(){setOpen(Boolean(panel?.hidden));}
  function mount(){button?.addEventListener('click',activate);return controller;}
- const controller={mount,activate};return controller;
+ const controller={mount,activate,close:()=>setOpen(false)};return controller;
 }
 
 export function createSaveFeedback(button,{idleLabel='Salva il progetto'}={}){

@@ -80,5 +80,20 @@ export function createAuthService({client,backend,storage=globalThis.localStorag
     const result=await client.auth.updateUser({password:String(password)});if(result.error)throw result.error;return refresh();
   }
 
-  return {getState:()=>state,subscribe(listener){listeners.add(listener);listener(state);return()=>listeners.delete(listener);},refresh,register,login,logout,requestPasswordReset,completePasswordReset,resumePendingTransfer};
+  async function updateProfile(input={}){
+    if(state.kind!=='user'||!state.user?.id)throw new Error('Accedi per aggiornare il profilo');
+    const clean=value=>String(value??'').trim().slice(0,160);
+    const firstName=clean(input.firstName),lastName=clean(input.lastName);
+    const row=await backend.upsertProfile({
+      user_id:state.user.id,owner_kind:state.isAdmin?'admin':'user',
+      display_name:clean([firstName,lastName].filter(Boolean).join(' '))||state.displayName,
+      username:state.username,
+      first_name:firstName,last_name:lastName,company_name:clean(input.companyName),address:clean(input.address),
+      postal_code:clean(input.postalCode).slice(0,16),city:clean(input.city),province:clean(input.province).toUpperCase().slice(0,2),
+      vat_number:clean(input.vatNumber).slice(0,32),phone:clean(input.phone).slice(0,32),updated_at:new Date().toISOString()
+    });
+    return emit({...profileView({user:state.user},row),transfer:state.transfer});
+  }
+
+  return {getState:()=>state,subscribe(listener){listeners.add(listener);listener(state);return()=>listeners.delete(listener);},refresh,register,login,logout,requestPasswordReset,completePasswordReset,updateProfile,resumePendingTransfer};
 }

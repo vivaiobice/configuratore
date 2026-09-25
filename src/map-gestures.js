@@ -39,12 +39,17 @@ export function installTrackpadRotation(map, { touchRotation = false } = {}) {
     const delta = wheelRotationDelta(event);
     if (delta) {
       event.preventDefault?.();
+      event.stopImmediatePropagation?.();
       map.setBearing?.(map.getBearing() + delta);
       return;
     }
     const pan=trackpadPanDelta(event);
     if (!pan) return;
     event.preventDefault?.();
+    // MapLibre also listens to wheel events for zoom. Stop that listener only
+    // for pixel-precise trackpad pans; ctrl+wheel pinch and mouse wheel remain
+    // native because trackpadPanDelta deliberately rejects them.
+    event.stopImmediatePropagation?.();
     map.panBy?.(pan,{duration:0});
   };
 

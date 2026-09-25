@@ -226,7 +226,7 @@ export function createBackend(client) {
       return result.data;
     },
     async getProfile(userId) {
-      const result = await client.from('profiles').select('display_name,username,owner_kind,first_name,last_name,company_name,address,postal_code,city,province,vat_number,phone').eq('user_id', userId).maybeSingle();
+      const result = await client.from('profiles').select('display_name,username,owner_kind').eq('user_id', userId).maybeSingle();
       if (result.error) throw result.error;
       return result.data;
     },

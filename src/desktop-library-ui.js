@@ -7,10 +7,29 @@ export function createDesktopLibraryUI(api){
 
   function close(){if(root)root.hidden=true;}
   function fieldButton(field){
-    const button=document.createElement('button');button.type='button';button.className='desktop-library-item';button.dataset.desktopField=field.id;
+    const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopField=field.id;
+    const main=document.createElement('div');main.className='desktop-library-item-main';
     const title=document.createElement('strong');title.textContent=field.label||'Campo';
     const detail=document.createElement('span');detail.textContent=Array.isArray(field.geometry)&&field.geometry.length>=4?'Perimetro salvato':'Perimetro da completare';
-    button.append(title,detail);button.addEventListener('click',()=>{api.selectField?.(field.id);close();});return button;
+    main.append(title,detail);
+    const actions=document.createElement('div');actions.className='desktop-library-item-actions';
+    const open=document.createElement('button');open.type='button';open.dataset.fieldAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.selectField?.(field.id);close();});
+    const rename=document.createElement('button');rename.type='button';rename.dataset.fieldAction='rename';rename.textContent='Rinomina';
+    const remove=document.createElement('button');remove.type='button';remove.dataset.fieldAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
+    rename.addEventListener('click',()=>{
+      if(row.querySelector('.desktop-library-rename'))return;
+      const editor=document.createElement('div');editor.className='desktop-library-rename';
+      const input=document.createElement('input');input.value=field.label||'Campo';input.maxLength=80;input.setAttribute('aria-label','Nuovo nome campo');
+      const confirm=document.createElement('button');confirm.type='button';confirm.dataset.fieldAction='confirm-rename';confirm.textContent='Salva';
+      const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annulla';cancel.addEventListener('click',()=>editor.remove());
+      confirm.addEventListener('click',async()=>{try{await api.renameField?.(field,input.value);render();root.querySelector('#desktop-library-feedback').textContent='Campo rinominato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Rinomina non riuscita: ${text(error.message)}`;}});
+      editor.append(input,confirm,cancel);row.append(editor);input.focus?.();input.select?.();
+    });
+    remove.addEventListener('click',async()=>{
+      const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il campo “${field.label||'Campo'}”?`))return;
+      try{await api.deleteField?.(field);render();root.querySelector('#desktop-library-feedback').textContent='Campo eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
+    });
+    actions.append(open,rename,remove);row.append(main,actions);return row;
   }
   function projectButton(item){
     const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopProject=item.id;
