@@ -27,7 +27,7 @@ test('mobile hides zoom buttons and exposes only the north reset control',()=>{
  assert.doesNotMatch(ui,/move\(\$\('#rotate-right'\)/);
 });
 test('release cache bust advances mobile files without changing desktop stylesheet',()=>{
- assert.match(html,/mobile\.css\?v=45/);assert.match(html,/src\/app\.js\?v=50/);assert.match(html,/styles\.css\?v=18/);
+ assert.match(html,/mobile\.css\?v=45/);assert.match(html,/src\/app\.js\?v=51/);assert.match(html,/styles\.css\?v=18/);
 });
 test('map fills the complete mobile viewport behind the floating dock',()=>{
  assert.match(css,/#mobile-map-host\{[^}]*inset:0/s);

@@ -248,6 +248,27 @@ export function interiorLabelPoint(coords) {
   const maxLat = Math.max(...ys);
   const center = [(minLon + maxLon) / 2, (minLat + maxLat) / 2];
   if (pointInPolygon(center, coords)) return center;
+  const scanLatitudes=[...new Set(raw.map(point=>Number(point[1])).filter(Number.isFinite))]
+    .sort((a,b)=>a-b)
+    .flatMap((value,index,values)=>index<values.length-1?[(value+values[index+1])/2]:[]);
+  let scanPoint=null;
+  let scanWidth=-Infinity;
+  for(const latitude of scanLatitudes){
+    const intersections=[];
+    for(let index=0;index<raw.length;index+=1){
+      const start=raw[index],end=raw[(index+1)%raw.length];
+      if((start[1]>latitude)===(end[1]>latitude))continue;
+      const ratio=(latitude-start[1])/(end[1]-start[1]);
+      intersections.push(start[0]+ratio*(end[0]-start[0]));
+    }
+    intersections.sort((a,b)=>a-b);
+    for(let index=0;index+1<intersections.length;index+=2){
+      const width=intersections[index+1]-intersections[index];
+      const candidate=[(intersections[index]+intersections[index+1])/2,latitude];
+      if(width>scanWidth&&pointInPolygon(candidate,coords)){scanPoint=candidate;scanWidth=width;}
+    }
+  }
+  if(scanPoint)return scanPoint;
   let best = null;
   let bestDistance = Infinity;
   const steps = 20;

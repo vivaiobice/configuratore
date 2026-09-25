@@ -5,87 +5,88 @@ const date=value=>value?new Date(value).toLocaleDateString('it-IT'):'—';
 const lifecycle=value=>value==='planted'?'Impianto realizzato / archivio storico':'Da realizzare';
 
 const COLUMNS={
-  fields:[
-    ['Data progetto',row=>date(row.projectDate)],['Nome progetto',row=>row.projectName||'—'],['Numero progetto',row=>row.projectCode||'—'],
-    ['Cliente',row=>row.client||'—'],['Località impianto',row=>row.location||row.municipality||'—'],['Anno',row=>row.year||'—'],
-    ['Stato impianto',row=>lifecycle(row.plantingStatus)],['Vitigno',row=>row.grapeVariety||'—'],['Clone',row=>row.cloneSelection||'—'],
-    ['Portainnesto',row=>row.rootstock||'—'],['Superficie',row=>area(row.areaM2)],['Barbatelle calcolate',row=>number(row.calculatedPlants)],
-    ['Quantità commerciale',row=>number(row.commercialPlants)]
-  ],
-  projects:[
-    ['Data',row=>date(row.date)],['Numero progetto',row=>row.code||'—'],['Nome progetto',row=>row.name||'—'],['Azienda / cliente',row=>row.client||'—'],
-    ['Stato',row=>STATUS_LABELS[row.status]||row.status||'—'],['Campi',row=>number(row.fieldCount)],['Superficie totale',row=>area(row.areaM2)],
-    ['Piante commerciali',row=>number(row.commercialPlants)],['Preventivo',row=>row.quoteRequested?(row.quoteNumber||'Richiesto · numero da assegnare'):'No']
-  ],
-  clients:[
-    ['Cliente / utente',row=>row.displayName||'—'],['E-mail',row=>row.email||'—'],['Telefono',row=>row.phone||'—'],
-    ['Progetti',row=>number(row.projectCount)],['Campi',row=>number(row.fieldCount)],['Superficie totale',row=>area(row.areaM2)],
-    ['Barbatelle totali',row=>number(row.commercialPlants)],['Da piantare',row=>number(row.plantsToPlant)]
-  ]
+  fields:[['Data progetto',row=>date(row.projectDate)],['Nome progetto',row=>row.projectName||'—'],['Numero progetto',row=>row.projectCode||'—'],['Cliente',row=>row.client||'—'],['Località impianto',row=>row.location||row.municipality||'—'],['Anno',row=>row.year||'—'],['Stato impianto',row=>lifecycle(row.plantingStatus)],['Vitigno',row=>row.grapeVariety||'—'],['Clone',row=>row.cloneSelection||'—'],['Portainnesto',row=>row.rootstock||'—'],['Superficie',row=>area(row.areaM2)],['Barbatelle calcolate',row=>number(row.calculatedPlants)],['Quantità commerciale',row=>number(row.commercialPlants)]],
+  projects:[['Data',row=>date(row.date)],['Numero progetto',row=>row.code||'—'],['Nome progetto',row=>row.name||'—'],['Azienda / cliente',row=>row.client||'—'],['Stato',row=>STATUS_LABELS[row.status]||row.status||'—'],['Campi',row=>number(row.fieldCount)],['Superficie totale',row=>area(row.areaM2)],['Piante commerciali',row=>number(row.commercialPlants)],['Preventivo',row=>row.quoteRequested?(row.quoteNumber||'Richiesto · numero da assegnare'):'No']],
+  clients:[['Cliente / utente',row=>row.displayName||'—'],['E-mail',row=>row.email||'—'],['Telefono',row=>row.phone||'—'],['Progetti',row=>number(row.projectCount)],['Campi',row=>number(row.fieldCount)],['Superficie totale',row=>area(row.areaM2)],['Barbatelle totali',row=>number(row.commercialPlants)],['Da piantare',row=>number(row.plantsToPlant)]]
 };
-
 const TITLES={fields:'Campi',projects:'Progetti',clients:'Clienti / Utenti'};
 
-export function createAdminViews({document=globalThis.document,onSelect=()=>{}}={}){
+export function createAdminViews({document=globalThis.document,onSelect=()=>{},onFieldPreviewOpen=()=>null,onProjectAction=async()=>null,onFieldLocationSave=async()=>null}={}){
   if(!document)throw new TypeError('Document required');
   const head=document.querySelector('#admin-table-head'),body=document.querySelector('#admin-table-body');
-  const detail=document.querySelector('#admin-detail'),detailTitle=document.querySelector('#detail-title'),detailGrid=document.querySelector('#detail-grid');
-  const detailChildren=document.querySelector('#detail-children');
-  let selectedRowId='';
+  const detail=document.querySelector('#admin-detail'),detailTitle=document.querySelector('#detail-title'),detailGrid=document.querySelector('#detail-grid'),detailChildren=document.querySelector('#detail-children');
+  const openProjectIds=new Set(),openFieldRowIds=new Set(),previewDisposers=new Map();
+  let selectedRowId='',fieldPreviewDisposer=null,currentRows=[],currentKind='fields';
 
-  function detailItem(label,value){
-    const box=document.createElement('div'),name=document.createElement('span'),data=document.createElement('strong');
-    name.textContent=label;data.textContent=value??'—';box.append(name,data);return box;
+  function detailItem(label,value){const box=document.createElement('div'),name=document.createElement('span'),data=document.createElement('strong');name.textContent=label;data.textContent=value??'—';box.append(name,data);return box;}
+  function dispose(value){if(typeof value==='function')value();else value?.destroy?.();}
+  function disposeFieldPreview(){dispose(fieldPreviewDisposer);fieldPreviewDisposer=null;}
+  function disposeNested(rowId){dispose(previewDisposers.get(rowId));previewDisposers.delete(rowId);}
+  function disposeProject(projectId){for(const rowId of [...previewDisposers.keys()])if(rowId.startsWith(`${projectId}:`))disposeNested(rowId);}
+  function clearDetail(){selectedRowId='';disposeFieldPreview();if(detail)detail.hidden=true;if(detailGrid)detailGrid.replaceChildren();if(detailChildren)detailChildren.replaceChildren();}
+  function fillHead(kind){const columns=COLUMNS[kind]??COLUMNS.fields;if(head){const tr=document.createElement('tr');for(const [label] of columns){const th=document.createElement('th');th.textContent=label;tr.append(th);}head.replaceChildren(tr);}return columns;}
+  function dataRow(row,columns){const tr=document.createElement('tr');tr.dataset.rowId=row.rowId;tr.classList.toggle('selected',row.rowId===selectedRowId);for(const [,format] of columns){const td=document.createElement('td');td.textContent=format(row);tr.append(td);}return tr;}
+
+  function fieldGrid(row){const grid=document.createElement('div');grid.className='admin-detail-grid';grid.append(
+    detailItem('Progetto',row.projectName),detailItem('Codice progetto',row.projectCode),detailItem('Cliente',row.client),detailItem('Località impianto',row.location||row.municipality||'—'),detailItem('Anno',row.year||'—'),detailItem('Stato impianto',lifecycle(row.plantingStatus)),detailItem('Superficie',area(row.areaM2)),detailItem('Perimetro',`${number(row.perimeterM)} m`),detailItem('Filari',number(row.rowCount)),detailItem('Metri lineari',`${number(row.rowLinearM)} m`),detailItem('Barbatelle calcolate',number(row.calculatedPlants)),detailItem('Quantità commerciale',number(row.commercialPlants)),detailItem('Vitigno',row.grapeVariety||'Da definire'),detailItem('Clone / selezione',row.cloneSelection||'Da definire'),detailItem('Portainnesto',row.rootstock||'Da definire'),detailItem('Richiesta materiale',row.field?.materialRequestNote||'—'),detailItem('Pali di testa',number(row.headPosts)),detailItem('Pali intermedi',number(row.intermediatePosts)),detailItem('Pali totali',number(row.totalPosts)),detailItem('Geometria',row.geometryValid?'Disponibile':'Geometria non disponibile')
+  );return grid;}
+
+  function locationEditor(row){
+    const form=document.createElement('form');form.className='admin-location-form';form.dataset.fieldLocationForm=row.rowId;
+    const title=document.createElement('h4');title.textContent='Località del campo';const grid=document.createElement('div');grid.className='admin-detail-grid';
+    const values={municipality:row.field?.municipality??row.municipality??'',province:row.field?.province??row.province??'',region:row.field?.region??row.region??'',locationLabel:row.field?.locationLabel??row.location??''};
+    for(const [name,label] of [['municipality','Località / comune'],['province','Provincia'],['region','Regione'],['locationLabel','Descrizione completa']]){const control=document.createElement('label');control.textContent=label;const input=document.createElement('input');input.name=name;input.value=String(values[name]??'');if(name==='municipality')input.required=true;control.append(input);grid.append(control);}
+    const save=document.createElement('button');save.type='submit';save.className='primary-button';save.textContent='Salva località';const feedback=document.createElement('p');feedback.className='admin-inline-feedback';
+    form.addEventListener('submit',async event=>{event.preventDefault();event.stopPropagation();const location={};for(const name of ['municipality','province','region','locationLabel'])location[name]=form.querySelector(`[name="${name}"]`)?.value??'';try{const result=await onFieldLocationSave(row,location);feedback.textContent=result?.message??'Località aggiornata.';}catch(error){feedback.textContent=`Località non salvata: ${error.message}`;}});
+    form.append(title,grid,save,feedback);return form;
   }
 
-  function clearDetail(){selectedRowId='';if(detail)detail.hidden=true;if(detailGrid)detailGrid.replaceChildren();if(detailChildren)detailChildren.replaceChildren();}
+  function closeNested(panel,rowId){disposeNested(rowId);openFieldRowIds.delete(rowId);panel.remove();}
+  function mountNested(entry,row){
+    if(entry.querySelector(`[data-field-panel="${row.rowId}"]`))return;
+    const panel=document.createElement('article');panel.className='admin-nested-field';panel.dataset.fieldPanel=row.rowId;
+    const bar=document.createElement('div');bar.className='admin-head';const title=document.createElement('h4');title.textContent=row.label||'Campo';const close=document.createElement('button');close.type='button';close.className='secondary-button';close.dataset.fieldClose=row.rowId;close.textContent='Chiudi campo';close.addEventListener('click',event=>{event.stopPropagation();closeNested(panel,row.rowId);});bar.append(title,close);panel.append(bar,fieldGrid(row),locationEditor(row));
+    if(row.geometryValid){const mapHost=document.createElement('div');mapHost.className='admin-field-map';mapHost.dataset.fieldMap=row.rowId;panel.append(mapHost);const preview=onFieldPreviewOpen(row,mapHost);previewDisposers.set(row.rowId,preview);if(preview?.available===false){mapHost.classList.add('admin-map-placeholder');mapHost.textContent='Anteprima cartografica non disponibile';}}else{const placeholder=document.createElement('p');placeholder.className='admin-map-placeholder';placeholder.textContent='Geometria non disponibile';panel.append(placeholder);}
+    entry.append(panel);
+  }
+
+  function renderNotes(list,notes=[]){list.replaceChildren();if(!notes.length){const item=document.createElement('li');item.textContent='Nessuna nota interna.';list.append(item);return;}for(const note of notes){const item=document.createElement('li');item.textContent=`${new Date(note.created_at).toLocaleString('it-IT')} — ${note.body}`;list.append(item);}}
+  async function projectAction(action,row,payload,feedback,notes){try{const result=await onProjectAction(action,row,payload);if(result?.notes&&notes)renderNotes(notes,result.notes);if(result?.message)feedback.textContent=result.message;return result;}catch(error){feedback.textContent=error.message||'Operazione non riuscita.';return null;}}
+  function projectSignature(row){return JSON.stringify([row.status,row.fieldCount,row.areaM2,row.commercialPlants,(row.fields??[]).map(field=>[field.rowId,field.field??field])]);}
+
+  function buildProjectDetail(row,columns){
+    const tr=document.createElement('tr');tr.dataset.projectDetail=row.rowId;const td=document.createElement('td');td.colSpan=columns.length;const panel=document.createElement('article');panel.className='admin-project-panel';
+    const bar=document.createElement('div');bar.className='admin-head';const title=document.createElement('h3');title.textContent=`${row.name||'Progetto'} · ${row.code||'—'}`;const close=document.createElement('button');close.type='button';close.className='secondary-button';close.textContent='Chiudi progetto';close.addEventListener('click',()=>{openProjectIds.delete(row.rowId);for(const field of row.fields??[]){openFieldRowIds.delete(field.rowId);disposeNested(field.rowId);}renderSection('projects',currentRows);});bar.append(title,close);panel.append(bar);
+    const summary=document.createElement('div');summary.className='admin-detail-grid';summary.append(detailItem('Cliente',row.client),detailItem('Stato CRM',STATUS_LABELS[row.status]||row.status),detailItem('Campi',number(row.fieldCount)),detailItem('Superficie totale',area(row.areaM2)),detailItem('Piante commerciali',number(row.commercialPlants)),detailItem('Preventivo',row.quoteRequested?(row.quoteNumber||'Richiesto · numero da assegnare'):'No'));panel.append(summary);
+    const feedback=document.createElement('p');feedback.className='admin-inline-feedback';const actions=document.createElement('div');actions.className='admin-detail-actions';const status=document.createElement('select');for(const [value,label] of Object.entries(STATUS_LABELS)){const option=document.createElement('option');option.value=value;option.textContent=label;option.selected=value===row.status;status.append(option);}const save=document.createElement('button');save.type='button';save.className='primary-button';save.textContent='Aggiorna stato';save.addEventListener('click',()=>projectAction('status',row,{status:status.value},feedback));const restore=document.createElement('button');restore.type='button';restore.className='secondary-button';restore.textContent='Ripristina progetto';restore.addEventListener('click',()=>projectAction('restore-project',row,{},feedback));const revision=document.createElement('input');revision.type='number';revision.min='1';revision.placeholder='Revisione';const restoreRevision=document.createElement('button');restoreRevision.type='button';restoreRevision.className='secondary-button';restoreRevision.textContent='Ripristina revisione';restoreRevision.addEventListener('click',()=>projectAction('restore-revision',row,{revisionNumber:Number(revision.value)},feedback));actions.append(status,save,restore,revision,restoreRevision);panel.append(actions);
+    const fields=document.createElement('section');fields.className='admin-project-fields';const fieldsTitle=document.createElement('h3');fieldsTitle.textContent='Campi del progetto';fields.append(fieldsTitle);for(const field of row.fields??[]){const entry=document.createElement('div');entry.className='admin-field-entry';const toggle=document.createElement('button');toggle.type='button';toggle.className='admin-child-field';toggle.dataset.fieldToggle=field.rowId;toggle.textContent=`${field.label} · ${area(field.areaM2)} · ${lifecycle(field.plantingStatus)}`;toggle.addEventListener('click',()=>{const existing=entry.querySelector(`[data-field-panel="${field.rowId}"]`);if(existing)closeNested(existing,field.rowId);else{openFieldRowIds.add(field.rowId);mountNested(entry,field);}});entry.append(toggle);if(openFieldRowIds.has(field.rowId))mountNested(entry,field);fields.append(entry);}panel.append(fields);
+    const notesTitle=document.createElement('h3');notesTitle.textContent='Note interne';const notes=document.createElement('ul');notes.className='admin-notes';renderNotes(notes,[]);const noteForm=document.createElement('form');noteForm.className='admin-note-form';const noteBody=document.createElement('textarea');noteBody.required=true;noteBody.placeholder='Nota interna Vivai Obice';const noteButton=document.createElement('button');noteButton.className='secondary-button';noteButton.textContent='Aggiungi nota';noteForm.append(noteBody,noteButton);noteForm.addEventListener('submit',async event=>{event.preventDefault();const result=await projectAction('add-note',row,{body:noteBody.value},feedback,notes);if(result)noteBody.value='';});panel.append(notesTitle,notes,noteForm,feedback);void projectAction('load-notes',row,{},feedback,notes);
+    td.append(panel);tr.append(td);tr.dataset.signature=projectSignature(row);return tr;
+  }
+
+  function renderProjects(rows,columns){
+    const validProjects=new Set(rows.map(row=>row.rowId));for(const projectId of [...openProjectIds])if(!validProjects.has(projectId)){openProjectIds.delete(projectId);disposeProject(projectId);for(const rowId of [...openFieldRowIds])if(rowId.startsWith(`${projectId}:`))openFieldRowIds.delete(rowId);}
+    const existing=new Map([...body.querySelectorAll('tr[data-project-detail]')].map(node=>[node.dataset.projectDetail,node]));const fragment=document.createDocumentFragment();
+    for(const row of rows){const main=dataRow(row,columns);main.addEventListener('click',()=>{if(openProjectIds.has(row.rowId)){openProjectIds.delete(row.rowId);disposeProject(row.rowId);for(const field of row.fields??[])openFieldRowIds.delete(field.rowId);}else openProjectIds.add(row.rowId);renderSection('projects',currentRows);});fragment.append(main);if(openProjectIds.has(row.rowId)){let detailRow=existing.get(row.rowId);if(!detailRow||detailRow.dataset.signature!==projectSignature(row)){disposeProject(row.rowId);detailRow=buildProjectDetail(row,columns);}fragment.append(detailRow);}}
+    body.replaceChildren(fragment);
+  }
 
   function renderSection(kind,rows=[]){
-    const columns=COLUMNS[kind]??COLUMNS.fields;
-    const title=document.querySelector('#admin-list-title');if(title)title.textContent=TITLES[kind]??'Archivio';
-    if(head){const tr=document.createElement('tr');for(const [label] of columns){const th=document.createElement('th');th.textContent=label;tr.append(th);}head.replaceChildren(tr);}
-    if(body){body.replaceChildren();for(const row of rows){const tr=document.createElement('tr');tr.dataset.rowId=row.rowId;tr.classList.toggle('selected',row.rowId===selectedRowId);for(const [,format] of columns){const td=document.createElement('td');td.textContent=format(row);tr.append(td);}tr.addEventListener('click',()=>onSelect(kind,row));body.append(tr);}}
-    if(selectedRowId&&!rows.some(row=>row.rowId===selectedRowId))clearDetail();
+    if(currentKind==='projects'&&kind!=='projects'){for(const projectId of openProjectIds)disposeProject(projectId);openProjectIds.clear();openFieldRowIds.clear();}
+    currentKind=kind;currentRows=rows;const columns=fillHead(kind);const title=document.querySelector('#admin-list-title');if(title)title.textContent=TITLES[kind]??'Archivio';if(!body)return;if(kind==='projects'){renderProjects(rows,columns);return;}
+    const fragment=document.createDocumentFragment();for(const row of rows){const tr=dataRow(row,columns);tr.addEventListener('click',()=>onSelect(kind,row));fragment.append(tr);}body.replaceChildren(fragment);if(selectedRowId&&!rows.some(row=>row.rowId===selectedRowId))clearDetail();
   }
 
-  function renderFieldChildren(fields=[]){
-    if(!detailChildren)return;
-    detailChildren.replaceChildren();
-    if(!fields.length)return;
-    const title=document.createElement('h3');title.textContent='Campi del progetto';detailChildren.append(title);
-    for(const field of fields){const button=document.createElement('button');button.type='button';button.className='admin-child-field';button.textContent=`${field.label} · ${area(field.areaM2)} · ${lifecycle(field.plantingStatus)}`;button.addEventListener('click',()=>onSelect('fields',field));detailChildren.append(button);}
-  }
-
+  function renderFieldChildren(fields=[]){if(!detailChildren)return;detailChildren.replaceChildren();if(!fields.length)return;const title=document.createElement('h3');title.textContent='Campi del progetto';detailChildren.append(title);for(const field of fields){const button=document.createElement('button');button.type='button';button.className='admin-child-field';button.textContent=`${field.label} · ${area(field.areaM2)} · ${lifecycle(field.plantingStatus)}`;button.addEventListener('click',()=>onSelect('fields',field));detailChildren.append(button);}}
   function renderDetail(kind,row){
-    if(!row||!detail||!detailGrid)return;
-    selectedRowId=row.rowId;detail.hidden=false;detailGrid.replaceChildren();if(detailChildren)detailChildren.replaceChildren();
-    const actions=document.querySelector('.admin-project-actions');if(actions)actions.hidden=kind!=='projects';
-    if(kind==='fields'){
-      detailTitle.textContent=`${row.label||'Campo'} · ${row.projectCode||row.projectName||'Progetto'}`;
-      detailGrid.append(
-        detailItem('Progetto',row.projectName),detailItem('Codice progetto',row.projectCode),detailItem('Cliente',row.client),
-        detailItem('Località impianto',row.location||row.municipality||'—'),detailItem('Anno',row.year||'—'),detailItem('Stato impianto',lifecycle(row.plantingStatus)),
-        detailItem('Superficie',area(row.areaM2)),detailItem('Perimetro',`${number(row.perimeterM)} m`),detailItem('Filari',number(row.rowCount)),
-        detailItem('Metri lineari',`${number(row.rowLinearM)} m`),detailItem('Barbatelle calcolate',number(row.calculatedPlants)),detailItem('Quantità commerciale',number(row.commercialPlants)),
-        detailItem('Vitigno',row.grapeVariety||'Da definire'),detailItem('Clone / selezione',row.cloneSelection||'Da definire'),detailItem('Portainnesto',row.rootstock||'Da definire'),
-        detailItem('Richiesta materiale',row.field?.materialRequestNote||'—'),
-        detailItem('Pali di testa',number(row.headPosts)),detailItem('Pali intermedi',number(row.intermediatePosts)),detailItem('Pali totali',number(row.totalPosts)),
-        detailItem('Geometria',row.geometryValid?'Disponibile':'Geometria non disponibile')
-      );
-    }else if(kind==='projects'){
-      detailTitle.textContent=`${row.name||'Progetto'} · ${row.code||'—'}`;
-      detailGrid.append(detailItem('Cliente',row.client),detailItem('Stato CRM',STATUS_LABELS[row.status]||row.status),detailItem('Campi',number(row.fieldCount)),
-        detailItem('Superficie totale',area(row.areaM2)),detailItem('Piante commerciali',number(row.commercialPlants)),detailItem('Preventivo',row.quoteRequested?(row.quoteNumber||'Richiesto · numero da assegnare'):'No'));
-      renderFieldChildren(row.fields);
-    }else{
-      detailTitle.textContent=row.displayName||'Cliente';
-      detailGrid.append(detailItem('E-mail',row.email||'—'),detailItem('Telefono',row.phone||'—'),detailItem('Località',row.city||'—'),detailItem('Provincia',row.province||'—'),
-        detailItem('Progetti',number(row.projectCount)),detailItem('Campi',number(row.fieldCount)),detailItem('Superficie totale',area(row.areaM2)),
-        detailItem('Barbatelle totali',number(row.commercialPlants)),detailItem('Barbatelle da piantare',number(row.plantsToPlant)));
-      renderFieldChildren(row.fields);
-    }
-    detail.scrollIntoView?.({behavior:'smooth',block:'start'});
+    if(!row||!detail||!detailGrid)return;selectedRowId=row.rowId;for(const tableRow of body?.querySelectorAll?.('tr[data-row-id]')??[])tableRow.classList.toggle('selected',tableRow.dataset.rowId===selectedRowId);disposeFieldPreview();detail.hidden=false;detailGrid.replaceChildren();if(detailChildren)detailChildren.replaceChildren();for(const action of document.querySelectorAll('.admin-project-actions'))action.hidden=kind!=='projects';const locationForm=document.querySelector('#field-location-form');if(locationForm){locationForm.hidden=kind!=='fields';if(kind==='fields')for(const key of ['locationLabel','municipality','province','region']){const input=locationForm.elements.namedItem(key);if(input)input.value=String(row.field?.[key]??(key==='locationLabel'?row.location:row[key])??'');}}
+    if(kind==='fields'){detailTitle.textContent=`${row.label||'Campo'} · ${row.projectCode||row.projectName||'Progetto'}`;const grid=fieldGrid(row);detailGrid.append(...grid.children);const host=document.querySelector('#detail-field-map');if(host){host.hidden=false;host.classList.remove('admin-map-placeholder');host.textContent='';if(row.geometryValid){fieldPreviewDisposer=onFieldPreviewOpen(row,host);if(fieldPreviewDisposer?.available===false){host.classList.add('admin-map-placeholder');host.textContent='Anteprima cartografica non disponibile';}}else{host.classList.add('admin-map-placeholder');host.textContent='Geometria non disponibile';}}}
+    else if(kind==='projects'){detailTitle.textContent=`${row.name||'Progetto'} · ${row.code||'—'}`;detailGrid.append(detailItem('Cliente',row.client),detailItem('Stato CRM',STATUS_LABELS[row.status]||row.status),detailItem('Campi',number(row.fieldCount)),detailItem('Superficie totale',area(row.areaM2)),detailItem('Piante commerciali',number(row.commercialPlants)));renderFieldChildren(row.fields);}
+    else{detailTitle.textContent=row.displayName||'Cliente';detailGrid.append(detailItem('E-mail',row.email||'—'),detailItem('Telefono',row.phone||'—'),detailItem('Località',row.city||'—'),detailItem('Provincia',row.province||'—'),detailItem('Progetti',number(row.projectCount)),detailItem('Campi',number(row.fieldCount)),detailItem('Superficie totale',area(row.areaM2)),detailItem('Barbatelle totali',number(row.commercialPlants)),detailItem('Barbatelle da piantare',number(row.plantsToPlant)));renderFieldChildren(row.fields);}
+    if(kind!=='projects')detail.scrollIntoView?.({behavior:'smooth',block:'start'});
   }
 
-  return {renderSection,renderDetail,clearDetail};
+  function getOpenState(){return {projects:[...openProjectIds],fields:[...openFieldRowIds]};}
+  function destroy(){clearDetail();for(const value of previewDisposers.values())dispose(value);previewDisposers.clear();openProjectIds.clear();openFieldRowIds.clear();}
+  return {renderSection,renderDetail,clearDetail,getOpenState,destroy};
 }

@@ -3,7 +3,7 @@ import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabe
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
-import {satelliteSources,satelliteLayers} from './satellite-style.js?v=50';
+import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';

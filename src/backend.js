@@ -1,4 +1,4 @@
-import { ensureProjectFields } from './fields.js?v=50';
+import { ensureProjectFields } from './fields.js?v=51';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function edgeFunctionError(error,fallback){

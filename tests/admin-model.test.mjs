@@ -180,3 +180,16 @@ test('modern project filters and locality fallbacks use field plans instead of s
  assert.equal(expandProjectFields([project])[0].location,'Alba');
  assert.deepEqual(filterProjects([project],{grapeVariety:'nebb',rootstock:'1103',minArea:1500,minPlants:800}).map(row=>row.id),['p1']);
 });
+
+test('field locality patch updates only the selected sibling and mirrors one-field legacy columns',async()=>{
+ const {patchAdminFieldLocation}=await import('../admin/admin-model.js');
+ const projects=[{id:'p1',municipality:'Old',field_plans:[{id:'f1',municipality:''},{id:'f2',municipality:'Sibling'}]},
+  {id:'p2',field_plans:[{id:'f1',municipality:'Other project'}]}];
+ const next=patchAdminFieldLocation(projects,{projectId:'p1',fieldId:'f1'},{municipality:'Comune',province:'CN',region:'Piemonte',locationLabel:'Comune, CN'});
+ assert.equal(next[0].field_plans[0].municipality,'Comune');
+ assert.equal(next[0].field_plans[1].municipality,'Sibling');
+ assert.equal(next[1].field_plans[0].municipality,'Other project');
+ assert.equal(next[0].municipality,'Old');
+ const single=patchAdminFieldLocation([{id:'one',field_plans:[{id:'only'}]}],{projectId:'one',fieldId:'only'},{municipality:'Borgo',province:'AT',region:'Piemonte',locationLabel:'Borgo, AT'});
+ assert.equal(single[0].municipality,'Borgo');assert.equal(single[0].location_label,'Borgo, AT');
+});

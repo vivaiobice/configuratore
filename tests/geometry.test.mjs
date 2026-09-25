@@ -52,6 +52,14 @@ test('pointInPolygon identifies clicks inside and outside a parcel', async () =>
   assert.equal(pointInPolygon([8.02,44.005], polygon), false);
 });
 
+test('interiorLabelPoint stays inside a very thin concave polygon', async()=>{
+  const {interiorLabelPoint,pointInPolygon}=await import('../src/geometry.js');
+  const polygon=[[0,0],[10,0],[10,.001],[.001,.001],[.001,10],[0,10],[0,0]];
+  const point=interiorLabelPoint(polygon);
+  assert.equal(pointInPolygon(point,polygon),true);
+  assert.notDeepEqual(point,polygon[0]);
+});
+
 
 test('sideMeasurements returns one measured midpoint for each polygon side', () => {
   const sides = sideMeasurements(square10m);

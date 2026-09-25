@@ -21,6 +21,18 @@ test('admin map uses the shared satellite imagery and geographic label style',()
  assert.doesNotMatch(source,/tile\.openstreetmap\.org/);
 });
 
+test('admin map uses yellow field overlays, GPS and selectable field focus',()=>{
+ const source=fs.readFileSync(new URL('../admin/admin-map.js',import.meta.url),'utf8');
+ assert.match(source,/new globalThis\.maplibregl\.GeolocateControl/);
+ assert.match(source,/#ffd42a/i);
+ assert.match(source,/'fill-opacity':\['case',[^\n]*0\.26,0\.16\]/);
+ assert.match(source,/showUserHeading:true/);
+ assert.match(source,/function focusField/);
+ assert.match(source,/setFeatureState/);
+ assert.match(source,/function clearSelection/);
+ assert.match(source,/function destroy/);
+});
+
 test('admin map model labels every field with field and project names',async()=>{
  const {projectsToFeatureCollection}=await import('../admin/admin-model.js');
  const fc=projectsToFeatureCollection([{id:'p1',name:'Progetto A',public_code:'VO-1',field_plans:[
@@ -35,7 +47,7 @@ test('admin map model labels every field with field and project names',async()=>
 
 test('admin shell scrolls and links back to the configurator with clickable KPI summaries',()=>{
  const html=fs.readFileSync(new URL('../admin/index.html',import.meta.url),'utf8');
- assert.match(html,/body\{overflow:auto/);
+ assert.match(html,/body\s*\{[^}]*overflow:\s*auto/);
  assert.match(html,/href="\.\.\/"[^>]*>[^<]*Torna al configuratore/);
  assert.match(html,/data-kpi="projects"/);
  assert.match(html,/data-kpi="fields"/);

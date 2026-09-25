@@ -844,3 +844,18 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
 - Migrazione V50 applicata e verificata esclusivamente sul progetto Supabase TEST; prova RPC eseguita
   dentro una transazione annullata. Nessuna pubblicazione automatica su un eventuale ambiente LIVE.
 - Gate finale V50: `568/568` test, nessun test saltato, controllo sintattico completo superato.
+
+## V51 — Località campo e navigazione amministrativa
+
+- La località è ora un dato canonico del singolo campo: viene risolta dal punto interno del perimetro,
+  salvata senza bloccare l'editor in caso di errore di rete e resta modificabile dall'amministratore.
+- Aggiunta RPC amministrativa idempotente con controllo `private.is_admin()`, revisione completa e
+  isolamento tramite coppia progetto/campo; migrazione applicata esclusivamente a Supabase TEST.
+- Mappa amministrativa ridimensionata e ravvicinata, GPS, perimetri gialli trasparenti e focus del campo
+  selezionato. Le località storiche mancanti vengono completate una sola volta.
+- Il dettaglio campo mostra satellitare, geometria, esclusioni e filari prodotti dal calcolatore reale.
+- I progetti e i campi dell'archivio si aprono e chiudono in modo indipendente mantenendo elenco, note,
+  stato CRM e ripristino revisioni nello stesso contesto.
+- Nessuna modifica al redesign mobile generale, pianificato per la release successiva.
+- Gate finale V51: `599/599` test, nessun test saltato, controllo sintattico completo e prova RPC
+  multi-campo/idempotente in transazione annullata; nessun dato fittizio è rimasto sul database TEST.

@@ -1,15 +1,15 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=50';
-import { createMobileUI } from './mobile-ui.js?v=50';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=50';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=51';
+import { createMobileUI } from './mobile-ui.js?v=51';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=49';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
-import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=50';
-import { initMap } from './map.js?v=50';
+import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
+import { initMap } from './map.js?v=51';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=50';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=50';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=51';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=51';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
@@ -17,7 +17,8 @@ import { createProjectSync } from './project-sync.js?v=34';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=50';
+import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=51';
+import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
 import { createAuthService } from './auth-service.js?v=49';
@@ -211,6 +212,14 @@ function patchMaterialProject(patch) {
   summarySaveFeedback.dirty();
   persist(); calculateAndRender(); renderFieldManager(); projectSync?.schedule('material_changed');
 }
+const fieldLocationCoordinator=createFieldLocationCoordinator({
+  resolve:resolveFieldLocation,
+  getField:id=>(ensureProjectFields(state.project).fields??[]).find(field=>String(field.id)===String(id)),
+  apply:(location,field)=>{
+    state={...state,project:updateProjectField(state.project,field.id??field.clientFieldId,location)};
+    summarySaveFeedback.dirty();persist();calculateAndRender();projectSync?.schedule('field_location_changed');
+  }
+});
 function patchGeometry(geometry, patch = {}) {
   const proposed = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
   state = { ...state, project:updateActiveFieldProject(state.project, { ...patch, geometry:proposed.geometry, orientationDeg:proposed.orientationDeg, orientationLocked:proposed.orientationLocked }) };
@@ -218,6 +227,7 @@ function patchGeometry(geometry, patch = {}) {
   syncOrientationControl();
   persist();
   calculateAndRender();
+  void fieldLocationCoordinator.refresh(activeField(state.project));
   void projectSync?.flush();
 }
 function bindNumberInput(selector, key) { $(selector)?.addEventListener('input', (event) => patchProject({ [key]: numberOrNull(event.target.value) })); }
@@ -460,7 +470,7 @@ $('#exclude-line-button')?.addEventListener('click', () => mapApi?.beginLinearEx
 $('#edit-vertices-button')?.addEventListener('click', () => vertexEditingActive ? mapApi?.finishVertexEditing() : mapApi?.beginVertexEditing());
 $('#center-field-button')?.addEventListener('click', () => mapApi?.focusActiveField());
 $('#remove-vertex-button')?.addEventListener('click', () => mapApi?.beginVertexRemoval());
-$('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
+$('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; fieldLocationCoordinator.invalidate();mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
 async function locateFrom(source) {
   try {
     await mapApi?.locate();
@@ -484,6 +494,7 @@ function hideSuggestions() { for(const {suggestions} of searchSurfaces){suggesti
 function syncSearchInputs(value,source=null){for(const {input} of searchSurfaces)if(input!==source)input.value=value;}
 function storeSearchResult(result) {
   if (!result) return;
+  fieldLocationCoordinator.invalidate();
   patchProject({ locationLabel:result.locationLabel ?? result.label ?? '', municipality:result.municipality ?? '', province:result.province ?? '', region:result.region ?? '' });
 }
 async function runSearch(query) {

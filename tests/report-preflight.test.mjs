@@ -47,17 +47,17 @@ test('old test values are omitted from recipient details but real contact is kep
   assert.equal(model.recipient.email,'cliente@example.it');
 });
 
-test('location suggestions come from each field polygon, while varied localities remain per field',async()=>{
+test('saved canonical locations win while only missing fields are reverse geocoded',async()=>{
   const seen=[];
   const fields=[{...state.project.fields[0],municipality:'Vecchia città'},{...state.project.fields[1],geometry:ring.map(([lon,lat])=>[lon+.1,lat+.1])}];
   const locations=await resolveFieldLocations(fields,{fetchImpl:async url=>{
     const point=new URL(url).searchParams.get('location');seen.push(point);
     return {ok:true,json:async()=>({address:{City:Number(point.split(',')[0])>8.05?'Comune B':'Comune A',Subregion:'Provincia campione'}})};
   }});
-  assert.equal(seen.length,2);
-  assert.equal(locations.f1.municipality,'Comune A');
+  assert.equal(seen.length,1);
+  assert.equal(locations.f1.municipality,'Vecchia città');
   assert.equal(locations.f2.municipality,'Comune B');
-  assert.deepEqual(locationForSelection(['f1'],locations),{plantLocation:'Comune A',province:'Provincia campione'});
+  assert.deepEqual(locationForSelection(['f1'],locations),{plantLocation:'Vecchia città',province:''});
   assert.equal(locationForSelection(['f1','f2'],locations).plantLocation,'Località diverse (vedi campi)');
 });
 

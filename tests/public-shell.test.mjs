@@ -24,6 +24,12 @@ test('geographic search stores readable locality metadata on the project', () =>
   assert.match(app, /province:\s*result\.province/);
 });
 
+test('perimeter changes refresh canonical field locality without blocking drawing',()=>{
+  assert.match(app,/createFieldLocationCoordinator/);
+  assert.match(app,/fieldLocationCoordinator\.refresh\(activeField\(state\.project\)\)/);
+  assert.match(app,/void\s+fieldLocationCoordinator\.refresh/);
+});
+
 test('manual edits of a cadastral perimeter are marked as mixed source', () => {
   assert.match(app, /sourceType\s*===\s*'cadastral'/);
   assert.match(app, /sourceType:\s*'mixed'/);

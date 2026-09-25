@@ -55,6 +55,26 @@ function legacyField(project) {
   };
 }
 
+export function patchAdminFieldLocation(projects=[],row={},value={}){
+  const location={
+    locationLabel:String(value.locationLabel??''),municipality:String(value.municipality??''),
+    province:String(value.province??''),region:String(value.region??'')
+  };
+  return projects.map(project=>{
+    if(String(project?.id)!==String(row.projectId))return project;
+    const fields=(project.field_plans??[]).map(field=>{
+      const id=field?.clientFieldId??field?.id;
+      return String(id)===String(row.fieldId)?{...field,...location}:field;
+    });
+    const next={...project,field_plans:fields};
+    if(fields.length===1){
+      next.location_label=location.locationLabel;next.municipality=location.municipality;
+      next.province=location.province;next.region=location.region;
+    }
+    return next;
+  });
+}
+
 export function expandProjectFields(projects = []) {
   const rows = [];
   for (const project of projects ?? []) {

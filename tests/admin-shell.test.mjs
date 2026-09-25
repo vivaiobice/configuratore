@@ -20,3 +20,16 @@ test('admin shell exposes primary KPIs and the three analysis sections',()=>{
   assert.match(html,/id="filter-query"/);
   assert.match(html,/id="filter-planting-status"/);
 });
+
+test('administrative map has a centered, practical desktop viewport',()=>{
+  assert.match(html,/\.admin-map\s*\{[^}]*max-width:\s*1240px[^}]*height:\s*560px/);
+  assert.match(html,/@media\s*\(max-width:\s*1100px\)[\s\S]*?\.admin-map\s*\{[^}]*height:\s*480px/);
+  assert.match(html,/@media\s*\(max-width:\s*700px\)[\s\S]*?\.admin-map\s*\{[^}]*height:\s*390px/);
+  assert.match(app,/adminMap\.focusField\(row\.projectId,row\.fieldId\)/);
+});
+
+test('project archive delegates inline CRM actions without switching to the fields section',()=>{
+  assert.match(app,/onProjectAction:handleProjectAction/);
+  assert.match(app,/async function handleProjectAction/);
+  assert.doesNotMatch(app,/onSelect\('fields',field\)/);
+});

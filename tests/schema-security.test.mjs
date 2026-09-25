@@ -39,6 +39,14 @@ test('atomic archive RPCs are invoker wrappers over private implementations', ()
   assert.match(schema, /public\.soft_delete_project[\s\S]*security invoker/i);
   assert.match(schema, /public\.restore_project[\s\S]*security invoker/i);
   assert.match(schema, /public\.restore_project_revision[\s\S]*security invoker/i);
+  assert.match(schema, /private\.admin_set_field_location_internal[\s\S]*security definer/i);
+  assert.match(schema, /public\.admin_set_field_location[\s\S]*security invoker/i);
+});
+
+test('admin field locality write is denied to anonymous callers',()=>{
+  assert.match(schema,/revoke all on function public\.admin_set_field_location\(uuid,uuid,text,text,text,text,text\) from public,anon/i);
+  assert.match(schema,/revoke all on function private\.admin_set_field_location_internal\(uuid,uuid,text,text,text,text,text\) from public,anon/i);
+  assert.match(schema,/grant execute on function public\.admin_set_field_location\(uuid,uuid,text,text,text,text,text\) to authenticated/i);
 });
 
 test('retention and recovery functions stay privileged and auditable', () => {

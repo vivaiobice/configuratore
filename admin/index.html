@@ -1,24 +1,509 @@
 <!doctype html>
 <html lang="it">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin Configuratore | Vivai Obice</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><link rel="stylesheet" href="../styles.css">
-  <style>
-body{overflow:auto;min-height:100%;height:auto;background:#f5f7f4}.admin-shell{max-width:1680px;margin:0 auto;padding:24px}.admin-head,.admin-head-actions{display:flex;justify-content:space-between;gap:16px;align-items:center}.admin-head-actions{justify-content:flex-end}.admin-head-actions a{text-decoration:none}.admin-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:20px 0}.admin-card{background:white;border:1px solid #dce2dd;border-radius:14px;padding:16px;text-align:left;color:#183f28}.admin-kpis button.admin-card{font:inherit;cursor:pointer}.admin-kpis button.admin-card:hover,.admin-kpis button.admin-card:focus-visible,.admin-kpis button.admin-card.active{border-color:#397451;box-shadow:0 5px 18px #183f2817}.admin-card strong{display:block;font-size:28px;margin-top:8px}.admin-sections{display:flex;gap:8px;margin-bottom:14px}.admin-sections button{border:1px solid #cfd8d1;border-radius:999px;background:#fff;color:#183f28;padding:10px 18px;font:inherit;font-weight:800;cursor:pointer}.admin-sections button.active{background:#183f28;color:#fff}.admin-filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}.admin-filters input,.admin-filters select{min-width:0}.admin-filter-wide{grid-column:span 2}.admin-map{height:460px;margin-bottom:16px;border:1px solid #dce2dd;border-radius:14px;overflow:hidden}.admin-table-wrap{overflow:auto;border:1px solid #dce2dd;border-radius:14px;background:#fff}.admin-table{width:100%;min-width:1180px;border-collapse:collapse;background:white}.admin-table th,.admin-table td{text-align:left;padding:11px;border-bottom:1px solid #e5e9e6;font-size:13px;white-space:nowrap}.admin-table th{position:sticky;top:0;background:#f1f5f1;color:#183f28;z-index:1}.admin-table tbody tr{cursor:pointer}.admin-table tbody tr:hover,.admin-table tbody tr.selected{background:#edf4ef}.admin-login{max-width:420px;margin:80px auto;background:white;padding:24px;border-radius:18px;border:1px solid #dce2dd}.admin-login input{width:100%;box-sizing:border-box;margin:6px 0 12px}.admin-login>a{display:inline-flex;text-decoration:none;margin-bottom:14px}.admin-detail{margin-top:18px}.admin-detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.admin-detail-grid div{background:#f6f8f6;border-radius:10px;padding:10px}.admin-detail-grid span{display:block;font-size:11px;color:#68736b}.admin-detail-grid strong{display:block;font-size:14px;margin-top:3px}.admin-detail-actions{display:flex;gap:10px;align-items:end;margin:16px 0}.admin-detail-actions label{flex:1}.admin-child-field{display:block;width:100%;margin-top:8px;padding:11px;border:1px solid #dce2dd;border-radius:10px;background:#f7faf7;text-align:left;color:#183f28;font:inherit;font-weight:700;cursor:pointer}.admin-notes{padding:0;list-style:none}.admin-notes li{border-top:1px solid #e5e9e6;padding:10px 0}.admin-note-form{display:flex;gap:8px}.admin-note-form textarea{flex:1;min-height:72px}@media(max-width:1100px){.admin-kpis{grid-template-columns:repeat(3,1fr)}.admin-filters{grid-template-columns:repeat(3,1fr)}.admin-detail-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.admin-shell{padding:12px}.admin-kpis{grid-template-columns:1fr 1fr}.admin-filters{grid-template-columns:1fr 1fr}.admin-filter-wide{grid-column:1/-1}.admin-sections{overflow:auto}.admin-detail-grid{grid-template-columns:1fr}.admin-detail-actions,.admin-note-form,.admin-head-actions{flex-direction:column;align-items:stretch}}
-  </style>
-</head>
-<body><main class="admin-shell">
-<section id="admin-login" class="admin-login"><p class="eyebrow">AREA RISERVATA</p><h1>Vivai Obice Admin</h1><p>Accesso riservato agli utenti autorizzati.</p><a class="secondary-button" href="../">← Torna al configuratore</a><form id="admin-login-form"><label>E-mail<input name="email" type="email" required></label><label>Password<input name="password" type="password" required></label><button class="primary-button wide">Accedi</button><p id="admin-login-feedback"></p></form></section>
-<section id="admin-dashboard" hidden>
-<div class="admin-head"><div><p class="eyebrow">CONFIGURATORE</p><h1>Amministrazione</h1></div><div class="admin-head-actions"><a class="secondary-button" href="../">← Torna al configuratore</a><button id="admin-logout" class="secondary-button">Esci</button></div></div>
-<div class="admin-kpis">
-<button class="admin-card" data-kpi="projects" type="button">Progetti<strong id="kpi-projects">0</strong></button><button class="admin-card" data-kpi="fields" type="button">Campi totali<strong id="kpi-fields">0</strong></button><button class="admin-card" data-kpi="quotes" type="button">Preventivi<strong id="kpi-quotes">0</strong></button><button class="admin-card" data-kpi="clients" type="button">Clienti / Utenti<strong id="kpi-clients">0</strong></button><div class="admin-card">Barbatelle da piantare<strong id="kpi-plants">0</strong></div><div class="admin-card">Superficie archivio<strong id="kpi-area">0 m²</strong></div>
-</div>
-<nav class="admin-sections" aria-label="Sezioni amministrazione"><button type="button" data-admin-section="fields" class="active">Campi</button><button type="button" data-admin-section="projects">Progetti</button><button type="button" data-admin-section="clients">Clienti / Utenti</button></nav>
-<div id="admin-map" class="admin-map"></div>
-<div class="admin-filters"><input id="filter-query" class="admin-filter-wide" type="search" placeholder="Cerca codice, progetto, campo, cliente o località"><select id="filter-environment"><option value="TEST">TEST</option><option value="LIVE">LIVE</option><option value="">Tutti gli ambienti</option></select><select id="filter-status"><option value="">Tutti gli stati CRM</option><option value="draft">Bozza</option><option value="saved">Salvato</option><option value="pdf_downloaded">PDF</option><option value="quote_requested">Preventivo richiesto</option><option value="contacted">Contattato</option><option value="client">Cliente</option></select><select id="filter-planting-status"><option value="">Tutti gli impianti</option><option value="planned">Da realizzare</option><option value="planted">Impianti realizzati</option></select><select id="filter-campaign"><option value="">Tutte le campagne</option><option>2027</option><option>2026</option><option>2025</option><option>2024</option></select><select id="filter-origin"><option value="">Tutte le origini</option><option value="native">Configuratore</option><option value="fieldarea">FieldArea</option></select><select id="filter-owner"><option value="">Tutti i profili</option><option value="guest">Guest</option><option value="user">Utenti registrati</option><option value="admin">Admin</option></select><label><input id="filter-deleted" type="checkbox"> Includi eliminati</label><input id="filter-zone" placeholder="Zona / Comune"><input id="filter-company" placeholder="Azienda"><input id="filter-variety" placeholder="Vitigno"><input id="filter-rootstock" placeholder="Portainnesto"><select id="filter-context"><option value="">Tutti i contesti</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select><input id="filter-plants" type="number" min="0" placeholder="Piante minime"><input id="filter-area" type="number" min="0" placeholder="Superficie min. m²"></div>
-<section id="admin-list"><h2 id="admin-list-title">Campi</h2><div class="admin-table-wrap"><table class="admin-table"><thead id="admin-table-head"></thead><tbody id="admin-table-body"></tbody></table></div></section>
-<section id="admin-detail" class="admin-card admin-detail" hidden><div class="admin-head"><div><p class="eyebrow">DETTAGLIO</p><h2 id="detail-title">—</h2></div><button id="detail-close" class="secondary-button" type="button">Chiudi</button></div><div id="detail-grid" class="admin-detail-grid"></div><div id="detail-children"></div><div class="admin-detail-actions admin-project-actions" hidden><label>Stato CRM<select id="detail-status"><option value="draft">Bozza</option><option value="saved">Salvato</option><option value="pdf_downloaded">PDF scaricato</option><option value="quote_requested">Preventivo richiesto</option><option value="contacted">Contattato</option><option value="client">Cliente</option></select></label><button id="detail-save-status" class="primary-button" type="button">Aggiorna stato</button><button id="detail-restore-project" class="secondary-button" type="button">Ripristina progetto</button><label>Revisione<input id="detail-revision-number" type="number" min="1"></label><button id="detail-restore-revision" class="secondary-button" type="button">Ripristina revisione</button></div><section class="admin-project-actions" hidden><h3>Note interne</h3><ul id="detail-notes" class="admin-notes"></ul><form id="detail-note-form" class="admin-note-form"><textarea name="body" required placeholder="Nota interna Vivai Obice"></textarea><button class="secondary-button" type="submit">Aggiungi nota</button></form></section><p id="detail-feedback"></p></section>
-<p id="admin-feedback"></p></section>
-</main><script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script><script type="module" src="./admin.js?v=50"></script></body></html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Configuratore | Vivai Obice</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <style>
+      body {
+        overflow: auto;
+        min-height: 100%;
+        height: auto;
+        background: #f5f7f4;
+      }
+      .admin-shell {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .admin-head,
+      .admin-head-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+      }
+      .admin-head-actions {
+        justify-content: flex-end;
+      }
+      .admin-head-actions a {
+        text-decoration: none;
+      }
+      .admin-kpis {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+      .admin-card {
+        background: white;
+        border: 1px solid #dce2dd;
+        border-radius: 14px;
+        padding: 16px;
+        text-align: left;
+        color: #183f28;
+      }
+      .admin-kpis button.admin-card {
+        font: inherit;
+        cursor: pointer;
+      }
+      .admin-kpis button.admin-card:hover,
+      .admin-kpis button.admin-card:focus-visible,
+      .admin-kpis button.admin-card.active {
+        border-color: #397451;
+        box-shadow: 0 5px 18px #183f2817;
+      }
+      .admin-card strong {
+        display: block;
+        font-size: 28px;
+        margin-top: 8px;
+      }
+      .admin-sections {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .admin-sections button {
+        border: 1px solid #cfd8d1;
+        border-radius: 999px;
+        background: #fff;
+        color: #183f28;
+        padding: 10px 18px;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .admin-sections button.active {
+        background: #183f28;
+        color: #fff;
+      }
+      .admin-filters {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .admin-filters input,
+      .admin-filters select {
+        min-width: 0;
+      }
+      .admin-filter-wide {
+        grid-column: span 2;
+      }
+      .admin-map {
+        max-width: 1240px;
+        height: 560px;
+        width: 100%;
+        margin: 0 auto 16px;
+        border: 1px solid #dce2dd;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .admin-table-wrap {
+        overflow: auto;
+        border: 1px solid #dce2dd;
+        border-radius: 14px;
+        background: #fff;
+      }
+      .admin-table {
+        width: 100%;
+        min-width: 1180px;
+        border-collapse: collapse;
+        background: white;
+      }
+      .admin-table th,
+      .admin-table td {
+        text-align: left;
+        padding: 11px;
+        border-bottom: 1px solid #e5e9e6;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .admin-table th {
+        position: sticky;
+        top: 0;
+        background: #f1f5f1;
+        color: #183f28;
+        z-index: 1;
+      }
+      .admin-table tbody tr {
+        cursor: pointer;
+      }
+      .admin-table tbody tr:hover,
+      .admin-table tbody tr.selected {
+        background: #edf4ef;
+      }
+      .admin-table tr[data-project-detail] td {
+        padding: 16px;
+        white-space: normal;
+        background: #f7faf7;
+      }
+      .admin-project-panel,
+      .admin-nested-field {
+        padding: 16px;
+        border: 1px solid #dce2dd;
+        border-radius: 14px;
+        background: #fff;
+        animation: admin-panel-open 180ms ease-out;
+      }
+      .admin-nested-field {
+        margin-top: 10px;
+      }
+      @keyframes admin-panel-open {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .admin-login {
+        max-width: 420px;
+        margin: 80px auto;
+        background: white;
+        padding: 24px;
+        border-radius: 18px;
+        border: 1px solid #dce2dd;
+      }
+      .admin-login input {
+        width: 100%;
+        box-sizing: border-box;
+        margin: 6px 0 12px;
+      }
+      .admin-login > a {
+        display: inline-flex;
+        text-decoration: none;
+        margin-bottom: 14px;
+      }
+      .admin-detail {
+        margin-top: 18px;
+      }
+      .admin-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .admin-detail-grid div {
+        background: #f6f8f6;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .admin-detail-grid span {
+        display: block;
+        font-size: 11px;
+        color: #68736b;
+      }
+      .admin-detail-grid strong {
+        display: block;
+        font-size: 14px;
+        margin-top: 3px;
+      }
+      .admin-detail-actions {
+        display: flex;
+        gap: 10px;
+        align-items: end;
+        margin: 16px 0;
+      }
+      .admin-detail-actions label {
+        flex: 1;
+      }
+      .admin-child-field {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        padding: 11px;
+        border: 1px solid #dce2dd;
+        border-radius: 10px;
+        background: #f7faf7;
+        text-align: left;
+        color: #183f28;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .admin-notes {
+        padding: 0;
+        list-style: none;
+      }
+      .admin-notes li {
+        border-top: 1px solid #e5e9e6;
+        padding: 10px 0;
+      }
+      .admin-note-form {
+        display: flex;
+        gap: 8px;
+      }
+      .admin-note-form textarea {
+        flex: 1;
+        min-height: 72px;
+      }
+      .admin-field-map {
+        width: 100%;
+        height: 430px;
+        margin: 16px 0;
+        overflow: hidden;
+        border: 1px solid #dce2dd;
+        border-radius: 14px;
+      }
+      .admin-map-placeholder {
+        display: grid;
+        place-items: center;
+        min-height: 120px;
+        padding: 20px;
+        color: #607067;
+        background: #f4f6f4;
+        text-align: center;
+      }
+      @media (max-width: 1100px) {
+        .admin-map {
+          height: 480px;
+        }
+        .admin-kpis {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .admin-filters {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .admin-detail-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 700px) {
+        .admin-map {
+          height: 390px;
+        }
+        .admin-shell {
+          padding: 12px;
+        }
+        .admin-kpis {
+          grid-template-columns: 1fr 1fr;
+        }
+        .admin-filters {
+          grid-template-columns: 1fr 1fr;
+        }
+        .admin-filter-wide {
+          grid-column: 1/-1;
+        }
+        .admin-sections {
+          overflow: auto;
+        }
+        .admin-detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .admin-detail-actions,
+        .admin-note-form,
+        .admin-head-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="admin-shell">
+      <section id="admin-login" class="admin-login">
+        <p class="eyebrow">AREA RISERVATA</p>
+        <h1>Vivai Obice Admin</h1>
+        <p>Accesso riservato agli utenti autorizzati.</p>
+        <a class="secondary-button" href="../">← Torna al configuratore</a>
+        <form id="admin-login-form">
+          <label>E-mail<input name="email" type="email" required /></label
+          ><label
+            >Password<input name="password" type="password" required /></label
+          ><button class="primary-button wide">Accedi</button>
+          <p id="admin-login-feedback"></p>
+        </form>
+      </section>
+      <section id="admin-dashboard" hidden>
+        <div class="admin-head">
+          <div>
+            <p class="eyebrow">CONFIGURATORE</p>
+            <h1>Amministrazione</h1>
+          </div>
+          <div class="admin-head-actions">
+            <a class="secondary-button" href="../">← Torna al configuratore</a
+            ><button id="admin-logout" class="secondary-button">Esci</button>
+          </div>
+        </div>
+        <div class="admin-kpis">
+          <button class="admin-card" data-kpi="projects" type="button">
+            Progetti<strong id="kpi-projects">0</strong></button
+          ><button class="admin-card" data-kpi="fields" type="button">
+            Campi totali<strong id="kpi-fields">0</strong></button
+          ><button class="admin-card" data-kpi="quotes" type="button">
+            Preventivi<strong id="kpi-quotes">0</strong></button
+          ><button class="admin-card" data-kpi="clients" type="button">
+            Clienti / Utenti<strong id="kpi-clients">0</strong>
+          </button>
+          <div class="admin-card">
+            Barbatelle da piantare<strong id="kpi-plants">0</strong>
+          </div>
+          <div class="admin-card">
+            Superficie archivio<strong id="kpi-area">0 m²</strong>
+          </div>
+        </div>
+        <nav class="admin-sections" aria-label="Sezioni amministrazione">
+          <button type="button" data-admin-section="fields" class="active">
+            Campi</button
+          ><button type="button" data-admin-section="projects">Progetti</button
+          ><button type="button" data-admin-section="clients">
+            Clienti / Utenti
+          </button>
+        </nav>
+        <div id="admin-map" class="admin-map"></div>
+        <div class="admin-filters">
+          <input
+            id="filter-query"
+            class="admin-filter-wide"
+            type="search"
+            placeholder="Cerca codice, progetto, campo, cliente o località"
+          /><select id="filter-environment">
+            <option value="TEST">TEST</option>
+            <option value="LIVE">LIVE</option>
+            <option value="">Tutti gli ambienti</option></select
+          ><select id="filter-status">
+            <option value="">Tutti gli stati CRM</option>
+            <option value="draft">Bozza</option>
+            <option value="saved">Salvato</option>
+            <option value="pdf_downloaded">PDF</option>
+            <option value="quote_requested">Preventivo richiesto</option>
+            <option value="contacted">Contattato</option>
+            <option value="client">Cliente</option></select
+          ><select id="filter-planting-status">
+            <option value="">Tutti gli impianti</option>
+            <option value="planned">Da realizzare</option>
+            <option value="planted">Impianti realizzati</option></select
+          ><select id="filter-campaign">
+            <option value="">Tutte le campagne</option>
+            <option>2027</option>
+            <option>2026</option>
+            <option>2025</option>
+            <option>2024</option></select
+          ><select id="filter-origin">
+            <option value="">Tutte le origini</option>
+            <option value="native">Configuratore</option>
+            <option value="fieldarea">FieldArea</option></select
+          ><select id="filter-owner">
+            <option value="">Tutti i profili</option>
+            <option value="guest">Guest</option>
+            <option value="user">Utenti registrati</option>
+            <option value="admin">Admin</option></select
+          ><label
+            ><input id="filter-deleted" type="checkbox" /> Includi
+            eliminati</label
+          ><input id="filter-zone" placeholder="Zona / Comune" /><input
+            id="filter-company"
+            placeholder="Azienda"
+          /><input id="filter-variety" placeholder="Vitigno" /><input
+            id="filter-rootstock"
+            placeholder="Portainnesto"
+          /><select id="filter-context">
+            <option value="">Tutti i contesti</option>
+            <option value="application">Domanda</option>
+            <option value="tender">Bando</option>
+            <option value="contribution">Contributo / finanziamento</option>
+            <option value="other">Altro</option></select
+          ><input
+            id="filter-plants"
+            type="number"
+            min="0"
+            placeholder="Piante minime"
+          /><input
+            id="filter-area"
+            type="number"
+            min="0"
+            placeholder="Superficie min. m²"
+          />
+        </div>
+        <section id="admin-list">
+          <h2 id="admin-list-title">Campi</h2>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead id="admin-table-head"></thead>
+              <tbody id="admin-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="admin-detail" class="admin-card admin-detail" hidden>
+          <div class="admin-head">
+            <div>
+              <p class="eyebrow">DETTAGLIO</p>
+              <h2 id="detail-title">—</h2>
+            </div>
+            <button id="detail-close" class="secondary-button" type="button">
+              Chiudi
+            </button>
+          </div>
+          <div id="detail-grid" class="admin-detail-grid"></div>
+          <div id="detail-field-map" class="admin-field-map" hidden></div>
+          <form id="field-location-form" class="admin-location-form" hidden>
+            <h3>Località del campo</h3>
+            <div class="admin-detail-grid">
+              <label
+                >Località / comune<input name="municipality" required /></label
+              ><label>Provincia<input name="province" /></label
+              ><label>Regione<input name="region" /></label
+              ><label>Descrizione completa<input name="locationLabel" /></label>
+            </div>
+            <button class="primary-button" type="submit">Salva località</button>
+          </form>
+          <div id="detail-children"></div>
+          <div class="admin-detail-actions admin-project-actions" hidden>
+            <label
+              >Stato CRM<select id="detail-status">
+                <option value="draft">Bozza</option>
+                <option value="saved">Salvato</option>
+                <option value="pdf_downloaded">PDF scaricato</option>
+                <option value="quote_requested">Preventivo richiesto</option>
+                <option value="contacted">Contattato</option>
+                <option value="client">Cliente</option>
+              </select></label
+            ><button
+              id="detail-save-status"
+              class="primary-button"
+              type="button"
+            >
+              Aggiorna stato</button
+            ><button
+              id="detail-restore-project"
+              class="secondary-button"
+              type="button"
+            >
+              Ripristina progetto</button
+            ><label
+              >Revisione<input
+                id="detail-revision-number"
+                type="number"
+                min="1" /></label
+            ><button
+              id="detail-restore-revision"
+              class="secondary-button"
+              type="button"
+            >
+              Ripristina revisione
+            </button>
+          </div>
+          <section class="admin-project-actions" hidden>
+            <h3>Note interne</h3>
+            <ul id="detail-notes" class="admin-notes"></ul>
+            <form id="detail-note-form" class="admin-note-form">
+              <textarea
+                name="body"
+                required
+                placeholder="Nota interna Vivai Obice"
+              ></textarea
+              ><button class="secondary-button" type="submit">
+                Aggiungi nota
+              </button>
+            </form>
+          </section>
+          <p id="detail-feedback"></p>
+        </section>
+        <p id="admin-feedback"></p>
+      </section>
+    </main>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="./admin.js?v=51"></script>
+  </body>
+</html>

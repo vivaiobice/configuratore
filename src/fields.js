@@ -83,6 +83,14 @@ export function updateActiveFieldProject(project, patch = {}) {
   return mirrorField({ ...base, ...projectPatch, fields }, active);
 }
 
+export function updateProjectField(project, fieldId, patch = {}) {
+  const base=ensureProjectFields(project);
+  const targetId=String(fieldId??'');
+  const fields=base.fields.map(field=>String(field.id)===targetId?{...field,...patch}:field);
+  const active=fields.find(field=>field.id===base.activeFieldId)??fields[0];
+  return mirrorField({...base,fields},active);
+}
+
 export function addProjectField(project) {
   const base = ensureProjectFields(project);
   const field = createDefaultField(newId(), base.fields.length + 1);

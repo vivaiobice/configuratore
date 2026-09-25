@@ -47,6 +47,22 @@ test('admin restore delegates to protected RPC wrappers', async () => {
   assert.equal(client.calls.some(([name])=>name==='update'),false);
 });
 
+test('admin locality update delegates to the protected RPC with a unique operation',async()=>{
+  const client=fakeClient();
+  const admin=createAdminService(client,{randomUUID:()=> 'op-location'});
+  await admin.setFieldLocation({projectId:'p1',fieldId:'f1',locationLabel:'Comune, CN',municipality:'Comune',province:'CN',region:'Piemonte'});
+  assert.deepEqual(client.calls.find(call=>call[1]==='admin_set_field_location'),['rpc','admin_set_field_location',{
+    p_operation_id:'op-location',p_project_id:'p1',p_client_field_id:'f1',p_location_label:'Comune, CN',
+    p_municipality:'Comune',p_province:'CN',p_region:'Piemonte'
+  }]);
+});
+
+test('admin locality update reuses an operation id supplied by a retry coordinator',async()=>{
+  const client=fakeClient();const admin=createAdminService(client,{randomUUID:()=> 'new-id'});
+  await admin.setFieldLocation({operationId:'stable-retry-id',projectId:'p1',fieldId:'f1',municipality:'Comune'});
+  assert.equal(client.calls.find(call=>call[1]==='admin_set_field_location')[2].p_operation_id,'stable-retry-id');
+});
+
 test('project projection includes archive ownership and revision metadata', async () => {
   const client=fakeClient();
   await createAdminService(client).loadProjects();

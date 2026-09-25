@@ -1,5 +1,5 @@
 import { ensureProjectFields } from './fields.js';
-import { interiorLabelPoint } from './geometry.js';
+import { resolveFieldLocation } from './field-location.js?v=51';
 
 export const DISCLAIMER_VERSION = 'VO-DISC-2026-01';
 
@@ -10,21 +10,11 @@ export async function resolveFieldLocations(fields,{fetchImpl=globalThis.fetch}=
     if(!id)return;
     const fallback={municipality:field.municipality||'',province:field.province||'',label:field.locationLabel||''};
     locations[id]=fallback;
-    const point=interiorLabelPoint(field.geometry);
-    if(!point||typeof fetchImpl!=='function')return;
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),6000);
-    try{
-      const url=new URL('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode');
-      url.searchParams.set('f','json');url.searchParams.set('location',point.join(','));
-      url.searchParams.set('langCode','it');url.searchParams.set('featureTypes','StreetInt,StreetAddress,Locality');
-      const response=await fetchImpl(url.toString(),{headers:{Accept:'application/json'},signal:controller.signal});
-      if(!response.ok)return;
-      const address=(await response.json())?.address??{};
-      const municipality=String(address.City||address.District||address.Neighborhood||'').trim();
-      const province=String(address.Subregion||'').trim();
-      if(municipality)locations[id]={municipality,province,label:municipality};
-    }catch{}finally{clearTimeout(timeout);}
+    if(fallback.municipality)return;
+    const resolved=await resolveFieldLocation(field,{fetchImpl});
+    if(resolved?.municipality)locations[id]={
+      municipality:resolved.municipality,province:resolved.province,label:resolved.locationLabel||resolved.municipality
+    };
   }));
   return locations;
 }

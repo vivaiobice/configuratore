@@ -1,4 +1,4 @@
-import { isValidProjectStatus } from './admin-model.js?v=50';
+import { isValidProjectStatus } from './admin-model.js?v=51';
 
 const PROJECT_SELECT = [
   'id','owner_user_id','client_project_id','public_code','name','campaign_year','origin','owner_kind','version','latest_revision_number','deleted_at',
@@ -12,10 +12,19 @@ const PROJECT_SELECT = [
   'quote_requests(id,status,quote_number,message,created_at)'
 ].join(',');
 
-export function createAdminService(client) {
+export function createAdminService(client,{randomUUID=()=>globalThis.crypto.randomUUID()}={}) {
   if (!client) throw new TypeError('Supabase client required');
 
   return {
+    async setFieldLocation(payload={}){
+      const result=await client.rpc('admin_set_field_location',{
+        p_operation_id:payload.operationId??randomUUID(),p_project_id:payload.projectId,p_client_field_id:payload.fieldId,
+        p_location_label:String(payload.locationLabel??''),p_municipality:String(payload.municipality??''),
+        p_province:String(payload.province??''),p_region:String(payload.region??'')
+      });
+      if(result.error)throw result.error;
+      return result.data;
+    },
     async restoreProject(operationId, projectId) {
       const result=await client.rpc('restore_project',{p_operation_id:operationId,p_project_id:projectId});
       if(result.error) throw result.error;

@@ -3,13 +3,13 @@ import { parsePublicProjectCodeUrl } from './public-project-access.js';
 import { calculateProject } from './project-calculator.js?v=45';
 import { buildReportMapModel } from './report-map-model.js?v=45';
 import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
-import { buildProjectReportModel } from './pdf-model.js?v=50';
-import { captureSatelliteImage } from './report-satellite.js?v=50';
-import { renderProjectReportHtml } from './report-template.js?v=50';
+import { buildProjectReportModel } from './pdf-model.js?v=51';
+import { captureSatelliteImage } from './report-satellite.js?v=51';
+import { renderProjectReportHtml } from './report-template.js?v=51';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { renderReportQrSvg } from './report-qr.js';
 import { buildPublicProjectUrl } from './public-project-access.js';
-import {satelliteStyle} from './satellite-style.js?v=50';
+import {satelliteStyle} from './satellite-style.js?v=51';
 
 export const SHARED_UNAVAILABLE_MESSAGE = 'Collegamento non disponibile. Chiedi a Vivai Obice un nuovo collegamento.';
 const DISCLAIMER = 'Il presente documento è uno studio preliminare ed esemplificativo. Non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa, asseverazione o garanzia di realizzabilità. Prima dell’esecuzione devono essere verificati sul posto confini, quote, pendenze, vincoli, accessi e prescrizioni applicabili.';
