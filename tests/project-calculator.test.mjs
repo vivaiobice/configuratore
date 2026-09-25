@@ -72,3 +72,19 @@ test('post spacing defaults to 4.50 m when field supplies the standard default',
   assert.equal(result.headPosts, result.rowCount * 2);
   assert.ok(result.totalPosts > result.headPosts);
 });
+
+test('curved control points recalculate plants and posts from polyline lengths',()=>{
+  const straight=calculateProject({polygon:square10m,rowSpacingM:2.5,plantSpacingM:1,orientationDeg:0,postSpacingM:4.5});
+  const curved=calculateProject({polygon:square10m,rowSpacingM:2.5,plantSpacingM:1,orientationDeg:0,postSpacingM:4.5,rowCurvePoints:[{id:'bend',position:.5,offsetM:2}]});
+  assert.ok(curved.rows.every(row=>row.coordinates?.length>2));
+  assert.notEqual(curved.rowLinearM,straight.rowLinearM);
+  assert.equal(curved.headPosts,curved.rowCount*2);
+  assert.equal(curved.totalPosts,curved.headPosts+curved.intermediatePosts);
+});
+
+test('project calculation forwards the equidistance option to curved row generation',()=>{
+  const args={polygon:square10m,rowSpacingM:2.5,plantSpacingM:1,rowCurvePoints:[{id:'bend',position:.5,offsetM:2}],maintainRowEquidistance:true};
+  const equidistant=calculateProject(args);
+  const legacy=calculateProject({...args,maintainRowEquidistance:false});
+  assert.notDeepEqual(equidistant.rows,legacy.rows);
+});

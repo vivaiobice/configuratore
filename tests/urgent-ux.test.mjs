@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
+const satelliteStyle = fs.readFileSync(new URL('../src/satellite-style.js', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 
 test('header uses the Vivai Obice logo asset instead of the VO placeholder', () => {
@@ -40,7 +41,7 @@ test('polygon drawing uses a pencil cursor and larger click/touch target for rel
 });
 
 test('satellite source declares its real native max zoom so MapLibre overzooms instead of blanking', () => {
-  assert.match(map, /type:\s*'raster'[\s\S]*?World_Imagery[\s\S]*?maxzoom:\s*19/);
+  assert.match(satelliteStyle, /type:\s*'raster'[\s\S]*?World_Imagery[\s\S]*?maxzoom:\s*19/);
 });
 
 test('side measurements are forced visible around the edited polygon as HTML markers', () => {

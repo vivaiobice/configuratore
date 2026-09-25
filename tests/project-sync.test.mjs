@@ -33,6 +33,12 @@ function createHarness({ fields=[validField()], response=null, failFirst=false }
     async createProjectRevision(args) {
       this.calls.push(['revision',args]);
       return { status:'revision_created', projectId:args.projectId, version:args.expectedVersion, revisionNumber:1 };
+    },
+    async loadLatestProjectRevision(projectId) {
+      this.calls.push(['load-revision',{projectId}]);
+      return { snapshot:{ environment:'TEST',name:'Il mio impianto',campaignYear:2026,fields:[{
+        clientFieldId:'f1',id:'f1',label:'Campo 1',geometry:[[8,44],[8.01,44],[8.01,44.01],[8,44]],orientationDeg:0
+      }] } };
     }
   };
   const service = createProjectSync({
@@ -91,9 +97,28 @@ test('manual save applies current state before creating one immutable revision',
   const sync = createHarness();
   const result = await sync.service.saveRevision();
   assert.equal(result.state, 'synced');
-  assert.deepEqual(sync.backend.calls.map(([type]) => type), ['apply','revision']);
-  assert.equal(sync.backend.calls[1][1].expectedVersion, 1);
+  assert.deepEqual(sync.backend.calls.map(([type]) => type), ['apply','load-revision','revision']);
+  assert.equal(sync.backend.calls[2][1].expectedVersion, 1);
   assert.equal(sync.service.status().latestRevisionNumber, 1);
+});
+
+test('report issue revision records its reason, author-ready summary and affected field', async () => {
+  const sync=createHarness();
+  sync.setOrientation(90);
+  const result=await sync.service.saveRevision({reason:'report_issue'});
+  assert.equal(result.state,'synced');
+  const revision=sync.backend.calls.find(([type])=>type==='revision')[1];
+  assert.equal(revision.reason,'report_issue');
+  assert.deepEqual(revision.changeSummary,{
+    categories:['layout'],fieldIds:['f1'],label:'Sesto d’impianto'
+  });
+});
+
+test('version conflict prevents report issue revision creation', async () => {
+  const sync=createHarness({response:{status:'conflict',serverVersion:8}});
+  const result=await sync.service.saveRevision({reason:'report_issue'});
+  assert.equal(result.state,'conflict');
+  assert.equal(sync.backend.calls.some(([type])=>type==='revision'),false);
 });
 
 test('offline Save survives a restart and creates exactly one revision when connectivity returns', async () => {
@@ -150,4 +175,22 @@ test('offline Save survives a restart and creates exactly one revision when conn
   assert.equal(backend.projects,1);
   assert.equal(backend.revisions,1);
   assert.equal((await queue.pending()).length,0);
+});
+
+test('suspended sync does not flush Guest operations until identity transfer resumes it',async()=>{
+  const harness=createHarness();harness.service.suspend('identity_transfer');
+  const blocked=await harness.service.flush();
+  assert.equal(blocked.state,'suspended');assert.equal((await harness.queue.pending()).length,0);assert.equal(harness.backend.calls.length,0);
+  harness.service.resume();assert.notEqual(harness.service.status().state,'suspended');
+});
+
+test('adopting an archived cloud project preserves its id and server version on the next sync',async()=>{
+  const harness=createHarness();
+  assert.equal(typeof harness.service.adoptCloudState,'function');
+  harness.service.adoptCloudState({projectId:'server-selected',version:8,latestRevisionNumber:3});
+  assert.equal(harness.service.status().projectId,'server-selected');
+  assert.equal(harness.service.status().serverVersion,8);
+  await harness.service.flush();
+  const apply=harness.backend.calls.find(([type])=>type==='apply');
+  assert.equal(apply[1].expectedVersion,8);
 });

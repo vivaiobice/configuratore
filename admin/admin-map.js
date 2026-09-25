@@ -1,3 +1,5 @@
+import {satelliteStyle} from '../src/satellite-style.js?v=50';
+
 export function boundsForFeatureCollection(collection) {
   let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
   for (const feature of collection?.features ?? []) {
@@ -15,7 +17,7 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
   if (!globalThis.maplibregl) return null;
   const map = new globalThis.maplibregl.Map({
     container,
-    style:{ version:8, sources:{ satellite:{ type:'raster', tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize:256, attribution:'Esri World Imagery' } }, layers:[{ id:'satellite', type:'raster', source:'satellite' }] },
+    style:satelliteStyle(),
     center:[8.2,44.7], zoom:8.5, attributionControl:true
   });
   map.addControl(new globalThis.maplibregl.NavigationControl(), 'top-right');
@@ -25,10 +27,10 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     map.addSource('projects', { type:'geojson', data:pending });
     map.addLayer({ id:'project-fill', type:'fill', source:'projects', paint:{ 'fill-color':'#4c7d5d', 'fill-opacity':0.28 } });
     map.addLayer({ id:'project-line', type:'line', source:'projects', paint:{ 'line-color':'#183f28', 'line-width':2 } });
-    map.on('click', 'project-fill', (event) => {
-      const projectId = event.features?.[0]?.properties?.projectId;
-      if (projectId) onProjectClick(projectId);
-    });
+    map.addLayer({id:'project-label',type:'symbol',source:'projects',minzoom:11,layout:{'text-field':['get','displayLabel'],'text-size':12,'text-font':['Open Sans Bold'],'text-allow-overlap':false,'text-padding':8},paint:{'text-color':'#183f28','text-halo-color':'#fff','text-halo-width':2}});
+    const selectFeature=(event)=>{const properties=event.features?.[0]?.properties??{};if(properties.projectId)onProjectClick({projectId:properties.projectId,fieldId:properties.fieldId??''});};
+    map.on('click', 'project-fill', selectFeature);
+    map.on('click', 'project-label', selectFeature);
     map.on('mouseenter', 'project-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'project-fill', () => { map.getCanvas().style.cursor = ''; });
   });

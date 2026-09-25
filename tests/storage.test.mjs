@@ -11,6 +11,23 @@ function memoryStorage() {
   };
 }
 
+test('V29 draft loads through the non-destructive in-memory migration', () => {
+  const storage = memoryStorage();
+  storage.setItem('vivai-obice:configuratore:draft', JSON.stringify({
+    version:1, savedAt:'2026-01-02T00:00:00Z', state:{ project:{ localProjectId:'p-old', fields:[] } }
+  }));
+  const draft = loadDraft(storage);
+  assert.equal(draft.cloud.clientProjectId, 'p-old');
+  assert.equal(draft.project.campaignYear, 2026);
+});
+
+test('corrupt draft is never replaced while loading', () => {
+  let setCalls=0;
+  const store={ getItem:()=>'{bad', setItem:()=>{ setCalls+=1; } };
+  assert.equal(loadDraft(store), null);
+  assert.equal(setCalls, 0);
+});
+
 test('draft round-trips in a versioned envelope', () => {
   const storage = memoryStorage();
   saveDraft(storage, { environment: 'TEST', project: { rowSpacingM: 2.7 } });

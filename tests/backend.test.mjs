@@ -97,7 +97,10 @@ test('projectPayloadToState restores editable project fields and contact', async
     row_spacing_m:2.5, plant_spacing_m:1, row_orientation_deg:45, headland_width_m:8, post_spacing_m:4.5,
     mechanization:{vendemmia_meccanica:true}, project_context_type:'tender', project_context_note:'Bando',
     location_label:'Santo Stefano Belbo, Cuneo', municipality:'Santo Stefano Belbo', province:'Cuneo', region:'Piemonte',
-    grape_variety:'Barbera', rootstock:'1103P', clone_selection:'VCR'
+    grape_variety:'Barbera', rootstock:'1103P', clone_selection:'VCR',
+    client_project_id:'00000000-0000-4000-8000-000000000123', name:'Barbera 1103P',
+    campaign_year:2026, origin:'native', version:7, latest_revision_number:3,
+    updated_at:'2026-09-22T05:00:00.000Z'
   };
   const contact = { id:'c1', company_name:'Azienda', first_name:'Mario', last_name:'Rossi', phone:'333', email:'a@example.it', marketing_consent:false };
   const state = projectPayloadToState(payload, contact, { resumeToken:'tok', resumeUrl:'https://example.test/?project=CODE1&token=tok' });
@@ -107,7 +110,55 @@ test('projectPayloadToState restores editable project fields and contact', async
   assert.equal(state.project.municipality, 'Santo Stefano Belbo');
   assert.equal(state.contact.companyName, 'Azienda');
   assert.equal(state.cloud.projectId, 'p1');
+  assert.equal(state.project.localProjectId, '00000000-0000-4000-8000-000000000123');
+  assert.equal(state.project.localProjectName, 'Barbera 1103P');
+  assert.equal(state.project.campaignYear, 2026);
+  assert.equal(state.cloud.clientProjectId, '00000000-0000-4000-8000-000000000123');
+  assert.equal(state.cloud.version, 7);
+  assert.equal(state.cloud.latestRevisionNumber, 3);
   assert.equal(state.cloud.resumeToken, 'tok');
+});
+
+test('cloud project payload becomes a stable local archive item', async () => {
+  const backendModule = await import('../src/backend.js');
+  assert.equal(typeof backendModule.projectPayloadToArchiveItem, 'function');
+  const item = backendModule.projectPayloadToArchiveItem({
+    id:'server-p1', client_project_id:'00000000-0000-4000-8000-000000000123',
+    name:'Vigneto storico', environment:'TEST', campaign_year:2026, origin:'native',
+    field_plans:[{ id:'f1', label:'Campo 1', geometry:[[8,44],[8.01,44],[8,44.01],[8,44]] }],
+    version:5, latest_revision_number:2, updated_at:'2026-09-22T05:00:00.000Z'
+  });
+  assert.equal(item.id, '00000000-0000-4000-8000-000000000123');
+  assert.equal(item.name, 'Vigneto storico');
+  assert.equal(item.cloud.projectId, 'server-p1');
+  assert.equal(item.cloud.version, 5);
+  assert.equal(item.project.fields.length, 1);
+});
+
+test('listOwnedProjects explicitly restricts even an admin to the signed-in owner', async () => {
+  const calls=[];
+  const terminal={ data:[{id:'p1'}], error:null };
+  const chain={
+    select(columns){calls.push(['select',columns]);return this;},
+    eq(column,value){calls.push(['eq',column,value]);return this;},
+    is(column,value){calls.push(['is',column,value]);return this;},
+    order(column,options){calls.push(['order',column,options]);return Promise.resolve(terminal);}
+  };
+  const backend=createBackend({from(table){calls.push(['from',table]);return chain;}});
+  const rows=await backend.listOwnedProjects('admin-user-id','TEST');
+  assert.deepEqual(rows,[{id:'p1'}]);
+  assert.ok(calls.some((call)=>call[0]==='eq'&&call[1]==='owner_user_id'&&call[2]==='admin-user-id'));
+  assert.ok(calls.some((call)=>call[0]==='eq'&&call[1]==='environment'&&call[2]==='TEST'));
+  assert.ok(calls.some((call)=>call[0]==='is'&&call[1]==='deleted_at'&&call[2]===null));
+});
+
+test('public project lookup uses the rate-limited RPC and normalizes its code',async()=>{
+  const client=fakeRpcClient({projectCode:'VO-1234567',fields:[]});
+  const backend=createBackend(client);
+  assert.equal(typeof backend.getPublicProjectByCode,'function');
+  const payload=await backend.getPublicProjectByCode(' vo-1234567 ');
+  assert.equal(payload.projectCode,'VO-1234567');
+  assert.deepEqual(client.calls,[['rpc','get_public_project_by_code',{p_public_code:'VO-1234567'}]]);
 });
 
 test('toProjectRow stores gross and net vineyard area separately when headlands are calculated', () => {
@@ -133,6 +184,26 @@ test('multi-field plans are persisted and restored through project payloads', ()
   assert.equal(restored.project.postSpacingM, 5);
 });
 
+test('legacy save and revision sync share the same stable client project identity', () => {
+  const clientProjectId='00000000-0000-4000-8000-000000000123';
+  const row=toProjectRow({environment:'TEST',cloud:{clientProjectId},project:{
+    localProjectId:clientProjectId,
+    fields:[{id:'field-1',geometry:null},{id:'field-2',geometry:null}]
+  }},{},{ownerUserId:'u',sessionId:'s'});
+  assert.equal(row.client_project_id,clientProjectId);
+  assert.equal(row.field_plans.length,2);
+});
+
+test('project upsert resolves conflicts on the stable client identity when no server id exists',async()=>{
+  const calls=[];
+  const terminal={data:{id:'p1',public_code:'VO-1234567',status:'saved'},error:null};
+  const chain={select(columns){calls.push(['select',columns]);return this;},single(){return Promise.resolve(terminal);}};
+  const backend=createBackend({from(table){calls.push(['from',table]);return {upsert(row,options){calls.push(['upsert',row,options]);return chain;}};}});
+  const clientProjectId='00000000-0000-4000-8000-000000000123';
+  await backend.upsertProject({client_project_id:clientProjectId,status:'saved'});
+  assert.deepEqual(calls.find(call=>call[0]==='upsert')[2],{onConflict:'client_project_id'});
+});
+
 test('applyProjectOperation forwards an idempotent atomic RPC request', async () => {
   const client = fakeRpcClient({ status:'applied', projectId:'p1', version:3 });
   const backend = createBackend(client);
@@ -149,12 +220,27 @@ test('applyProjectOperation forwards an idempotent atomic RPC request', async ()
   assert.equal(result.version, 3);
 });
 
+test('moveProjectField forwards the atomic cross-project RPC request',async()=>{
+  const client=fakeRpcClient({status:'field_moved',fieldId:'f1'});
+  const backend=createBackend(client);
+  const result=await backend.moveProjectField({
+    operationId:'00000000-0000-4000-8000-000000000009',
+    sourceProjectId:'source-project',targetProjectId:'target-project',clientFieldId:'f1'
+  });
+  assert.deepEqual(client.calls[0],['rpc','move_project_field',{
+    p_operation_id:'00000000-0000-4000-8000-000000000009',
+    p_source_project_id:'source-project',p_target_project_id:'target-project',p_client_field_id:'f1'
+  }]);
+  assert.equal(result.status,'field_moved');
+});
+
 test('revision and recovery methods call only public RPC wrappers', async () => {
   const client = fakeRpcClient({ status:'restored', projectId:'p1' });
   const backend = createBackend(client);
   await backend.createProjectRevision({
     operationId:'00000000-0000-4000-8000-000000000002', projectId:'p1',
-    expectedVersion:3, snapshot:{ schemaVersion:2 }, reason:'manual_save'
+    expectedVersion:3, snapshot:{ schemaVersion:2 }, reason:'manual_save',
+    changeSummary:{categories:['layout'],fieldIds:['f1'],label:'Sesto d’impianto'}
   });
   await backend.softDeleteProject({ operationId:'00000000-0000-4000-8000-000000000003', projectId:'p1' });
   await backend.restoreProject({ operationId:'00000000-0000-4000-8000-000000000004', projectId:'p1' });
@@ -164,9 +250,52 @@ test('revision and recovery methods call only public RPC wrappers', async () => 
   assert.deepEqual(client.calls.map((call) => call[1]), [
     'create_project_revision','soft_delete_project','restore_project','restore_project_revision'
   ]);
+  assert.deepEqual(client.calls[0][2].p_change_summary,{categories:['layout'],fieldIds:['f1'],label:'Sesto d’impianto'});
   assert.deepEqual(client.calls[2], ['rpc','restore_project',{
     p_operation_id:'00000000-0000-4000-8000-000000000004', p_project_id:'p1'
   }]);
+});
+
+test('report methods use only dedicated public RPCs and keep the plain share token out of issue calls', async () => {
+  const client=fakeRpcClient({status:'ok'});
+  const backend=createBackend(client);
+  await backend.issueProjectReport({
+    projectId:'p1',revisionNumber:4,selectedFieldIds:['f1'],recipient:{companyName:'A'},
+    disclaimerVersion:'VO-DISC-2026-01',acceptedAt:'2026-09-24T10:00:00Z',tokenHash:'b'.repeat(64)
+  });
+  await backend.getSharedProjectReport('00000000-0000-4000-8000-000000000123','a'.repeat(64));
+  await backend.revokeProjectReport('00000000-0000-4000-8000-000000000123');
+  await backend.listProjectRevisionHistory('p1');
+  assert.deepEqual(client.calls.map(call=>call[1]),[
+    'issue_project_report','get_shared_project_report','revoke_project_report','list_project_revision_history'
+  ]);
+  assert.deepEqual(client.calls[0][2],{
+    p_project_id:'p1',p_revision_number:4,p_selected_field_ids:['f1'],
+    p_recipient_snapshot:{companyName:'A'},p_disclaimer_version:'VO-DISC-2026-01',
+    p_disclaimer_accepted_at:'2026-09-24T10:00:00Z',p_token_hash:'b'.repeat(64)
+  });
+  assert.equal(Object.values(client.calls[0][2]).includes('a'.repeat(64)),false);
+});
+
+test('shared edit handoff asks the protected authorization RPC',async()=>{
+  const client=fakeRpcClient(true);
+  const backend=createBackend(client);
+  assert.equal(await backend.canEditProject('22222222-2222-4222-8222-222222222222'),true);
+  assert.deepEqual(client.calls[0],['rpc','can_edit_project',{p_project_id:'22222222-2222-4222-8222-222222222222'}]);
+});
+
+test('latest revision loader returns null for an empty revision list', async () => {
+  const calls=[];
+  const result={data:[],error:null};
+  const chain={
+    select(value){calls.push(['select',value]);return this;},
+    eq(key,value){calls.push(['eq',key,value]);return this;},
+    order(key,options){calls.push(['order',key,options]);return this;},
+    limit(value){calls.push(['limit',value]);return Promise.resolve(result);}
+  };
+  const backend=createBackend({from(table){calls.push(['from',table]);return chain;}});
+  assert.equal(await backend.loadLatestProjectRevision('p1'),null);
+  assert.ok(calls.some(call=>call[0]==='eq'&&call[1]==='project_id'&&call[2]==='p1'));
 });
 
 test('upsertProfile derives no authorization and writes the supplied protected classification', async () => {
@@ -184,4 +313,27 @@ test('upsertProfile derives no authorization and writes the supplied protected c
   const backend = createBackend(client);
   await backend.upsertProfile({ user_id:'u1', owner_kind:'guest' });
   assert.deepEqual(calls[0], ['profiles',{ user_id:'u1', owner_kind:'guest' },{ onConflict:'user_id' }]);
+});
+
+test('profile authentication methods use protected RPC and Edge Function boundaries',async()=>{
+  const calls=[];
+  const client={
+    async rpc(name,args){calls.push(['rpc',name,args]);return {data:name==='create_guest_transfer_grant'?'grant':{status:'claimed'},error:null};},
+    functions:{async invoke(name,options){calls.push(['function',name,options]);return {data:{session:{access_token:'a',refresh_token:'r'}},error:null};}},
+    from(){return {select(){return {eq(){return {maybeSingle:async()=>({data:{display_name:'Marco',username:'marco'},error:null})};}};}};}
+  };
+  const backend=createBackend(client);
+  const promoted=await backend.promoteGuestAccount({email:'m@example.it',username:'marco',displayName:'Marco',password:'secret123'});
+  assert.equal(promoted.session.access_token,'a');
+  assert.equal(await backend.createGuestTransferGrant(),'grant');
+  await backend.consumeGuestTransferGrant('grant');
+  const session=await backend.loginByIdentifier({identifier:'marco',password:'secret'});
+  assert.equal(session.access_token,'a');
+  assert.deepEqual(calls.slice(0,4).map(call=>call[1]),['promote-guest-account','create_guest_transfer_grant','consume_guest_transfer_grant','login-by-identifier']);
+});
+
+test('Edge Function errors expose the server message instead of the generic SDK status',async()=>{
+  const client={functions:{async invoke(){return {data:null,error:{message:'Edge Function returned a non-2xx status code',context:{async json(){return {error:'Username già utilizzato'};}}}};}}};
+  const backend=createBackend(client);
+  await assert.rejects(backend.promoteGuestAccount({email:'m@example.it',username:'marco',displayName:'Marco',password:'secret123'}),/Username già utilizzato/);
 });

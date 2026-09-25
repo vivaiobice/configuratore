@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="./styles.css?v=18" />
   <link rel="stylesheet" href="./mobile.css?v=45" />
   <link rel="stylesheet" href="./profile.css?v=45" />
-  <link rel="stylesheet" href="./desktop-library.css?v=37" />
+  <link rel="stylesheet" href="./desktop-library.css?v=50" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
   <link rel="stylesheet" href="./desktop-v38.css?v=38" />
@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="./v46-fixes.css?v=46" />
   <link rel="stylesheet" href="./v48-fixes.css?v=48" />
   <link rel="stylesheet" href="./v49-fixes.css?v=49" />
+  <link rel="stylesheet" href="./v50-fixes.css?v=50" />
 </head>
 <body>
   <header class="topbar">
@@ -32,7 +33,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V49</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V50</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -52,7 +53,7 @@
         <label class="field-name-label">Nome campo<input id="field-name" class="control-input" type="text" maxlength="80" placeholder="es. Vigneto Cascina" /></label>
         <div class="field-manager-actions"><button id="add-field-button" class="secondary-button" type="button">Aggiungi campo</button><button id="remove-field-button" class="secondary-button danger-soft" type="button">Elimina campo</button></div>
         <label class="field-select-label">Campi disponibili<select id="field-select"></select></label>
-        <label class="campaign-year-label mobile-campaign-year">Annata dell’impianto<input id="campaign-year" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
+        <div class="field-lifecycle-row mobile-campaign-year"><label class="campaign-year-label">Annata dell’impianto<input id="campaign-year" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label><label>Stato impianto<select id="planting-status"><option value="planned">Da realizzare</option><option value="planted">Impianto realizzato</option></select></label></div>
       </div>
 
       <section class="step" data-step="1">
@@ -127,7 +128,7 @@
           </section>
           <section class="advanced-card advanced-information" data-refinement="information">
             <h3>Informazioni</h3>
-            <label class="campaign-year-label desktop-campaign-year">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label>
+            <div class="field-lifecycle-row desktop-campaign-year"><label class="campaign-year-label">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label><label>Stato impianto<select id="planting-status-desktop"><option value="planned">Da realizzare</option><option value="planted">Impianto realizzato</option></select></label></div>
             <div class="advanced-context">
               <label>Inquadramento dell’impianto
                 <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
@@ -245,6 +246,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=49"></script>
+  <script type="module" src="./src/app.js?v=50"></script>
 </body>
 </html>

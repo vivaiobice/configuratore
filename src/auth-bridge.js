@@ -7,6 +7,7 @@ export function createAuthBridge(){
     subscribe(listener){listeners.add(listener);listener(state);return()=>listeners.delete(listener);},
     attach(next){detach?.();service=next;state=next.getState?.()??state;detach=next.subscribe?.(emit)??null;return state;},
     login:value=>call('login',value),register:value=>call('register',value),logout:()=>call('logout'),
+    updateProfile:value=>call('updateProfile',value),
     requestPasswordReset:value=>call('requestPasswordReset',value),completePasswordReset:value=>call('completePasswordReset',value)
   };
 }

@@ -8,7 +8,7 @@ const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
 function setup(mobile=true,mapInstance=null,withCompass=false){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
- const $=s=>document.querySelector(s);let begun=0,saved=0,cancelled=0,removed=[],originalCompassGroup=null;
+ const $=s=>document.querySelector(s);let begun=0,saved=0,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null;
  if(withCompass){
   const group=document.createElement('div');group.className='maplibregl-ctrl-group';
   const compass=document.createElement('button');compass.className='maplibregl-ctrl-compass';compass.setAttribute('aria-label','Reset bearing to north');
@@ -17,12 +17,18 @@ function setup(mobile=true,mapInstance=null,withCompass=false){
  }
  const field={id:'f1',label:'Campo 1',geometry:[[8,44],[8.001,44],[8.001,44.001],[8,44]],exclusions:[]};
  const project={activeFieldId:'f1',fields:[field],...field};
+ const projects=[{id:'p1',name:'Progetto prova',savedAt:'2026-09-22T00:00:00Z',project:{fields:[field]}}];
  const metrics={areaM2:1000,netAreaM2:900,rows:[],simulatedPlants:400,intermediatePosts:80,headPosts:20,totalPosts:100};
- const ui=createMobileUI({isMobile:()=>mobile,getMap:()=>mapInstance,getField:()=>project,getFields:()=>project.fields,getMetrics:()=>metrics,
+ const authCalls=[];let authState={kind:'guest',displayName:'Guest',username:null,email:null,isAdmin:false};const authListeners=new Set();
+ const auth={getState:()=>authState,subscribe(fn){authListeners.add(fn);fn(authState);return()=>authListeners.delete(fn);},
+  async login(value){authCalls.push(['login',value]);},async register(value){authCalls.push(['register',value]);},async logout(){authCalls.push(['logout']);},async requestPasswordReset(value){authCalls.push(['reset',value]);},
+  emit(value){authState=value;for(const fn of authListeners)fn(value);}};
+ const ui=createMobileUI({isMobile:()=>mobile,getMap:()=>mapInstance,getField:()=>project,getFields:()=>project.fields,getMetrics:()=>metrics,auth,
   resizeMap(){},focusAll(){},stopTools(){},finishEdit(){},undoPoint(){},beginEdit(){begun++;},beginNewField(){begun++;},
-  selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(){saved++;},listProjects:()=>[],loadProject(){},newProject(){},
+  selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(){saved++;},listProjects:()=>projects,loadProject(){},newProject(){},async refreshProjects(){refreshed++;},
+  async renameProject(item,name){renamedProject=[item.id,name];item.name=name;},async deleteProject(item){deletedProject=item.id;projects.splice(projects.indexOf(item),1);},confirm:()=>true,
   finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){}});
- return {$,ui,document,project,metrics,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get cancelled(){return cancelled;},get removed(){return removed;},desktop(){mobile=false;ui.sync();}};
+ return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},desktop(){mobile=false;ui.sync();}};
 }
 test('V26 mobile perimeter becomes light and subordinate to rows, desktop paints restore exactly',()=>{
  const paints=new Map([
@@ -78,6 +84,12 @@ test('V26 field name precedes live preview on first configuration',()=>{
  const section=$('section[data-screen="parameters"]');
  const children=[...section.children];assert.ok(children.indexOf($('.field-manager'))<children.indexOf($('#mobile-parameters-preview')));
  assert.equal($('.map-wrap').classList.contains('mobile-viewer-only'),true);
+});
+test('planting year follows the shared field manager into mobile parameters and returns to desktop',()=>{
+ const c=setup(),{$}=c;const year=$('#campaign-year');assert.ok(year);
+ $('#mobile-add-field').click();c.ui.geometryCommitted();
+ assert.ok($('section[data-screen="parameters"] .field-manager').contains(year));
+ c.desktop();assert.ok($('.panel-scroll>.field-manager').contains(year));
 });
 test('V26 dragging a button does not activate it',()=>{
  const c=setup(),button=c.$('#mobile-add-field');
@@ -135,7 +147,8 @@ test('desktop restoration keeps the same inputs and values',()=>{
  const c=setup(),{$}=c,input=$('#plant-spacing');input.value='1.2';c.desktop();
  assert.equal($('#plant-spacing'),input);assert.equal(input.value,'1.2');
  assert.ok($('.step[data-step="2"]').contains(input));assert.ok($('.advanced').contains($('#rootstock')));
- assert.ok($('.step[data-step="1"]').contains($('.field-manager')));
+ assert.ok($('.panel-scroll').contains($('.field-manager')));
+ assert.equal($('.field-manager').parentElement,$('.panel-scroll'));
  assert.equal($('.map-wrap').parentElement.className,'app-shell');assert.ok(!c.document.body.classList.contains('mobile-app-active'));
 });
 test('desktop startup never moves controls',()=>{const c=setup(false);assert.equal(c.$('.map-wrap').parentElement.className,'app-shell');assert.ok(c.$('.step[data-step="2"]').contains(c.$('#plant-spacing')));});
@@ -225,4 +238,51 @@ test('field list reveals deletion only after a left swipe while detail keeps con
  c.project.fields=[{id:'f1',label:'Campo 1',geometry:[[8,44],[8.001,44],[8.001,44.001],[8,44]],exclusions:[]}];
  c.ui.openField('f1');assert.equal($('#mobile-delete-field').textContent.trim(),'Elimina campo');
  $('#mobile-delete-field').click();assert.deepEqual(c.removed,['f1','f1']);delete globalThis.confirm;
+});
+
+test('mobile navigation exposes four sections ending in Profilo',()=>{
+ const c=setup(),labels=[...c.document.querySelectorAll('.mobile-navigation [data-view] span')].map(node=>node.textContent);
+ assert.deepEqual(labels,['Mappa','Campi','Progetti','Profilo']);
+});
+
+test('guest profile submits numeric username without number coercion',async()=>{
+ const c=setup(),{$}=c;$('[data-view="profile"]').click();
+ $('#mobile-auth-identifier').value='001234';$('#mobile-auth-password').value='12345678';$('#mobile-auth-login').click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(c.authCalls[0],['login',{identifier:'001234',password:'12345678'}]);
+});
+
+test('mobile profile never exposes the desktop-only administration action',()=>{
+ const c=setup(),{$}=c;$('[data-view="profile"]').click();
+ c.auth.emit({kind:'user',displayName:'Marco',username:'marco',email:'m@example.it',isAdmin:false});
+ assert.equal($('#mobile-admin-link'),null);
+ c.auth.emit({kind:'user',displayName:'Marco',username:'marco',email:'m@example.it',isAdmin:true});
+ assert.equal($('#mobile-admin-link'),null);
+});
+
+test('Campi and Progetti expose refresh beside their add actions and rerender after synchronization',async()=>{
+ const c=setup(),{$}=c;
+ c.ui.navigate('fields');
+ assert.ok($('#mobile-refresh-fields'));
+ assert.ok($('#mobile-add-from-fields'));
+ $('#mobile-refresh-fields').click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.refreshed,1);
+ assert.match($('#mobile-notice').textContent,/Sincronizzazione completata/);
+ c.ui.navigate('projects');
+ assert.ok($('#mobile-refresh-projects'));
+ assert.ok($('#mobile-new-project'));
+ $('#mobile-refresh-projects').click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.refreshed,2);
+});
+
+test('mobile project list can rename and delete an archived project',async()=>{
+ const c=setup(),{$}=c;c.ui.navigate('projects');
+ $('[data-mobile-project-action="rename"]').click();
+ const input=$('[data-mobile-project="p1"] input');input.value='Nuovo nome';
+ $('[data-mobile-project-action="confirm-rename"]').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(c.renamedProject,['p1','Nuovo nome']);
+ $('[data-mobile-project-action="delete"]').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.deletedProject,'p1');assert.equal($('[data-mobile-project="p1"]'),null);
 });

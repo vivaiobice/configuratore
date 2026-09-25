@@ -23,3 +23,9 @@ test('excluded-zone drawing accepts boundary overlap by clipping to the committe
   assert.match(mapSource, /normalizeIntersectionRings/);
   assert.doesNotMatch(mapSource, /zona da escludere deve rimanere interamente dentro il campo/i);
 });
+
+test('main map keeps the geographic reference overlay in sync with satellite visibility',()=>{
+  assert.match(mapSource,/satelliteLayers/);
+  assert.match(mapSource,/base-satellite-reference/);
+  assert.match(mapSource,/setLayoutProperty\(SATELLITE_REFERENCE_ID/);
+});

@@ -177,7 +177,7 @@ export function createMobileUI(api){
  function renderDetail(){
   const field=api.getField();$('#mobile-detail-title').textContent=field.label||'Campo';
   $('#mobile-field-detail').innerHTML=`${metricsHtml(field)}<dl class="mobile-materials">${[
-   ['Annata impianto',field.campaignYear||'Da definire'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
+   ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
   ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
  }
  function renderProjects(){

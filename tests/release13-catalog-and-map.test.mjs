@@ -36,7 +36,7 @@ test('missing scion clone is presented as Standard and clones depend on variety'
 });
 
 test('rootstock proposals depend on variety and clone while Other remains possible in UI', () => {
-  assert.deepEqual(listRootstocksForSelection('Favorita B.', 'I - CVT 14'), ['Kober 5 BB', '775 Paulsen', '1103 Paulsen']);
+  assert.deepEqual(listRootstocksForSelection('Favorita B.', 'I - CVT 14'), ['775 Paulsen', '1103 Paulsen', 'Kober 5 BB']);
   assert.deepEqual(listRootstocksForSelection('Sauvignon B.', 'I - Enotria 565'), ['775 Paulsen']);
   assert.ok(listRootstocksForSelection('Moscato Bianco B.', 'Standard').includes('157.11 C.'));
   assert.equal(isOtherMaterialSelection(OTHER_MATERIAL_VALUE), true);
@@ -72,11 +72,11 @@ test('material UI is data-driven and exposes Other request plus field rename con
 
 test('special material request reaches quote workflow and admin project detail', () => {
   const adminService = fs.readFileSync(new URL('../admin/admin-service.js', import.meta.url), 'utf8');
-  const adminApp = fs.readFileSync(new URL('../admin/admin.js', import.meta.url), 'utf8');
+  const adminViews = fs.readFileSync(new URL('../admin/admin-views.js', import.meta.url), 'utf8');
   assert.match(app, /materialRequestNote[\s\S]*requestQuote/);
   assert.match(adminService, /field_plans/);
   assert.match(adminService, /active_field_id/);
-  assert.match(adminApp, /Richiesta materiale/);
+  assert.match(adminViews, /Richiesta materiale/);
 });
 
 test('closed polygon vertex removal preserves closure and minimum polygon shape', () => {

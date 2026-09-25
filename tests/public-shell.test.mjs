@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+const mobileUi = fs.readFileSync(new URL('../src/mobile-ui.js', import.meta.url), 'utf8');
 
 test('public shell exposes project advice without adding a new workflow step', () => {
   assert.match(html, /id="project-advice"/);
@@ -50,6 +51,17 @@ test('post spacing input defaults to 4.50 m and remains editable', () => {
 
 test('mobile fullscreen map control remains exposed', () => {
   assert.match(html, /id="map-fullscreen-button"/);
+});
+
+test('desktop shell exposes a project-code loader without requiring login',()=>{
+  assert.match(html,/id="public-project-trigger"/);
+  assert.match(html,/id="public-project-dialog"/);
+  assert.match(html,/VO-1234567/);
+});
+
+test('mobile profile exposes the same public project-code loader for guests and users',()=>{
+  assert.match(mobileUi,/id="mobile-public-project"/);
+  assert.match(mobileUi,/openPublicProject/);
 });
 
 test('mobile runtime physically places the map immediately after step 01 instead of relying on display contents', () => {

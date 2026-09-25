@@ -24,9 +24,24 @@ test('cloud service initializes anonymous ownership and stores every session', a
   const cloud = createCloudService({ backend, sessionId:'s1', environment:'TEST', consentState:'necessary', referrer:'https://vivaiobice.com' });
   const snapshot = await cloud.initialize();
   assert.equal(snapshot.ownerUserId, 'u1');
+  assert.equal(snapshot.ownerKind, 'guest');
   const sessionCall = backend.calls.find(([name]) => name === 'session');
   assert.equal(sessionCall[1].id, 's1');
   assert.equal(sessionCall[1].consent_state, 'necessary');
+});
+
+test('cloud identity classifies permanent and admin users from protected app metadata', async () => {
+  const userBackend = fakeBackend();
+  userBackend.ensureAnonymousSession = async () => ({ user:{ id:'u2', is_anonymous:false, app_metadata:{} } });
+  const user = await createCloudService({ backend:userBackend, sessionId:'s-user' }).initialize();
+  assert.equal(user.ownerKind, 'user');
+
+  const adminBackend = fakeBackend();
+  adminBackend.ensureAnonymousSession = async () => ({
+    user:{ id:'u3', is_anonymous:false, app_metadata:{ role:'admin' }, user_metadata:{ role:'user' } }
+  });
+  const admin = await createCloudService({ backend:adminBackend, sessionId:'s-admin' }).initialize();
+  assert.equal(admin.ownerKind, 'admin');
 });
 
 test('cloud service saves contact then links it to the project', async () => {
@@ -144,4 +159,50 @@ test('saving a project explicitly records the project_saved funnel event', async
   const event = backend.calls.filter(([name]) => name === 'event').find(([, row]) => row.event_type === 'project_saved');
   assert.ok(event);
   assert.equal(event[1].project_id, 'p1');
+});
+
+test('signed-in owner projects hydrate the local archive without deleting local-only drafts', async () => {
+  const cloudModule=await import('../src/cloud.js');
+  assert.equal(typeof cloudModule.hydrateOwnedProjects,'function');
+  const data=new Map();
+  const storage={getItem:(key)=>data.get(key),setItem:(key,value)=>data.set(key,value)};
+  const {writeLocalProject}=await import('../src/local-projects.js');
+  writeLocalProject(storage,{localProjectId:'local-only',fields:[]},'Bozza locale');
+  const result=await cloudModule.hydrateOwnedProjects({
+    backend:{async listOwnedProjects(owner){assert.equal(owner,'u1');return [{
+      id:'server-p1',client_project_id:'00000000-0000-4000-8000-000000000123',name:'Cloud recente',
+      environment:'TEST',campaign_year:2026,origin:'native',version:4,latest_revision_number:2,
+      updated_at:'2026-09-22T06:00:00.000Z',field_plans:[{id:'f1',geometry:[[8,44],[8.1,44],[8,44.1],[8,44]]}]
+    }];}},
+    ownerUserId:'u1',storage,currentProject:{fields:[{id:'empty',geometry:null}]}
+  });
+  assert.equal(result.imported,1);
+  assert.equal(result.projects.length,2);
+  assert.equal(result.activeProject.name,'Cloud recente');
+  assert.equal(result.activeProject.cloud.projectId,'server-p1');
+});
+
+test('cloud hydration never replaces a non-empty local draft automatically', async () => {
+  const {hydrateOwnedProjects}=await import('../src/cloud.js');
+  const data=new Map();
+  const storage={getItem:(key)=>data.get(key),setItem:(key,value)=>data.set(key,value)};
+  const result=await hydrateOwnedProjects({
+    backend:{async listOwnedProjects(){return [{
+      id:'server-p1',client_project_id:'00000000-0000-4000-8000-000000000123',name:'Cloud',
+      environment:'TEST',field_plans:[{id:'f1',geometry:[[8,44],[8.1,44],[8,44.1],[8,44]]}]
+    }];}},ownerUserId:'u1',storage,
+    currentProject:{fields:[{id:'local',geometry:[[9,45],[9.1,45],[9,45.1],[9,45]]}]}
+  });
+  assert.equal(result.activeProject,null);
+});
+
+test('selecting an archived project makes the cloud service update that server id', async () => {
+  const backend=fakeBackend();
+  const cloud=createCloudService({backend,sessionId:'s-select'});
+  await cloud.initialize();
+  assert.equal(typeof cloud.selectProject,'function');
+  cloud.selectProject({projectId:'server-selected',clientProjectId:'client-selected',version:8});
+  await cloud.saveProject(state,metrics);
+  const projectCall=backend.calls.filter(([name])=>name==='project').at(-1);
+  assert.equal(projectCall[1].id,'server-selected');
 });

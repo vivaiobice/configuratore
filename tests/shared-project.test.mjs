@@ -76,6 +76,31 @@ test('printing from a public code builds the same report model with every saved 
   assert.equal((printHtml.match(/<h2>Mappa satellitare<\/h2>/g)||[]).length,2);
 });
 
+test('the code-loaded preview uses the same printable document layout for every saved field',async()=>{
+  const {document}=parseHTML(fs.readFileSync(new URL('../shared-project.html',import.meta.url),'utf8'));
+  let captures=0;
+  const result=await bootSharedProjectPage({
+    documentRef:document,
+    locationHref:'https://example.test/shared-project.html?code=VO-1234567',
+    backend:{
+      async getPublicProjectByCode(){return {...payload,projectCode:'VO-1234567'};},
+      async canEditProject(){return false;}
+    },
+    authService:{getState:()=>({kind:'guest'}),subscribe(callback){callback({kind:'guest'});}},
+    captureSatellite:async()=>{captures++;return {dataUrl:'data:image/png;base64,a',attribution:'Imagery © Esri'};}
+  });
+  assert.equal(result.state,'ready');
+  assert.equal(captures,2);
+  const root=document.querySelector('#shared-project-root');
+  assert.ok(root.querySelector('.report-document'));
+  assert.ok(root.querySelector('.document-cover'));
+  assert.ok(root.querySelector('.document-summary-grid'));
+  assert.equal(root.querySelectorAll('.document-field-map').length,2);
+  assert.equal(root.querySelectorAll('.document-field-data').length,2);
+  assert.match(root.textContent,/Moscato/);
+  assert.match(root.textContent,/Nebbiolo/);
+});
+
 test('shared shell is read-only and provides disclaimer-gated print controls',()=>{
   const html=fs.readFileSync(new URL('../shared-project.html',import.meta.url),'utf8');
   assert.match(html,/id="shared-project-root"/);

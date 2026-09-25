@@ -11,3 +11,12 @@ test('admin exposes geographic, area, rootstock and project-context filters', ()
   assert.match(app, /rootstock:\s*\$\('#filter-rootstock'\)\.value/);
   assert.match(app, /contextType:\s*\$\('#filter-context'\)\.value/);
 });
+
+test('admin shell exposes primary KPIs and the three analysis sections',()=>{
+  for(const id of ['kpi-projects','kpi-fields','kpi-quotes','kpi-clients','kpi-plants','kpi-area'])assert.match(html,new RegExp(`id="${id}"`));
+  for(const section of ['fields','projects','clients'])assert.match(html,new RegExp(`data-admin-section="${section}"`));
+  assert.match(html,/id="admin-table-head"/);
+  assert.match(html,/id="admin-table-body"/);
+  assert.match(html,/id="filter-query"/);
+  assert.match(html,/id="filter-planting-status"/);
+});

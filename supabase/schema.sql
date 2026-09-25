@@ -297,6 +297,15 @@ create table public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   owner_kind public.owner_kind not null default 'guest',
   display_name text,
+  first_name text,
+  last_name text,
+  company_name text,
+  address text,
+  postal_code text,
+  city text,
+  province text,
+  vat_number text,
+  phone text,
   created_at timestamptz not null default now(),
   last_seen_at timestamptz not null default now()
 );
@@ -999,6 +1008,34 @@ create index if not exists guest_transfer_grants_claimed_by_idx
   where claimed_by_user_id is not null;
 grant execute on function public.archive_stale_guest_drafts() to authenticated;
 
+-- V49 editable profile details. Existing owner-only RLS policies apply.
+alter table public.profiles
+  add column if not exists first_name text,
+  add column if not exists last_name text,
+  add column if not exists company_name text,
+  add column if not exists address text,
+  add column if not exists postal_code text,
+  add column if not exists city text,
+  add column if not exists province text,
+  add column if not exists vat_number text,
+  add column if not exists phone text;
+
+alter table public.profiles drop constraint if exists profiles_province_format;
+alter table public.profiles add constraint profiles_province_format
+  check (province is null or province = '' or province ~ '^[A-Z]{2}$');
+
+alter table public.profiles drop constraint if exists profiles_contact_lengths;
+alter table public.profiles add constraint profiles_contact_lengths check (
+  char_length(coalesce(first_name,'')) <= 160
+  and char_length(coalesce(last_name,'')) <= 160
+  and char_length(coalesce(company_name,'')) <= 160
+  and char_length(coalesce(address,'')) <= 160
+  and char_length(coalesce(postal_code,'')) <= 16
+  and char_length(coalesce(city,'')) <= 160
+  and char_length(coalesce(vat_number,'')) <= 32
+  and char_length(coalesce(phone,'')) <= 32
+);
+
 -- V34 interrupted registration recovery (service-role only).
 create or replace function private.verify_pending_registration_internal(
   p_user_id uuid,
@@ -1056,3 +1093,1079 @@ grant execute on function private.verify_pending_registration_internal(uuid,text
 grant execute on function private.create_guest_transfer_grant_for_internal(uuid) to service_role;
 grant execute on function public.verify_pending_registration(uuid,text,text,text) to service_role;
 grant execute on function public.create_guest_transfer_grant_for(uuid) to service_role;
+
+-- V41: printable project reports, revocable sharing, and revision authorship.
+
+alter table public.project_revisions
+  add column created_by_user_id uuid references auth.users(id) on delete set null,
+  add column created_by_label text not null default 'Utente',
+  add column change_summary jsonb not null default '{}'::jsonb;
+
+update public.project_revisions r set
+  created_by_user_id=r.owner_user_id,
+  created_by_label=coalesce(
+    (select nullif(trim(p.display_name),'') from public.profiles p where p.user_id=r.owner_user_id),
+    'Utente'
+  )
+where r.created_by_user_id is null;
+
+alter table public.project_revisions drop constraint if exists project_revisions_reason_check;
+alter table public.project_revisions add constraint project_revisions_reason_check
+  check (reason in ('manual_save','migration','admin_checkpoint','revision_restore','report_issue'));
+
+create index project_revisions_created_by_idx
+  on public.project_revisions(created_by_user_id,created_at desc);
+
+create table public.project_reports (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  revision_number integer not null,
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  created_by_user_id uuid references auth.users(id) on delete set null,
+  selected_field_ids text[] not null check (cardinality(selected_field_ids) > 0),
+  recipient_snapshot jsonb not null default '{}'::jsonb,
+  disclaimer_version text not null check (char_length(trim(disclaimer_version)) > 0),
+  disclaimer_accepted_at timestamptz not null,
+  disclaimer_accepted_by uuid references auth.users(id) on delete set null,
+  share_token_hash text not null unique check (
+    char_length(share_token_hash)=64 and share_token_hash ~ '^[0-9a-f]{64}$'
+  ),
+  share_revoked_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (id,project_id,revision_number),
+  foreign key (project_id,revision_number)
+    references public.project_revisions(project_id,revision_number) on delete restrict
+);
+
+create index project_reports_project_created_idx
+  on public.project_reports(project_id,created_at desc);
+create index project_reports_owner_created_idx
+  on public.project_reports(owner_user_id,created_at desc);
+
+alter table public.project_reports enable row level security;
+revoke all on table public.project_reports from public,anon,authenticated;
+
+create policy project_reports_owner_or_admin_select on public.project_reports
+for select to authenticated
+using ((select auth.uid())=owner_user_id or (select private.is_admin()));
+
+drop function if exists public.create_project_revision(uuid,uuid,bigint,jsonb,text);
+drop function if exists private.create_project_revision_internal(uuid,uuid,bigint,jsonb,text);
+
+create or replace function private.create_project_revision_internal(
+  p_operation_id uuid,
+  p_project_id uuid,
+  p_expected_version bigint,
+  p_snapshot jsonb,
+  p_reason text default 'manual_save',
+  p_change_summary jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  current_user_id uuid:=auth.uid();
+  project_record public.projects%rowtype;
+  response jsonb;
+  revision_no integer;
+  author_label text;
+begin
+  if current_user_id is null then raise exception 'authentication required'; end if;
+  if p_reason not in ('manual_save','migration','admin_checkpoint','revision_restore','report_issue') then
+    raise exception 'invalid revision reason';
+  end if;
+  select so.result into response from public.sync_operations so
+  where so.operation_id=p_operation_id and so.owner_user_id=current_user_id;
+  if found then return response; end if;
+  select p.* into project_record from public.projects p where p.id=p_project_id for update;
+  if project_record.id is null
+     or (project_record.owner_user_id<>current_user_id and not private.is_admin()) then
+    raise exception 'project access denied';
+  end if;
+  if project_record.version<>p_expected_version then
+    return jsonb_build_object('status','conflict','projectId',p_project_id,
+      'serverVersion',project_record.version);
+  end if;
+  select coalesce(nullif(trim(p.display_name),''),nullif(trim(p.username),''),'Utente')
+    into author_label from public.profiles p where p.user_id=current_user_id;
+  author_label:=coalesce(author_label,'Utente');
+  revision_no:=project_record.latest_revision_number+1;
+  insert into public.project_revisions(
+    project_id,owner_user_id,revision_number,snapshot_schema_version,snapshot,reason,
+    created_by_user_id,created_by_label,change_summary
+  ) values (
+    p_project_id,project_record.owner_user_id,revision_no,
+    coalesce((p_snapshot->>'schemaVersion')::integer,2),p_snapshot,p_reason,
+    current_user_id,author_label,coalesce(p_change_summary,'{}'::jsonb)
+  );
+  update public.projects set latest_revision_number=revision_no,status='saved',updated_at=now()
+    where id=p_project_id;
+  response:=jsonb_build_object('status','revision_created','projectId',p_project_id,
+    'version',project_record.version,'revisionNumber',revision_no,
+    'createdBy',author_label);
+  insert into public.sync_operations(
+    operation_id,owner_user_id,project_id,operation_type,client_version,result
+  ) values (
+    p_operation_id,current_user_id,p_project_id,'create_revision',p_expected_version,response
+  );
+  return response;
+end;
+$$;
+
+create or replace function public.create_project_revision(
+  p_operation_id uuid,
+  p_project_id uuid,
+  p_expected_version bigint,
+  p_snapshot jsonb,
+  p_reason text default 'manual_save',
+  p_change_summary jsonb default '{}'::jsonb
+)
+returns jsonb
+language sql
+security invoker
+set search_path=''
+as $$
+  select private.create_project_revision_internal(
+    p_operation_id,p_project_id,p_expected_version,p_snapshot,p_reason,p_change_summary
+  )
+$$;
+
+create or replace function private.issue_project_report_internal(
+  p_project_id uuid,
+  p_revision_number integer,
+  p_selected_field_ids text[],
+  p_recipient_snapshot jsonb,
+  p_disclaimer_version text,
+  p_disclaimer_accepted_at timestamptz,
+  p_token_hash text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  current_user_id uuid:=auth.uid();
+  project_record public.projects%rowtype;
+  revision_record public.project_revisions%rowtype;
+  report_record public.project_reports%rowtype;
+  normalized_ids text[];
+  matched_fields integer;
+begin
+  if current_user_id is null then raise exception 'authentication required'; end if;
+  select p.* into project_record from public.projects p where p.id=p_project_id;
+  if project_record.id is null
+     or (project_record.owner_user_id<>current_user_id and not private.is_admin()) then
+    raise exception 'project access denied';
+  end if;
+  select r.* into revision_record from public.project_revisions r
+    where r.project_id=p_project_id and r.revision_number=p_revision_number;
+  if revision_record.id is null then raise exception 'revision not found'; end if;
+  select array_agg(value order by value) into normalized_ids
+    from (select distinct trim(value) value from unnest(p_selected_field_ids) value
+          where trim(value)<>'') selected;
+  if coalesce(cardinality(normalized_ids),0)=0 then raise exception 'field selection required'; end if;
+  select count(*) into matched_fields
+    from jsonb_array_elements(coalesce(revision_record.snapshot->'fields','[]'::jsonb)) field
+    where coalesce(field->>'clientFieldId',field->>'id')=any(normalized_ids);
+  if matched_fields<>cardinality(normalized_ids) then raise exception 'invalid field selection'; end if;
+  if coalesce(trim(p_disclaimer_version),'')='' or p_disclaimer_accepted_at is null then
+    raise exception 'disclaimer acceptance required';
+  end if;
+  if coalesce(p_token_hash,'') !~ '^[0-9a-f]{64}$' then raise exception 'invalid share token hash'; end if;
+  insert into public.project_reports(
+    project_id,revision_number,owner_user_id,created_by_user_id,selected_field_ids,
+    recipient_snapshot,disclaimer_version,disclaimer_accepted_at,disclaimer_accepted_by,
+    share_token_hash
+  ) values (
+    p_project_id,p_revision_number,project_record.owner_user_id,current_user_id,normalized_ids,
+    coalesce(p_recipient_snapshot,'{}'::jsonb),trim(p_disclaimer_version),
+    p_disclaimer_accepted_at,current_user_id,p_token_hash
+  ) returning * into report_record;
+  return jsonb_build_object(
+    'status','issued','reportId',report_record.id,'projectId',p_project_id,
+    'revisionNumber',p_revision_number,'createdAt',report_record.created_at
+  );
+end;
+$$;
+
+create or replace function public.issue_project_report(
+  p_project_id uuid,
+  p_revision_number integer,
+  p_selected_field_ids text[],
+  p_recipient_snapshot jsonb,
+  p_disclaimer_version text,
+  p_disclaimer_accepted_at timestamptz,
+  p_token_hash text
+)
+returns jsonb
+language sql
+security invoker
+set search_path=''
+as $$
+  select private.issue_project_report_internal(
+    p_project_id,p_revision_number,p_selected_field_ids,p_recipient_snapshot,
+    p_disclaimer_version,p_disclaimer_accepted_at,p_token_hash
+  )
+$$;
+
+create or replace function private.get_shared_project_report_internal(
+  p_report_id uuid,
+  p_token text
+)
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path=''
+as $$
+declare
+  report_record public.project_reports%rowtype;
+  revision_record public.project_revisions%rowtype;
+  project_record public.projects%rowtype;
+  public_fields jsonb;
+  response jsonb;
+begin
+  if coalesce(p_token,'') !~ '^[0-9a-f]{64}$' then return null; end if;
+  select r.* into report_record from public.project_reports r
+    where r.id=p_report_id
+      and r.share_revoked_at is null
+      and r.share_token_hash=encode(extensions.digest(p_token,'sha256'),'hex');
+  if report_record.id is null then return null; end if;
+  select r.* into revision_record from public.project_revisions r
+    where r.project_id=report_record.project_id
+      and r.revision_number=report_record.revision_number;
+  select p.* into project_record from public.projects p where p.id=report_record.project_id;
+  if revision_record.id is null or project_record.id is null then return null; end if;
+  select coalesce(jsonb_agg(field order by ordinal),'[]'::jsonb) into public_fields
+    from jsonb_array_elements(coalesce(revision_record.snapshot->'fields','[]'::jsonb))
+      with ordinality selected(field,ordinal)
+    where coalesce(field->>'clientFieldId',field->>'id')=any(report_record.selected_field_ids);
+  response:=jsonb_build_object(
+    'reportId',report_record.id,
+    'projectId',report_record.project_id,
+    'projectName',revision_record.snapshot->>'name',
+    'revisionNumber',report_record.revision_number,
+    'currentRevisionNumber',project_record.latest_revision_number,
+    'selectedFieldIds',to_jsonb(report_record.selected_field_ids),
+    'fields',public_fields,
+    'createdAt',report_record.created_at,
+    'disclaimerVersion',report_record.disclaimer_version
+  );
+  return response;
+end;
+$$;
+
+create or replace function public.get_shared_project_report(p_report_id uuid,p_token text)
+returns jsonb
+language sql
+security invoker
+stable
+set search_path=''
+as $$ select private.get_shared_project_report_internal(p_report_id,p_token) $$;
+
+create or replace function private.revoke_project_report_internal(p_report_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  current_user_id uuid:=auth.uid();
+  report_record public.project_reports%rowtype;
+  project_record public.projects%rowtype;
+begin
+  if current_user_id is null then raise exception 'authentication required'; end if;
+  select r.* into report_record from public.project_reports r where r.id=p_report_id for update;
+  if report_record.id is null then raise exception 'report not found'; end if;
+  select p.* into project_record from public.projects p where p.id=report_record.project_id;
+  if project_record.id is null
+     or (project_record.owner_user_id<>current_user_id and not private.is_admin()) then
+    raise exception 'project access denied';
+  end if;
+  update public.project_reports set share_revoked_at=coalesce(share_revoked_at,now())
+    where id=p_report_id;
+  return jsonb_build_object('status','revoked','reportId',p_report_id);
+end;
+$$;
+
+create or replace function public.revoke_project_report(p_report_id uuid)
+returns jsonb
+language sql
+security invoker
+set search_path=''
+as $$ select private.revoke_project_report_internal(p_report_id) $$;
+
+create or replace function private.list_project_revision_history_internal(p_project_id uuid)
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path=''
+as $$
+declare
+  current_user_id uuid:=auth.uid();
+  project_record public.projects%rowtype;
+  response jsonb;
+begin
+  if current_user_id is null then raise exception 'authentication required'; end if;
+  select p.* into project_record from public.projects p where p.id=p_project_id;
+  if project_record.id is null
+     or (project_record.owner_user_id<>current_user_id and not private.is_admin()) then
+    raise exception 'project access denied';
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'revisionNumber',r.revision_number,
+    'reason',r.reason,
+    'createdAt',r.created_at,
+    'createdBy',r.created_by_label,
+    'changeSummary',r.change_summary
+  ) order by r.revision_number desc),'[]'::jsonb)
+    into response from public.project_revisions r where r.project_id=p_project_id;
+  return response;
+end;
+$$;
+
+create or replace function public.list_project_revision_history(p_project_id uuid)
+returns jsonb
+language sql
+security invoker
+stable
+set search_path=''
+as $$ select private.list_project_revision_history_internal(p_project_id) $$;
+
+create or replace function private.can_edit_project_internal(p_project_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path=''
+as $$
+  select auth.uid() is not null and (auth.jwt()->>'is_anonymous')='false' and exists(
+    select 1 from public.projects p
+    where p.id=p_project_id
+      and (p.owner_user_id=auth.uid() or private.is_admin())
+  )
+$$;
+
+create or replace function public.can_edit_project(p_project_id uuid)
+returns boolean
+language sql
+security invoker
+stable
+set search_path=''
+as $$ select private.can_edit_project_internal(p_project_id) $$;
+
+revoke all on function private.create_project_revision_internal(uuid,uuid,bigint,jsonb,text,jsonb) from public,anon;
+revoke all on function private.issue_project_report_internal(uuid,integer,text[],jsonb,text,timestamptz,text) from public,anon;
+revoke all on function private.get_shared_project_report_internal(uuid,text) from public;
+revoke all on function private.revoke_project_report_internal(uuid) from public,anon;
+revoke all on function private.list_project_revision_history_internal(uuid) from public,anon;
+revoke all on function private.can_edit_project_internal(uuid) from public,anon;
+
+revoke all on function public.create_project_revision(uuid,uuid,bigint,jsonb,text,jsonb) from public,anon;
+revoke all on function public.issue_project_report(uuid,integer,text[],jsonb,text,timestamptz,text) from public,anon;
+revoke all on function public.get_shared_project_report(uuid,text) from public,anon,authenticated;
+revoke all on function public.revoke_project_report(uuid) from public,anon;
+revoke all on function public.list_project_revision_history(uuid) from public,anon;
+revoke all on function public.can_edit_project(uuid) from public,anon;
+
+grant execute on function private.create_project_revision_internal(uuid,uuid,bigint,jsonb,text,jsonb) to authenticated;
+grant execute on function private.issue_project_report_internal(uuid,integer,text[],jsonb,text,timestamptz,text) to authenticated;
+grant execute on function private.get_shared_project_report_internal(uuid,text) to anon,authenticated;
+grant execute on function private.revoke_project_report_internal(uuid) to authenticated;
+grant execute on function private.list_project_revision_history_internal(uuid) to authenticated;
+grant execute on function private.can_edit_project_internal(uuid) to authenticated;
+
+grant execute on function public.create_project_revision(uuid,uuid,bigint,jsonb,text,jsonb) to authenticated;
+grant execute on function public.issue_project_report(uuid,integer,text[],jsonb,text,timestamptz,text) to authenticated;
+grant execute on function public.get_shared_project_report(uuid,text) to anon,authenticated;
+
+-- Keep historical human-readable codes usable when an older client created a
+-- duplicate project row. The alias is private and public access remains limited
+-- to the existing rate-limited RPC.
+create table if not exists private.project_public_code_aliases (
+  public_code text primary key check (public_code ~ '^VO-[0-9]{7}$'),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists project_public_code_aliases_project_idx
+  on private.project_public_code_aliases(project_id);
+
+revoke all on table private.project_public_code_aliases from public,anon,authenticated;
+
+insert into private.project_public_code_aliases(public_code,project_id)
+select 'VO-5195947',p.id from public.projects p where p.public_code='VO-5949699'
+on conflict (public_code) do update set project_id=excluded.project_id;
+
+create or replace function private.get_public_project_by_code_internal(p_public_code text)
+returns jsonb
+language plpgsql
+security definer
+volatile
+set search_path=''
+as $$
+declare
+  headers jsonb;
+  requester text;
+  requester_hash_value text;
+  normalized_code text:=upper(trim(coalesce(p_public_code,'')));
+  recent_attempts integer;
+  resolved_project_id uuid;
+  project_record public.projects%rowtype;
+  revision_record public.project_revisions%rowtype;
+  selected_fields jsonb;
+  normalized_fields jsonb;
+begin
+  begin
+    headers:=coalesce(nullif(current_setting('request.headers',true),'')::jsonb,'{}'::jsonb);
+  exception when others then headers:='{}'::jsonb;
+  end;
+  requester:=nullif(trim(split_part(coalesce(headers->>'x-forwarded-for',''),',',1)),'');
+  requester:=coalesce(requester,auth.uid()::text,nullif(headers->>'user-agent',''),'unknown');
+  requester_hash_value:=encode(extensions.digest(requester,'sha256'),'hex');
+  delete from private.project_public_lookup_attempts
+  where requester_hash=requester_hash_value and attempted_at<now()-interval '1 day';
+  select count(*) into recent_attempts from private.project_public_lookup_attempts
+  where requester_hash=requester_hash_value and attempted_at>=now()-interval '10 minutes';
+  if recent_attempts>=12 then return null; end if;
+  if normalized_code !~ '^VO-[0-9]{7}$' then
+    insert into private.project_public_lookup_attempts(requester_hash,successful)
+    values(requester_hash_value,false);
+    return null;
+  end if;
+
+  select a.project_id into resolved_project_id
+  from private.project_public_code_aliases a
+  where a.public_code=normalized_code;
+  if resolved_project_id is null then
+    select p.id into resolved_project_id
+    from public.projects p
+    where p.public_code=normalized_code;
+  end if;
+
+  select p.* into project_record from public.projects p
+  where p.id=resolved_project_id and p.deleted_at is null
+    and p.status in ('saved','pdf_downloaded','quote_requested','contacted','client')
+  limit 1;
+  if project_record.id is null then
+    insert into private.project_public_lookup_attempts(requester_hash,successful)
+    values(requester_hash_value,false);
+    return null;
+  end if;
+
+  select r.* into revision_record from public.project_revisions r
+  where r.project_id=project_record.id
+  order by r.revision_number desc
+  limit 1;
+  if revision_record.id is not null then
+    selected_fields:=revision_record.snapshot->'fields';
+  else
+    selected_fields:=to_jsonb(project_record.field_plans);
+  end if;
+
+  select coalesce(jsonb_agg(
+    pf.design_data || jsonb_build_object(
+      'id',pf.client_field_id,
+      'clientFieldId',pf.client_field_id,
+      'label',pf.label,
+      'geometry',case when pf.geometry is null then 'null'::jsonb
+        else (extensions.st_asgeojson(pf.geometry)::jsonb)->'coordinates'->0 end,
+      'exclusions',pf.exclusions,
+      'displayOrder',pf.display_order,
+      'metrics',jsonb_build_object(
+        'areaM2',pf.gross_area_m2,
+        'grossAreaM2',pf.gross_area_m2,
+        'netAreaM2',pf.net_area_m2,
+        'simulatedPlants',pf.simulated_plants,
+        'commercialPlants25',pf.commercial_plants_25,
+        'rowCount',pf.row_count,
+        'rowLinearM',pf.row_linear_m,
+        'headPosts',pf.head_posts,
+        'intermediatePosts',pf.intermediate_posts,
+        'totalPosts',pf.total_posts
+      )
+    )
+  ),'[]'::jsonb)
+  into normalized_fields
+  from (
+    select active_fields.* from public.project_fields active_fields
+    where active_fields.project_id=project_record.id and active_fields.deleted_at is null
+    order by active_fields.display_order,active_fields.created_at,active_fields.id
+  ) pf;
+
+  if jsonb_typeof(selected_fields) is distinct from 'array' then
+    selected_fields:=normalized_fields;
+  elsif jsonb_typeof(normalized_fields) = 'array'
+    and jsonb_array_length(normalized_fields) > jsonb_array_length(selected_fields) then
+    selected_fields:=normalized_fields;
+  end if;
+
+  if jsonb_typeof(selected_fields) is distinct from 'array' or jsonb_array_length(selected_fields)=0 then
+    insert into private.project_public_lookup_attempts(requester_hash,successful)
+    values(requester_hash_value,false);
+    return null;
+  end if;
+  insert into private.project_public_lookup_attempts(requester_hash,successful)
+  values(requester_hash_value,true);
+  return jsonb_build_object(
+    'projectCode',normalized_code,
+    'projectId',project_record.id,
+    'projectName',coalesce(revision_record.snapshot->>'name',project_record.name),
+    'revisionNumber',coalesce(revision_record.revision_number,project_record.latest_revision_number,0),
+    'currentRevisionNumber',project_record.latest_revision_number,
+    'fields',selected_fields,
+    'createdAt',coalesce(revision_record.created_at,project_record.updated_at),
+    'disclaimerVersion','public-code-v1'
+  );
+end;
+$$;
+
+revoke all on function private.get_public_project_by_code_internal(text) from public,anon,authenticated;
+
+-- V42: memorable public project IDs and rate-limited read-only lookup.
+
+create table if not exists private.project_public_code_registry (
+  code text primary key check (code ~ '^VO-[0-9]{7}$'),
+  created_at timestamptz not null default now()
+);
+revoke all on table private.project_public_code_registry from public,anon,authenticated;
+
+create or replace function private.generate_project_public_code()
+returns text
+language plpgsql
+security definer
+volatile
+set search_path=''
+as $$
+declare
+  candidate text;
+begin
+  loop
+    candidate := 'VO-' || lpad((floor(random()*10000000)::bigint)::text,7,'0');
+    insert into private.project_public_code_registry(code)
+      values(candidate) on conflict do nothing;
+    if found then return candidate; end if;
+  end loop;
+end;
+$$;
+
+revoke all on function private.generate_project_public_code() from public,anon;
+grant execute on function private.generate_project_public_code() to authenticated;
+
+insert into private.project_public_code_registry(code)
+select p.public_code from public.projects p
+where p.public_code ~ '^VO-[0-9]{7}$'
+on conflict do nothing;
+
+do $$
+declare
+  project_record record;
+  next_code text;
+begin
+  for project_record in
+    select p.id from public.projects p
+    where p.public_code !~ '^VO-[0-9]{7}$'
+    order by p.created_at,p.id
+  loop
+    loop
+      begin
+        next_code:=private.generate_project_public_code();
+        update public.projects set public_code=next_code where id=project_record.id;
+        exit;
+      exception when unique_violation then
+        null;
+      end;
+    end loop;
+  end loop;
+end;
+$$;
+
+alter table public.projects
+  alter column public_code set default private.generate_project_public_code();
+alter table public.projects drop constraint if exists projects_public_code_human_check;
+alter table public.projects add constraint projects_public_code_human_check
+  check (public_code ~ '^VO-[0-9]{7}$');
+
+create table if not exists private.project_public_lookup_attempts (
+  id bigint generated always as identity primary key,
+  requester_hash text not null,
+  attempted_at timestamptz not null default now(),
+  successful boolean not null default false
+);
+create index if not exists project_public_lookup_attempts_requester_idx
+  on private.project_public_lookup_attempts(requester_hash,attempted_at desc);
+revoke all on table private.project_public_lookup_attempts from public,anon,authenticated;
+
+create or replace function private.get_public_project_by_code_internal(p_public_code text)
+returns jsonb
+language plpgsql
+security definer
+volatile
+set search_path=''
+as $$
+declare
+  headers jsonb;
+  requester text;
+  requester_hash_value text;
+  normalized_code text:=upper(trim(coalesce(p_public_code,'')));
+  recent_attempts integer;
+  resolved_project_id uuid;
+  project_record public.projects%rowtype;
+  revision_record public.project_revisions%rowtype;
+  selected_fields jsonb;
+  normalized_fields jsonb;
+begin
+  begin
+    headers:=coalesce(nullif(current_setting('request.headers',true),'')::jsonb,'{}'::jsonb);
+  exception when others then headers:='{}'::jsonb;
+  end;
+  requester:=nullif(trim(split_part(coalesce(headers->>'x-forwarded-for',''),',',1)),'');
+  requester:=coalesce(requester,auth.uid()::text,nullif(headers->>'user-agent',''),'unknown');
+  requester_hash_value:=encode(extensions.digest(requester,'sha256'),'hex');
+  delete from private.project_public_lookup_attempts
+  where requester_hash=requester_hash_value and attempted_at<now()-interval '1 day';
+  select count(*) into recent_attempts from private.project_public_lookup_attempts
+  where requester_hash=requester_hash_value and attempted_at>=now()-interval '10 minutes';
+  if recent_attempts>=12 then return null; end if;
+  if normalized_code !~ '^VO-[0-9]{7}$' then
+    insert into private.project_public_lookup_attempts(requester_hash,successful)
+    values(requester_hash_value,false);
+    return null;
+  end if;
+
+  select a.project_id into resolved_project_id
+  from private.project_public_code_aliases a
+  where a.public_code=normalized_code;
+  if resolved_project_id is null then
+    select p.id into resolved_project_id
+    from public.projects p
+    where p.public_code=normalized_code;
+  end if;
+
+  select p.* into project_record from public.projects p
+  where p.id=resolved_project_id and p.deleted_at is null
+    and p.status in ('saved','pdf_downloaded','quote_requested','contacted','client')
+  limit 1;
+  if project_record.id is null then
+    insert into private.project_public_lookup_attempts(requester_hash,successful)
+    values(requester_hash_value,false);
+    return null;
+  end if;
+
+  select r.* into revision_record from public.project_revisions r
+  where r.project_id=project_record.id
+  order by r.revision_number desc
+  limit 1;
+  if revision_record.id is not null then
+    selected_fields:=revision_record.snapshot->'fields';
+  else
+    selected_fields:=to_jsonb(project_record.field_plans);
+  end if;
+
+  select coalesce(jsonb_agg(
+    pf.design_data || jsonb_build_object(
+      'id',pf.client_field_id,
+      'clientFieldId',pf.client_field_id,
+      'label',pf.label,
+      'geometry',case when pf.geometry is null then 'null'::jsonb
+        else (extensions.st_asgeojson(pf.geometry)::jsonb)->'coordinates'->0 end,
+      'exclusions',pf.exclusions,
+      'displayOrder',pf.display_order,
+      'metrics',jsonb_build_object(
+        'areaM2',pf.gross_area_m2,
+        'grossAreaM2',pf.gross_area_m2,
+        'netAreaM2',pf.net_area_m2,
+        'simulatedPlants',pf.simulated_plants,
+        'commercialPlants25',pf.commercial_plants_25,
+        'rowCount',pf.row_count,
+        'rowLinearM',pf.row_linear_m,
+        'headPosts',pf.head_posts,
+        'intermediatePosts',pf.intermediate_posts,
+        'totalPosts',pf.total_posts
+      )
+    )
+  ),'[]'::jsonb)
+  into normalized_fields
+  from (
+    select active_fields.* from public.project_fields active_fields
+    where active_fields.project_id=project_record.id and active_fields.deleted_at is null
+    order by active_fields.display_order,active_fields.created_at,active_fields.id
+  ) pf;
+
+  if jsonb_typeof(selected_fields) is distinct from 'array' then
+    selected_fields:=normalized_fields;
+  elsif jsonb_typeof(normalized_fields) = 'array'
+    and jsonb_array_length(normalized_fields) > jsonb_array_length(selected_fields) then
+    selected_fields:=normalized_fields;
+  end if;
+
+  if jsonb_typeof(selected_fields) is distinct from 'array' or jsonb_array_length(selected_fields)=0 then
+    insert into private.project_public_lookup_attempts(requester_hash,successful)
+    values(requester_hash_value,false);
+    return null;
+  end if;
+  insert into private.project_public_lookup_attempts(requester_hash,successful)
+  values(requester_hash_value,true);
+  return jsonb_build_object(
+    'projectCode',normalized_code,
+    'projectId',project_record.id,
+    'projectName',coalesce(revision_record.snapshot->>'name',project_record.name),
+    'revisionNumber',coalesce(revision_record.revision_number,project_record.latest_revision_number,0),
+    'currentRevisionNumber',project_record.latest_revision_number,
+    'fields',selected_fields,
+    'createdAt',coalesce(revision_record.created_at,project_record.updated_at),
+    'disclaimerVersion','public-code-v1'
+  );
+end;
+$$;
+
+revoke all on function private.get_public_project_by_code_internal(text) from public,anon,authenticated;
+
+create or replace function public.get_public_project_by_code(p_public_code text)
+returns jsonb
+language sql
+security definer
+volatile
+set search_path=''
+as $$ select private.get_public_project_by_code_internal(p_public_code) $$;
+
+revoke all on function private.get_public_project_by_code_internal(text) from public,anon,authenticated;
+revoke all on function public.get_public_project_by_code(text) from public;
+grant execute on function public.get_public_project_by_code(text) to anon,authenticated;
+
+grant execute on function public.revoke_project_report(uuid) to authenticated;
+grant execute on function public.list_project_revision_history(uuid) to authenticated;
+grant execute on function public.can_edit_project(uuid) to authenticated;
+
+-- V41 follow-up: disallow even policy-level direct access to report metadata.
+drop policy if exists project_reports_owner_or_admin_select on public.project_reports;
+
+-- Allow the public wrapper, but not the anon role, to access the private lookup.
+create or replace function public.get_shared_project_report(p_report_id uuid,p_token text)
+returns jsonb
+language sql
+security definer
+stable
+set search_path=''
+as $$ select private.get_shared_project_report_internal(p_report_id,p_token) $$;
+revoke all on function public.get_shared_project_report(uuid,text) from public;
+grant execute on function public.get_shared_project_report(uuid,text) to anon,authenticated;
+
+-- V50: field lifecycle, human quote numbers, and transactional field moves.
+
+alter table public.project_fields
+  add column if not exists planting_status text not null default 'planned';
+
+update public.project_fields
+set planting_status=case
+  when design_data->>'plantingStatus'='planted' then 'planted'
+  else 'planned'
+end;
+
+alter table public.project_fields
+  drop constraint if exists project_fields_planting_status_check;
+alter table public.project_fields
+  add constraint project_fields_planting_status_check
+  check (planting_status in ('planned','planted'));
+
+create or replace function private.sync_project_field_planting_status()
+returns trigger
+language plpgsql
+security invoker
+set search_path=''
+as $$
+begin
+  new.planting_status:=case
+    when new.design_data->>'plantingStatus'='planted' then 'planted'
+    else 'planned'
+  end;
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_project_field_planting_status on public.project_fields;
+create trigger sync_project_field_planting_status
+before insert or update of design_data on public.project_fields
+for each row execute function private.sync_project_field_planting_status();
+
+revoke all on function private.sync_project_field_planting_status() from public,anon,authenticated;
+
+alter table public.quote_requests
+  add column if not exists quote_number text;
+
+create unique index if not exists quote_requests_environment_quote_number_uidx
+  on public.quote_requests(environment,quote_number)
+  where quote_number is not null and btrim(quote_number)<>'';
+
+create or replace function private.move_project_field_internal(
+  p_operation_id uuid,
+  p_source_project_id uuid,
+  p_target_project_id uuid,
+  p_client_field_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  current_user_id uuid:=auth.uid();
+  source_project public.projects%rowtype;
+  target_project public.projects%rowtype;
+  moved_project_field public.project_fields%rowtype;
+  moved_field jsonb;
+  source_fields jsonb;
+  target_fields jsonb;
+  replacement_field jsonb;
+  source_snapshot jsonb;
+  target_snapshot jsonb;
+  response jsonb;
+  moved_field_id text;
+  replacement_field_id text;
+  source_revision integer;
+  target_revision integer;
+  target_display_order integer;
+  author_label text;
+  field_geometry extensions.geometry;
+begin
+  if current_user_id is null then raise exception 'authentication required'; end if;
+  if p_operation_id is null then raise exception 'operation id required'; end if;
+  if p_source_project_id=p_target_project_id then raise exception 'target project must be different'; end if;
+  if nullif(trim(coalesce(p_client_field_id,'')),'') is null then raise exception 'field id required'; end if;
+
+  select so.result into response
+  from public.sync_operations so
+  where so.operation_id=p_operation_id and so.owner_user_id=current_user_id;
+  if found then return response; end if;
+
+  perform 1
+  from public.projects p
+  where p.id in (p_source_project_id,p_target_project_id)
+  order by p.id
+  for update;
+
+  select p.* into source_project
+  from public.projects p
+  where p.id=p_source_project_id and p.deleted_at is null;
+  select p.* into target_project
+  from public.projects p
+  where p.id=p_target_project_id and p.deleted_at is null;
+
+  if source_project.id is null or target_project.id is null
+     or source_project.owner_user_id<>target_project.owner_user_id
+     or (source_project.owner_user_id<>current_user_id and not private.is_admin()) then
+    raise exception 'project access denied';
+  end if;
+
+  select item.value into moved_field
+  from jsonb_array_elements(coalesce(source_project.field_plans,'[]'::jsonb)) item(value)
+  where coalesce(item.value->>'clientFieldId',item.value->>'id')=p_client_field_id
+  limit 1;
+  if moved_field is null then raise exception 'field not found'; end if;
+
+  moved_field_id:=p_client_field_id;
+  if exists (
+    select 1
+    from jsonb_array_elements(coalesce(target_project.field_plans,'[]'::jsonb)) item(value)
+    where coalesce(item.value->>'clientFieldId',item.value->>'id')=moved_field_id
+  ) then
+    moved_field_id:=extensions.gen_random_uuid()::text;
+    moved_field:=jsonb_set(
+      jsonb_set(moved_field,'{clientFieldId}',to_jsonb(moved_field_id),true),
+      '{id}',to_jsonb(moved_field_id),true
+    );
+  end if;
+
+  select coalesce(jsonb_agg(item.value order by item.ordinality),'[]'::jsonb)
+  into source_fields
+  from jsonb_array_elements(coalesce(source_project.field_plans,'[]'::jsonb))
+       with ordinality item(value,ordinality)
+  where coalesce(item.value->>'clientFieldId',item.value->>'id')<>p_client_field_id;
+
+  target_fields:=coalesce(target_project.field_plans,'[]'::jsonb)||jsonb_build_array(moved_field);
+  target_display_order:=greatest(jsonb_array_length(target_fields)-1,0);
+
+  if jsonb_array_length(source_fields)=0 then
+    replacement_field_id:=extensions.gen_random_uuid()::text;
+    replacement_field:=jsonb_build_object('plantingStatus','planned',
+      'id',replacement_field_id,
+      'clientFieldId',replacement_field_id,
+      'label','Campo 1',
+      'cloudReady',false,
+      'geometry',null,
+      'exclusions','[]'::jsonb,
+      'metrics','{}'::jsonb,
+      'displayOrder',0
+    );
+    source_fields:=jsonb_build_array(replacement_field);
+  end if;
+
+  source_revision:=source_project.latest_revision_number+1;
+  target_revision:=target_project.latest_revision_number+1;
+
+  update public.projects set
+    field_plans=source_fields,
+    active_field_id=case
+      when active_field_id=p_client_field_id then
+        coalesce(source_fields->0->>'clientFieldId',source_fields->0->>'id')
+      else active_field_id
+    end,
+    version=version+1,
+    latest_revision_number=source_revision,
+    updated_at=now()
+  where id=source_project.id;
+
+  update public.projects set
+    field_plans=target_fields,
+    active_field_id=coalesce(active_field_id,moved_field_id),
+    version=version+1,
+    latest_revision_number=target_revision,
+    updated_at=now()
+  where id=target_project.id;
+
+  select pf.* into moved_project_field
+  from public.project_fields pf
+  where pf.project_id=source_project.id
+    and pf.client_field_id=p_client_field_id
+    and pf.deleted_at is null
+  for update;
+
+  if moved_project_field.id is not null then
+    update public.project_fields set
+      project_id=target_project.id,
+      owner_user_id=target_project.owner_user_id,
+      client_field_id=moved_field_id,
+      display_order=target_display_order,
+      deleted_at=null,
+      updated_at=now()
+    where id=moved_project_field.id;
+  else
+    field_geometry:=null;
+    if coalesce((moved_field->>'cloudReady')::boolean,false)
+       and jsonb_typeof(moved_field->'geometry')='array' then
+      field_geometry:=extensions.st_setsrid(
+        extensions.st_geomfromgeojson(jsonb_build_object(
+          'type','Polygon','coordinates',jsonb_build_array(moved_field->'geometry')
+        )::text),4326
+      );
+    end if;
+    insert into public.project_fields(
+      project_id,owner_user_id,client_field_id,label,geometry,exclusions,design_data,
+      gross_area_m2,net_area_m2,simulated_plants,commercial_plants_25,row_count,row_linear_m,
+      head_posts,intermediate_posts,total_posts,display_order,deleted_at,updated_at
+    ) values (
+      target_project.id,target_project.owner_user_id,moved_field_id,
+      coalesce(nullif(moved_field->>'label',''),'Campo'),field_geometry,
+      coalesce(moved_field->'exclusions','[]'::jsonb),
+      moved_field-'geometry'-'exclusions'-'metrics'-'clientFieldId'-'cloudReady',
+      coalesce((moved_field->'metrics'->>'grossAreaM2')::double precision,
+        (moved_field->'metrics'->>'areaM2')::double precision,0),
+      coalesce((moved_field->'metrics'->>'netAreaM2')::double precision,0),
+      coalesce((moved_field->'metrics'->>'simulatedPlants')::integer,0),
+      coalesce((moved_field->'metrics'->>'commercialPlants25')::integer,0),
+      coalesce((moved_field->'metrics'->>'rowCount')::integer,0),
+      coalesce((moved_field->'metrics'->>'rowLinearM')::double precision,0),
+      coalesce((moved_field->'metrics'->>'headPosts')::integer,0),
+      coalesce((moved_field->'metrics'->>'intermediatePosts')::integer,0),
+      coalesce((moved_field->'metrics'->>'totalPosts')::integer,0),
+      target_display_order,null,now()
+    );
+  end if;
+
+  if replacement_field is not null then
+    insert into public.project_fields(
+      project_id,owner_user_id,client_field_id,label,exclusions,design_data,display_order
+    ) values (
+      source_project.id,source_project.owner_user_id,replacement_field_id,'Campo 1',
+      '[]'::jsonb,jsonb_build_object('plantingStatus','planned'),0
+    );
+  end if;
+
+  select coalesce(nullif(trim(p.display_name),''),nullif(trim(p.username),''),'Utente')
+  into author_label from public.profiles p where p.user_id=current_user_id;
+  author_label:=coalesce(author_label,'Utente');
+
+  source_snapshot:=jsonb_build_object(
+    'schemaVersion',source_project.snapshot_schema_version,
+    'clientProjectId',source_project.client_project_id,
+    'projectId',source_project.id,
+    'environment',source_project.environment,
+    'name',source_project.name,
+    'campaignYear',source_project.campaign_year,
+    'origin',source_project.origin,
+    'fields',source_fields
+  );
+  target_snapshot:=jsonb_build_object(
+    'schemaVersion',target_project.snapshot_schema_version,
+    'clientProjectId',target_project.client_project_id,
+    'projectId',target_project.id,
+    'environment',target_project.environment,
+    'name',target_project.name,
+    'campaignYear',target_project.campaign_year,
+    'origin',target_project.origin,
+    'fields',target_fields
+  );
+
+  insert into public.project_revisions(
+    project_id,owner_user_id,revision_number,snapshot_schema_version,snapshot,reason,
+    created_by_user_id,created_by_label,change_summary
+  ) values
+  (
+    source_project.id,source_project.owner_user_id,source_revision,
+    source_project.snapshot_schema_version,source_snapshot,'manual_save',
+    current_user_id,author_label,jsonb_build_object(
+      'type','field_move','direction','out','fieldId',p_client_field_id,
+      'otherProjectId',target_project.id
+    )
+  ),
+  (
+    target_project.id,target_project.owner_user_id,target_revision,
+    target_project.snapshot_schema_version,target_snapshot,'manual_save',
+    current_user_id,author_label,jsonb_build_object(
+      'type','field_move','direction','in','fieldId',moved_field_id,
+      'otherProjectId',source_project.id
+    )
+  );
+
+  response:=jsonb_build_object(
+    'status','field_moved',
+    'fieldId',moved_field_id,
+    'sourceProjectId',source_project.id,
+    'targetProjectId',target_project.id,
+    'sourceVersion',source_project.version+1,
+    'targetVersion',target_project.version+1,
+    'source_revision',source_revision,
+    'target_revision',target_revision
+  );
+  insert into public.sync_operations(
+    operation_id,owner_user_id,project_id,operation_type,client_version,result
+  ) values (
+    p_operation_id,current_user_id,source_project.id,'field_move',source_project.version,response
+  );
+  return response;
+end;
+$$;
+
+create or replace function public.move_project_field(
+  p_operation_id uuid,
+  p_source_project_id uuid,
+  p_target_project_id uuid,
+  p_client_field_id text
+)
+returns jsonb
+language sql
+security invoker
+set search_path=''
+as $$
+  select private.move_project_field_internal(
+    p_operation_id,p_source_project_id,p_target_project_id,p_client_field_id
+  )
+$$;
+
+revoke all on function private.move_project_field_internal(uuid,uuid,uuid,text) from public,anon;
+revoke all on function public.move_project_field(uuid,uuid,uuid,text) from public,anon;
+grant execute on function private.move_project_field_internal(uuid,uuid,uuid,text) to authenticated;
+grant execute on function public.move_project_field(uuid,uuid,uuid,text) to authenticated;

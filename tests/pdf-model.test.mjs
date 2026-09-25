@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectToPdfModel } from '../src/pdf-model.js';
+import { projectToPdfModel, buildProjectReportModel, ReportSelectionError } from '../src/pdf-model.js';
 
 test('projectToPdfModel builds the preliminary vineyard proposal without losing commercial quantities', () => {
   const state = {
@@ -59,4 +59,64 @@ test('projectToPdfModel carries the generated vineyard rows into the technical d
   const rows = [{ start:[8,44], end:[8,44.01], lengthM:1110 }];
   const model = projectToPdfModel({ state:{ environment:'TEST', project:{ geometry:[[8,44],[8.01,44],[8,44.01],[8,44]], rowSpacingM:2.5, plantSpacingM:1 } }, metrics:{ areaM2:1000, rows }, publicCode:'VO-DRAW' });
   assert.deepEqual(model.geometry.rows, rows);
+});
+
+test('multi-field report selects fields and aggregates the existing calculated metrics', () => {
+  const state={environment:'TEST',project:{
+    localProjectName:'Impianto Langhe',campaignYear:2026,activeFieldId:'f1',
+    fields:[
+      {id:'f1',label:'Barbera',geometry:[[8,44],[8.01,44],[8,44.01],[8,44]],rowSpacingM:2.5,plantSpacingM:0.9,grapeVariety:'Barbera',rootstock:'1103 P',exclusions:[]},
+      {id:'f2',label:'Nebbiolo',geometry:[[8.02,44],[8.03,44],[8.02,44.01],[8.02,44]],rowSpacingM:2.7,plantSpacingM:1,grapeVariety:'Nebbiolo',rootstock:'SO4',exclusions:[]},
+      {id:'f3',label:'Incompleto',geometry:null,exclusions:[]}
+    ]
+  }};
+  const metrics={
+    f1:{areaM2:2000,netAreaM2:1800,perimeterM:190,rowCount:20,rowLinearM:750,simulatedPlants:820,commercialPlants25:825,headPosts:40,intermediatePosts:130,totalPosts:170,rows:[]},
+    f2:{areaM2:2500,netAreaM2:2200,perimeterM:220,rowCount:24,rowLinearM:940,simulatedPlants:1032,commercialPlants25:1050,headPosts:48,intermediatePosts:150,totalPosts:198,rows:[]}
+  };
+  const model=buildProjectReportModel({
+    state,selectedFieldIds:['f2','f1'],getMetrics:field=>metrics[field.id],
+    report:{id:'r1',revisionNumber:4,generatedAt:'2026-09-24T10:00:00Z',projectCode:'VO-12'},
+    recipient:{companyName:'Azienda Esempio'}
+  });
+  assert.equal(model.title,'Studio preliminare ed esemplificativo di impianto viticolo');
+  assert.deepEqual(model.fields.map(field=>field.id),['f2','f1']);
+  assert.equal(model.summary.commercialPlants,1875);
+  assert.equal(model.summary.calculatedPlants,1852);
+  assert.equal(model.summary.grossAreaM2,4500);
+  assert.equal(model.summary.totalPosts,368);
+  assert.equal(model.recipient.companyName,'Azienda Esempio');
+});
+
+test('multi-field report warns about unknown or invalid selected fields and rejects an empty result', () => {
+  const state={project:{fields:[{id:'f1',label:'Incompleto',geometry:null,exclusions:[]}]}};
+  assert.throws(()=>buildProjectReportModel({state,selectedFieldIds:['missing'],getMetrics:()=>({})}),ReportSelectionError);
+  const model=buildProjectReportModel({state,selectedFieldIds:['f1'],getMetrics:()=>({})});
+  assert.equal(model.fields.length,1);
+  assert.equal(model.fields[0].geometryValid,false);
+  assert.match(model.warnings[0],/perimetro/i);
+});
+
+test('multi-field report preserves zero values, project defaults and truly absent planting year', () => {
+  const field={id:'f1',label:'Campo',geometry:[[8,44],[8.01,44],[8,44.01],[8,44]],orientationDeg:0,headlandWidthM:0,exclusions:[]};
+  const model=buildProjectReportModel({state:{project:{fields:[field]}},selectedFieldIds:['f1'],getMetrics:()=>({areaM2:0,commercialPlants25:0})});
+  assert.equal(model.fields[0].layout.orientationDeg,0);
+  assert.equal(model.fields[0].layout.headlandWidthM,0);
+  assert.equal(model.fields[0].layout.plantSpacingM,0.9);
+  assert.equal(model.fields[0].plantingYear,null);
+  assert.equal(model.fields[0].plantMaterial.plantHeightCm,40);
+});
+
+test('report carries a per-field requested barbatella height',()=>{
+  const geometry=[[8,44],[8.01,44],[8,44.01],[8,44]];
+  const state={project:{fields:[{id:'f1',geometry,plantHeightCm:60}]}};
+  const model=buildProjectReportModel({state,selectedFieldIds:['f1']});
+  assert.equal(model.fields[0].plantMaterial.plantHeightCm,60);
+});
+
+test('report carries the lifecycle status of every field',()=>{
+  const geometry=[[8,44],[8.01,44],[8,44.01],[8,44]];
+  const state={project:{fields:[{id:'f1',geometry,plantingStatus:'planted'}]}};
+  const model=buildProjectReportModel({state,selectedFieldIds:['f1']});
+  assert.equal(model.fields[0].plantingStatus,'planted');
 });

@@ -1,5 +1,5 @@
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
-import { ensureProjectFields } from './fields.js?v=45';
+import { ensureProjectFields } from './fields.js?v=50';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',
@@ -63,6 +63,7 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
       intermediatePosts: metrics.intermediatePosts ?? 0,
       totalPosts: metrics.totalPosts ?? 0
     },
+    plantingStatus: project.plantingStatus === 'planted' ? 'planted' : 'planned',
     plantMaterial: {
       grapeVariety: project.grapeVariety || 'Da definire',
       rootstock: project.rootstock || 'Consigliami',
@@ -124,6 +125,7 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
       plantHeightCm:field.plantHeightCm===60?60:40
     },
     plantingYear:n(field.campaignYear??field.plantingYear??projectCampaignYear),
+    plantingStatus:field.plantingStatus==='planted'?'planted':'planned',
     context:{type:field.projectContextType||'',label:CONTEXT_LABELS[field.projectContextType]||'',note:field.projectContextNote||''},
     notes:field.materialRequestNote||'',
     metrics:{

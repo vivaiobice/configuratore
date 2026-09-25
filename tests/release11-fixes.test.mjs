@@ -30,7 +30,7 @@ test('rotation arrow bindings are inverted to match the visual map direction', (
 });
 
 test('excluded area copy and sidebar sections are presented as separate cards', () => {
-  assert.match(html, /class="exclusion-heading"><strong>Aree escluse<\/strong>\s*<span>/);
+  assert.match(html, /class="exclusion-heading"><strong>Gestione aree escluse<\/strong>\s*<span>/);
   assert.match(css, /\.step,\.advanced\{[^}]*border-radius:/);
   assert.match(css, /\.advanced\{[^}]*padding:0/);
   assert.match(css, /\.exclusion-panel\{[^}]*background:/);

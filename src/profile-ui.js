@@ -54,7 +54,6 @@ export function createProfileUI({authService,document=globalThis.document}){
     if(state.kind==='user'){
       const profile=document.createElement('button');profile.type='button';profile.textContent='Profilo';profile.addEventListener('click',openProfile);menu.append(profile);
       if(state.isAdmin){const admin=document.createElement('a');admin.href='./admin/';admin.textContent='Amministrazione';admin.setAttribute('role','menuitem');menu.append(admin);}
-      menu.append(themeSelector());
       const logout=document.createElement('button');logout.type='button';logout.textContent='Esci';logout.addEventListener('click',async()=>{closeMenu();await authService.logout();});menu.append(logout);
     }else closeMenu();
   }

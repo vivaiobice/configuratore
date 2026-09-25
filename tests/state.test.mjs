@@ -9,6 +9,7 @@ test('initial state starts in TEST with empty project geometry', () => {
   assert.equal(state.project.rowSpacingM, 2.5);
   assert.equal(state.project.plantSpacingM, 0.9);
   assert.equal(state.project.orientationDeg, 0);
+  assert.equal(state.project.campaignYear, new Date().getFullYear());
   assert.deepEqual(state.project.cadastralRefs, []);
 });
 

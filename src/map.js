@@ -3,8 +3,10 @@ import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabe
 import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
+import {satelliteSources,satelliteLayers} from './satellite-style.js?v=50';
 
 const SATELLITE_ID = 'base-satellite';
+const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
 const STREET_ID = 'base-street';
 const ROWS_SOURCE_ID = 'vineyard-rows';
 const ROWS_LAYER_ID = 'vineyard-rows-line';
@@ -30,13 +32,7 @@ function baseStyle() {
   return {
     version: 8,
     sources: {
-      satellite: {
-        type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: 'Imagery © Esri'
-      },
+      ...satelliteSources(),
       street: {
         type: 'raster',
         tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
@@ -46,7 +42,7 @@ function baseStyle() {
       }
     },
     layers: [
-      { id: SATELLITE_ID, type: 'raster', source: 'satellite' },
+      ...satelliteLayers({imageryLayerId:SATELLITE_ID,referenceLayerId:SATELLITE_REFERENCE_ID}),
       { id: STREET_ID, type: 'raster', source: 'street', layout: { visibility: 'none' } }
     ]
   };
@@ -937,9 +933,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function setBaseMap(kind) {
-    if (!map.getLayer(SATELLITE_ID) || !map.getLayer(STREET_ID)) return;
+    if (!map.getLayer(SATELLITE_ID) || !map.getLayer(SATELLITE_REFERENCE_ID) || !map.getLayer(STREET_ID)) return;
     const satellite = kind !== 'street';
     map.setLayoutProperty(SATELLITE_ID, 'visibility', satellite ? 'visible' : 'none');
+    map.setLayoutProperty(SATELLITE_REFERENCE_ID, 'visibility', satellite ? 'visible' : 'none');
     map.setLayoutProperty(STREET_ID, 'visibility', satellite ? 'none' : 'visible');
   }
 

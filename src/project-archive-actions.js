@@ -26,3 +26,18 @@ export async function deleteArchivedProject({storage,item,backend=null,operation
  }
  removeLocalProject(storage,item.id);return true;
 }
+
+export async function moveArchivedField({sourceItem,targetItem,field,backend=null,refreshProjects=null,operationId=()=>globalThis.crypto.randomUUID()}={}){
+ const sourceProjectId=sourceItem?.cloud?.projectId,targetProjectId=targetItem?.cloud?.projectId;
+ const clientFieldId=field?.id??field?.clientFieldId;
+ if(!sourceItem?.id||!targetItem?.id||!clientFieldId)throw new Error('Campo o progetto non trovato.');
+ if(sourceItem.id===targetItem.id||sourceProjectId===targetProjectId)throw new Error('Scegli un progetto di destinazione diverso.');
+ if(!sourceProjectId||!targetProjectId)throw new Error('Entrambi i progetti devono essere sincronizzati prima dello spostamento.');
+ if(!backend?.moveProjectField)throw new Error('Connessione necessaria per spostare il campo.');
+ const response=await backend.moveProjectField({
+  operationId:operationId(),sourceProjectId,targetProjectId,clientFieldId
+ });
+ if(response?.status!=='field_moved')throw new Error('Spostamento non completato.');
+ await refreshProjects?.();
+ return response;
+}

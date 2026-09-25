@@ -17,7 +17,7 @@ function fakeElement(){
   return {className:'',textContent:'',title:'',type:'',setAttribute(){},addEventListener(type,fn){handlers.set(type,fn);},click(){handlers.get('click')?.({preventDefault(){},stopPropagation(){}});}};
 }
 class FakeMap {
-  constructor(){ globalThis.__editMap=this; this.handlers=new Map(); this.sources=new Map(); this.layers=new Map(); this.bearing=0; this.dragRotate={disable(){}}; this.touchZoomRotate={enable(){},disableRotation(){}}; this.touchPitch={disable(){}}; this.dragPan={enable(){},disable(){}}; this.doubleClickZoom={enable(){},disable(){}}; this.canvas={style:{},classList:{toggle(){}},focus(){}}; this.container={addEventListener(){}}; }
+  constructor(){ globalThis.__editMap=this; this.handlers=new Map(); this.sources=new Map(); this.layers=new Map(); this.bearing=0; this.dragRotate={disable(){}}; this.touchZoomRotate={enable(){},disableRotation(){}}; this.touchPitch={disable(){}}; this.dragPan={enabled:true,enable(){this.enabled=true;},disable(){this.enabled=false;}}; this.doubleClickZoom={enable(){},disable(){}}; this.canvas={style:{},classList:{toggle(){}},focus(){}}; this.container={addEventListener(){}}; }
   addControl(){}
   on(name,fn){ const list=this.handlers.get(name)??[]; list.push(fn); this.handlers.set(name,list); }
   once(name,fn){ const wrapped=(e)=>{ this.off(name,wrapped); fn(e); }; this.on(name,wrapped); }
@@ -154,6 +154,24 @@ test('changing fields removes handles and editing restarts on the new geometry',
  } finally {ctx.restore();}
 });
 
+test('row curvature editor exposes draggable numbered points and emits the moved control',()=>{
+ let changed=null;
+ const ctx=setup({onRowCurvePointsChange:points=>{changed=points;}});
+ try{
+  const lonM=1/(111320*Math.cos(44*Math.PI/180)),latM=1/110540;
+  const polygon=[[8,44],[8+40*lonM,44],[8+40*lonM,44+60*latM],[8,44+60*latM],[8,44]];
+  ctx.api.setRowCurveEditor({geometry:polygon,orientationDeg:0,points:[{id:'bend',position:.5,offsetM:4}],active:true});
+  const handle=globalThis.__editMarkers.find(marker=>marker.element?.className==='curve-control-marker'&&!marker.removed);
+  assert.ok(handle?.draggable);
+  assert.equal(handle.element.textContent,'1');
+  handle.setLngLat([handle.lngLat[0]+2*lonM,handle.lngLat[1]]);handle.handlers.dragend();
+  assert.equal(changed[0].id,'bend');
+  assert.ok(changed[0].offsetM>5.5);
+  ctx.api.finishRowCurveEditing();
+  assert.ok(globalThis.__editMarkers.filter(marker=>marker.element?.className==='curve-control-marker').every(marker=>marker.removed));
+ }finally{ctx.restore();}
+});
+
 test('touch taps draw and close a polygon without relying on synthetic clicks',()=>{
  let geometry; const states=[];
  const ctx=setup({onGeometryChange:g=>geometry=g,onDrawingState:s=>states.push(s)});
@@ -218,4 +236,26 @@ test('exclusion handles modify only the selected exclusion and support adding a 
   ctx.api.finishVertexEditing();
   assert.ok(globalThis.__editMarkers.filter(m=>m.draggable).every(m=>m.removed));
  } finally {ctx.restore();}
+});
+
+test('mobile editor keeps background pan active while drawing and editing an exclusion',()=>{
+ const ctx=setup({allowPanWhileEditing:()=>true});
+ try {
+  ctx.api.beginDraw();
+  assert.equal(ctx.map.dragPan.enabled,true,'the map background remains pannable while placing perimeter points');
+  ctx.api.stopTools();
+  ctx.api.setGeometry([[0,0],[10,0],[10,10],[0,10],[0,0]]);
+  ctx.api.setExclusions([{id:'cut',geometry:[[2,2],[4,2],[4,4],[2,2]]}]);
+  assert.equal(ctx.api.beginExclusionEditing('cut'),true);
+  assert.equal(ctx.map.dragPan.enabled,true,'the background remains pannable while exclusion handles are active');
+  const handle=globalThis.__editMarkers.find(m=>m.draggable&&!m.removed);
+  handle.setLngLat([1,2]);handle.handlers.dragend();
+  assert.equal(ctx.map.dragPan.enabled,true,'moving a handle must not lock subsequent background navigation');
+ } finally {ctx.restore();}
+});
+
+test('desktop editor retains the existing locked background while drawing',()=>{
+ const ctx=setup();
+ try {ctx.api.beginDraw();assert.equal(ctx.map.dragPan.enabled,false);}
+ finally {ctx.restore();}
 });

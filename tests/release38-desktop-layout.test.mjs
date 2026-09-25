@@ -28,14 +28,18 @@ test('desktop field selectors render the same fields and emit one selection',()=
   assert.deepEqual(selected,['a']);
 });
 
-test('desktop map search icon reveals and focuses the existing location search',()=>{
-  const {document}=parseHTML('<button id="map-search-button"></button><input id="search-input">');
+test('desktop map search icon slides open and focuses a search box on the map',()=>{
+  const {document}=parseHTML('<div class="map-search-control"><button id="map-search-button" aria-expanded="false"></button><form id="map-search-form" hidden><input id="map-search-input"></form></div>');
   let focused=false,selected=false;
-  const input=document.querySelector('#search-input');
+  const input=document.querySelector('#map-search-input');
   input.focus=()=>focused=true;input.select=()=>selected=true;
   createDesktopMapSearchAction({document}).mount();
   document.querySelector('#map-search-button').click();
+  assert.equal(document.querySelector('#map-search-form').hidden,false);
+  assert.equal(document.querySelector('#map-search-button').getAttribute('aria-expanded'),'true');
   assert.equal(focused,true);assert.equal(selected,true);
+  document.querySelector('#map-search-button').click();
+  assert.equal(document.querySelector('#map-search-form').hidden,true);
 });
 
 test('desktop quick calculator uses its own spacing values',()=>{
@@ -60,13 +64,25 @@ test('desktop quick calculator uses its own spacing values',()=>{
 
 test('desktop map exposes a compact ordered tool rail and a field picker',()=>{
   const {document}=parseHTML(html);
+  assert.ok(document.querySelector('.topbar > .topbar-actions > .map-command-bar > #public-project-trigger'));
+  assert.equal(document.querySelector('.app-shell > .map-command-bar'),null);
+  assert.ok(document.querySelector('.app-shell > .map-wrap'));
+  assert.equal(document.querySelector('.map-wrap > #public-project-trigger'),null);
   const visual=document.querySelector('[data-map-tools="visual"]');
   assert.ok(visual.contains(document.querySelector('[data-base="satellite"]')));
   const rail=document.querySelector('.desktop-tool-rail');
   const groups=[...rail.children].map(node=>node.dataset.mapTools);
   assert.deepEqual(groups,['editor','positioning','exclusions']);
   assert.ok(document.querySelector('.map-field-picker #map-field-select'));
+  assert.ok(document.querySelector('.map-search-control #map-search-form #map-search-input'));
   assert.equal(document.querySelector('.field-select-label').firstChild.textContent.trim(),'Campi disponibili');
+});
+
+test('project lookup shares the desktop top menu row without reducing map height',()=>{
+  const css=fs.readFileSync(new URL('../v48-fixes.css',import.meta.url),'utf8');
+  assert.match(css,/\.topbar>\.topbar-actions>\.map-command-bar/);
+  assert.doesNotMatch(css,/\.app-shell\s*\{[^}]*grid-template-rows/i);
+  assert.doesNotMatch(css,/\.app-shell>\.map-wrap\s*\{[^}]*grid-row/i);
 });
 
 test('desktop advanced controls expose the requested orderable groups without removing the mobile year control',()=>{
@@ -127,6 +143,6 @@ test('desktop V38 stylesheet orders advanced groups and keeps desktop-only contr
 test('V38 stylesheet remains loaded beneath the current release overrides',()=>{
   const mobileUi=fs.readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   assert.match(html,/desktop-v38\.css\?v=38/);
-  assert.match(html,/AMBIENTE TEST · V46/);
+  assert.match(html,/AMBIENTE TEST · V50/);
   assert.match(mobileUi,/AMBIENTE TEST · V45/);
 });

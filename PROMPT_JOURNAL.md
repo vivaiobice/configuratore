@@ -810,3 +810,37 @@ Ambiente TEST esclusivo e uno stop esplicito prima di qualunque incremento relea
   l'ordine precedente dei controlli viene preservato.
 - TDD: 8 test specifici V39 scritti e osservati RED sulla V38; GREEN finale della suite `405/405`.
   Nessuna migrazione e nessun intervento su Supabase LIVE.
+
+## V49 — Dark Mode desktop, ricerca mappa, gesture, Campi e Profilo
+
+- Ambito mantenuto: nessuna modifica alla UI mobile, alle formule di calcolo, alla generazione PDF o
+  al flusso di caricamento progetto già approvato.
+- Dark Mode desktop uniformata per barra superiore, finestre, Calcolo rapido, libreria, aree escluse,
+  selettori e bordi degli strumenti mappa. Bordatura chiara del logo ridotta a 0,45 px.
+- La lente apre ora con uno slide un campo di ricerca direttamente sulla mappa; ricerca, suggerimenti
+  e geocodifica condividono lo stesso motore della barra laterale.
+- Gesture desktop separate: scroll pixel a due dita esegue solo pan, pinch resta allo zoom nativo e
+  Shift/Alt + scroll ruota. Il pan programmato resta disponibile durante l'uso della matita.
+- Il menu Campi ripristina Apri, Rinomina ed Elimina con lo stesso modello operativo dei Progetti.
+- Il Profilo autenticato mostra dati personali e aziendali, tema, reset password e logout invece del
+  modulo di login. Aggiunti i relativi campi alla tabella `profiles` con RLS proprietario invariato.
+- Il disclaimer iniziale dichiara esplicitamente la memorizzazione di perimetri, geometrie e coordinate
+  geografiche necessarie a salvataggio e condivisione.
+- Migrazione `v49_profile_details` applicata al progetto Supabase TEST e verificata. Gate automatico:
+  `540/540` test più controllo sintattico completo.
+
+## V50 — Amministrazione operativa, stato impianti e archivio progetti
+
+- Ripristinato il salvataggio del Profilo tramite il bridge di autenticazione; la preferenza del tema
+  è stata lasciata soltanto nella scheda Profilo.
+- Introdotto per ogni campo lo stato `planned` / `planted`, con fallback compatibile a `planned` per i
+  dati storici. Barbatelle potenziali e superficie archivio seguono le regole concordate.
+- Area amministrativa ricostruita con KPI operativi, tabelle Campi/Progetti/Clienti, filtri, dettaglio
+  in pagina, numero preventivo e mappa con tutti i campi etichettati.
+- Archivio Progetti reso espandibile. I campi possono essere spostati tra progetti tramite drag and
+  drop o `Sposta in…`; conferma obbligatoria e RPC atomica con revisioni su origine e destinazione.
+- Aggiunti i riferimenti geografici Esri sopra tutte le mappe satellitari e nella cattura destinata al
+  documento, tramite un unico helper condiviso.
+- Migrazione V50 applicata e verificata esclusivamente sul progetto Supabase TEST; prova RPC eseguita
+  dentro una transazione annullata. Nessuna pubblicazione automatica su un eventuale ambiente LIVE.
+- Gate finale V50: `568/568` test, nessun test saltato, controllo sintattico completo superato.

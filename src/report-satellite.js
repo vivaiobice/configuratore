@@ -1,18 +1,6 @@
-const ATTRIBUTION = 'Imagery © Esri';
+import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=50';
 
-const SATELLITE_STYLE = {
-  version: 8,
-  sources: {
-    satellite: {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: ATTRIBUTION
-    }
-  },
-  layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }]
-};
+const ATTRIBUTION = SATELLITE_ATTRIBUTION;
 
 export class SatelliteCaptureError extends Error {
   constructor(code, message, cause) {
@@ -114,7 +102,7 @@ export async function captureSatelliteImage({ container, maplibregl, mapModel, t
   try {
     map = new maplibregl.Map({
       container,
-      style: SATELLITE_STYLE,
+      style: satelliteStyle(),
       center: [0, 0],
       zoom: 1,
       interactive: false,

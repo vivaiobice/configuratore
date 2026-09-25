@@ -50,3 +50,10 @@ test('entry and exit button remains outside scrolling editor toolbar',()=>{
  button.handlers.click();
  assert.equal(button.attrs['aria-pressed'],'false');
 });
+test('active mobile app rejects the legacy fullscreen path used by exclusion editing',()=>{
+ const c=setup(),map=c.nodes['.map-wrap'],originalParent=map.parentElement;
+ c.context.mobileUi={isActive:()=>true,sync(){},navigate(){}};
+ c.context.setMapFullscreen(true);
+ assert.equal(map.parentElement,originalParent);
+ assert.ok(!map.classList.contains('fullscreen-map'));
+});

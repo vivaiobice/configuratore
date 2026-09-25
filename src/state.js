@@ -1,5 +1,5 @@
 import { suggestRowOrientation } from './geometry.js?v=45';
-import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=45';
+import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=50';
 
 export function createInitialState() {
   const state = {

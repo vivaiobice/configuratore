@@ -1,4 +1,4 @@
-import { ensureProjectFields } from './fields.js';
+import { ensureProjectFields } from './fields.js?v=50';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function edgeFunctionError(error,fallback){
@@ -277,6 +277,14 @@ export function createBackend(client) {
         p_operation_id:operationId,
         p_expected_version:expectedVersion,
         p_snapshot:snapshot
+      });
+    },
+    async moveProjectField({ operationId, sourceProjectId, targetProjectId, clientFieldId }) {
+      return rpc('move_project_field', {
+        p_operation_id:operationId,
+        p_source_project_id:sourceProjectId,
+        p_target_project_id:targetProjectId,
+        p_client_field_id:clientFieldId
       });
     },
     async createProjectRevision({ operationId, projectId, expectedVersion, snapshot, reason = 'manual_save', changeSummary = {} }) {

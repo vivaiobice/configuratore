@@ -1,15 +1,15 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=45';
-import { createMobileUI } from './mobile-ui.js?v=45';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=49';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation } from './state.js?v=50';
+import { createMobileUI } from './mobile-ui.js?v=50';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=50';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreMenu, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=49';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
-import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord } from './project-archive-actions.js?v=37';
-import { initMap } from './map.js?v=49';
+import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=50';
+import { initMap } from './map.js?v=50';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=49';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=48';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=50';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=50';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
@@ -17,7 +17,7 @@ import { createProjectSync } from './project-sync.js?v=34';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=45';
+import { ensureProjectFields, updateActiveFieldProject, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField } from './fields.js?v=50';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
 import { createAuthService } from './auth-service.js?v=49';
@@ -305,6 +305,8 @@ $('#project-context').value = state.project.projectContextType || 'new_planting'
 $('#project-context-note').value = state.project.projectContextNote ?? '';
 $('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
 $('#campaign-year-desktop').value = state.project.campaignYear ?? new Date().getFullYear();
+$('#planting-status').value = state.project.plantingStatus === 'planted' ? 'planted' : 'planned';
+$('#planting-status-desktop').value = state.project.plantingStatus === 'planted' ? 'planted' : 'planned';
 renderMaterialSelectors();
 const newPlantingOption = $('#project-context')?.querySelector('option[value="new_planting"]');
 if (newPlantingOption) newPlantingOption.dataset.context = 'new_planting', newPlantingOption.textContent = 'Nuovo Impianto';
@@ -360,6 +362,8 @@ function syncProjectControls() {
   $('#project-context-note').value = state.project.projectContextNote ?? '';
   $('#campaign-year').value = state.project.campaignYear ?? new Date().getFullYear();
   $('#campaign-year-desktop').value = state.project.campaignYear ?? new Date().getFullYear();
+  $('#planting-status').value = state.project.plantingStatus === 'planted' ? 'planted' : 'planned';
+  $('#planting-status-desktop').value = state.project.plantingStatus === 'planted' ? 'planted' : 'planned';
   const projectName=$('#project-name');
   if(projectName&&projectName.value!==(state.project.localProjectName??'Il mio impianto'))projectName.value=state.project.localProjectName??'Il mio impianto';
   renderMaterialSelectors();
@@ -431,6 +435,11 @@ function updateCampaignYear(event){
 }
 $('#campaign-year')?.addEventListener('input',updateCampaignYear);
 $('#campaign-year-desktop')?.addEventListener('input',updateCampaignYear);
+function updatePlantingStatus(event){
+  patchProject({plantingStatus:event.target.value});
+}
+$('#planting-status')?.addEventListener('change',updatePlantingStatus);
+$('#planting-status-desktop')?.addEventListener('change',updatePlantingStatus);
 $('#project-name')?.addEventListener('input',(event)=>patchProject({localProjectName:event.target.value}));
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; summarySaveFeedback.dirty();persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
@@ -664,11 +673,11 @@ async function deleteArchivedProject(item){
   return true;
 }
 
-async function refreshOwnedArchive(){
+async function refreshOwnedArchive({flush=true}={}){
   if(!cloudBackend||!accountAuthService)return {projects:readLocalProjects(globalThis.localStorage),imported:0,guest:true};
   const authState=await accountAuthService.refresh();
   if(authState.kind!=='user'||!authState.user?.id)return {projects:readLocalProjects(globalThis.localStorage),imported:0,guest:true};
-  await projectSync?.flush();
+  if(flush)await projectSync?.flush();
   const currentId=state.project.localProjectId;
   const hydrated=await hydrateOwnedProjects({
     backend:cloudBackend,ownerUserId:authState.user.id,storage:globalThis.localStorage,
@@ -679,6 +688,13 @@ async function refreshOwnedArchive(){
   else if(hydrated.activeProject)loadMobileProject(hydrated.activeProject);
   desktopLibraryUi?.render();
   return hydrated;
+}
+
+async function moveArchivedField(sourceItem,targetItem,field){
+  return moveArchivedFieldRecord({
+    sourceItem,targetItem,field,backend:cloudBackend,operationId:newSessionId,
+    refreshProjects:()=>refreshOwnedArchive({flush:false})
+  });
 }
 
 mobileUi = createMobileUI({
@@ -700,11 +716,12 @@ mobileUi = createMobileUI({
 
 desktopLibraryUi=createDesktopLibraryUI({
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
+  getFieldMetrics:(field)=>calculateFieldProject(field),
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
   renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
   deleteField:(field)=>removeMobileField(field.id),
   loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject,
-  renameProject:renameArchivedProject,deleteProject:deleteArchivedProject
+  renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,moveField:moveArchivedField
 });
 desktopLibraryUi.mount();
 

@@ -1,4 +1,4 @@
-import { isValidProjectStatus } from './admin-model.js';
+import { isValidProjectStatus } from './admin-model.js?v=50';
 
 const PROJECT_SELECT = [
   'id','owner_user_id','client_project_id','public_code','name','campaign_year','origin','owner_kind','version','latest_revision_number','deleted_at',
@@ -9,7 +9,7 @@ const PROJECT_SELECT = [
   'post_spacing_m','head_posts','intermediate_posts','total_posts','mechanization','project_context_type',
   'project_context_note','grape_variety','rootstock','clone_selection','field_plans','active_field_id','contact_id',
   'contacts(id,company_name,first_name,last_name,phone,email,marketing_consent)',
-  'quote_requests(id,status,message,created_at)'
+  'quote_requests(id,status,quote_number,message,created_at)'
 ].join(',');
 
 export function createAdminService(client) {
@@ -40,7 +40,7 @@ export function createAdminService(client) {
 
     async loadProfiles() {
       const result=await client.from('profiles')
-        .select('user_id,display_name,username,owner_kind,created_at,last_seen_at')
+        .select('user_id,display_name,username,owner_kind,first_name,last_name,company_name,address,postal_code,city,province,vat_number,phone,created_at,last_seen_at')
         .order('display_name',{ascending:true});
       if(result.error)throw result.error;
       return result.data ?? [];

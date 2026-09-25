@@ -88,3 +88,14 @@ test('generateRows can subtract exclusion polygons from row segments', () => {
   assert.ok(cut.reduce((s,r)=>s+r.lengthM,0) < full.reduce((s,r)=>s+r.lengthM,0));
   assert.ok(cut.length >= full.length);
 });
+
+test('row GeoJSON preserves curved coordinates and falls back to straight endpoints', async()=>{
+  const { rowsToFeatureCollection }=await import('../src/geometry.js');
+  const curved=[[8,44],[8.001,44.002],[8,44.004]];
+  const collection=rowsToFeatureCollection([
+    {start:curved[0],end:curved.at(-1),coordinates:curved,lengthM:500},
+    {start:[8,44],end:[8,44.01],lengthM:1000}
+  ]);
+  assert.deepEqual(collection.features[0].geometry.coordinates,curved);
+  assert.deepEqual(collection.features[1].geometry.coordinates,[[8,44],[8,44.01]]);
+});
