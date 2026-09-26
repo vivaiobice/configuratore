@@ -8,7 +8,7 @@ const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
 function setup(mobile=true,mapInstance=null,withCompass=false){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
- const $=s=>document.querySelector(s);let begun=0,saved=0,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null;
+ const $=s=>document.querySelector(s);let begun=0,saved=0,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,reportField=null,viewToggles=0;
  if(withCompass){
   const group=document.createElement('div');group.className='maplibregl-ctrl-group';
   const compass=document.createElement('button');compass.className='maplibregl-ctrl-compass';compass.setAttribute('aria-label','Reset bearing to north');
@@ -21,14 +21,14 @@ function setup(mobile=true,mapInstance=null,withCompass=false){
  const metrics={areaM2:1000,netAreaM2:900,rows:[],simulatedPlants:400,intermediatePosts:80,headPosts:20,totalPosts:100};
  const authCalls=[];let authState={kind:'guest',displayName:'Guest',username:null,email:null,isAdmin:false};const authListeners=new Set();
  const auth={getState:()=>authState,subscribe(fn){authListeners.add(fn);fn(authState);return()=>authListeners.delete(fn);},
-  async login(value){authCalls.push(['login',value]);},async register(value){authCalls.push(['register',value]);},async logout(){authCalls.push(['logout']);},async requestPasswordReset(value){authCalls.push(['reset',value]);},
+  async login(value){authCalls.push(['login',value]);},async register(value){authCalls.push(['register',value]);},async logout(){authCalls.push(['logout']);},async requestPasswordReset(value){authCalls.push(['reset',value]);},async updateProfile(value){authCalls.push(['profile',value]);},
   emit(value){authState=value;for(const fn of authListeners)fn(value);}};
  const ui=createMobileUI({isMobile:()=>mobile,getMap:()=>mapInstance,getField:()=>project,getFields:()=>project.fields,getMetrics:()=>metrics,auth,
   resizeMap(){},focusAll(){},stopTools(){},finishEdit(){},undoPoint(){},beginEdit(){begun++;},beginNewField(){begun++;},
   selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(){saved++;},listProjects:()=>projects,loadProject(){},newProject(){},async refreshProjects(){refreshed++;},
   async renameProject(item,name){renamedProject=[item.id,name];item.name=name;},async deleteProject(item){deletedProject=item.id;projects.splice(projects.indexOf(item),1);},confirm:()=>true,
-  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){}});
- return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},desktop(){mobile=false;ui.sync();}};
+  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){},openPublicProject(){loadedCode++;},openReport(item){reportProject=item;},openReportForField(id){reportField=id;},toggleTabletView(){viewToggles++;}});
+ return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},get loadedCode(){return loadedCode;},get reportProject(){return reportProject;},get reportField(){return reportField;},get viewToggles(){return viewToggles;},desktop(){mobile=false;ui.sync();}};
 }
 test('V26 mobile perimeter becomes light and subordinate to rows, desktop paints restore exactly',()=>{
  const paints=new Map([
@@ -152,6 +152,28 @@ test('desktop restoration keeps the same inputs and values',()=>{
  assert.equal($('.map-wrap').parentElement.className,'app-shell');assert.ok(!c.document.body.classList.contains('mobile-app-active'));
 });
 test('desktop startup never moves controls',()=>{const c=setup(false);assert.equal(c.$('.map-wrap').parentElement.className,'app-shell');assert.ok(c.$('.step[data-step="2"]').contains(c.$('#plant-spacing')));});
+test('tablet layout switch stays available while navigating mobile sections',()=>{
+ const c=setup(),{$}=c;$('#mobile-tablet-view').hidden=false;
+ $('[data-view="projects"]').click();assert.equal(c.document.body.dataset.mobileScreen,'projects');
+ $('#mobile-tablet-view').click();assert.equal(c.viewToggles,1);
+ $('[data-view="fields"]').click();assert.ok($('#mobile-tablet-view').isConnected);
+});
+test('projects view offers code lookup and opens a saved project in PDF preflight',()=>{
+ const c=setup(),{$}=c;$('[data-view="projects"]').click();$('#mobile-load-code').click();assert.equal(c.loadedCode,1);
+ const pdf=$('[data-mobile-project-action="pdf"]');assert.ok(pdf);pdf.click();
+ assert.equal(c.reportProject.name,'Progetto prova');assert.equal(c.document.body.dataset.mobileScreen,'projects');
+});
+test('field PDF entry refers to the current field',()=>{
+ const c=setup(),{$}=c;c.ui.openField('f1');$('#mobile-detail-pdf').click();assert.equal(c.reportField,'f1');
+});
+test('mobile signed-in profile edits the same fields as desktop',async()=>{
+ const c=setup(),{$}=c;c.auth.emit({kind:'user',displayName:'Marco',email:'m@example.com',companyName:'Vivai Obice'});
+ c.ui.navigate('profile');assert.equal($('#mobile-profile-content [name="companyName"]').value,'Vivai Obice');
+ $('#mobile-profile-content [name="phone"]').value='333222';
+ $('[data-mobile-profile-action="save"]').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.authCalls.at(-1)[0],'profile');assert.equal(c.authCalls.at(-1)[1].phone,'333222');
+ $('[data-mobile-profile-action="reset-password"]').click();await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(c.authCalls.at(-1),['reset','m@example.com']);
+});
 test('mobile layer sheet keeps the Catasto opacity control with the Catasto button',()=>{
  const c=setup(),{$}=c,content=$('[data-content="layers"]');
  assert.ok(content.contains($('#cadastre-button')));

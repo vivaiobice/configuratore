@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./report-print.css?v=45" media="print">
   <link rel="stylesheet" href="./report-layout.css?v=45">
   <link rel="stylesheet" href="./report-preview.css?v=45" media="screen">
+  <link rel="stylesheet" href="./v55.2-report.css?v=55.2" media="screen">
 </head>
 <body>
   <header class="report-app-header report-screen-only">
@@ -28,6 +29,7 @@
         <p>Seleziona i campi, verifica i dati del destinatario e accetta l’avvertenza prima di generare il documento.</p>
       </div>
 
+      <div id="report-project-context" class="report-project-context report-card" aria-live="polite"></div>
       <fieldset id="report-field-selection" class="report-card">
         <legend>Campi da includere</legend>
         <div id="report-field-options" class="report-field-options" aria-live="polite"></div>
@@ -73,6 +75,6 @@
     <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
   </main>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="./src/report.js?v=55"></script>
+  <script type="module" src="./src/report.js?v=55.2"></script>
 </body>
 </html>

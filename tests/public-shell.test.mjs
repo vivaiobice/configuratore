@@ -72,5 +72,5 @@ test('mobile profile exposes the same public project-code loader for guests and 
 
 test('mobile runtime physically places the map immediately after step 01 instead of relying on display contents', () => {
   assert.match(app, /stepOne\.insertAdjacentElement\('afterend', mapWrap\)/);
-  assert.match(app, /max-width: 1100px\) and \(pointer: coarse/);
+  assert.match(app, /createViewMode/);
 });

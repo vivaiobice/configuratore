@@ -61,7 +61,7 @@ test('desktop and mobile open the report popup synchronously and use the Stampa 
   const mobile=fs.readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   assert.match(html,/id="summary-open-report"[^>]*>Stampa \/ PDF</);
   assert.match(mobile,/id="mobile-detail-pdf">Stampa \/ PDF</);
-  const handler=app.match(/function openReportPopup\(\)[\s\S]*?\n\}/)?.[0]??'';
+  const handler=app.match(/function openReportPopup\([^\n]*\)[\s\S]*?\n\}/)?.[0]??'';
   assert.match(handler,/globalThis\.open\(`\.\/report\.html\?handoff=/);
   assert.ok(handler.indexOf('globalThis.open')<handler.indexOf('await projectSync'));
   assert.match(handler,/reason:'report_issue'/);

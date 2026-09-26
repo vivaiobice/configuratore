@@ -1,6 +1,6 @@
 /* V33: mobile application shell. Desktop declarations are untouched. */
 .mobile-only{display:none}
-@media(max-width:800px), (max-width:1100px) and (pointer:coarse){
+@media screen{
  .mobile-project-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
  .mobile-project-row .mobile-project-card{min-width:0}
  .mobile-project-actions{display:flex;flex-direction:column;gap:6px}
@@ -178,7 +178,7 @@
  body[data-mobile-screen="parameters"] #mobile-notice{bottom:env(safe-area-inset-bottom)}
  .consent-banner{z-index:2000!important}
 }
-@media(max-width:1100px) and (pointer:coarse) and (orientation:landscape){
+@media(orientation:landscape) and (pointer:coarse){
  #mobile-pages{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
  .mobile-brand img{width:125px;height:38px}
  .mobile-home-tools{flex-direction:row;gap:6px}
@@ -193,7 +193,7 @@
 }
 
 /* V40 · restore compact mobile map actions and emphasize commercial quantity. */
-@media(max-width:800px),(max-width:1100px) and (pointer:coarse){
+@media screen{
  #mobile-app .mobile-home-tools #map-gps-button{
   display:flex;
   flex-direction:column;

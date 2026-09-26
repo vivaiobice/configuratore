@@ -27,7 +27,7 @@ test('mobile hides zoom buttons and exposes only the north reset control',()=>{
  assert.doesNotMatch(ui,/move\(\$\('#rotate-right'\)/);
 });
 test('release cache bust advances mobile files without changing desktop stylesheet',()=>{
- assert.match(html,/mobile\.css\?v=45/);assert.match(html,/src\/app\.js\?v=55/);assert.match(html,/styles\.css\?v=18/);
+ assert.match(html,/mobile\.css\?v=55\.2/);assert.match(html,/src\/app\.js\?v=55/);assert.match(html,/styles\.css\?v=18/);
 });
 test('map fills the complete mobile viewport behind the floating dock',()=>{
  assert.match(css,/#mobile-map-host\{[^}]*inset:0/s);
@@ -56,7 +56,7 @@ test('native form controls retain automatic touch behavior above the map',()=>{
 test('current release retains Guest registration and the dedicated iOS home icon',()=>{
  assert.match(html,/manifest\.webmanifest\?v=45/);
  assert.match(html,/apple-touch-icon-v26\.png/);
- assert.match(ui,/AMBIENTE TEST · V45/);
+ assert.match(ui,/AMBIENTE TEST · V55\.2/);
 });
 test('favicon and web app use the approved transparent icon revision',()=>{
  const asset=fs.readFileSync(new URL('../assets/vivai-obice-icon-v26.png',import.meta.url));

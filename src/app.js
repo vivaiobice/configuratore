@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.1';
-import { createMobileUI } from './mobile-ui.js?v=55.1';
+import { createMobileUI } from './mobile-ui.js?v=55.2';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
@@ -22,6 +22,10 @@ import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=
 import {createSoilMapController} from './soil-map.js?v=55.1';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.1';
 import {renderSoilCard} from './soil-card.js?v=55.1';
+import {createViewMode} from './view-mode.js?v=55.2';
+import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
+import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=55.2';
+import {installPenTapFallback} from './pen-tap.js?v=55.2';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
@@ -67,21 +71,33 @@ const publicProjectDialog=$('#public-project-dialog');
 function openPublicProjectDialog(){
   const feedback=$('#public-project-feedback');
   if(feedback)feedback.textContent='';
+  $('#public-project-readonly').hidden=true;
   if(publicProjectDialog?.showModal)publicProjectDialog.showModal();
   else publicProjectDialog?.setAttribute('open','');
   requestAnimationFrame(()=>$('#public-project-code')?.focus?.());
 }
 $('#public-project-trigger')?.addEventListener('click',openPublicProjectDialog);
 $('#public-project-close')?.addEventListener('click',()=>publicProjectDialog?.close?.());
-$('#public-project-form')?.addEventListener('submit',(event)=>{
+$('#public-project-form')?.addEventListener('submit',async(event)=>{
   event.preventDefault();
   const code=normalizePublicProjectCode($('#public-project-code')?.value);
+  const feedback=$('#public-project-feedback'),readonly=$('#public-project-readonly'),submit=event.currentTarget.querySelector('[type="submit"]');
+  readonly.hidden=true;
   if(!code){
-    const feedback=$('#public-project-feedback');
     if(feedback)feedback.textContent='ID progetto non valido. Verifica il codice e riprova.';
     return;
   }
-  globalThis.location.href=buildPublicProjectUrl(globalThis.location.href,code);
+  submit.disabled=true;feedback.textContent='Ricerca del progetto in corso…';
+  try{
+    const project=await resolveEditableProjectCode({code,backend:cloudBackend});
+    const item=projectPayloadToArchiveItem(project);
+    writeLocalProject(globalThis.localStorage,item.project,item.name,item.cloud);
+    loadMobileProject(item);mobileUi?.navigate?.('projects');desktopLibraryUi?.render?.();
+    publicProjectDialog?.close?.();setStatus(`Progetto ${item.name} caricato.`);
+  }catch(error){
+    feedback.textContent=error.message||'Caricamento del progetto non riuscito.';
+    if(/non hai accesso/.test(error.message)){readonly.href=buildPublicProjectUrl(globalThis.location.href,code);readonly.hidden=false;}
+  }finally{submit.disabled=false;}
 });
 const desktopQuickCalculator=createDesktopQuickCalculator({document,calculate:calculateManualPlants,onCalculate:(areaM2)=>track('manual_area_calculated',{areaM2})});
 desktopQuickCalculator.mount();
@@ -485,7 +501,19 @@ $('#project-name')?.addEventListener('input',(event)=>patchProject({localProject
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; summarySaveFeedback.dirty();persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
 
-function isMobileMap() { return Boolean(globalThis.matchMedia?.('(max-width: 800px), (max-width: 1100px) and (pointer: coarse)')?.matches); }
+const viewMode=createViewMode();
+function isMobileMap() { return viewMode.isMobile(); }
+installPenTapFallback(document.body,()=>viewMode.isTablet()&&!isMobileMap(),{onMapTap:event=>{
+  const map=mapApi?.map,canvas=map?.getCanvas?.();if(!canvas?.contains(event.target))return;
+  const rect=canvas.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top};
+  map.fire('click',{point,lngLat:map.unproject(point),originalEvent:event});
+}});
+function updateTabletViewControls(){
+  const tablet=viewMode.isTablet(),mobile=isMobileMap(),desktop=$('#tablet-view-desktop'),mobileButton=$('#mobile-tablet-view');
+  for(const button of [desktop,mobileButton])if(button){button.hidden=!tablet;button.setAttribute('aria-label',mobile?'Passa alla visualizzazione desktop':'Passa alla visualizzazione mobile');button.title=button.getAttribute('aria-label');button.setAttribute('aria-pressed',String(viewMode.get()!=='auto'));}
+}
+function toggleTabletView(){viewMode.set(isMobileMap()?'desktop':'mobile');placeMapForViewport();updateTabletViewControls();}
+$('#tablet-view-desktop')?.addEventListener('click',toggleTabletView);
 function startDrawingField() { patchProject({ sourceType:'manual' }); mapApi?.beginDraw(); }
 function addFieldAndStartDrawing(){
   if(state.project.geometry){state={...state,project:addProjectField(state.project)};summarySaveFeedback.dirty();persist();loadActiveFieldOnMap();}
@@ -595,7 +623,8 @@ exclusionPanel?.before(exclusionHome);
 let fullscreenScrollY = 0;
 function placeMapForViewport() {
   if (!mapWrap || !appShell || !panelScroll || !stepOne) return;
-  if (mobileUi?.isActive?.()) { mobileUi.sync(); requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
+  if (mobileUi?.isActive?.()&&isMobileMap()) { mobileUi.sync();requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
+  if (mobileUi?.isActive?.())mobileUi.sync();
   if (mapWrap.classList.contains('fullscreen-map')) { mobileUi?.sync(); requestAnimationFrame(()=>mapApi?.map?.resize?.()); return; }
   const mobile = isMobileMap();
   if (mobile) mapApi?.stopTools();
@@ -740,6 +769,7 @@ async function moveArchivedField(sourceItem,targetItem,field){
 }
 
 mobileUi = createMobileUI({
+  toggleTabletView,
   auth:authBridge,
   getMap:()=>mapApi?.map,
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
@@ -754,8 +784,11 @@ mobileUi = createMobileUI({
   analyzeSoil:analyzeActiveSoil,
   refreshProjects:refreshOwnedArchive,
   openPublicProject:openPublicProjectDialog,
+  openReport:(item)=>openReportPopup({projectItem:item}),
+  openReportForField:(id)=>openReportPopup({fieldId:id}),
   finalAction:requestFinalAction
 });
+updateTabletViewControls();
 
 desktopLibraryUi=createDesktopLibraryUI({
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
@@ -879,12 +912,18 @@ async function runFinalAction(action) {
   }catch(error){if(action==='save')summarySaveFeedback.error();throw error;}
 }
 
-function openReportPopup() {
+function openReportPopup({projectItem=null,fieldId=null}={}) {
+  let snapshot;
+  try{
+    snapshot=prepareReportContext(state,{projectItem,fieldId});
+    if(projectItem&&state.project.localProjectId!==projectItem.id)loadMobileProject(projectItem);
+  }catch(error){setStatus(error.message);throw error;}
   persist();
   const requestId=globalThis.crypto.randomUUID();
+  globalThis.localStorage.setItem(REPORT_CONTEXT_KEY(requestId),JSON.stringify(snapshot));
   globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'opened'}));
   const popup=globalThis.open(`./report.html?handoff=${requestId}`, '_blank');
-  if(!popup){setStatus('Il browser ha bloccato la finestra del documento. Consenti i popup per questo sito e riprova.');return;}
+  if(!popup){globalThis.localStorage.removeItem(REPORT_CONTEXT_KEY(requestId));throw new Error('Il browser ha bloccato la finestra del documento. Consenti i popup per questo sito e riprova.');}
   const onReportRequest=async(event)=>{
     if(event.key!==REPORT_HANDOFF_KEY)return;
     let request;
@@ -893,6 +932,7 @@ function openReportPopup() {
     globalThis.removeEventListener('storage',onReportRequest);
     globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'syncing'}));
     try{
+      if(state.project.localProjectId!==snapshot.project.localProjectId)throw new Error('Hai cambiato progetto: riapri il generatore PDF dal progetto corretto.');
       if(!projectSync)throw new Error('Sincronizzazione cloud non disponibile. Riprova quando il backend è collegato.');
       const revision=await projectSync.saveRevision({reason:'report_issue'});
       if(revision.state!=='synced'||!revision.projectId||!(Number(revision.latestRevisionNumber)>0))throw new Error(revision.state==='conflict'?'Conflitto di versione. Aggiorna il progetto e riprova.':'Sincronizzazione non riuscita. La bozza resta su questo dispositivo.');
@@ -903,7 +943,7 @@ function openReportPopup() {
 }
 
 function requestFinalAction(action) {
-  if(action==='report'){openReportPopup();return;}
+  if(action==='report'){try{openReportPopup();}catch(error){setStatus(error.message);}return;}
   pendingFinalAction = action;
   if (!state.contact) {
     $('#contact-feedback').textContent = action === 'quote' ? 'Inserisci i dati obbligatori per richiedere un preventivo.' : 'Inserisci i dati obbligatori per completare questa azione.';

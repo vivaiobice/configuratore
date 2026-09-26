@@ -11,6 +11,7 @@ import { renderProjectReportHtml } from './report-template.js?v=51';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js?v=55.1';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
+import {readReportContext,mountReportProjectContext,REPORT_CONTEXT_KEY} from './report-context.js?v=55.2';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { mountReportAddressAutocomplete } from './report-address.js?v=45';
 
@@ -103,13 +104,18 @@ function copyWithFallback(text,documentRef){
 
 export async function bootReportPage({documentRef=globalThis.document,storage=globalThis.localStorage,maplibregl=globalThis.maplibregl}={}){
   const root=documentRef?.querySelector?.('#report-root');if(!root)return null;
-  let state=loadDraft(storage);
+  const requestId=new URL(globalThis.location.href).searchParams.get('handoff');
+  const reportSnapshot=readReportContext(storage,requestId);
+  if(requestId&&reportSnapshot)storage?.removeItem?.(REPORT_CONTEXT_KEY(requestId));
+  let state=requestId?reportSnapshot:loadDraft(storage);
   if(!state?.project){root.innerHTML='<section class="report-card"><h1>Progetto non trovato</h1><p>Apri il Configuratore e salva prima una bozza.</p><a href="./index.html">Torna al Configuratore</a></section>';return null;}
   const client=await connectSupabase({url:APP_CONFIG.supabaseUrl,publishableKey:APP_CONFIG.supabasePublishableKey});
   const backend=client?createBackend(client):null;
   let profile={};
   try{const session=(await client?.auth?.getSession?.())?.data?.session;const storedProfile=session?.user?.id?await backend.getProfile(session.user.id):null;profile={...storedProfile,displayName:storedProfile?.display_name,email:session?.user?.email};}catch{}
   let preflight=createReportPreflight({state,profile,contact:state.contact});
+  if(state.reportFieldId)preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[state.reportFieldId]});
+  mountReportProjectContext(documentRef,state);
   const fieldLocations=await resolveFieldLocations(ensureProjectFields(state.project).fields);
   const options=documentRef.querySelector('#report-field-options');
   const form=documentRef.querySelector('#report-recipient-form');
@@ -146,11 +152,10 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});suggestPlantLocality();accept.checked=false;finalResult=null;refresh();});
   form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});if(['plantLocation','province'].includes(event.target.name))localityEdited=true;accept.checked=false;finalResult=null;refresh();});
   accept.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'disclaimer/set',accepted:accept.checked});if(!accept.checked)finalResult=null;refresh();});
-  const requestId=new URL(globalThis.location.href).searchParams.get('handoff');
   const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel})=>captureSatelliteImage({container,mapModel,maplibregl}),issueReport:payload=>backend.issueProjectReport(payload)}):null;
   generate.addEventListener('click',async()=>{
     warning.hidden=true;generate.disabled=true;generate.textContent='Generazione in corso…';
-    try{state=loadDraft(storage);finalResult=await orchestrator.generate({preflight,state,fieldLocations,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}
+    try{state=requestId?reportSnapshot:loadDraft(storage);if(!state)throw new Error('Il progetto di riferimento non è più disponibile. Riapri il PDF dal configuratore.');finalResult=await orchestrator.generate({preflight,state,fieldLocations,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}
     catch(error){finalResult=null;warning.textContent=error?.message||'Documento non generato.';warning.hidden=false;}
     finally{generate.textContent='Genera anteprima';refresh();}
   });

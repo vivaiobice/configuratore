@@ -3,6 +3,8 @@ import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 import {calculateManualPlants} from './project-calculator.js?v=45';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
 import {getTheme,setTheme} from './theme.js';
+import {installPenTapFallback} from './pen-tap.js?v=55.2';
+import {mobileUserProfileHtml,readMobileProfileForm} from './mobile-profile.js?v=55.2';
 
 const icons={map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5zm6-2v16m6-14v16',fields:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',projects:'M3 7h7l2-3h9v16H3z',profile:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0',plus:'M12 4v16M4 12h16',refresh:'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',layers:'M2 7l10-5 10 5-10 5zm0 5l10 5 10-5M2 17l10 5 10-5',calc:'M5 2h14v20H5zM8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1',back:'M15 4l-8 8 8 8',north:'M12 2l4.2 8.1L12 8.4 7.8 10.1 12 2zm0 20V8.4'};
 const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
@@ -17,7 +19,8 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V45</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V55.2</span></header>
+ <div class="mobile-display-controls"><button id="mobile-tablet-view" class="tablet-view-switch" type="button" aria-label="Passa alla visualizzazione desktop" title="Passa alla visualizzazione desktop" hidden>📱 💻</button><button id="mobile-theme-toggle" type="button" aria-label="Cambia tema" title="Cambia tema">◐</button></div>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -28,7 +31,7 @@ export function createMobileUI(api){
   <section data-screen="fields"><header class="mobile-page-heading"><h1>Campi</h1><div class="mobile-heading-actions"><button id="mobile-refresh-fields" aria-label="Aggiorna campi">${icon('refresh')}</button><button id="mobile-add-from-fields" aria-label="Aggiungi campo">${icon('plus')}</button></div></header><div id="mobile-fields-total"></div><div id="mobile-fields-list"></div></section>
   <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-detail-map" aria-label="Mappa satellitare interattiva del campo"></div><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Stampa / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
   <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><button id="mobile-parameters-map">Modifica perimetro e passaggi</button><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Salvato su questo dispositivo. PDF e preventivo sono disponibili nella scheda del campo.</p></section>
-  <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
+  <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><button id="mobile-load-code" type="button">Carica progetto</button><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
   <section data-screen="profile"><header class="mobile-page-heading"><h1>Profilo</h1></header><div id="mobile-profile-content"></div><p id="mobile-auth-feedback" class="mobile-auth-feedback" role="status"></p></section>
  </main>
  <nav class="mobile-navigation" aria-label="Navigazione principale"><button data-view="map">${icon('map')}<span>Mappa</span></button><button data-view="fields">${icon('fields')}<span>Campi</span></button><button data-view="projects">${icon('projects')}<span>Progetti</span></button><button data-view="profile">${icon('profile')}<span>Profilo</span></button></nav>
@@ -190,6 +193,7 @@ export function createMobileUI(api){
     const row=document.createElement('article');row.className='mobile-project-row';row.dataset.mobileProject=item.id;
     const button=document.createElement('button');button.type='button';button.className='mobile-project-card';button.innerHTML=`<strong>${escape(item.name)}</strong><span>${item.project.fields.filter(f=>f.geometry).length} campi · ${new Date(item.savedAt).toLocaleDateString('it-IT')}</span><small>Apri progetto ›</small>`;button.addEventListener('click',()=>{api.loadProject(item);navigate('fields');});
     const actions=document.createElement('div');actions.className='mobile-project-actions';
+    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.mobileProjectAction='pdf';pdf.setAttribute('aria-label',`Prepara PDF del progetto ${item.name}`);pdf.title='Prepara PDF';pdf.textContent='⎙';pdf.addEventListener('click',()=>{try{api.openReport?.(item);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});
     const rename=document.createElement('button');rename.type='button';rename.dataset.mobileProjectAction='rename';rename.textContent='Rinomina';
     const remove=document.createElement('button');remove.type='button';remove.dataset.mobileProjectAction='delete';remove.textContent='Elimina';
     rename.addEventListener('click',()=>{
@@ -201,28 +205,32 @@ export function createMobileUI(api){
      editor.append(input,confirm);row.append(editor);input.focus?.();
     });
     remove.addEventListener('click',async()=>{const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;try{await api.deleteProject?.(item);renderProjects();showNotice('Progetto eliminato.');}catch(error){showNotice(`Eliminazione non riuscita: ${error.message}`);}});
-    actions.append(rename,remove);row.append(button,actions);list.append(row);
+    actions.append(pdf,rename,remove);row.append(button,actions);list.append(row);
    }
   }catch(error){showNotice(error.message);}
  }
  function authFeedback(message,error=false){const node=$('#mobile-auth-feedback');node.textContent=message||'';node.classList.toggle('error',error);}
  function mountThemeChoice(content){
   const label=document.createElement('label');label.className='mobile-theme-setting';label.textContent='Tema';
-  const select=document.createElement('select');select.setAttribute('aria-label','Tema grafico');
+  const select=document.createElement('select');select.id='mobile-theme-choice';select.setAttribute('aria-label','Tema grafico');
   for(const [value,title] of [['light','Chiaro'],['dark','Scuro'],['auto','Automatico']]){const option=document.createElement('option');option.value=value;option.textContent=title;option.selected=value===getTheme();select.append(option);}
   select.addEventListener('change',()=>setTheme(select.value,{root:document.documentElement}));label.append(select);content.append(label);
  }
  function renderProfile(){
   const content=$('#mobile-profile-content');if(!content)return;
   if(authState.kind==='user'){
-   content.innerHTML=`<article class="mobile-profile-card"><div class="mobile-profile-avatar">${escape((authState.displayName||'P').slice(0,1).toUpperCase())}</div><h2>${escape(authState.displayName||'Profilo')}</h2><p>${escape(authState.username?`@${authState.username}`:'')}</p><small>${escape(authState.email||'')}</small><button id="mobile-public-project">Carica progetto con ID</button><button id="mobile-auth-logout">Esci</button></article>`;
+   content.innerHTML=mobileUserProfileHtml(authState);
    mountThemeChoice(content);
+   choices.sync();
    $('#mobile-public-project')?.addEventListener('click',()=>api.openPublicProject?.());
-   $('#mobile-auth-logout')?.addEventListener('click',async()=>{try{await api.auth.logout();authFeedback('Ora stai lavorando come Guest.');}catch(error){authFeedback(error.message,true);}});
+   content.querySelector('[data-mobile-profile-action="save"]')?.addEventListener('click',async()=>{const form=content.querySelector('.mobile-profile-edit');const values=readMobileProfileForm(form);authFeedback('Salvataggio in corso…');try{await api.auth.updateProfile(values);authFeedback('Profilo aggiornato.');}catch(error){authFeedback(error.message||'Salvataggio non riuscito.',true);}});
+   content.querySelector('[data-mobile-profile-action="reset-password"]')?.addEventListener('click',async()=>{authFeedback('Invio in corso…');try{await api.auth.requestPasswordReset(authState.email);authFeedback('Ti abbiamo inviato le istruzioni per reimpostare la password.');}catch(error){authFeedback(error.message||'Invio non riuscito.',true);}});
+   content.querySelector('[data-mobile-profile-action="logout"]')?.addEventListener('click',async()=>{try{await api.auth.logout();authFeedback('Ora stai lavorando come Guest.');}catch(error){authFeedback(error.message,true);}});
    return;
   }
   content.innerHTML=`<div class="mobile-auth-card"><p class="mobile-storage-note">Continua come Guest oppure accedi per ritrovare i progetti su altri dispositivi.</p><button id="mobile-public-project">Carica progetto con ID</button><div id="mobile-login-form"><label>E-mail o username<input id="mobile-auth-identifier" autocomplete="username"/></label><label>Password<input id="mobile-auth-password" type="password" autocomplete="current-password"/></label><button id="mobile-auth-login" class="mobile-primary">Accedi</button><button id="mobile-show-register">Crea account</button><button id="mobile-auth-reset">Password dimenticata?</button></div><div id="mobile-register-form" hidden><label>Nome profilo<input id="mobile-register-name" autocomplete="name"/></label><label>E-mail<input id="mobile-register-email" type="email" autocomplete="email"/></label><label>Username<input id="mobile-register-username" autocomplete="username" placeholder="anche solo numeri"/></label><label>Password<input id="mobile-register-password" type="password" autocomplete="new-password"/></label><button id="mobile-auth-register" class="mobile-primary">Crea account</button><button id="mobile-show-login">Ho già un account</button></div></div>`;
   mountThemeChoice(content);
+  choices.sync();
   const run=async action=>{authFeedback('Attendi…');try{await action();authFeedback('Operazione completata.');}catch(error){authFeedback(error.message||'Operazione non riuscita',true);}};
   $('#mobile-auth-login').addEventListener('click',()=>run(()=>api.auth.login({identifier:$('#mobile-auth-identifier').value,password:$('#mobile-auth-password').value})));
   $('#mobile-auth-register').addEventListener('click',()=>run(()=>api.auth.register({displayName:$('#mobile-register-name').value,email:$('#mobile-register-email').value,username:$('#mobile-register-username').value,password:$('#mobile-register-password').value})));
@@ -292,9 +300,12 @@ export function createMobileUI(api){
  $('#mobile-save-field').addEventListener('click',save);$('#mobile-save-project').addEventListener('click',save);
  $('#mobile-refresh-fields').addEventListener('click',event=>refreshProjects(event.currentTarget));$('#mobile-refresh-projects').addEventListener('click',event=>refreshProjects(event.currentTarget));
  $('#mobile-new-project').addEventListener('click',()=>{api.newProject();navigate('map');});
+ $('#mobile-load-code').addEventListener('click',()=>api.openPublicProject?.());
+ $('#mobile-tablet-view').addEventListener('click',()=>api.toggleTabletView?.());
+ $('#mobile-theme-toggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark',{root:document.documentElement}));
  $('#mobile-undo').addEventListener('click',api.undoPoint);$('#mobile-stop-tool').addEventListener('click',()=>{api.stopTools();drawingState({active:false});});
  $('#mobile-finish-edit').addEventListener('click',()=>{api.stopTools();editingState({active:false});});
- $('#mobile-detail-pdf').addEventListener('click',()=>api.finalAction('report'));$('#mobile-detail-quote').addEventListener('click',()=>api.finalAction('quote'));
+ $('#mobile-detail-pdf').addEventListener('click',()=>{try{api.openReportForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});$('#mobile-detail-quote').addEventListener('click',()=>api.finalAction('quote'));
  $('#mobile-delete-field').addEventListener('click',()=>deleteField(api.getField().activeFieldId));
  sheet.addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;
   if(b.id==='draw-map-button')awaitingPerimeter=true;
@@ -307,6 +318,7 @@ export function createMobileUI(api){
   if(button&&!forwardingTouch&&button===lastTouchButton&&Date.now()-lastTouchAt<700&&(event.detail>0||event.pointerType==='touch')){event.preventDefault();event.stopImmediatePropagation?.();}
  },true);
  root.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='pen'){lastTouchButton=null;lastTouchAt=0;}
   if(event.pointerType==='touch')touchGesture={id:event.pointerId,x:event.clientX,y:event.clientY,button:event.target.closest?.('button'),moved:false};
  },true);
  root.addEventListener('pointermove',event=>{
@@ -322,6 +334,11 @@ export function createMobileUI(api){
  });
  for(const id of ['mobile-quick-area','mobile-quick-plants','mobile-quick-rows'])$('#'+id).addEventListener('input',()=>{const result=calculateManualPlants({areaM2:$('#mobile-quick-area').value,plantSpacingM:$('#mobile-quick-plants').value,rowSpacingM:$('#mobile-quick-rows').value});$('#mobile-quick-result').innerHTML=result.theoreticalPlants?`<strong>${n(result.theoreticalPlants)}</strong><span>barbatelle stimate</span><small>Da ordinare: <b>${n(result.commercialPlants25)}</b> · multipli di 25</small>`:'Inserisci superficie e distanze valide';});
  protectNativeControls($('#mobile-pages'));protectNativeControls(sheet);
+ installPenTapFallback(root,()=>enabled,{onMapTap:event=>{
+  const instance=api.getMap?.(),canvas=instance?.getCanvas?.();if(!instance||!canvas?.contains(event.target))return;
+  const rect=canvas.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top};
+  instance.fire('click',{point,lngLat:instance.unproject(point),originalEvent:event});
+ }});
  api.auth?.subscribe?.(next=>{authState=next;if(screen==='profile')renderProfile();});
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();

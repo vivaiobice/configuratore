@@ -476,3 +476,12 @@ La mappa può mostrare su richiesta i temi pedologici della Regione Piemonte. La
 - La scheda mobile del campo mostra i dati già salvati e offre «Aggiorna dati suolo». La consultazione usa una cache limitata e non avviene all'apertura della scheda.
 - «Aggiungi mappale» resta sotto l'ultima riga della mappa catastale.
 - I test automatici non verificano l'accessibilità effettiva del WMS dal browser sul dominio di pubblicazione: seguire `V55-VERIFICA.md` prima dell'utilizzo operativo.
+
+## V55.2 TEST — Flussi mobile e iPad
+
+- Su iPad si può scegliere in modo persistente la visualizzazione mobile o desktop dalla coppia di controlli accanto al tema. In orizzontale la vista mobile sfrutta lo spazio disponibile.
+- I tocchi Apple Pencil mancanti ricevono un'azione di riserva solo se non arriva il normale clic del browser; i tocchi con trascinamento non vengono trasformati in clic.
+- **Carica progetto** nella lista mobile usa l'ID `VO-xxxxxxx` e la verifica dei permessi esistente. Per un progetto disponibile soltanto in lettura compare il relativo link.
+- Il PDF da Progetti e Campi riceve una copia del progetto di origine, mostra il nome sopra la selezione e non si genera al tocco dell'icona. Dalla scheda Campo preseleziona il campo aperto.
+- Il Profilo mobile offre gli stessi dati anagrafici modificabili del desktop, reimpostazione password, logout e accesso Admin quando previsto.
+- Prove su dispositivi reali ancora necessarie: `V55.2-VERIFICA.md`. Il servizio Suolo segnalato come non funzionante resta da diagnosticare separatamente.

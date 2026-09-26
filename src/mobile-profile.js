@@ -1,0 +1,9 @@
+const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const FIELDS=[['firstName','Nome','given-name'],['lastName','Cognome','family-name'],['companyName','Azienda','organization'],['address','Indirizzo','street-address'],['postalCode','CAP','postal-code'],['city','Località','address-level2'],['province','Provincia','address-level1'],['vatNumber','Partita IVA','off'],['phone','Telefono','tel']];
+
+export function mobileUserProfileHtml(state={}){
+  const inputs=FIELDS.map(([key,label,autocomplete])=>`<label class="${['companyName','address'].includes(key)?'mobile-profile-wide':''}">${label}<input name="${key}" autocomplete="${autocomplete}" ${key==='province'?'maxlength="2"':''} value="${escape(state[key])}"></label>`).join('');
+  return `<article class="mobile-profile-card"><div class="mobile-profile-avatar">${escape((state.displayName||'P').slice(0,1).toUpperCase())}</div><h2>${escape(state.displayName||'Profilo')}</h2><p>${escape(state.username?`@${state.username}`:'')}</p><form class="mobile-profile-edit"><div class="mobile-profile-details">${inputs}<label class="mobile-profile-wide">E-mail<input value="${escape(state.email)}" readonly></label></div><button type="button" data-mobile-profile-action="save">Salva dati profilo</button></form>${state.isAdmin?'<a href="./admin/">Amministrazione</a>':''}<button type="button" id="mobile-public-project">Carica progetto con ID</button><button type="button" data-mobile-profile-action="reset-password">Reimposta password</button><button type="button" data-mobile-profile-action="logout">Esci / Logout</button></article>`;
+}
+
+export function readMobileProfileForm(form){return Object.fromEntries(FIELDS.map(([key])=>[key,String(form.elements?.namedItem?.(key)?.value??form.querySelector(`[name="${key}"]`)?.value??'').trim()]));}
