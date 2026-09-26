@@ -1,7 +1,8 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import { buildCadastralWmsUrl, cadastralLayerMode } from './cadastre.js?v=53.1';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=53.1';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=53.2';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=53.2';
+import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
@@ -47,7 +48,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -98,6 +99,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let toolsVersion = 0;
   let curveControlMarkers=[];
   let rowCurveEditor={geometry:null,orientationDeg:0,points:[],active:false};
+  let cadastralVisible=false;
 
   function clearCurveControlMarkers(){for(const marker of curveControlMarkers)marker.remove?.();curveControlMarkers=[];}
 
@@ -596,6 +598,30 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     };
   }
 
+  function cadastralIdentifyRequest(point) {
+    const bounds = map.getBounds();
+    const canvas = map.getCanvas();
+    const clientWidth = Math.max(1, Number(canvas.clientWidth || canvas.width || 1));
+    const clientHeight = Math.max(1, Number(canvas.clientHeight || canvas.height || 1));
+    const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
+    const width = Math.min(2048, Math.max(1, Math.round(clientWidth * dpr)));
+    const height = Math.min(2048, Math.max(1, Math.round(clientHeight * dpr)));
+    return buildCadastralIdentifyUrl({
+      west:bounds.getWest(), south:bounds.getSouth(), east:bounds.getEast(), north:bounds.getNorth(),
+      width, height,
+      x:Number(point?.x) * width / clientWidth,
+      y:Number(point?.y) * height / clientHeight
+    });
+  }
+
+  async function identifyCadastralParcel(point, signal) {
+    const response = await fetch(cadastralIdentifyRequest(point), { signal, headers:{ accept:'application/json' } });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Cadastral identification unavailable (${response.status})`);
+    const result = await response.json();
+    return result?.sheet && result?.parcel ? result : null;
+  }
+
   const cadastralOverlay = createCadastralOverlay({
     map,
     requestForViewport:cadastralRequest,
@@ -603,8 +629,26 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     onState:onCadastralState
   });
 
+  const cadastralIdentifier = createCadastralDwellIdentifier({
+    identify:identifyCadastralParcel,
+    onState:onCadastralIdentifyState
+  });
+
+  function syncCadastralIdentifier(policy = cadastralOverlay.state()) {
+    if (!cadastralVisible) { cadastralIdentifier.setEnabled(false); return; }
+    if (!policy?.renderable) {
+      cadastralIdentifier.setEnabled(false);
+      onCadastralIdentifyState({ status:policy?.error ? 'error' : 'zoom' });
+      return;
+    }
+    cadastralIdentifier.setEnabled(true);
+  }
+
   function setCadastralVisible(visible) {
-    cadastralOverlay.setVisible(visible);
+    cadastralVisible=Boolean(visible);
+    const policy=cadastralOverlay.setVisible(cadastralVisible);
+    syncCadastralIdentifier(policy);
+    return policy;
   }
 
   function setCadastralOpacity(opacity) {
@@ -934,8 +978,13 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.easeTo({ bearing: 0, duration: 180, essential: true });
   }
 
-  map.on('moveend', () => { cadastralOverlay.refresh(); ensureCommittedVisuals(); });
-  map.on('resize', () => { cadastralOverlay.refresh(); ensureCommittedVisuals(); });
+  map.on('mousemove', (event) => {
+    if (cadastralVisible && cadastralOverlay.state().renderable) cadastralIdentifier.pointerMoved(event?.point);
+  });
+  map.on('movestart', () => cadastralIdentifier.cancel());
+  map.getCanvas()?.addEventListener?.('pointerleave', () => cadastralIdentifier.cancel());
+  map.on('moveend', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals(); });
+  map.on('resize', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals(); });
   map.on('styledata', ensureCommittedVisuals);
   map.on('idle', ensureCommittedVisuals);
 

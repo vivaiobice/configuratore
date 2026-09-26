@@ -19,7 +19,7 @@ test('orientation supports manual decimal degrees and clamps invalid values',()=
 });
 
 test('V41 shell exposes precise orientation and multi-point curve actions',()=>{
-  assert.match(html,/AMBIENTE TEST · V53\.1/);
+  assert.match(html,/AMBIENTE TEST · V53\.2/);
   assert.match(html,/mobile\.css\?v=45/);
   assert.match(html,/manifest\.webmanifest\?v=45/);
   assert.match(html,/id="orientation"[^>]*max="179\.9"[^>]*step="0\.1"/);

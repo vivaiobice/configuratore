@@ -28,22 +28,21 @@ class FakeMap {
   off(name, handler) { this.events.get(name)?.delete(handler); }
 }
 
-test('official cadastral image keeps sheet fill out of the parcel-number view', async () => {
+test('official cadastral image always uses the parcel-number view', async () => {
   const { buildOfficialCadastralUrl } = await import('../supabase/functions/_shared/cadastral-wms.js');
   const common = { west:8.1, south:44.5, east:8.2, north:44.6, width:900, height:700 };
   const sheets = new URL(buildOfficialCadastralUrl({ ...common, mode:'sheets' }));
   const parcels = new URL(buildOfficialCadastralUrl({ ...common, mode:'parcels' }));
-  assert.equal(sheets.searchParams.get('LAYERS'), 'CP.CadastralZoning');
+  assert.equal(sheets.searchParams.get('LAYERS'), 'CP.CadastralParcel,codice_plla');
   assert.equal(parcels.searchParams.get('LAYERS'), 'CP.CadastralParcel,codice_plla');
 });
 
-test('catasto is available at sheet-overview zoom and still waits when too far away', async () => {
+test('catasto shows parcels only at a useful parcel zoom', async () => {
   const { cadastralOverlayPolicy, cadastralLayerMode } = await import('../src/cadastre.js');
-  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:12.9 }), { visible:true, renderable:false, reason:'zoom' });
-  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:13 }), { visible:true, renderable:true, reason:'ready' });
-  assert.equal(cadastralLayerMode(14), 'sheets');
-  assert.equal(cadastralLayerMode(17, 45), 'sheets', 'a scale wider than 30 m the map must show sheets');
-  assert.equal(cadastralLayerMode(18, 45), 'parcels', 'at 30 m or closer the map must show parcels');
+  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:15.9 }), { visible:true, renderable:false, reason:'zoom' });
+  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:16 }), { visible:true, renderable:true, reason:'ready' });
+  assert.equal(cadastralLayerMode(14), 'parcels');
+  assert.equal(cadastralLayerMode(18, 45), 'parcels');
 });
 
 test('cadastral overlay starts at sixty percent and updates opacity without reloading imagery', async () => {

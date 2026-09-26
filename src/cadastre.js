@@ -3,20 +3,12 @@ import { APP_CONFIG } from './config.js';
 
 const WMS_PROXY_ENDPOINT = `${APP_CONFIG.supabaseUrl}/functions/v1/cadastral-wms`;
 const MAX_IMAGE_SIZE = 2048;
-export const CADASTRAL_MIN_ZOOM = 13;
-export const CADASTRAL_PARCEL_SCALE_M = 30;
-const MAPLIBRE_TILE_SIZE = 512;
-const SCALE_REFERENCE_PX = 100;
-const EARTH_CIRCUMFERENCE_M = 40075016.686;
+export const CADASTRAL_MIN_ZOOM = 16;
 
 export function cadastralLayerMode(zoom, latitude = 44.709) {
-  const parsedZoom = Number(zoom);
-  const parsedLatitude = Number(latitude);
-  if (!Number.isFinite(parsedZoom) || !Number.isFinite(parsedLatitude)) return 'sheets';
-  const safeLatitude = Math.max(-85.051129, Math.min(85.051129, parsedLatitude));
-  const metersPerPixel = Math.cos(safeLatitude * Math.PI / 180)
-    * EARTH_CIRCUMFERENCE_M / (MAPLIBRE_TILE_SIZE * (2 ** parsedZoom));
-  return metersPerPixel * SCALE_REFERENCE_PX <= CADASTRAL_PARCEL_SCALE_M ? 'parcels' : 'sheets';
+  void zoom;
+  void latitude;
+  return 'parcels';
 }
 
 const WFS_ENDPOINT = 'https://wfs.cartografia.agenziaentrate.gov.it/inspire/wfs/owfs01.php';
@@ -119,6 +111,21 @@ export function buildCadastralWmsUrl({ west, south, east, north, width, height, 
     width: String(clampSize(width)),
     height: String(clampSize(height)),
     mode: mode === 'sheets' ? 'sheets' : 'parcels'
+  };
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
+export function buildCadastralIdentifyUrl({ west, south, east, north, width, height, x, y }) {
+  const url = new URL(WMS_PROXY_ENDPOINT);
+  const imageWidth = clampSize(width);
+  const imageHeight = clampSize(height);
+  const params = {
+    operation:'identify',
+    west:String(Number(west)), south:String(Number(south)), east:String(Number(east)), north:String(Number(north)),
+    width:String(imageWidth), height:String(imageHeight),
+    x:String(Math.min(imageWidth - 1, Math.max(0, Math.round(Number(x) || 0)))),
+    y:String(Math.min(imageHeight - 1, Math.max(0, Math.round(Number(y) || 0))))
   };
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url.toString();

@@ -1,14 +1,14 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=53.1';
-import { createMobileUI } from './mobile-ui.js?v=53.1';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=53.2';
+import { createMobileUI } from './mobile-ui.js?v=53.2';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton } from './desktop-ux.js?v=53.1';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=53.1';
+import { initMap } from './map.js?v=53.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=53.1';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=53.2';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=51';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -92,6 +92,7 @@ const sessionId = (() => {
 void sessionId;
 
 const statusEl = $('#map-status');
+const cadastralParcelStatusEl = $('#cadastre-parcel-status');
 function setStatus(message) { if (statusEl) statusEl.textContent = message; }
 function renderCadastralState(next = {}) {
   const active=Boolean(next.visible);
@@ -282,6 +283,7 @@ try {
     },
     onRowCurvePointsChange:(points)=>patchCurvePoints(points),
     onCadastralState:renderCadastralState,
+    onCadastralIdentifyState:(next)=>renderCadastralParcelStatus(cadastralParcelStatusEl,next),
     onStatus: setStatus,
     onDrawingState: ({ active, canClose, mode, vertexCount }) => {
       mobileUi?.drawingState({active,vertexCount});

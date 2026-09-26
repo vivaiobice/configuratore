@@ -122,3 +122,16 @@ export function createCadastreToggle({document=globalThis.document,isActive=()=>
  function mount(){button?.addEventListener('click',()=>{const next=!isActive();setActive(next);sync(next);});opacityInput?.addEventListener('input',updateOpacity);updateOpacity();sync(isActive());return controller;}
  const controller={mount,sync};return controller;
 }
+
+export function renderCadastralParcelStatus(element, state = {}) {
+ if(!element)return;
+ const status=state.status??'hidden';
+ element.hidden=status==='hidden';
+ if(element.hidden)return;
+ if(status==='found')element.textContent=`Foglio ${state.sheet} · Particella ${state.parcel}`;
+ else if(status==='loading')element.textContent='Identificazione della particella…';
+ else if(status==='empty')element.textContent='Nessuna particella identificata in questo punto.';
+ else if(status==='error')element.textContent='Dati della particella momentaneamente non disponibili.';
+ else if(status==='zoom')element.textContent='Avvicinati per consultare le particelle.';
+ else element.textContent='Fermati su una particella per identificarla.';
+}

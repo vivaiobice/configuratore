@@ -2,7 +2,19 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V53.1 WebApp.
+Stato: ambiente TEST · release V53.2 WebApp.
+
+## V53.2 — identificazione puntuale delle particelle
+
+- Il Catasto mantiene esclusivamente perimetri e numeri delle particelle: il passaggio automatico
+  al layer dei fogli è stato rimosso.
+- In modalità Catasto, fermando il puntatore per tre secondi su una particella, una piccola barra
+  in basso a sinistra mostra **Foglio** e **Particella**. Movimento, zoom e uscita dalla mappa
+  annullano il controllo in attesa, evitando richieste continue al servizio pubblico.
+- L'identificazione usa `GetFeatureInfo` tramite la Edge Function vincolata `cadastral-wms`; il
+  browser riceve soltanto i riferimenti catastali normalizzati e non salva questi dati nel progetto.
+- In modalità scura, Satellite e Stradale hanno ora stati attivo/inattivo nettamente distinguibili.
+- Cache degli asset aggiornata a `V53.2`; nessuna modifica al database o al formato dei progetti.
 
 ## V53.1 — hotfix comandi mappa e scala catastale
 
