@@ -1,7 +1,7 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import { buildCadastralWmsUrl } from './cadastre.js?v=52';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=52';
+import { buildCadastralWmsUrl } from './cadastre.js?v=52.1';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=52.1';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';

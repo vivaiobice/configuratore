@@ -1,6 +1,7 @@
 import { pointInPolygon } from './geometry.js';
+import { APP_CONFIG } from './config.js';
 
-const WMS_ENDPOINT = 'https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01.php';
+const WMS_PROXY_ENDPOINT = `${APP_CONFIG.supabaseUrl}/functions/v1/cadastral-wms`;
 const MAX_IMAGE_SIZE = 2048;
 export const CADASTRAL_MIN_ZOOM = 15;
 
@@ -95,19 +96,14 @@ function clampSize(value) {
 }
 
 export function buildCadastralWmsUrl({ west, south, east, north, width, height }) {
-  const url = new URL(WMS_ENDPOINT);
+  const url = new URL(WMS_PROXY_ENDPOINT);
   const params = {
-    SERVICE: 'WMS',
-    VERSION: '1.1.1',
-    REQUEST: 'GetMap',
-    LAYERS: 'CP.CadastralParcel',
-    STYLES: '',
-    SRS: 'EPSG:4258',
-    BBOX: [west, south, east, north].map(Number).join(','),
-    WIDTH: String(clampSize(width)),
-    HEIGHT: String(clampSize(height)),
-    FORMAT: 'image/png',
-    TRANSPARENT: 'TRUE'
+    west: String(Number(west)),
+    south: String(Number(south)),
+    east: String(Number(east)),
+    north: String(Number(north)),
+    width: String(clampSize(width)),
+    height: String(clampSize(height))
   };
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url.toString();

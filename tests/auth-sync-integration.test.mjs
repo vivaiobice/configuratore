@@ -50,7 +50,7 @@ test('startup downloads the signed-in owner archive before creating the sync coo
 test('release cache-busts changed authentication and sync modules',()=>{
   const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
   assert.match(app,/from '\.\/project-sync\.js\?v=34'/);
-  assert.match(app,/from '\.\/backend\.js\?v=52'/);
+  assert.match(app,/from '\.\/backend\.js\?v=52.1'/);
   assert.match(app,/from '\.\/cloud\.js\?v=51'/);
   assert.match(app,/from '\.\/local-projects\.js\?v=37'/);
   assert.match(app,/from '\.\/auth-service\.js\?v=49'/);

@@ -2,7 +2,7 @@
   position:absolute;
   z-index:5;
   left:18px;
-  top:76px;
+  bottom:46px;
   display:grid;
   gap:4px;
   max-width:min(430px,calc(100% - 36px));
@@ -32,6 +32,6 @@ html[data-theme="dark"] .cadastre-disclosure p{
   color:#eef6ef;
 }
 @media(max-width:800px), (max-width:1100px) and (pointer:coarse){
-  .cadastre-disclosure{left:12px;top:12px;max-width:calc(100% - 90px)}
+  .cadastre-disclosure{left:12px;bottom:calc(112px + env(safe-area-inset-bottom));max-width:calc(100% - 90px)}
   .cadastre-disclosure p{width:auto;font-size:9px}
 }

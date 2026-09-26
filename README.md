@@ -2,7 +2,14 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V52 WebApp.
+Stato: ambiente TEST · release V52.1 WebApp.
+
+## V52.1 — hotfix caricamento Catasto
+
+- Le immagini WMS catastali passano attraverso la Edge Function pubblica e vincolata `cadastral-wms`, così MapLibre riceve un PNG con header CORS compatibili con WebGL.
+- Il proxy accetta esclusivamente riquadri geografici italiani di dimensione limitata e inoltra le richieste soltanto al layer ufficiale `CP.CadastralParcel`.
+- Fonte Agenzia delle Entrate e avvertenza informativa sono raccolte nell'angolo inferiore sinistro della mappa, sopra la scala.
+- Versione e query di cache aggiornate a `V52.1` per evitare che il browser riutilizzi i moduli V52 precedenti.
 
 ## V52 — cartografia catastale informativa
 

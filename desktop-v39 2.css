@@ -1,0 +1,127 @@
+/* V39 · desktop-only visual polish. Mobile behavior and layout remain unchanged. */
+@media (min-width:801px) and (pointer:fine),(min-width:1101px){
+  .desktop-tool-rail .tool-button{
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:0;
+    width:44px;
+    min-width:44px;
+    padding:8px 11px;
+  }
+  .desktop-tool-rail .tool-icon{
+    display:inline-grid;
+    flex:0 0 20px;
+    width:20px;
+    place-items:center;
+    font-size:15px;
+    line-height:1;
+  }
+  .desktop-tool-rail .tool-label{
+    display:block;
+    max-width:0;
+    margin-left:0;
+    overflow:hidden;
+    opacity:0;
+    white-space:nowrap;
+    transition:max-width .22s ease,margin-left .22s ease,opacity .16s ease;
+  }
+  .desktop-tool-rail .tool-button:is(:hover,:focus-visible){width:174px}
+  .desktop-tool-rail .tool-button:is(:hover,:focus-visible) .tool-label{
+    max-width:132px;
+    margin-left:8px;
+    opacity:1;
+  }
+
+  .map-search-control{
+    position:absolute;
+    z-index:7;
+    top:18px;
+    right:18px;
+    padding:5px;
+  }
+  .map-search-control .tool-button{
+    display:grid;
+    width:42px;
+    min-width:42px;
+    height:42px;
+    padding:0;
+    place-items:center;
+    border-radius:10px;
+    font-size:19px;
+  }
+
+  .map-field-picker{gap:0;padding:6px;min-width:190px}
+  .map-field-picker select{min-height:34px}
+
+  details.advanced{
+    padding:0;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+  }
+  details.advanced>summary{
+    padding:3px 2px 10px;
+    color:var(--ink);
+    font-size:16px;
+    font-weight:850;
+  }
+  .advanced-body{
+    display:grid;
+    gap:10px;
+    padding:0;
+  }
+  .advanced-card{
+    min-width:0;
+    padding:14px;
+    border:1px solid #e1e7e2;
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 3px 14px rgba(20,32,25,.045);
+  }
+  .advanced-card>h3{
+    margin:0 0 12px;
+    color:var(--ink);
+    font-size:14px;
+    line-height:1.2;
+  }
+  .mobile-material-prefix{display:none}
+  .advanced-spacing{order:initial;margin:0}
+  .advanced-mechanization{order:initial;margin-top:10px}
+  .advanced-mechanization .check-row{font-size:11px;line-height:1.35}
+  .advanced-material{order:initial;gap:8px}
+  .advanced-material>.soft-divider{display:none}
+  .advanced-material label,.advanced-information label{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:650;
+  }
+  .advanced-material select{
+    display:block;
+    width:100%;
+    height:42px;
+    min-height:42px;
+    margin-top:6px;
+    padding:8px 34px 8px 11px;
+    color:var(--ink);
+    font:inherit;
+    font-size:12px;
+    font-weight:700;
+  }
+  .advanced-material .material-grid{align-items:start;margin-top:10px}
+  .advanced-information{display:grid;gap:10px}
+  .advanced-information .desktop-campaign-year{order:0;margin-top:0}
+  .advanced-information .advanced-context{order:1;margin-top:0}
+  .advanced-information .advanced-notes{order:2;margin-top:0}
+  .advanced-information select,.advanced-information input{margin-top:6px}
+}
+
+@media(max-width:800px),(max-width:1100px) and (pointer:coarse){
+  .tool-button .tool-icon{margin-right:4px}
+  .advanced-card{display:contents}
+  .advanced-plant>h3,.advanced-information>h3{display:none}
+  .advanced-information{display:flex;flex-direction:column}
+  .advanced-information .advanced-context{order:1}
+  .advanced-information .advanced-notes{order:2}
+  .advanced-information .desktop-campaign-year{order:3}
+}

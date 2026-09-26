@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { parseHTML } from 'linkedom';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../v52-cadastre.css', import.meta.url), 'utf8');
 
 test('project editor exposes one informational Catasto toggle and no parcel selection', () => {
   const { document } = parseHTML(html);
@@ -49,4 +50,11 @@ test('application keeps the Catasto toggle in memory and never persists it', () 
   assert.ok(wiring);
   assert.doesNotMatch(wiring, /persist\s*\(/);
   assert.doesNotMatch(wiring, /state\.map\?\.cadastralVisible/);
+});
+
+test('cadastral source and disclaimer stay together at the lower-left map corner', () => {
+  const declaration = css.match(/\.cadastre-disclosure\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+  assert.match(declaration, /left:\s*18px/);
+  assert.match(declaration, /bottom:\s*46px/);
+  assert.doesNotMatch(declaration, /top\s*:/);
 });

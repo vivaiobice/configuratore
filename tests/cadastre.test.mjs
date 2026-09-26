@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCadastralWmsUrl } from '../src/cadastre.js';
 
-test('buildCadastralWmsUrl requests official parcel layer in a CRS supported by the service', () => {
+test('buildCadastralWmsUrl routes the public map image through the same CORS-safe backend', () => {
   const url = new URL(buildCadastralWmsUrl({
     west: 8.20,
     south: 44.69,
@@ -11,20 +11,21 @@ test('buildCadastralWmsUrl requests official parcel layer in a CRS supported by 
     width: 1200,
     height: 800
   }));
-  assert.equal(url.hostname, 'wms.cartografia.agenziaentrate.gov.it');
-  assert.equal(url.searchParams.get('SERVICE'), 'WMS');
-  assert.equal(url.searchParams.get('VERSION'), '1.1.1');
-  assert.equal(url.searchParams.get('LAYERS'), 'CP.CadastralParcel');
-  assert.equal(url.searchParams.get('SRS'), 'EPSG:4258');
-  assert.equal(url.searchParams.get('BBOX'), '8.2,44.69,8.25,44.73');
-  assert.equal(url.searchParams.get('TRANSPARENT'), 'TRUE');
-  assert.equal(url.searchParams.get('FORMAT'), 'image/png');
+  assert.equal(url.hostname, 'lnclwslcjufwdbmsxljf.supabase.co');
+  assert.equal(url.pathname, '/functions/v1/cadastral-wms');
+  assert.equal(url.searchParams.get('west'), '8.2');
+  assert.equal(url.searchParams.get('south'), '44.69');
+  assert.equal(url.searchParams.get('east'), '8.25');
+  assert.equal(url.searchParams.get('north'), '44.73');
+  assert.equal(url.searchParams.get('width'), '1200');
+  assert.equal(url.searchParams.get('height'), '800');
+  assert.equal(url.searchParams.get('SERVICE'), null);
 });
 
 test('buildCadastralWmsUrl clamps image dimensions to service limit', () => {
   const url = new URL(buildCadastralWmsUrl({ west: 8, south: 44, east: 9, north: 45, width: 9000, height: 5000 }));
-  assert.equal(url.searchParams.get('WIDTH'), '2048');
-  assert.equal(url.searchParams.get('HEIGHT'), '2048');
+  assert.equal(url.searchParams.get('width'), '2048');
+  assert.equal(url.searchParams.get('height'), '2048');
 });
 
 test('cadastralOverlayPolicy renders only an active overlay at the supported zoom', async () => {
