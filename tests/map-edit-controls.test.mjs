@@ -81,6 +81,19 @@ test('vertex removal mode deletes the clicked perimeter vertex without Mapbox Dr
   } finally { ctx.restore(); }
 });
 
+test('vertex removal mode announces start and can be finished without deleting a point', () => {
+  const states=[];
+  const ctx=setup({onVertexRemovalState:(state)=>states.push(state.active)});
+  try {
+    ctx.api.setGeometry([[10,10],[20,10],[20,20],[10,20],[10,10]]);
+    assert.equal(ctx.api.beginVertexRemoval(), true);
+    assert.deepEqual(states, [true]);
+    assert.equal(ctx.api.finishVertexRemoval(), true);
+    assert.deepEqual(states, [true,false]);
+    assert.ok(globalThis.__editMarkers.filter(marker=>marker.element?.className==='vertex-removal-marker').every(marker=>marker.removed));
+  } finally { ctx.restore(); }
+});
+
 test('explicit vertex editing shows draggable handles and commits dragged geometry on finish', () => {
   let emitted=null;
   const editingStates=[];

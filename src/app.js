@@ -1,14 +1,14 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=53';
-import { createMobileUI } from './mobile-ui.js?v=53';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=53.1';
+import { createMobileUI } from './mobile-ui.js?v=53.1';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=53';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton } from './desktop-ux.js?v=53.1';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=53';
+import { initMap } from './map.js?v=53.1';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=53';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=53.1';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=51';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -43,6 +43,7 @@ let mapApi = null;
 let mobileUi = null;
 let desktopLibraryUi = null;
 let vertexEditingActive = false;
+let vertexRemovalActive = false;
 let cloudService = null;
 let projectSync = null;
 let cloudBackend = null;
@@ -305,6 +306,10 @@ try {
         button.setAttribute('aria-pressed', String(vertexEditingActive));
       }
     },
+    onVertexRemovalState: ({ active }) => {
+      vertexRemovalActive = Boolean(active);
+      syncVertexRemovalButton($('#remove-vertex-button'),vertexRemovalActive);
+    },
     onReady: calculateAndRender
   });
   if (state.project.geometry) mapApi.setGeometry(state.project.geometry);
@@ -478,7 +483,7 @@ $('#exclude-zone-button')?.addEventListener('click', () => mapApi?.beginExclusio
 $('#exclude-line-button')?.addEventListener('click', () => mapApi?.beginLinearExclusionDraw());
 $('#edit-vertices-button')?.addEventListener('click', () => vertexEditingActive ? mapApi?.finishVertexEditing() : mapApi?.beginVertexEditing());
 $('#center-field-button')?.addEventListener('click', () => mapApi?.focusActiveField());
-$('#remove-vertex-button')?.addEventListener('click', () => mapApi?.beginVertexRemoval());
+$('#remove-vertex-button')?.addEventListener('click', () => vertexRemovalActive ? mapApi?.finishVertexRemoval() : mapApi?.beginVertexRemoval());
 $('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; fieldLocationCoordinator.invalidate();mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual', cadastralRefs:[] }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
 async function locateFrom(source) {
   try {

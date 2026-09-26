@@ -2,7 +2,17 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V53 WebApp.
+Stato: ambiente TEST · release V53.1 WebApp.
+
+## V53.1 — hotfix comandi mappa e scala catastale
+
+- Il gruppo Satellite, Stradale e Catasto torna nell'angolo superiore sinistro della mappa; il
+  cursore di visibilità compare nella seconda riga senza sovrapporsi al selettore del campo.
+- Le particelle vengono richieste soltanto alla scala di 30 m o più ravvicinata; allargando
+  l'inquadratura il Catasto passa al layer dei fogli, evitando il caricamento inutile dei dettagli.
+- Il comando **− Punto** diventa **✓ Fine modifica** mentre i vertici eliminabili sono attivi e
+  consente di uscire dalla modalità senza rimuovere un punto.
+- Cache degli asset aggiornata a `V53.1`; nessuna modifica al database o al formato dei progetti.
 
 ## V53 — riferimenti catastali e controllo visibilità
 

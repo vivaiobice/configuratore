@@ -4,10 +4,19 @@ import { APP_CONFIG } from './config.js';
 const WMS_PROXY_ENDPOINT = `${APP_CONFIG.supabaseUrl}/functions/v1/cadastral-wms`;
 const MAX_IMAGE_SIZE = 2048;
 export const CADASTRAL_MIN_ZOOM = 13;
-export const CADASTRAL_PARCEL_ZOOM = 15.5;
+export const CADASTRAL_PARCEL_SCALE_M = 30;
+const MAPLIBRE_TILE_SIZE = 512;
+const SCALE_REFERENCE_PX = 100;
+const EARTH_CIRCUMFERENCE_M = 40075016.686;
 
-export function cadastralLayerMode(zoom) {
-  return Number(zoom) >= CADASTRAL_PARCEL_ZOOM ? 'parcels' : 'sheets';
+export function cadastralLayerMode(zoom, latitude = 44.709) {
+  const parsedZoom = Number(zoom);
+  const parsedLatitude = Number(latitude);
+  if (!Number.isFinite(parsedZoom) || !Number.isFinite(parsedLatitude)) return 'sheets';
+  const safeLatitude = Math.max(-85.051129, Math.min(85.051129, parsedLatitude));
+  const metersPerPixel = Math.cos(safeLatitude * Math.PI / 180)
+    * EARTH_CIRCUMFERENCE_M / (MAPLIBRE_TILE_SIZE * (2 ** parsedZoom));
+  return metersPerPixel * SCALE_REFERENCE_PX <= CADASTRAL_PARCEL_SCALE_M ? 'parcels' : 'sheets';
 }
 
 const WFS_ENDPOINT = 'https://wfs.cartografia.agenziaentrate.gov.it/inspire/wfs/owfs01.php';

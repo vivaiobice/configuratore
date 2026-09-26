@@ -32,6 +32,17 @@
   color:#fff!important;
   box-shadow:0 0 0 2px rgba(255,255,255,.9),0 7px 20px rgba(18,63,39,.28)!important;
 }
+.desktop-map-tools .map-tools-visual{
+  left:18px;
+  top:18px;
+  display:grid;
+  grid-template-columns:auto auto;
+  align-items:center;
+}
+.desktop-map-tools .map-tools-visual .cadastre-opacity-control{
+  grid-column:1/-1;
+  width:100%;
+}
 .cadastre-opacity-control{
   display:flex;
   align-items:center;

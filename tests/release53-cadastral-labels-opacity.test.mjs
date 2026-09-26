@@ -42,7 +42,8 @@ test('catasto is available at sheet-overview zoom and still waits when too far a
   assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:12.9 }), { visible:true, renderable:false, reason:'zoom' });
   assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:13 }), { visible:true, renderable:true, reason:'ready' });
   assert.equal(cadastralLayerMode(14), 'sheets');
-  assert.equal(cadastralLayerMode(16), 'parcels');
+  assert.equal(cadastralLayerMode(17, 45), 'sheets', 'a scale wider than 30 m the map must show sheets');
+  assert.equal(cadastralLayerMode(18, 45), 'parcels', 'at 30 m or closer the map must show parcels');
 });
 
 test('cadastral overlay starts at sixty percent and updates opacity without reloading imagery', async () => {
@@ -101,4 +102,9 @@ test('release UI ships the accessible opacity control and unmistakable active bu
   assert.equal(slider.getAttribute('value'), '60');
   assert.match(css, /#cadastre-button\[aria-pressed=["']true["']\][^{]*\{[^}]*background:[^;}]+!important[^}]*color:[^;}]+!important/s);
   assert.match(css, /html\[data-theme=["']dark["']\][^{]*#cadastre-button\[aria-pressed=["']true["']\]/s);
+});
+
+test('desktop cadastral controls start at the map corner and put opacity on their second row', () => {
+  assert.match(css, /\.desktop-map-tools \.map-tools-visual\s*\{[^}]*left:\s*18px[^}]*display:\s*grid/s);
+  assert.match(css, /\.desktop-map-tools \.map-tools-visual \.cadastre-opacity-control\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s);
 });

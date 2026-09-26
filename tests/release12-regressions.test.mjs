@@ -9,7 +9,7 @@ const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
 test('release assets are cache-busted and header uses the V13 supplied logo', () => {
   assert.match(html, /styles\.css\?v=18/);
-  assert.match(html, /src\/app\.js\?v=53/);
+  assert.match(html, /src\/app\.js\?v=53\.1/);
   assert.match(html, /brand-logo[^>]+logo-vivai-obice-v14\.png\?v=14/);
 });
 

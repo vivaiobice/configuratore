@@ -1,7 +1,7 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import { buildCadastralWmsUrl, cadastralLayerMode } from './cadastre.js?v=53';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=53';
+import { buildCadastralWmsUrl, cadastralLayerMode } from './cadastre.js?v=53.1';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=53.1';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
@@ -47,7 +47,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -81,6 +81,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let manualHover = null;
   let manualCloseMarker = null;
   let vertexRemovalMarkers = [];
+  let vertexRemovalActive = false;
   let otherFieldLabelMarkers = [];
   let activeFieldLabelMarker = null;
   let currentActiveFieldLabel = 'Campo';
@@ -188,6 +189,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function clearVertexRemovalMarkers() {
     for (const marker of vertexRemovalMarkers) marker.remove?.();
     vertexRemovalMarkers = [];
+    if (vertexRemovalActive) {
+      vertexRemovalActive = false;
+      onVertexRemovalState({active:false});
+    }
   }
 
   function clearOtherFieldLabelMarkers() {
@@ -585,7 +590,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
         west, south, east, north,
         width: canvas.clientWidth * dpr,
         height: canvas.clientHeight * dpr,
-        mode:cadastralLayerMode(map.getZoom?.())
+        mode:cadastralLayerMode(map.getZoom?.(), map.getCenter?.()?.lat)
       }),
       coordinates: [[west, north], [east, north], [east, south], [west, south]]
     };
@@ -800,6 +805,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       return false;
     }
     if (typeof document === 'undefined' || typeof globalThis.maplibregl?.Marker !== 'function') return false;
+    vertexRemovalActive = true;
+    onVertexRemovalState({active:true});
     const vertices = committedGeometry.slice(0, -1);
     vertices.forEach((coordinate, index) => {
       const element = document.createElement('button');
@@ -823,6 +830,13 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       vertexRemovalMarkers.push(new globalThis.maplibregl.Marker({ element, anchor:'center' }).setLngLat(coordinate).addTo(map));
     });
     onStatus('I vertici eliminabili sono evidenziati in rosso: clicca/tocca il simbolo − sul punto da rimuovere.');
+    return true;
+  }
+
+  function finishVertexRemoval() {
+    if (!vertexRemovalActive) return false;
+    clearVertexRemovalMarkers();
+    onStatus('Modifica dei punti conclusa.');
     return true;
   }
 
@@ -964,5 +978,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity };
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity };
 }

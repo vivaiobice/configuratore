@@ -11,6 +11,14 @@ export function setToolButtonLabel(button,label,{icon}={}){
  button.textContent=icon===undefined?label:`${icon} ${label}`;
 }
 
+export function syncVertexRemovalButton(button,active){
+ if(!button)return;
+ const next=Boolean(active);
+ button.classList.toggle('active',next);
+ button.setAttribute('aria-pressed',String(next));
+ setToolButtonLabel(button,next?'Fine modifica':'Punto',{icon:next?'✓':'−'});
+}
+
 export function createDesktopQuickCalculator({document=globalThis.document,calculate=null,onCalculate=()=>{}}={}){
  const dialog=document?.querySelector?.('#quick-calculator-dialog');
  const trigger=document?.querySelector?.('#quick-calculator-trigger');

@@ -14,6 +14,20 @@ test('dynamic map tool labels update without removing the icon-only structure',(
   assert.equal(button.querySelector('.tool-label').textContent,'Fine modifica');
 });
 
+test('vertex removal button becomes Fine modifica while its mode is active',async()=>{
+  const desktopUx=await import('../src/desktop-ux.js');
+  assert.equal(typeof desktopUx.syncVertexRemovalButton,'function');
+  const {document}=parseHTML('<button aria-pressed="false"><span class="tool-icon">−</span><span class="tool-label">Punto</span></button>');
+  const button=document.querySelector('button');
+  desktopUx.syncVertexRemovalButton(button,true);
+  assert.equal(button.getAttribute('aria-pressed'),'true');
+  assert.equal(button.querySelector('.tool-icon').textContent,'✓');
+  assert.equal(button.querySelector('.tool-label').textContent,'Fine modifica');
+  desktopUx.syncVertexRemovalButton(button,false);
+  assert.equal(button.getAttribute('aria-pressed'),'false');
+  assert.equal(button.querySelector('.tool-label').textContent,'Punto');
+});
+
 test('desktop map tools keep labels fully hidden until the individual icon is expanded',()=>{
   const {document}=parseHTML(html);
   const rail=document.querySelector('.desktop-tool-rail');
