@@ -2,7 +2,18 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V43 WebApp.
+Stato: ambiente TEST · release V52 WebApp.
+
+## V52 — cartografia catastale informativa
+
+- Il comando **Catasto** sovrappone nell'editor progetto il layer WMS ufficiale dell'Agenzia delle
+  Entrate alle mappe Satellite e Stradale.
+- La cartografia è soltanto un riferimento visivo: non seleziona particelle, non sostituisce il
+  perimetro del campo e non compare in amministrazione, condivisioni o PDF.
+- Sotto lo zoom utile il configuratore invita ad avvicinarsi; errori del servizio catastale non
+  bloccano la mappa né gli strumenti di progettazione.
+- La visibilità è temporanea e torna disattivata a ogni apertura. Fonte e avvertenza informativa
+  restano visibili mentre il layer è attivo.
 
 ## V43 — documento, accesso con codice e materiali
 
@@ -116,7 +127,8 @@ Stato: ambiente TEST · release V43 WebApp.
   valore viene usato dal salvataggio già esistente senza creare un nuovo flusso.
 - Sulla mappa desktop i comandi sono separati in gruppi: visualizzazione in alto, editor a sinistra,
   esclusioni e posizionamento a destra, rotazione in basso a destra accanto ai controlli MapLibre.
-- `Catasto` è il comando principale; quando il layer è attivo apre il sottomenù **Trova particella**.
+- Nella V37 `Catasto` includeva anche il sottomenu sperimentale **Trova particella**, rimosso nella
+  V52 a favore della sola sovrapposizione informativa.
 - Il nuovo pulsante compatto **Aggiungi campo**, centrato in basso, avvia il disegno e diventa
   **Chiudi perimetro** quando sono disponibili almeno tre vertici. Durante altri editor resta bloccato.
 - Gate locale: suite `388/388` e controlli sintattici superati. Formule, geometrie e schema database

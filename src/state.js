@@ -1,10 +1,14 @@
 import { suggestRowOrientation } from './geometry.js?v=45';
 import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=51';
 
+export function normalizeMapState(map = {}) {
+  return { base:map?.base === 'street' ? 'street' : 'satellite' };
+}
+
 export function createInitialState() {
   const state = {
     environment: 'TEST',
-    map: { base: 'satellite', cadastralVisible: false },
+    map: normalizeMapState(),
     project: {
       campaignYear: new Date().getFullYear(),
       geometry: null,

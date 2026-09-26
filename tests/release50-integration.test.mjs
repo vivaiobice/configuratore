@@ -7,11 +7,15 @@ const html=fs.readFileSync(new URL('index.html',root),'utf8');
 const app=fs.readFileSync(new URL('src/app.js',root),'utf8');
 
 test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
- assert.match(html,/AMBIENTE TEST · V51/);
+ assert.match(html,/AMBIENTE TEST · V52/);
  assert.match(html,/v50-fixes\.css\?v=51/);
+ assert.match(html,/v52-cadastre\.css\?v=52/);
  assert.match(html,/desktop-library\.css\?v=51/);
- assert.match(html,/src\/app\.js\?v=51/);
- for(const module of ['state','mobile-ui','desktop-library-ui','map','backend','cloud','fields']){
+ assert.match(html,/src\/app\.js\?v=52/);
+ for(const module of ['state','mobile-ui','map','backend']){
+  assert.match(app,new RegExp(`\\./${module}\\.js\\?v=52`));
+ }
+ for(const module of ['desktop-library-ui','cloud','fields']){
   assert.match(app,new RegExp(`\\./${module}\\.js\\?v=51`));
  }
 });

@@ -22,7 +22,8 @@ test('desktop map controls are separated into visual, editor, exclusion and posi
  const rotation=toolbar.querySelector('[data-map-tools="rotation"]');
  assert.ok(visual.contains(document.querySelector('[data-base="satellite"]')));
  assert.ok(visual.contains(document.querySelector('#cadastre-button')));
- assert.ok(document.querySelector('#cadastre-menu').contains(document.querySelector('#select-cadastre-button')));
+ assert.equal(Boolean(document.querySelector('#cadastre-menu')),false);
+ assert.equal(Boolean(document.querySelector('#select-cadastre-button')),false);
  assert.ok(editor.contains(document.querySelector('#edit-vertices-button')));
  assert.ok(editor.contains(document.querySelector('#clear-field-button')));
  assert.ok(editor.contains(document.querySelector('#remove-vertex-button')));
@@ -54,13 +55,13 @@ test('desktop map field action starts a new field and becomes the perimeter clos
  document.querySelector('#map-add-field-button').click();assert.equal(added,1);assert.equal(finished,1);
 });
 
-test('Catasto toggles its layer and owns the Trova particella submenu',async()=>{
+test('Catasto is a direct visual overlay toggle',async()=>{
  const {document}=parseHTML(html);
- const {createCadastreMenu}=await import('../src/desktop-ux.js');
- let active=false,selected=0;
- const menu=createCadastreMenu({document,isActive:()=>active,setActive:value=>active=value,onSelect:()=>selected++});menu.mount();
+ const {createCadastreToggle}=await import('../src/desktop-ux.js');
+ assert.equal(typeof createCadastreToggle,'function');
+ let active=false;
+ const toggle=createCadastreToggle({document,isActive:()=>active,setActive:value=>active=value});toggle.mount();
  document.querySelector('#cadastre-button').click();
- assert.equal(active,true);assert.equal(document.querySelector('#cadastre-menu').hidden,false);
- document.querySelector('#select-cadastre-button').click();assert.equal(selected,1);assert.equal(document.querySelector('#cadastre-menu').hidden,true);
- document.querySelector('#cadastre-button').click();assert.equal(active,false);assert.equal(document.querySelector('#cadastre-menu').hidden,true);
+ assert.equal(active,true);assert.equal(document.querySelector('#cadastre-button').getAttribute('aria-pressed'),'true');
+ document.querySelector('#cadastre-button').click();assert.equal(active,false);assert.equal(document.querySelector('#cadastre-button').getAttribute('aria-pressed'),'false');
 });

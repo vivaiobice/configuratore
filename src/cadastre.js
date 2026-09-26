@@ -2,8 +2,18 @@ import { pointInPolygon } from './geometry.js';
 
 const WMS_ENDPOINT = 'https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01.php';
 const MAX_IMAGE_SIZE = 2048;
+export const CADASTRAL_MIN_ZOOM = 15;
 
 const WFS_ENDPOINT = 'https://wfs.cartografia.agenziaentrate.gov.it/inspire/wfs/owfs01.php';
+
+export function cadastralOverlayPolicy({ visible, zoom }) {
+  const active = Boolean(visible);
+  if (!active) return { visible:false, renderable:false, reason:'off' };
+  if (!Number.isFinite(Number(zoom)) || Number(zoom) < CADASTRAL_MIN_ZOOM) {
+    return { visible:true, renderable:false, reason:'zoom' };
+  }
+  return { visible:true, renderable:true, reason:'ready' };
+}
 
 export function buildCadastralWfsUrl({ west, south, east, north, count = 12 }) {
   const url = new URL(WFS_ENDPOINT);

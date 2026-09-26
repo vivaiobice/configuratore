@@ -27,6 +27,25 @@ test('buildCadastralWmsUrl clamps image dimensions to service limit', () => {
   assert.equal(url.searchParams.get('HEIGHT'), '2048');
 });
 
+test('cadastralOverlayPolicy renders only an active overlay at the supported zoom', async () => {
+  const module = await import('../src/cadastre.js');
+  assert.equal(typeof module.CADASTRAL_MIN_ZOOM, 'number');
+  assert.equal(typeof module.cadastralOverlayPolicy, 'function');
+  const { CADASTRAL_MIN_ZOOM, cadastralOverlayPolicy } = module;
+  assert.deepEqual(cadastralOverlayPolicy({ visible:false, zoom:CADASTRAL_MIN_ZOOM }), {
+    visible:false, renderable:false, reason:'off'
+  });
+  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:CADASTRAL_MIN_ZOOM - 0.1 }), {
+    visible:true, renderable:false, reason:'zoom'
+  });
+  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:Number.NaN }), {
+    visible:true, renderable:false, reason:'zoom'
+  });
+  assert.deepEqual(cadastralOverlayPolicy({ visible:true, zoom:CADASTRAL_MIN_ZOOM }), {
+    visible:true, renderable:true, reason:'ready'
+  });
+});
+
 test('buildCadastralWfsUrl requests parcel features around a small bbox', async () => {
   const { buildCadastralWfsUrl } = await import('../src/cadastre.js');
   const url = new URL(buildCadastralWfsUrl({ west: 8.223, south: 44.707, east: 8.224, north: 44.708, count: 8 }));

@@ -57,9 +57,9 @@
 
   html[data-theme="dark"] .desktop-map-tools .map-tool-group,
   html[data-theme="dark"] .map-field-picker{border:1px solid #587360!important;background:rgba(31,53,40,.94)!important;box-shadow:0 8px 24px #07130c55!important}
+  html[data-theme="dark"] .cadastre-menu{border-color:#587360!important;background:#203529!important}
   html[data-theme="dark"] .desktop-map-tools .map-tool-group button,
   html[data-theme="dark"] .map-field-picker select{border-color:#587360!important;background:#294735!important;color:#eef6ef!important}
-  html[data-theme="dark"] .cadastre-menu{border-color:#587360!important;background:#203529!important}
   html[data-theme="dark"] .map-search-form input,
   html[data-theme="dark"] .map-search-suggestions{border-color:#587360!important;background:#203529!important;color:#eef6ef!important}
   html[data-theme="dark"] .map-search-suggestions .search-suggestion{color:#eef6ef!important}

@@ -1,6 +1,7 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import { buildCadastralWmsUrl, buildCadastralWfsUrl, combineCadastralParcels, parseCadastralGml, selectCadastralParcel } from './cadastre.js';
+import { buildCadastralWmsUrl } from './cadastre.js?v=52';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=52';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
@@ -10,8 +11,6 @@ const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
 const STREET_ID = 'base-street';
 const ROWS_SOURCE_ID = 'vineyard-rows';
 const ROWS_LAYER_ID = 'vineyard-rows-line';
-const CADASTRE_SOURCE_ID = 'cadastre-image';
-const CADASTRE_LAYER_ID = 'cadastre-image-layer';
 const MANUAL_DRAW_SOURCE_ID = 'manual-draw';
 const MANUAL_DRAW_FILL_ID = 'manual-draw-fill';
 const MANUAL_DRAW_LINE_ID = 'manual-draw-line';
@@ -48,7 +47,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralParcel = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -72,8 +71,6 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let searchMarker = null;
   let gpsMarker = null;
   let sideMeasurementMarkers = [];
-  let cadastralVisible = false;
-  let selectedCadastralParcels = [];
   let polygonOpsPromise = null;
   let manualDrawing = false;
   let manualMode = 'perimeter';
@@ -469,7 +466,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.addLayer({ id:MANUAL_DRAW_LINE_ID, type:'line', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'line'], layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':3, 'line-dasharray':[1,1] } });
     map.addLayer({ id:MANUAL_DRAW_POINTS_ID, type:'circle', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'point'], paint:{ 'circle-radius':['case',['==',['get','first'],1],9,6], 'circle-color':['case',['==',['get','first'],1],'#4fa76c','#183f28'], 'circle-stroke-color':'#ffffff', 'circle-stroke-width':2 } });
     renderOtherFieldLabels();
-    if (cadastralVisible) refreshCadastre();
+    cadastralOverlay.refresh();
     onReady();
   });
 
@@ -593,90 +590,15 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     };
   }
 
-  function refreshCadastre() {
-    if (!cadastralVisible || !map.loaded()) return;
-    const request = cadastralRequest();
-    const source = map.getSource(CADASTRE_SOURCE_ID);
-    if (source?.updateImage) {
-      source.updateImage(request);
-      return;
-    }
-    if (!source) {
-      map.addSource(CADASTRE_SOURCE_ID, { type: 'image', ...request });
-      map.addLayer({
-        id: CADASTRE_LAYER_ID,
-        type: 'raster',
-        source: CADASTRE_SOURCE_ID,
-        paint: { 'raster-opacity': 0.82, 'raster-fade-duration': 0 }
-      }, map.getLayer(ROWS_LAYER_ID) ? ROWS_LAYER_ID : undefined);
-    }
-  }
-
-  async function polygonUnion() {
-    const { union } = await polygonOps();
-    return union;
-  }
-
-  function beginCadastralSelect() {
-    if (!cadastralVisible) {
-      onStatus('Attiva prima il layer Catasto.');
-      return;
-    }
-    onStatus('Tocca/clicca una particella catastale sulla mappa.');
-    map.getCanvas().style.cursor = 'crosshair';
-    const version = toolsVersion;
-    map.once('click', async (event) => {
-      if (version !== toolsVersion) return;
-      map.getCanvas().style.cursor = '';
-      const lon = event.lngLat.lng;
-      const lat = event.lngLat.lat;
-      const delta = 0.00002;
-      const url = buildCadastralWfsUrl({ west:lon-delta, south:lat-delta, east:lon+delta, north:lat+delta, count:12 });
-      try {
-        onStatus('Ricerca della particella catastale…');
-        const response = await fetch(url, { headers:{ Accept:'application/gml+xml, application/xml, text/xml' } });
-        if (!response.ok) throw new Error(`WFS ${response.status}`);
-        const parcels = parseCadastralGml(await response.text());
-        const parcel = selectCadastralParcel(parcels, [lon, lat]);
-        if (!parcel) {
-          onStatus('Nessuna particella selezionabile in quel punto. Puoi riprovare o disegnare manualmente.');
-          return;
-        }
-        const alreadySelected = selectedCadastralParcels.some((item) => item.id && parcel.id && item.id === parcel.id);
-        const candidates = alreadySelected ? selectedCadastralParcels : [...selectedCadastralParcels, parcel];
-        let selection;
-        try {
-          const unionFn = candidates.length > 1 ? await polygonUnion() : null;
-          selection = await combineCadastralParcels(candidates, unionFn);
-        } catch (mergeError) {
-          console.error(mergeError);
-          onStatus('Le particelle selezionate non formano un unico perimetro semplice. Mantengo la selezione precedente.');
-          return;
-        }
-        if (version !== toolsVersion) return;
-        selectedCadastralParcels = candidates;
-        setGeometry(selection.coordinates);
-        onGeometryChange(selection.coordinates);
-        onCadastralParcel(parcel, selection);
-        const countLabel = selectedCadastralParcels.length > 1 ? `${selectedCadastralParcels.length} particelle unite` : 'Particella catastale selezionata';
-        onStatus(`${countLabel}${parcel.reference ? ` · ${parcel.reference}` : ''}. Puoi aggiungere una particella confinante o modificare i vertici.`);
-      } catch (error) {
-        console.error(error);
-        onStatus('Selezione catastale momentaneamente non disponibile. Il disegno manuale resta utilizzabile.');
-      }
-    });
-  }
+  const cadastralOverlay = createCadastralOverlay({
+    map,
+    requestForViewport:cadastralRequest,
+    beforeLayerId:() => map.getLayer(ROWS_LAYER_ID) ? ROWS_LAYER_ID : (map.getLayer(OTHER_ROWS_LAYER_ID) ? OTHER_ROWS_LAYER_ID : (map.getLayer(OTHER_FIELDS_FILL_ID) ? OTHER_FIELDS_FILL_ID : (map.getLayer(PROJECT_GEOMETRY_FILL_ID) ? PROJECT_GEOMETRY_FILL_ID : undefined))),
+    onState:onCadastralState
+  });
 
   function setCadastralVisible(visible) {
-    cadastralVisible = Boolean(visible);
-    if (!cadastralVisible) {
-      if (map.getLayer(CADASTRE_LAYER_ID)) map.setLayoutProperty(CADASTRE_LAYER_ID, 'visibility', 'none');
-      onStatus('Catasto disattivato.');
-      return;
-    }
-    if (map.getLayer(CADASTRE_LAYER_ID)) map.setLayoutProperty(CADASTRE_LAYER_ID, 'visibility', 'visible');
-    refreshCadastre();
-    onStatus('Catasto attivo. Le linee catastali sono informative e non sostituiscono una visura.');
+    cadastralOverlay.setVisible(visible);
   }
 
   function setGeometry(coords) {
@@ -712,7 +634,6 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function beginDraw() {
     clearVertexRemovalMarkers();
     manualMode = 'perimeter';
-    selectedCadastralParcels = [];
     suspendDrawEditing();
     previousPerimeter = committedGeometry;
     committedGeometry = null;
@@ -857,7 +778,6 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     vertexEditing = false;
     onEditingState({ active:false });
     clearActiveFieldLabel();
-    selectedCadastralParcels = [];
     cancelManualDrawing();
     if (draw) { try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); } }
     updateProjectGeometrySource(null);
@@ -995,8 +915,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.easeTo({ bearing: 0, duration: 180, essential: true });
   }
 
-  map.on('moveend', () => { refreshCadastre(); ensureCommittedVisuals(); });
-  map.on('resize', () => { refreshCadastre(); ensureCommittedVisuals(); });
+  map.on('moveend', () => { cadastralOverlay.refresh(); ensureCommittedVisuals(); });
+  map.on('resize', () => { cadastralOverlay.refresh(); ensureCommittedVisuals(); });
   map.on('styledata', ensureCommittedVisuals);
   map.on('idle', ensureCommittedVisuals);
 
@@ -1039,5 +959,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, beginCadastralSelect, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
 }

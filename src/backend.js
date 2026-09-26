@@ -1,4 +1,5 @@
 import { ensureProjectFields } from './fields.js?v=51';
+import { normalizeMapState } from './state.js?v=52';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function edgeFunctionError(error,fallback){
@@ -154,7 +155,7 @@ export function projectPayloadToState(payload, contact = null, { resumeToken = n
     };
   return {
     environment: payload?.environment ?? 'TEST',
-    map: { base: 'satellite', cadastralVisible: false },
+    map: normalizeMapState(),
     project: ensureProjectFields(legacyProject),
     ...(restoredContact ? { contact: restoredContact } : {}),
     cloud: {
