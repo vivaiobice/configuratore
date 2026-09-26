@@ -1,4 +1,6 @@
 import {satelliteStyle} from '../src/satellite-style.js?v=51';
+import {buildAdminMapData} from './admin-map-data.js?v=54';
+import {mountAdminCadastre} from './admin-cadastre.js?v=54';
 
 export function boundsForFeatureCollection(collection) {
   let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
@@ -20,18 +22,27 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     style:satelliteStyle(),
     center:[8.232,44.710], zoom:11.5, attributionControl:true
   });
-  map.addControl(new globalThis.maplibregl.NavigationControl(), 'top-right');
+  map.addControl(new globalThis.maplibregl.NavigationControl({showCompass:true}), 'top-right');
   map.addControl(new globalThis.maplibregl.GeolocateControl({
     positionOptions:{enableHighAccuracy:true},trackUserLocation:true,showUserLocation:true,showUserHeading:true
   }),'top-right');
+  map.dragRotate?.enable?.();map.touchZoomRotate?.enableRotation?.();
   let pending = { type:'FeatureCollection', features:[] };
+  let extra=buildAdminMapData([]);
   let selectedFeatureId=null,destroyed=false;
+  const host=typeof container==='string'?globalThis.document?.getElementById?.(container):container;
+  const cadastre=host?.append?mountAdminCadastre({map,container:host,beforeLayerId:'project-fill'}):null;
 
   map.on('load', () => {
     map.addSource('projects', { type:'geojson', data:pending });
+    map.addSource('admin-exclusions',{type:'geojson',data:extra.exclusions});
+    map.addSource('admin-rows',{type:'geojson',data:extra.rows});
     map.addLayer({ id:'project-fill', type:'fill', source:'projects', paint:{ 'fill-color':'#ffd42a', 'fill-opacity':['case',['boolean',['feature-state','selected'],false],0.26,0.16] } });
+    map.addLayer({id:'admin-exclusion-fill',type:'fill',source:'admin-exclusions',paint:{'fill-color':'#a43e32','fill-opacity':.28}});
+    map.addLayer({id:'admin-exclusion-line',type:'line',source:'admin-exclusions',paint:{'line-color':'#d84638','line-width':2}});
+    map.addLayer({id:'admin-row-lines',type:'line',source:'admin-rows',minzoom:13,paint:{'line-color':'#ffffff','line-width':2}});
     map.addLayer({ id:'project-line', type:'line', source:'projects', paint:{ 'line-color':'#ffd42a', 'line-width':['case',['boolean',['feature-state','selected'],false],5,2.5] } });
-    map.addLayer({id:'project-label',type:'symbol',source:'projects',minzoom:11,layout:{'text-field':['get','displayLabel'],'text-size':12,'text-font':['Open Sans Bold'],'text-allow-overlap':false,'text-padding':8},paint:{'text-color':'#183f28','text-halo-color':'#fff','text-halo-width':2}});
+    map.addLayer({id:'project-label',type:'symbol',source:'projects',minzoom:13,layout:{'text-field':['get','displayLabel'],'text-size':12,'text-font':['Open Sans Bold'],'text-allow-overlap':false,'text-padding':8},paint:{'text-color':'#183f28','text-halo-color':'#fff','text-halo-width':2}});
     const selectFeature=(event)=>{const properties=event.features?.[0]?.properties??{};if(properties.projectId)onProjectClick({projectId:properties.projectId,fieldId:properties.fieldId??''});};
     map.on('click', 'project-fill', selectFeature);
     map.on('click', 'project-label', selectFeature);
@@ -46,6 +57,8 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     if (bounds) map.fitBounds([[bounds.west,bounds.south],[bounds.east,bounds.north]], { padding:40, maxZoom:16, duration:0 });
     if(selectedFeatureId&&!pending.features.some(feature=>String(feature.id)===String(selectedFeatureId)))selectedFeatureId=null;
   }
+
+  function setFields(fieldRows){extra=buildAdminMapData(fieldRows);setProjects(extra.fields);map.getSource('admin-exclusions')?.setData(extra.exclusions);map.getSource('admin-rows')?.setData(extra.rows);}
 
   function clearSelection(){
     if(selectedFeatureId!==null&&map.getSource('projects'))map.setFeatureState({source:'projects',id:selectedFeatureId},{selected:false});
@@ -62,7 +75,7 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     return true;
   }
 
-  function destroy(){if(destroyed)return;destroyed=true;map.remove();}
+  function destroy(){if(destroyed)return;destroyed=true;cadastre?.destroy();map.remove();}
 
-  return { map, setProjects, focusField, clearSelection, destroy };
+  return { map, setProjects, setFields, focusField, clearSelection, destroy };
 }

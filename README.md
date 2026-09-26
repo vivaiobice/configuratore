@@ -462,3 +462,9 @@ Per modifiche, pacchetto e controlli dopo il caricamento, leggere `V44-VERIFICA.
 # Release TEST V45 (24 settembre 2026)
 
 Per le modifiche e le verifiche successive al caricamento, leggere `V45-VERIFICA.md`. Il progetto condiviso resta consultabile dai Guest: il pulsante di stampa apre login o registrazione nella stessa pagina. Indirizzo del destinatario e località dell'impianto sono gestiti separatamente.
+# V54 TEST — Riferimenti catastali e mappe Admin
+
+Ogni campo può conservare più riferimenti catastali manuali (Comune, Foglio e Particella) insieme ai riferimenti legacy. L'Admin mostra il nome del campo nella seconda colonna e i riferimenti nella scheda; MainMap e mappe di dettaglio mostrano filari, esclusioni, rotazione e Catasto indipendente con visibilità al 60%. La consultazione dei mappali tramite puntatore richiede tre secondi di sosta e zoom 16+. Verifiche operative in `V54-VERIFICA.md`.
+# V55 TEST — Profilo suolo del campo
+
+La mappa può mostrare su richiesta i temi pedologici della Regione Piemonte. La scheda Suolo interroga fino a nove punti del campo e salva la classe effettivamente letta, con fonte, data, scala e indicazione della qualità orientativa. Quando cambia il perimetro, il profilo viene marcato da aggiornare. La versione resta TEST finché il WMS non è verificato dal browser sul dominio pubblicato; prova operativa in `V55-VERIFICA.md`.

@@ -1,8 +1,11 @@
+import {normalizeCadastralReferences} from './cadastral-references.js?v=54';
+import {normalizeSoilProfile} from './soil.js?v=55';
+
 const FIELD_KEYS = [
   'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints','maintainRowEquidistance',
   'locationLabel','municipality','province','region','headlandWidthM','postSpacingM','mechanizedHarvest','projectContextType',
   'projectContextNote','grapeVariety','rootstock','cloneSelection','plantHeightCm','materialRequestNote','exclusions'
-  ,'plantingStatus'
+  ,'plantingStatus','soil'
 ];
 
 export function normalizePlantingStatus(value) {
@@ -25,7 +28,7 @@ export function createDefaultField(id = newId(), index = 1, overrides = {}) {
     labelCustomized,
     geometry:null,
     sourceType:'manual',
-    cadastralRefs:[],
+    cadastralRefs:[],soil:null,
     rowSpacingM:2.5,
     plantSpacingM:0.9,
     orientationDeg:0,
@@ -43,7 +46,9 @@ export function createDefaultField(id = newId(), index = 1, overrides = {}) {
     exclusions:[],
     ...overrides,
     id,
-    plantingStatus:normalizePlantingStatus(overrides.plantingStatus)
+    plantingStatus:normalizePlantingStatus(overrides.plantingStatus),
+    cadastralRefs:normalizeCadastralReferences(overrides.cadastralRefs),
+    soil:normalizeSoilProfile(overrides.soil)
   };
 }
 

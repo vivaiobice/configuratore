@@ -1,3 +1,4 @@
+import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=54';
 function text(value) { return String(value ?? '').trim().toLowerCase(); }
 
 function finite(...values) {
@@ -42,7 +43,7 @@ function fieldMetric(field, project, ...names) {
 function legacyField(project) {
   const ring = ringFrom(project?.geometry);
   return {
-    id:project?.active_field_id || 'legacy-field', label:'Campo', geometry:ring,
+    id:project?.active_field_id || 'legacy-field', label:'Campo', geometry:ring,cadastralRefs:project?.cadastral_refs??[],
     plantingStatus:'planned', locationLabel:project?.location_label ?? '', municipality:project?.municipality ?? '',
     province:project?.province ?? '', region:project?.region ?? '', campaignYear:project?.campaign_year,
     grapeVariety:project?.grape_variety ?? '', cloneSelection:project?.clone_selection ?? '', rootstock:project?.rootstock ?? '',
@@ -93,7 +94,7 @@ export function expandProjectFields(projects = []) {
         rowId:`${project.id}:${id}`, projectId:String(project.id), fieldId:id, index, project, field,
         projectDate:project.created_at ?? null, projectName:project.name ?? 'Progetto', projectCode:project.public_code ?? '',
         client, location, municipality, province:field?.province ?? project?.province ?? '', year, plantingStatus,
-        label, grapeVariety:field?.grapeVariety ?? project?.grape_variety ?? '', cloneSelection:field?.cloneSelection ?? project?.clone_selection ?? '',
+        label, cadastralRefs:normalizeCadastralReferences(field?.cadastralRefs??(fields.length===1?project?.cadastral_refs:[])),grapeVariety:field?.grapeVariety ?? project?.grape_variety ?? '', cloneSelection:field?.cloneSelection ?? project?.clone_selection ?? '',
         rootstock:field?.rootstock ?? project?.rootstock ?? '', areaM2:fieldMetric(field,project,'areaM2'),
         netAreaM2:fieldMetric(field,project,'netAreaM2','areaM2'), calculatedPlants:fieldMetric(field,project,'simulatedPlants'),
         commercialPlants:fieldMetric(field,project,'commercialPlants25'), perimeterM:fieldMetric(field,project,'perimeterM'),

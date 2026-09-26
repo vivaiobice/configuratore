@@ -1,3 +1,4 @@
+import {soilProfileIsCurrent} from './soil.js?v=55';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 import {calculateManualPlants} from './project-calculator.js?v=45';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
@@ -177,7 +178,7 @@ export function createMobileUI(api){
  function renderDetail(){
   const field=api.getField();$('#mobile-detail-title').textContent=field.label||'Campo';
   $('#mobile-field-detail').innerHTML=`${metricsHtml(field)}<dl class="mobile-materials">${[
-   ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
+   ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Suolo indicativo',field.soil?.description?`${field.soil.description}${soilProfileIsCurrent(field.soil,field.geometry)?'':' · da aggiornare'}`:'Non analizzato'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
   ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
  }
  function renderProjects(){
@@ -262,7 +263,7 @@ export function createMobileUI(api){
    move($('.field-manager'),$('[data-screen="parameters"]'));$('#mobile-parameters-preview').before($('.field-manager'));
    move($('.step[data-step="2"]'),$('#mobile-parameters-body'));move($('.advanced'),$('#mobile-parameters-body'));$('.advanced').open=true;
    move($('.exclusion-panel'),sheet.querySelector('[data-content="cuts"]'));
-   for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button','#cadastre-opacity-control'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
+   for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button','#cadastre-opacity-control','#soil-button'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
    move($('#close-perimeter-button'),$('#mobile-drawing-actions'));
    move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));
    const compass=$('.maplibregl-ctrl-compass');

@@ -3,7 +3,7 @@ import { parsePublicProjectCodeUrl } from './public-project-access.js';
 import { calculateProject } from './project-calculator.js?v=45';
 import { buildReportMapModel } from './report-map-model.js?v=45';
 import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
-import { buildProjectReportModel } from './pdf-model.js?v=51';
+import { buildProjectReportModel } from './pdf-model.js?v=55';
 import { captureSatelliteImage } from './report-satellite.js?v=51';
 import { renderProjectReportHtml } from './report-template.js?v=51';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
