@@ -1,12 +1,12 @@
-# V55 TEST — Suolo Piemonte
+# V55.1 TEST — Suolo Piemonte
 
 ## Prova in browser, con rete attiva
 
 1. Apri un campo in Piemonte e attiva **◫ Suolo** nella mappa. Verifica che compaia la carta tematica e che la mappa satellitare resti visibile sotto. Prova i temi Tessitura, Carta dei suoli, Calcare, Drenaggio e Reazione.
-2. Clicca una zona coperta dal servizio: la scheda deve riportare solo i valori effettivamente restituiti, oppure «Dato pedologico non disponibile». Non deve mostrare una classe inventata.
-3. Apri **Affina il progetto → Informazioni → Suolo**, premi **Analizza il campo**, salva e ricarica. La scheda deve conservare fonte, data e numero di punti effettivamente consultati per quel campo. Verifica anche con due campi nello stesso progetto.
+2. Clicca una zona coperta dal servizio: la scheda deve riportare solo i valori effettivamente restituiti, oppure «Dato non disponibile nel punto selezionato». Verifica che la scheda si chiuda e che la legenda cambi con il tema. Non deve mostrare una classe inventata.
+3. Apri **Affina il progetto → Informazioni → Suolo**, premi **Analizza suolo del campo**, salva e ricarica. La scheda deve conservare fonte, data e numero di punti effettivamente consultati per quel campo. Verifica anche con due campi nello stesso progetto e con unità pedologiche diverse, senza percentuali attribuite all'area.
 4. Modifica il perimetro dopo l'analisi: il profilo conservato deve segnalare «da aggiornare». Riesegui l'analisi per aggiornarlo.
-5. Su mobile prova l'interruttore Suolo nella scheda Livelli e il riepilogo Suolo nella scheda Campo.
+5. Su mobile prova l'interruttore Suolo nella scheda Livelli, la scheda al tocco della mappa e la sezione Suolo nella scheda Campo. Usa «Aggiorna dati suolo» e controlla che l'apertura della scheda senza quel comando non avvii richieste.
 6. Riprova fuori dal Piemonte e con il servizio non raggiungibile: la mappa e le altre funzioni del configuratore devono rimanere utilizzabili, con un messaggio chiaro e senza profilo fittizio.
 
 ## Limiti della fonte

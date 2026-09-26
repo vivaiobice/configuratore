@@ -468,3 +468,11 @@ Ogni campo può conservare più riferimenti catastali manuali (Comune, Foglio e 
 # V55 TEST — Profilo suolo del campo
 
 La mappa può mostrare su richiesta i temi pedologici della Regione Piemonte. La scheda Suolo interroga fino a nove punti del campo e salva la classe effettivamente letta, con fonte, data, scala e indicazione della qualità orientativa. Quando cambia il perimetro, il profilo viene marcato da aggiornare. La versione resta TEST finché il WMS non è verificato dal browser sul dominio pubblicato; prova operativa in `V55-VERIFICA.md`.
+
+## V55.1 TEST — Suolo e mappali
+
+- Un tocco sulla carta Suolo apre una scheda consultabile anche su smartphone, con i soli attributi restituiti dal servizio e la nota sul valore indicativo dei dati.
+- L'analisi del campo consulta fino a nove punti e segnala più unità pedologiche senza dedurne percentuali di superficie. I risultati vengono salvati in `soil.cartographic`, distinti dallo spazio futuro `soil.labAnalysis`; i dati V55 precedenti sono letti e convertiti.
+- La scheda mobile del campo mostra i dati già salvati e offre «Aggiorna dati suolo». La consultazione usa una cache limitata e non avviene all'apertura della scheda.
+- «Aggiungi mappale» resta sotto l'ultima riga della mappa catastale.
+- I test automatici non verificano l'accessibilità effettiva del WMS dal browser sul dominio di pubblicazione: seguire `V55-VERIFICA.md` prima dell'utilizzo operativo.

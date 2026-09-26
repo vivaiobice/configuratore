@@ -1,5 +1,5 @@
 import { loadDraft } from './storage.js';
-import { ensureProjectFields } from './fields.js?v=55';
+import { ensureProjectFields } from './fields.js?v=55.1';
 import { calculateProject } from './project-calculator.js?v=45';
 import { buildProjectReportModel } from './pdf-model.js?v=55';
 import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=51';
@@ -9,7 +9,7 @@ import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from 
 import { renderReportQrSvg } from './report-qr.js';
 import { renderProjectReportHtml } from './report-template.js?v=51';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend } from './backend.js?v=55';
+import { connectSupabase, createBackend } from './backend.js?v=55.1';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { mountReportAddressAutocomplete } from './report-address.js?v=45';

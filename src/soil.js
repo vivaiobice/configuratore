@@ -3,6 +3,8 @@ import {pointInPolygon} from './geometry.js?v=45';
 export const SOIL_WMS='https://geomap.reteunitaria.piemonte.it/ws/agrigeo/rp-01/carsuowms/wms_carsuo';
 export const SOIL_LAYERS=Object.freeze({soil:'CartaSuoli',texture:'TessituraTopsoil',limestone:'CalcareTopsoil',drainage:'Drenaggio',reaction:'ReazioneTopsoil'});
 export const SOIL_SOURCE='Regione Piemonte · Carta dei suoli 1:50.000';
+export const SOIL_DISCLAIMER='Le caratteristiche riportate derivano da cartografia e modelli territoriali e hanno valore indicativo. Per la progettazione agronomica definitiva è consigliata un\'analisi del terreno effettuata su campione.';
+export const SOIL_LAYER_LABELS=Object.freeze({soil:'Carta dei suoli',texture:'Tessitura superficiale',limestone:'Calcare superficiale',drainage:'Drenaggio',reaction:'Reazione superficiale'});
 
 function request(viewport,layer,operation){
   const name=SOIL_LAYERS[layer];if(!name)throw new TypeError('Unknown soil layer');
@@ -25,13 +27,28 @@ export function parseSoilResponse(payload){
   const result={};
   for(const line of text.split(/\r?\n/)){
     const match=line.match(/^\s*([\w\sÀ-ÿ.-]{2,45})\s*[:=]\s*"?(.{1,250}?)"?\s*$/);if(!match)continue;
-    const key=match[1].toLowerCase().trim(),value=match[2].replace(/^"|"$/g,'').trim();
+    const key=match[1].toLowerCase().trim().replace(/[\s.-]+/g,'_'),value=match[2].replace(/^"|"$/g,'').trim();
     if(!value||/^(null|undefined|n\/a)$/i.test(value))continue;
-    if(/descriz|tessitura|classe|denomin|nome|reazione|calcare|drenaggio/.test(key)&&!result.description)result.description=value;
-    else if(/codice|^cod$|^id$/.test(key)&&!result.code)result.code=value;
+    if(/^(unita_pedologica|unita_di_suolo|soil_unit)$/.test(key))result.soilUnit=value;
+    else if(/^(tipo_suolo|tipo_di_suolo|soil_type)$/.test(key))result.soilType=value;
+    else if(/^(tessitura|texture|tessitura_topsoil)$/.test(key))result.texture=value;
+    else if(/^(descrizione|descriz|denominazione|nome)$/.test(key))result.description=value;
+    else if(/^(codice|cod|id)$/.test(key))result.code=value;
+    else if(/^(sabbia|sabbia_pct|sand)$/.test(key))assignNumber(result,'sand',value,0,100);
+    else if(/^(limo|limo_pct|silt)$/.test(key))assignNumber(result,'silt',value,0,100);
+    else if(/^(argilla|argilla_pct|clay)$/.test(key))assignNumber(result,'clay',value,0,100);
+    else if(/^(ph|reazione_ph)$/.test(key))assignNumber(result,'ph',value,0,14);
+    else if(/^(calcare|calcare_topsoil|limestone)$/.test(key))result.limestone=value;
+    else if(/^(sostanza_organica|carbonio_organico|organic_matter)$/.test(key))result.organicMatter=value;
+    else if(/^(scheletro|skeleton)$/.test(key))result.skeleton=value;
+    else if(/^(drenaggio|drainage)$/.test(key))result.drainage=value;
+    else if(/^(reazione|reazione_topsoil)$/.test(key))result.reaction=value;
   }
+  if(!result.description)result.description=result.texture||result.soilType||result.soilUnit||result.limestone||result.drainage||result.reaction;
+  if(!result.description)delete result.description;
   return Object.keys(result).length?result:null;
 }
+function assignNumber(target,key,value,min,max){const text=String(value).trim().replace(',','.').replace(/\s*%$/,'');if(!text||!/^\d+(?:\.\d+)?$/.test(text))return;const parsed=Number(text);if(Number.isFinite(parsed)&&parsed>=min&&parsed<=max)target[key]=parsed;}
 export function soilSamplePoints(ring){
   if(!Array.isArray(ring)||ring.length<4)return [];
   const xs=ring.map(p=>Number(p?.[0])),ys=ring.map(p=>Number(p?.[1]));if([...xs,...ys].some(v=>!Number.isFinite(v)))return [];
@@ -40,10 +57,19 @@ export function soilSamplePoints(ring){
   return points.slice(0,9);
 }
 export function soilGeometrySignature(ring){return Array.isArray(ring)?ring.map(point=>Array.isArray(point)?point.map(value=>Number(value).toFixed(6)).join(','):'').join(';'):'';}
-export function soilProfileIsCurrent(profile,ring){return Boolean(profile?.geometrySignature&&profile.geometrySignature===soilGeometrySignature(ring));}
+export function soilProfileIsCurrent(profile,ring){const signature=profile?.cartographic?.geometrySignature??profile?.geometrySignature;return Boolean(signature&&signature===soilGeometrySignature(ring));}
 export function normalizeSoilProfile(value){
   if(!value||typeof value!=='object')return null;
-  const layer=SOIL_LAYERS[value.layer]?value.layer:'soil';const description=String(value.description??'').trim().slice(0,250);
+  const raw=value.cartographic??value;
+  const layer=SOIL_LAYERS[raw.layer]?raw.layer:'soil';const description=String(raw.description??raw.texture??raw.soilType??raw.soilUnit??'').trim().slice(0,250);
   if(!description)return null;
-  return {layer,description,code:String(value.code??'').trim().slice(0,80),samples:Math.min(9,Math.max(1,Number(value.samples)||1)),source:SOIL_SOURCE,scale:'1:50.000',observedAt:String(value.observedAt??''),geometrySignature:String(value.geometrySignature??''),indicative:true};
+  const cartographic={layer,description,code:String(raw.code??'').trim().slice(0,80),samples:Math.min(9,Math.max(1,Number(raw.samples)||1)),source:SOIL_SOURCE,scale:'1:50.000',retrievedAt:String(raw.retrievedAt??raw.observedAt??''),geometrySignature:String(raw.geometrySignature??''),indicative:true};
+  for(const key of ['soilUnit','soilType','texture','limestone','organicMatter','skeleton','drainage','reaction'])cartographic[key]=raw[key]==null?null:String(raw[key]).trim().slice(0,250)||null;
+  for(const key of ['sand','silt','clay','ph']){cartographic[key]=null;if(raw[key]!=null)assignNumber(cartographic,key,raw[key],0,key==='ph'?14:100);}
+  cartographic.units=Array.isArray(raw.units)?raw.units.slice(0,9).map(unit=>({description:String(unit?.description??'').slice(0,250),code:String(unit?.code??'').slice(0,80)})).filter(unit=>unit.description):[];
+  return {cartographic,labAnalysis:value.labAnalysis??null};
+}
+export function soilRows(data){
+  if(!data)return [];
+  return [['Unità pedologica',data.soilUnit],['Tipo di suolo',data.soilType],['Tessitura',data.texture],['Sabbia',data.sand==null?null:`${data.sand}%`],['Limo',data.silt==null?null:`${data.silt}%`],['Argilla',data.clay==null?null:`${data.clay}%`],['pH',data.ph==null?null:String(data.ph).replace('.',',')],['Calcare',data.limestone],['Sostanza organica / carbonio',data.organicMatter],['Scheletro',data.skeleton],['Drenaggio',data.drainage],['Reazione',data.reaction]].filter(([,value])=>value!=null&&value!=='');
 }

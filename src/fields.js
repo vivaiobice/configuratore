@@ -1,5 +1,5 @@
 import {normalizeCadastralReferences} from './cadastral-references.js?v=54';
-import {normalizeSoilProfile} from './soil.js?v=55';
+import {normalizeSoilProfile} from './soil.js?v=55.1';
 
 const FIELD_KEYS = [
   'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints','maintainRowEquidistance',

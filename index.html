@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="./v50-fixes.css?v=51" />
   <link rel="stylesheet" href="./v52-cadastre.css?v=53.3" />
   <link rel="stylesheet" href="./v54-cadastral-references.css?v=54" />
-  <link rel="stylesheet" href="./v55-soil.css?v=55" />
+  <link rel="stylesheet" href="./v55-soil.css?v=55.1" />
 </head>
 <body>
   <header class="topbar">
@@ -36,7 +36,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V55</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">AMBIENTE TEST · V55.1</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -133,7 +133,7 @@
             <h3>Informazioni</h3>
             <div class="field-lifecycle-row desktop-campaign-year"><label class="campaign-year-label">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label><label>Stato impianto<select id="planting-status-desktop"><option value="planned">Da realizzare</option><option value="planted">Impianto realizzato</option></select></label></div>
             <section class="cadastral-reference-section"><h4>Riferimenti catastali del campo</h4><p>Inserisci uno o più mappali, se li conosci.</p><div id="cadastral-reference-editor"></div></section>
-            <section class="soil-section"><h4>Suolo</h4><p>Cartografia Regione Piemonte · CC BY 4.0 · scala 1:50.000. I risultati sono indicativi e richiedono verifica sul posto.</p><label>Tema della carta<select id="soil-layer-select"><option value="texture">Tessitura superficiale</option><option value="soil">Carta dei suoli</option><option value="limestone">Calcare superficiale</option><option value="drainage">Drenaggio</option><option value="reaction">Reazione superficiale</option></select></label><button id="soil-analyze" type="button">Analizza il campo</button><p id="soil-status" role="status">Disegna un campo e scegli «Analizza il campo».</p><div id="soil-profile"></div></section>
+            <section class="soil-section"><h4>Suolo</h4><p>Cartografia Regione Piemonte · CC BY 4.0 · scala 1:50.000. I risultati sono indicativi e richiedono verifica sul posto.</p><label>Tema della carta<select id="soil-layer-select"><option value="texture">Tessitura superficiale</option><option value="soil">Carta dei suoli</option><option value="limestone">Calcare superficiale</option><option value="drainage">Drenaggio</option><option value="reaction">Reazione superficiale</option></select></label><button id="soil-analyze" type="button">Analizza suolo del campo</button><p id="soil-status" role="status">Disegna un campo e scegli «Analizza suolo del campo».</p><div id="soil-profile"></div></section>
             <div class="advanced-context">
               <label>Inquadramento dell’impianto
                 <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
@@ -174,6 +174,8 @@
 
     <section class="map-wrap" aria-label="Mappa del progetto">
       <div id="map"></div>
+      <div id="soil-legend" class="soil-legend" hidden>Tessitura superficiale · Regione Piemonte · 1:50.000</div>
+      <aside id="soil-point-card" class="soil-point-card" aria-label="Informazioni sul suolo nel punto selezionato" hidden></aside>
       <div class="map-watermark-layer" aria-hidden="true"></div>
       <div class="map-toolbar desktop-map-tools">
         <div class="map-tool-group map-tools-visual" data-map-tools="visual" aria-label="Visualizzazione mappa">
@@ -258,6 +260,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=55"></script>
+  <script type="module" src="./src/app.js?v=55.1"></script>
 </body>
 </html>

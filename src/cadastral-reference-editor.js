@@ -10,7 +10,7 @@ export function createCadastralReferenceEditor({document,container,onChange=()=>
     for(const [name,title] of [['municipality','Comune'],['sheet','Foglio'],['parcel','Particella']]) {
       const label=document.createElement('label');label.textContent=title;const input=document.createElement('input');input.className='control-input';input.name=name;input.value=String(ref[name]??'');input.setAttribute('aria-label',`${title} riferimento catastale ${rows().length+1}`);label.append(input);row.append(label);
     }
-    const remove=document.createElement('button');remove.type='button';remove.dataset.removeReference='';remove.textContent='Rimuovi';row.append(remove);container.append(row);
+    const remove=document.createElement('button');remove.type='button';remove.dataset.removeReference='';remove.textContent='Rimuovi';row.append(remove);container.insertBefore(row,container.querySelector('[data-add-reference]'));
   }
   function emit(){onChange(values());}
   function click(event){if(event.target.closest('[data-add-reference]')){appendRow();emit();return;}const remove=event.target.closest('[data-remove-reference]');if(remove){remove.closest('[data-reference-row]')?.remove();if(!rows().length)appendRow();emit();}}

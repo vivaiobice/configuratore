@@ -1,5 +1,5 @@
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend } from './backend.js?v=55';
+import { connectSupabase, createBackend } from './backend.js?v=55.1';
 import { bootSharedProjectPage } from './shared-project.js?v=51';
 import { createAuthService } from './auth-service.js?v=45';
 

@@ -31,6 +31,7 @@ test('reference editor renders one presentation row, switches fields and emits u
   editor.render([],{municipality:'Alba'});
   assert.equal(container.querySelector('[name="municipality"]').value,'Alba');assert.equal(events.length,0);
   container.querySelector('[data-add-reference]').click();assert.equal(container.querySelectorAll('[data-reference-row]').length,2);
+  assert.equal(container.lastElementChild.dataset.addReference,'');
   editor.render([{municipality:'Asti',sheet:'2',parcel:'3'}],{municipality:'Asti'});
   assert.equal(container.querySelector('[name="municipality"]').value,'Asti');assert.equal(events.length,1);
   editor.destroy();

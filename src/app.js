@@ -1,5 +1,5 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55';
-import { createMobileUI } from './mobile-ui.js?v=55';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.1';
+import { createMobileUI } from './mobile-ui.js?v=55.1';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
@@ -8,7 +8,7 @@ import { initMap } from './map.js?v=53.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.1';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=51';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -17,10 +17,11 @@ import { createProjectSync } from './project-sync.js?v=34';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=55';
+import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=55.1';
 import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=54';
-import {createSoilMapController} from './soil-map.js?v=55';
-import {SOIL_SOURCE,soilProfileIsCurrent} from './soil.js?v=55';
+import {createSoilMapController} from './soil-map.js?v=55.1';
+import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.1';
+import {renderSoilCard} from './soil-card.js?v=55.1';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
@@ -324,11 +325,12 @@ try {
   mapApi.setBaseMap(state.map?.base ?? 'satellite');
 } catch (error) { console.error(error); setStatus('Impossibile caricare la mappa. Controlla la connessione e riprova.'); }
 
-const soilMap=mapApi?.map?createSoilMapController({map:mapApi.map,onStatus:message=>{const status=$('#soil-status');if(status&&message)status.textContent=message;},onObservation:(result)=>{const status=$('#soil-status');if(status&&result?.description)status.textContent=`Punto selezionato: ${result.description} · dato indicativo`;}}):null;
-function renderSoilProfile(){const box=$('#soil-profile');if(!box)return;box.replaceChildren();const profile=state.project.soil;if(!profile?.description)return;const title=document.createElement('strong');title.textContent=profile.description;const source=document.createElement('p');source.textContent=`${profile.source||SOIL_SOURCE} · ${profile.samples||1} punti · rilevazione ${profile.observedAt?new Date(profile.observedAt).toLocaleDateString('it-IT'):'non datata'} · indicativo · CC BY 4.0`;box.append(title,source);if(!soilProfileIsCurrent(profile,state.project.geometry)){const note=document.createElement('p');note.textContent='Perimetro modificato: aggiorna l’analisi del suolo.';box.append(note);}}
-$('#soil-button')?.addEventListener('click',()=>{if(!soilMap)return;soilMap.setActive(!soilMap.isActive());$('#soil-button').setAttribute('aria-pressed',String(soilMap.isActive()));});
-$('#soil-layer-select')?.addEventListener('change',event=>soilMap?.setLayer(event.target.value));
-$('#soil-analyze')?.addEventListener('click',async()=>{const button=$('#soil-analyze');const id=state.project.activeFieldId;button.disabled=true;try{const soil=await soilMap?.analyze(state.project.geometry);if(soil&&id===state.project.activeFieldId){patchProject({soil});renderSoilProfile();}}finally{button.disabled=false;}});
+const soilMap=mapApi?.map?createSoilMapController({map:mapApi.map,onStatus:message=>{const status=$('#soil-status');if(status&&message)status.textContent=message;},onObservation:(result,layer)=>{const card=$('#soil-point-card');if(card)renderSoilCard(card,result,{layer,close:true});}}):null;
+function renderSoilProfile(){const box=$('#soil-profile');if(!box)return;box.replaceChildren();const profile=state.project.soil,data=profile?.cartographic??profile;$('#soil-analyze').textContent=data?'Aggiorna dati suolo':'Analizza suolo del campo';if(!data?.description)return;renderSoilCard(box,data,{layer:data.layer});const source=document.createElement('p');source.textContent=`${data.samples||1} punti consultati · rilevazione ${data.retrievedAt||data.observedAt?new Date(data.retrievedAt||data.observedAt).toLocaleDateString('it-IT'):'non datata'}`;box.append(source);if(!soilProfileIsCurrent(profile,state.project.geometry)){const note=document.createElement('p');note.textContent='Perimetro modificato: aggiorna i dati del suolo.';box.append(note);}}
+$('#soil-button')?.addEventListener('click',()=>{if(!soilMap)return;soilMap.setActive(!soilMap.isActive());$('#soil-button').setAttribute('aria-pressed',String(soilMap.isActive()));$('#soil-legend').hidden=!soilMap.isActive();if(!soilMap.isActive())$('#soil-point-card').hidden=true;});
+$('#soil-layer-select')?.addEventListener('change',event=>{soilMap?.setLayer(event.target.value);$('#soil-legend').textContent=`${SOIL_LAYER_LABELS[event.target.value]} · Regione Piemonte · 1:50.000`;$('#soil-point-card').hidden=true;});
+async function analyzeActiveSoil(){const button=$('#soil-analyze');if(!button||button.disabled)return null;const id=state.project.activeFieldId;button.disabled=true;try{const soil=await soilMap?.analyze(state.project.geometry,{refresh:true});if(soil&&id===state.project.activeFieldId){patchProject({soil});renderSoilProfile();return soil;}return null;}finally{button.disabled=false;}}
+$('#soil-analyze')?.addEventListener('click',analyzeActiveSoil);
 
 $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
 $('#plant-spacing').value = state.project.plantSpacingM ?? 0.9;
@@ -749,6 +751,7 @@ mobileUi = createMobileUI({
   removeField:removeMobileField,
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,
+  analyzeSoil:analyzeActiveSoil,
   refreshProjects:refreshOwnedArchive,
   openPublicProject:openPublicProjectDialog,
   finalAction:requestFinalAction

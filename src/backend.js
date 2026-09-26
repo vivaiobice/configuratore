@@ -1,5 +1,5 @@
-import { ensureProjectFields } from './fields.js?v=55';
-import { normalizeMapState } from './state.js?v=55';
+import { ensureProjectFields } from './fields.js?v=55.1';
+import { normalizeMapState } from './state.js?v=55.1';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function edgeFunctionError(error,fallback){
