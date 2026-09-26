@@ -5,18 +5,19 @@ const proxyModule = await import('../supabase/functions/_shared/cadastral-wms.js
 
 test('cadastral proxy accepts only bounded Italian map requests', () => {
   assert.equal(typeof proxyModule.parseCadastralProxyRequest, 'function');
-  const parsed = proxyModule.parseCadastralProxyRequest(new URL('https://example.test/cadastral-wms?west=8.20&south=44.69&east=8.25&north=44.73&width=1200&height=800'));
-  assert.deepEqual(parsed, { west:8.2, south:44.69, east:8.25, north:44.73, width:1200, height:800 });
+  const parsed = proxyModule.parseCadastralProxyRequest(new URL('https://example.test/cadastral-wms?west=8.20&south=44.69&east=8.25&north=44.73&width=1200&height=800&mode=sheets'));
+  assert.deepEqual(parsed, { west:8.2, south:44.69, east:8.25, north:44.73, width:1200, height:800, mode:'sheets' });
   assert.throws(() => proxyModule.parseCadastralProxyRequest(new URL('https://example.test/cadastral-wms?west=-180&south=-90&east=180&north=90&width=9000&height=9000')), /invalid/i);
+  assert.throws(() => proxyModule.parseCadastralProxyRequest(new URL('https://example.test/cadastral-wms?west=8.20&south=44.69&east=8.25&north=44.73&width=1200&height=800&mode=anything')), /invalid/i);
 });
 
 test('cadastral proxy builds a fixed official WMS request rather than an open proxy', () => {
   assert.equal(typeof proxyModule.buildOfficialCadastralUrl, 'function');
-  const url = new URL(proxyModule.buildOfficialCadastralUrl({ west:8.2, south:44.69, east:8.25, north:44.73, width:1200, height:800 }));
+  const url = new URL(proxyModule.buildOfficialCadastralUrl({ west:8.2, south:44.69, east:8.25, north:44.73, width:1200, height:800, mode:'parcels' }));
   assert.equal(url.hostname, 'wms.cartografia.agenziaentrate.gov.it');
   assert.equal(url.searchParams.get('SERVICE'), 'WMS');
   assert.equal(url.searchParams.get('VERSION'), '1.1.1');
-  assert.equal(url.searchParams.get('LAYERS'), 'CP.CadastralParcel');
+  assert.equal(url.searchParams.get('LAYERS'), 'CP.CadastralParcel,codice_plla');
   assert.equal(url.searchParams.get('SRS'), 'EPSG:4258');
   assert.equal(url.searchParams.get('BBOX'), '8.2,44.69,8.25,44.73');
   assert.equal(url.searchParams.get('FORMAT'), 'image/png');

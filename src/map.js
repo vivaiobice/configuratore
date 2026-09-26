@@ -1,7 +1,7 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import { buildCadastralWmsUrl } from './cadastre.js?v=52.1';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=52.1';
+import { buildCadastralWmsUrl, cadastralLayerMode } from './cadastre.js?v=53';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=53';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
 import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
@@ -584,7 +584,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       url: buildCadastralWmsUrl({
         west, south, east, north,
         width: canvas.clientWidth * dpr,
-        height: canvas.clientHeight * dpr
+        height: canvas.clientHeight * dpr,
+        mode:cadastralLayerMode(map.getZoom?.())
       }),
       coordinates: [[west, north], [east, north], [east, south], [west, south]]
     };
@@ -599,6 +600,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
 
   function setCadastralVisible(visible) {
     cadastralOverlay.setVisible(visible);
+  }
+
+  function setCadastralOpacity(opacity) {
+    cadastralOverlay.setOpacity(opacity);
   }
 
   function setGeometry(coords) {
@@ -959,5 +964,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible };
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity };
 }

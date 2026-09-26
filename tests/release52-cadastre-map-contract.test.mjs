@@ -36,8 +36,9 @@ function requestForViewport(sequence) {
 
 test('cadastral overlay waits for supported zoom and stays below project geometry', async () => {
   const module = await import('../src/cadastral-overlay.js').catch(() => ({}));
+  const { CADASTRAL_MIN_ZOOM } = await import('../src/cadastre.js');
   assert.equal(typeof module.createCadastralOverlay, 'function');
-  const map = new FakeMap(14.9);
+  const map = new FakeMap(CADASTRAL_MIN_ZOOM - 0.1);
   const states = [];
   const controller = module.createCadastralOverlay({
     map,
@@ -48,7 +49,7 @@ test('cadastral overlay waits for supported zoom and stays below project geometr
   controller.setVisible(true);
   assert.equal(map.getSource('cadastre-image'), undefined);
   assert.equal(states.at(-1).reason, 'zoom');
-  map.zoom = 15;
+  map.zoom = CADASTRAL_MIN_ZOOM;
   controller.refresh();
   assert.ok(map.getSource('cadastre-image'));
   assert.equal(map.addLayerCalls.at(-1)[1], 'vineyard-rows-line');

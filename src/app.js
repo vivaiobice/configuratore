@@ -1,14 +1,14 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=52.1';
-import { createMobileUI } from './mobile-ui.js?v=52.1';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=53';
+import { createMobileUI } from './mobile-ui.js?v=53';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=52.1';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel } from './desktop-ux.js?v=53';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=52.1';
+import { initMap } from './map.js?v=53';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=52.1';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=53';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=51';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -554,7 +554,8 @@ for(const surface of searchSurfaces){
 document.addEventListener('click',event=>{if(!event.target.closest('.search-shell,.map-search-control')){hideSuggestions();mapSearchAction.close();}});
 const cadastreToggle=createCadastreToggle({
   document,isActive:()=>cadastralOverlayActive,
-  setActive:(next)=>{cadastralOverlayActive=Boolean(next);mapApi?.setCadastralVisible(cadastralOverlayActive);track('cadastre_toggled',{visible:cadastralOverlayActive});}
+  setActive:(next)=>{cadastralOverlayActive=Boolean(next);mapApi?.setCadastralVisible(cadastralOverlayActive);track('cadastre_toggled',{visible:cadastralOverlayActive});},
+  setOpacity:(opacity)=>mapApi?.setCadastralOpacity(opacity)
 });
 cadastreToggle.mount();
 for (const button of document.querySelectorAll('[data-base]')) { button.classList.toggle('active', button.dataset.base === (state.map?.base ?? 'satellite')); button.addEventListener('click', () => { for (const sibling of document.querySelectorAll('[data-base]')) sibling.classList.remove('active'); button.classList.add('active'); const base = button.dataset.base; mapApi?.setBaseMap(base); state = { ...state, map: { ...state.map, base } }; persist(); track('base_map_changed', { base }); }); }

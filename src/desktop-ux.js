@@ -93,15 +93,24 @@ export function createDesktopMapFieldAction({document=globalThis.document,addFie
  const controller={mount,drawingState};return controller;
 }
 
-export function createCadastreToggle({document=globalThis.document,isActive=()=>false,setActive=()=>{}}={}){
+export function createCadastreToggle({document=globalThis.document,isActive=()=>false,setActive=()=>{},setOpacity=()=>{}}={}){
  const button=document?.querySelector?.('#cadastre-button');
+ const opacityControl=document?.querySelector?.('#cadastre-opacity-control');
+ const opacityInput=document?.querySelector?.('#cadastre-opacity');
+ const opacityOutput=document?.querySelector?.('#cadastre-opacity-output');
  const disclosures=[document?.querySelector?.('#cadastre-attribution'),document?.querySelector?.('#cadastre-notice')].filter(Boolean);
  function sync(active){
   const next=Boolean(active);
   button?.classList.toggle('active',next);
   button?.setAttribute('aria-pressed',String(next));
+  if(opacityControl)opacityControl.hidden=!next;
   for(const disclosure of disclosures)disclosure.hidden=!next;
  }
- function mount(){button?.addEventListener('click',()=>{const next=!isActive();setActive(next);sync(next);});sync(isActive());return controller;}
+ function updateOpacity(){
+  const percent=Math.min(100,Math.max(10,Number(opacityInput?.value)||60));
+  if(opacityOutput)opacityOutput.textContent=`${Math.round(percent)}%`;
+  setOpacity(percent/100);
+ }
+ function mount(){button?.addEventListener('click',()=>{const next=!isActive();setActive(next);sync(next);});opacityInput?.addEventListener('input',updateOpacity);updateOpacity();sync(isActive());return controller;}
  const controller={mount,sync};return controller;
 }

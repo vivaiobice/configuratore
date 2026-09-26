@@ -28,20 +28,21 @@ export function parseCadastralProxyRequest(url) {
   const north = numeric(url, 'north');
   const width = Math.round(numeric(url, 'width'));
   const height = Math.round(numeric(url, 'height'));
+  const mode = url.searchParams.get('mode') || 'parcels';
   const insideItaly = west >= 5.5 && east <= 19.5 && south >= 34 && north <= 48.5;
   const boundedView = west < east && south < north && east - west <= 0.5 && north - south <= 0.5;
   const validImage = width >= 1 && width <= 2048 && height >= 1 && height <= 2048;
-  if (!insideItaly || !boundedView || !validImage) throw new TypeError('invalid_request');
-  return { west, south, east, north, width, height };
+  if (!insideItaly || !boundedView || !validImage || !['sheets','parcels'].includes(mode)) throw new TypeError('invalid_request');
+  return { west, south, east, north, width, height, mode };
 }
 
-export function buildOfficialCadastralUrl({ west, south, east, north, width, height }) {
+export function buildOfficialCadastralUrl({ west, south, east, north, width, height, mode = 'parcels' }) {
   const url = new URL(OFFICIAL_WMS_ENDPOINT);
   const params = {
     SERVICE:'WMS',
     VERSION:'1.1.1',
     REQUEST:'GetMap',
-    LAYERS:'CP.CadastralParcel',
+    LAYERS:mode === 'sheets' ? 'CP.CadastralZoning' : 'CP.CadastralParcel,codice_plla',
     STYLES:'',
     SRS:'EPSG:4258',
     BBOX:[west, south, east, north].join(','),

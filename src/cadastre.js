@@ -3,7 +3,12 @@ import { APP_CONFIG } from './config.js';
 
 const WMS_PROXY_ENDPOINT = `${APP_CONFIG.supabaseUrl}/functions/v1/cadastral-wms`;
 const MAX_IMAGE_SIZE = 2048;
-export const CADASTRAL_MIN_ZOOM = 15;
+export const CADASTRAL_MIN_ZOOM = 13;
+export const CADASTRAL_PARCEL_ZOOM = 15.5;
+
+export function cadastralLayerMode(zoom) {
+  return Number(zoom) >= CADASTRAL_PARCEL_ZOOM ? 'parcels' : 'sheets';
+}
 
 const WFS_ENDPOINT = 'https://wfs.cartografia.agenziaentrate.gov.it/inspire/wfs/owfs01.php';
 
@@ -95,7 +100,7 @@ function clampSize(value) {
   return Math.min(MAX_IMAGE_SIZE, n);
 }
 
-export function buildCadastralWmsUrl({ west, south, east, north, width, height }) {
+export function buildCadastralWmsUrl({ west, south, east, north, width, height, mode = 'parcels' }) {
   const url = new URL(WMS_PROXY_ENDPOINT);
   const params = {
     west: String(Number(west)),
@@ -103,7 +108,8 @@ export function buildCadastralWmsUrl({ west, south, east, north, width, height }
     east: String(Number(east)),
     north: String(Number(north)),
     width: String(clampSize(width)),
-    height: String(clampSize(height))
+    height: String(clampSize(height)),
+    mode: mode === 'sheets' ? 'sheets' : 'parcels'
   };
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url.toString();

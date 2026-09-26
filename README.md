@@ -2,7 +2,20 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V52.1 WebApp.
+Stato: ambiente TEST · release V53 WebApp.
+
+## V53 — riferimenti catastali e controllo visibilità
+
+- Il Catasto usa due rappresentazioni WMS ufficiali adattive: alle scale più ampie mostra il
+  riferimento del foglio, avvicinandosi mostra perimetri e numeri delle particelle.
+- Il cursore **Visibilità catasto**, disponibile su desktop e mobile, regola in tempo reale
+  l'opacità dal 10% al 100%; parte dal 60% e resta una preferenza temporanea della sessione.
+- Il pulsante **Catasto** mantiene uno stato attivo ben riconoscibile anche durante il passaggio del
+  puntatore, in modalità scura e nell'interfaccia mobile.
+- Il proxy accetta esclusivamente le due modalità catastali previste e continua a limitare le
+  richieste alla cartografia italiana dell'Agenzia delle Entrate. Nessun dato catastale viene
+  salvato nei progetti e non sono state introdotte modifiche al database.
+- Versione dell'applicazione e query di cache aggiornate a `V53`.
 
 ## V52.1 — hotfix caricamento Catasto
 

@@ -1,4 +1,4 @@
-import { cadastralOverlayPolicy } from './cadastre.js?v=52.1';
+import { cadastralOverlayPolicy } from './cadastre.js?v=53';
 
 export const CADASTRAL_SOURCE_ID = 'cadastre-image';
 export const CADASTRAL_LAYER_ID = 'cadastre-image-layer';
@@ -11,6 +11,7 @@ export function createCadastralOverlay({
 } = {}) {
   if (!map || typeof requestForViewport !== 'function') throw new TypeError('Map and cadastral viewport request are required');
   let visible = false;
+  let opacity = 0.6;
   let styleReady = typeof map.loaded === 'function' ? Boolean(map.loaded()) : true;
   let state = { visible:false, renderable:false, loading:false, error:false, reason:'off' };
 
@@ -47,7 +48,7 @@ export function createCadastralOverlay({
         type:'raster',
         source:CADASTRAL_SOURCE_ID,
         layout:{ visibility:'visible' },
-        paint:{ 'raster-opacity':0.82, 'raster-fade-duration':0 }
+        paint:{ 'raster-opacity':opacity, 'raster-fade-duration':0 }
       }, beforeLayerId() || undefined);
     } else setLayerVisibility('visible');
 
@@ -58,6 +59,13 @@ export function createCadastralOverlay({
   function setVisible(next) {
     visible = Boolean(next);
     return refresh();
+  }
+
+  function setOpacity(next) {
+    const parsed = Number(next);
+    opacity = Math.min(1, Math.max(0.1, Number.isFinite(parsed) ? parsed : 0.6));
+    if (map.getLayer(CADASTRAL_LAYER_ID)) map.setPaintProperty?.(CADASTRAL_LAYER_ID, 'raster-opacity', opacity);
+    return opacity;
   }
 
   function handleLoad() {
@@ -88,5 +96,5 @@ export function createCadastralOverlay({
   map.on?.('sourcedata', handleSourceData);
   map.on?.('error', handleError);
 
-  return { setVisible, refresh, destroy, state:() => ({ ...state }) };
+  return { setVisible, setOpacity, refresh, destroy, state:() => ({ ...state }) };
 }
