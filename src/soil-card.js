@@ -1,4 +1,4 @@
-import {SOIL_DISCLAIMER,SOIL_LAYER_LABELS,SOIL_SOURCE,soilRows} from './soil.js?v=55.1';
+import {SOIL_DISCLAIMER,SOIL_LAYER_LABELS,SOIL_SOURCE,soilRows} from './soil.js?v=55.3';
 
 function paragraph(text,className){const node=document.createElement('p');node.textContent=text;if(className)node.className=className;return node;}
 

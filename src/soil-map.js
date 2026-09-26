@@ -1,4 +1,4 @@
-import {buildSoilMapUrl,buildSoilIdentifyUrl,parseSoilResponse,soilSamplePoints,normalizeSoilProfile,soilGeometrySignature} from './soil.js?v=55.1';
+import {buildSoilMapUrl,buildSoilIdentifyUrl,parseSoilResponse,soilSamplePoints,normalizeSoilProfile,soilGeometrySignature} from './soil.js?v=55.3';
 
 const SOURCE='piemonte-soil-image',LAYER='piemonte-soil-overlay';
 export function createSoilMapController({map,fetchImpl=globalThis.fetch,onStatus=()=>{},onObservation=()=>{}}={}){
@@ -26,30 +26,34 @@ export function createSoilMapController({map,fetchImpl=globalThis.fetch,onStatus
     if(!map.getLayer?.(LAYER))map.addLayer({id:LAYER,type:'raster',source:SOURCE,layout:{visibility:'visible'},paint:{'raster-opacity':.55,'raster-fade-duration':0}},map.getLayer?.('vineyard-rows-line')?'vineyard-rows-line':undefined);
     else map.setLayoutProperty?.(LAYER,'visibility','visible');
   }
-  function setActive(value){active=Boolean(value);controller?.abort();sequence++;refresh();if(!active)onObservation(null,layer);onStatus(active?'Carta dei suoli Regione Piemonte · CC BY 4.0 · 1:50.000 · dato indicativo':'');}
+  function setActive(value){active=Boolean(value);controller?.abort();sequence++;refresh();if(!active)onObservation(null,layer);onStatus(active?'Suolo attivo: tocca un punto sulla mappa per leggerne i dati. Per salvare i dati del campo scegli «Analizza suolo del campo». Fonte: Regione Piemonte · 1:50.000 · dato indicativo':'');}
   function setLayer(value){if(!['soil','texture','limestone','drainage','reaction'].includes(value))return;layer=value;controller?.abort();sequence++;refresh();}
   async function query(point,signal){
     const v=viewport(),coord={x:point.x*v.width/v.clientWidth,y:point.y*v.height/v.clientHeight};
     return read(buildSoilIdentifyUrl(v,coord,layer),signal);
   }
   async function queryCoordinate([lon,lat],signal,options){
-    const width=256,height=256,offset=.0006;
-    const url=buildSoilIdentifyUrl({west:lon-offset,south:lat-offset,east:lon+offset,north:lat+offset,width,height},{x:128,y:128},layer);
+    // The regional WMS only resolves soil units at cartographic scale; a field-sized BBOX yields empty results.
+    const width=256,height=256,offset=.02;
+    const rounded=value=>Number(value.toFixed(6));
+    const url=buildSoilIdentifyUrl({west:rounded(lon-offset),south:rounded(lat-offset),east:rounded(lon+offset),north:rounded(lat+offset),width,height},{x:128,y:128},layer);
     return read(url,signal,options);
   }
   async function inspect(event){
     if(!active||!event?.point)return null;
     controller?.abort();controller=new AbortController();const current=++sequence;
-    try{const result=await query(event.point,controller.signal);if(current!==sequence)return null;onObservation(result,layer);onStatus(result?.description??'Dato pedologico non disponibile nel punto selezionato.');return result;}
+    try{const coordinate=event.lngLat?[event.lngLat.lng,event.lngLat.lat]:map.unproject?.(event.point)?.toArray?.();const result=coordinate?await queryCoordinate(coordinate,controller.signal):await query(event.point,controller.signal);if(current!==sequence)return null;onObservation(result,layer);onStatus(result?.description??'Dato pedologico non disponibile nel punto selezionato.');return result;}
     catch(error){if(current===sequence&&error.name!=='AbortError'){onObservation(null,layer);onStatus('Dati del suolo temporaneamente non disponibili');}return null;}
   }
   async function analyze(ring,{refresh=false}={}){
     const points=soilSamplePoints(ring);if(!points.length){onStatus('Per analizzare il suolo disegna prima un campo.');return null;}
     controller?.abort();controller=new AbortController();const current=++sequence;const frequencies=new Map();let queried=0;
+    onStatus(`Consultazione dei dati del suolo: 0/${points.length} punti…`);
     try{
-      for(const coordinate of points){
+      for(const [index,coordinate] of points.entries()){
         if(current!==sequence)return null;
         const info=await queryCoordinate(coordinate,controller.signal,{refresh});if(info?.description){queried++;const key=info.soilUnit||info.code||info.description;const entry=frequencies.get(key)??{count:0,info};entry.count++;frequencies.set(key,entry);}
+        if(current===sequence)onStatus(`Consultazione dei dati del suolo: ${index+1}/${points.length} punti…`);
       }
       if(current!==sequence)return null;
       if(!queried){onStatus('Nessun dato sui suoli disponibile per questo campo.');return null;}

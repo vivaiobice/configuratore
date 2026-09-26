@@ -49,5 +49,5 @@ test('V40 visual fixes remain present in the V41 release shell',()=>{
   assert.match(html,/desktop-v40\.css\?v=40/);
   assert.match(html,/manifest\.webmanifest\?v=45/);
   assert.match(html,/src\/app\.js\?v=55/);
-  assert.match(mobileUi,/AMBIENTE TEST · V55\.2/);
+  assert.match(mobileUi,/AMBIENTE TEST · V55\.3/);
 });

@@ -1,4 +1,4 @@
-import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE,soilRows} from './soil.js?v=55.1';
+import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE,soilRows} from './soil.js?v=55.3';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 import {calculateManualPlants} from './project-calculator.js?v=45';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
@@ -19,7 +19,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V55.2</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V55.3</span></header>
  <div class="mobile-display-controls"><button id="mobile-tablet-view" class="tablet-view-switch" type="button" aria-label="Passa alla visualizzazione desktop" title="Passa alla visualizzazione desktop" hidden>📱 💻</button><button id="mobile-theme-toggle" type="button" aria-label="Cambia tema" title="Cambia tema">◐</button></div>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
@@ -273,7 +273,7 @@ export function createMobileUI(api){
    move($('.field-manager'),$('[data-screen="parameters"]'));$('#mobile-parameters-preview').before($('.field-manager'));
    move($('.step[data-step="2"]'),$('#mobile-parameters-body'));move($('.advanced'),$('#mobile-parameters-body'));$('.advanced').open=true;
    move($('.exclusion-panel'),sheet.querySelector('[data-content="cuts"]'));
-   for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button','#cadastre-opacity-control','#soil-button'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
+   for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button','#cadastre-opacity-control','#soil-button','.soil-section'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
    move($('#close-perimeter-button'),$('#mobile-drawing-actions'));
    move($('#map-gps-button'),$('.mobile-home-tools'));move($('#center-field-button'),$('.mobile-home-tools'));
    const compass=$('.maplibregl-ctrl-compass');

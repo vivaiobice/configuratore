@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.1';
-import { createMobileUI } from './mobile-ui.js?v=55.2';
+import { createMobileUI } from './mobile-ui.js?v=55.3';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
@@ -19,8 +19,8 @@ import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=55.1';
 import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=54';
-import {createSoilMapController} from './soil-map.js?v=55.1';
-import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.1';
+import {createSoilMapController} from './soil-map.js?v=55.3';
+import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
 import {createViewMode} from './view-mode.js?v=55.2';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
@@ -48,6 +48,7 @@ state = { ...state, project:updateActiveFieldProject(state.project, {
   headlandWidthM:normalizeHeadlandForMechanization(state.project.headlandWidthM, state.project.mechanizedHarvest)
 }) };
 let mapApi = null;
+const viewMode=createViewMode();
 let mobileUi = null;
 let desktopLibraryUi = null;
 let vertexEditingActive = false;
@@ -501,7 +502,6 @@ $('#project-name')?.addEventListener('input',(event)=>patchProject({localProject
 $('#add-field-button')?.addEventListener('click', () => { state = { ...state, project:addProjectField(state.project) }; summarySaveFeedback.dirty();persist(); loadActiveFieldOnMap(); });
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
 
-const viewMode=createViewMode();
 function isMobileMap() { return viewMode.isMobile(); }
 installPenTapFallback(document.body,()=>viewMode.isTablet()&&!isMobileMap(),{onMapTap:event=>{
   const map=mapApi?.map,canvas=map?.getCanvas?.();if(!canvas?.contains(event.target))return;

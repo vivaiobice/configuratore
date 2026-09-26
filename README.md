@@ -484,4 +484,11 @@ La mappa può mostrare su richiesta i temi pedologici della Regione Piemonte. La
 - **Carica progetto** nella lista mobile usa l'ID `VO-xxxxxxx` e la verifica dei permessi esistente. Per un progetto disponibile soltanto in lettura compare il relativo link.
 - Il PDF da Progetti e Campi riceve una copia del progetto di origine, mostra il nome sopra la selezione e non si genera al tocco dell'icona. Dalla scheda Campo preseleziona il campo aperto.
 - Il Profilo mobile offre gli stessi dati anagrafici modificabili del desktop, reimpostazione password, logout e accesso Admin quando previsto.
-- Prove su dispositivi reali ancora necessarie: `V55.2-VERIFICA.md`. Il servizio Suolo segnalato come non funzionante resta da diagnosticare separatamente.
+- Prove su dispositivi reali ancora necessarie: `V55.2-VERIFICA.md`.
+
+## V55.3 TEST — Ripristino mappa desktop e lettura del suolo
+
+- L'inizializzazione della modalità tablet precede la creazione della mappa: l'errore di avvio bloccava la mappa principale, i campi, il GPS, «Vai al campo», la scelta della carta e «Aggiungi campo».
+- Le richieste puntuali e l'analisi del campo consultano il WMS Piemonte alla scala a cui il servizio restituisce i dati. La risposta legge i nomi effettivi degli attributi (`cod_ucs_50`, `classe_tessitura_t`, `classe_calcare_t`, `classe_drenaggio`, `classe_reazione_t`) e gestisce i punti privi di risultato.
+- Il pannello Suolo spiega i due gesti: toccare la mappa per leggere un punto e analizzare un campo disegnato per salvarne i dati. Nella vista mobile il pannello e la scelta del tema sono in «Livelli mappa».
+- Il servizio reale ha restituito HTTP 200, CORS `*` e la tessitura «Franco» nel punto di verifica; restano da provare l'interfaccia sul dominio pubblicato e i tocchi su dispositivi reali.

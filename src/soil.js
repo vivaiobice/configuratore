@@ -23,26 +23,27 @@ export function buildSoilIdentifyUrl(viewport,point,layer='soil'){
   url.searchParams.set('Y',String(Math.max(0,Math.min(Math.round(Number(viewport.height)-1),Math.round(Number(point?.y)||0)))));return url.toString();
 }
 export function parseSoilResponse(payload){
-  const text=String(payload??'');if(!text||/ServiceException|ExceptionReport|no features|nessun risultato|no data/i.test(text))return null;
+  const text=String(payload??'');if(!text||/ServiceException|ExceptionReport|no features|no results|nessun risultato|no data/i.test(text))return null;
   const result={};
   for(const line of text.split(/\r?\n/)){
-    const match=line.match(/^\s*([\w\sÀ-ÿ.-]{2,45})\s*[:=]\s*"?(.{1,250}?)"?\s*$/);if(!match)continue;
-    const key=match[1].toLowerCase().trim().replace(/[\s.-]+/g,'_'),value=match[2].replace(/^"|"$/g,'').trim();
+    const match=line.match(/^\s*([\w\sÀ-ÿ.-]{2,45})\s*[:=]\s*(.{1,250}?)\s*$/);if(!match)continue;
+    const key=match[1].toLowerCase().trim().replace(/[\s.-]+/g,'_'),value=match[2].trim().replace(/^(['"])(.*)\1$/,'$2').trim();
     if(!value||/^(null|undefined|n\/a)$/i.test(value))continue;
-    if(/^(unita_pedologica|unita_di_suolo|soil_unit)$/.test(key))result.soilUnit=value;
+    if(key==='cod_ucs_50'){result.soilUnit=value;result.code=value;}
+    else if(/^(unita_pedologica|unita_di_suolo|soil_unit)$/.test(key))result.soilUnit=value;
     else if(/^(tipo_suolo|tipo_di_suolo|soil_type)$/.test(key))result.soilType=value;
-    else if(/^(tessitura|texture|tessitura_topsoil)$/.test(key))result.texture=value;
-    else if(/^(descrizione|descriz|denominazione|nome)$/.test(key))result.description=value;
+    else if(/^(tessitura|texture|tessitura_topsoil|classe_tessitura_t)$/.test(key))result.texture=value;
+    else if(/^(descrizione|descriz|denominazione|nome|desc_calcare_t|desc_drenaggio|desc_reazione_t)$/.test(key))result.description=value;
     else if(/^(codice|cod|id)$/.test(key))result.code=value;
     else if(/^(sabbia|sabbia_pct|sand)$/.test(key))assignNumber(result,'sand',value,0,100);
     else if(/^(limo|limo_pct|silt)$/.test(key))assignNumber(result,'silt',value,0,100);
     else if(/^(argilla|argilla_pct|clay)$/.test(key))assignNumber(result,'clay',value,0,100);
     else if(/^(ph|reazione_ph)$/.test(key))assignNumber(result,'ph',value,0,14);
-    else if(/^(calcare|calcare_topsoil|limestone)$/.test(key))result.limestone=value;
+    else if(/^(calcare|calcare_topsoil|limestone|classe_calcare_t)$/.test(key))result.limestone=value;
     else if(/^(sostanza_organica|carbonio_organico|organic_matter)$/.test(key))result.organicMatter=value;
     else if(/^(scheletro|skeleton)$/.test(key))result.skeleton=value;
-    else if(/^(drenaggio|drainage)$/.test(key))result.drainage=value;
-    else if(/^(reazione|reazione_topsoil)$/.test(key))result.reaction=value;
+    else if(/^(drenaggio|drainage|classe_drenaggio)$/.test(key))result.drainage=value;
+    else if(/^(reazione|reazione_topsoil|classe_reazione_t)$/.test(key))result.reaction=value;
   }
   if(!result.description)result.description=result.texture||result.soilType||result.soilUnit||result.limestone||result.drainage||result.reaction;
   if(!result.description)delete result.description;

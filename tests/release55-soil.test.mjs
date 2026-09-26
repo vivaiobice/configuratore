@@ -22,6 +22,27 @@ test('soil response retains only source-returned details and rejects service exc
   assert.deepEqual(parseSoilResponse('SABBIA = 130\nPH = 22\nCODICE = 5'),{code:'5'});
   assert.equal(parseSoilResponse('<ServiceExceptionReport><ServiceException>Unavailable</ServiceException></ServiceExceptionReport>'),null);
   assert.equal(parseSoilResponse('no features were found'),null);
+  assert.equal(parseSoilResponse('GetFeatureInfo results: Search returned no results.'),null);
+});
+test('soil response reads the actual Piemonte WMS attribute names and quoted values',()=>{
+  assert.deepEqual(parseSoilResponse("GetFeatureInfo results:\nLayer 'TessituraTopsoil'\nFeature 0:\n  cod_ucs_50 = 'U1173'\n  classe_tessitura_t = 'Franco'"),{soilUnit:'U1173',code:'U1173',texture:'Franco',description:'Franco'});
+  assert.deepEqual(parseSoilResponse("cod_ucs_50 = 'U1173'\nclasse_calcare_t = '3%-10%'\ndesc_calcare_t = 'Calcareo'"),{soilUnit:'U1173',code:'U1173',limestone:'3%-10%',description:'Calcareo'});
+  assert.deepEqual(parseSoilResponse("cod_ucs_50 = 'U1173'\nclasse_drenaggio = 'Buono'\ndesc_drenaggio = 'L’acqua è rimossa'"),{soilUnit:'U1173',code:'U1173',drainage:'Buono',description:'L’acqua è rimossa'});
+  assert.deepEqual(parseSoilResponse("cod_ucs_50 = 'U1173'\nclasse_reazione_t = '7,4-7,8'\ndesc_reazione_t = 'Subalcalino'"),{soilUnit:'U1173',code:'U1173',reaction:'7,4-7,8',description:'Subalcalino'});
+});
+test('point inspection uses the same stable geographic query extent as field analysis',async()=>{
+  const handlers=new Map(),urls=[];
+  const map={loaded:()=>true,getBounds:()=>({getWest:()=>8.224,getSouth:()=>44.708,getEast:()=>8.226,getNorth:()=>44.710}),getCanvas:()=>({clientWidth:400,clientHeight:300}),on:(event,fn)=>handlers.set(event,fn),off:event=>handlers.delete(event),getLayer:()=>null,getSource:()=>null,addSource(){},addLayer(){},setLayoutProperty(){}};
+  const observations=[];
+  const controller=createSoilMapController({map,fetchImpl:async url=>{urls.push(new URL(url));return {ok:true,text:async()=>"cod_ucs_50 = 'U1173'\nclasse_tessitura_t = 'Franco'"};},onObservation:value=>observations.push(value)});
+  controller.setActive(true);
+  await controller.inspect({point:{x:200,y:150},lngLat:{lng:8.225,lat:44.709}});
+  assert.equal(observations.at(-1).texture,'Franco');
+  assert.equal(urls[0].searchParams.get('BBOX'),'8.205,44.689,8.245,44.729');
+  await controller.analyze([[8.224,44.708],[8.226,44.708],[8.226,44.710],[8.224,44.710],[8.224,44.708]]);
+  assert.equal(urls[1].searchParams.get('WIDTH'),'256');
+  assert.ok(Number(urls[1].searchParams.get('BBOX').split(',')[2])-Number(urls[1].searchParams.get('BBOX').split(',')[0])>=.039);
+  controller.destroy();
 });
 test('sample points are capped and kept inside the field',()=>{
   const ring=[[8,44],[8.02,44],[8.02,44.02],[8,44.02],[8,44]];
@@ -54,7 +75,7 @@ test('soil profile belongs to its field and survives project payload round trip'
 test('V55 exposes soil tools on desktop and mobile entry paths',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const mobile=readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-  assert.equal(pkg.version,'0.55.2');assert.match(html,/AMBIENTE TEST · V55\.2/);assert.match(html,/src\/app\.js\?v=55\.2/);assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);
+  assert.equal(pkg.version,'0.55.3');assert.match(html,/AMBIENTE TEST · V55\.3/);assert.match(html,/src\/app\.js\?v=55\.3/);assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);assert.match(mobile,/layers:.*\.soil-section/);
 });
 test('soil map loads only on activation and a failed query never invents a soil value',async()=>{
   const handlers=new Map(),sources=new Map(),layers=new Map();const map={loaded:()=>true,getZoom:()=>14,getBounds:()=>({getWest:()=>8,getSouth:()=>44,getEast:()=>8.1,getNorth:()=>44.1}),getCanvas:()=>({clientWidth:400,clientHeight:300}),on:(event,fn)=>handlers.set(event,fn),off:(event)=>handlers.delete(event),getLayer:id=>layers.get(id),getSource:id=>sources.get(id),addSource:(id,source)=>sources.set(id,{...source,updateImage(value){this.url=value.url;}}),addLayer:layer=>layers.set(layer.id,layer),setLayoutProperty(){},project:()=>({x:100,y:100})};
