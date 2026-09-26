@@ -108,7 +108,7 @@ test('the editor map wires pointer dwell to the cadastral identification endpoin
   assert.match(source, /onCadastralIdentifyState/);
 });
 
-test('the map ships a polite parcel status bar and an unmistakable dark base-map selection', () => {
+test('the map ships a polite parcel status bar and dark mode highlights only the active base map', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const css = fs.readFileSync(new URL('../v52-cadastre.css', import.meta.url), 'utf8');
   const { document } = parseHTML(html);
@@ -116,5 +116,7 @@ test('the map ships a polite parcel status bar and an unmistakable dark base-map
   assert.ok(status);
   assert.equal(status.getAttribute('aria-live'), 'polite');
   assert.equal(status.hidden, true);
-  assert.match(css, /html\[data-theme=["']dark["']\][^{]*\.segmented button\.active[^{]*\{[^}]*background:\s*#(?:f[0-9a-f]{5}|[89a-f][0-9a-f]{5})[^}]*color:\s*#(?:0[0-9a-f]{5}|1[0-9a-f]{5}|2[0-9a-f]{5})/i);
+  assert.match(css, /html\[data-theme=["']dark["']\] \.desktop-map-tools \.map-tools-visual \.segmented\{[^}]*background:\s*#203c2d[^}]*border:\s*1px solid #587360/i);
+  assert.match(css, /html\[data-theme=["']dark["']\][^{]*\.segmented button:not\(\.active\)[^{]*\{[^}]*border:\s*1px solid transparent[^}]*background:\s*transparent[^}]*color:\s*#c7d5ca/i);
+  assert.match(css, /html\[data-theme=["']dark["']\][^{]*\.segmented button\.active[^{]*\{[^}]*border:\s*1px solid #93d0a1[^}]*background:\s*#78b489[^}]*color:\s*#102419/i);
 });

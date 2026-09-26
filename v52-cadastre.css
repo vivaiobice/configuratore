@@ -73,16 +73,22 @@ html[data-theme="dark"] #cadastre-button[aria-pressed="true"]{
   box-shadow:0 0 0 2px rgba(239,248,241,.85),0 7px 20px rgba(0,0,0,.35)!important;
 }
 html[data-theme="dark"] .cadastre-opacity-control{border-color:#587360;background:#294735;color:#eef6ef}
+html[data-theme="dark"] .desktop-map-tools .map-tools-visual .segmented{
+  background:#203c2d;
+  border:1px solid #587360;
+  box-shadow:none;
+}
 html[data-theme="dark"] .desktop-map-tools .map-tools-visual .segmented button:not(.active){
-  border:1px solid #587360!important;
-  background:#294735!important;
-  color:#eef6ef!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#c7d5ca!important;
+  box-shadow:none!important;
 }
 html[data-theme="dark"] .desktop-map-tools .map-tools-visual .segmented button.active{
-  border:1px solid #e8f4ea!important;
-  background:#eef7f0!important;
-  color:#153923!important;
-  box-shadow:0 0 0 2px rgba(238,247,240,.42)!important;
+  border:1px solid #93d0a1!important;
+  background:#78b489!important;
+  color:#102419!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.28)!important;
 }
 .cadastre-parcel-status{font-weight:800!important;color:#173f29!important}
 html[data-theme="dark"] .cadastre-parcel-status{background:rgba(238,247,240,.96)!important;color:#153923!important;border-color:#91b79b!important}

@@ -2,7 +2,15 @@
 
 Web app autonoma per la progettazione preliminare di impianti viticoli.
 
-Stato: ambiente TEST · release V53.2 WebApp.
+Stato: ambiente TEST · release V53.3 WebApp.
+
+## V53.3 — stato attivo del selettore mappa in Dark Mode
+
+- Il selettore Satellite/Stradale usa un contenitore scuro uniforme: il pulsante inattivo non ha
+  più la bordatura chiara che lo faceva sembrare selezionato.
+- La mappa attiva è evidenziata in verde, con la stessa gerarchia visiva del Catasto attivo.
+- Cache del foglio di stile aggiornata a `V53.3`; nessuna modifica alla logica cartografica,
+  all'identificazione catastale, al database o al formato dei progetti.
 
 ## V53.2 — identificazione puntuale delle particelle
 

@@ -7,9 +7,9 @@ const html=fs.readFileSync(new URL('index.html',root),'utf8');
 const app=fs.readFileSync(new URL('src/app.js',root),'utf8');
 
 test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
- assert.match(html,/AMBIENTE TEST · V53\.3/);
+ assert.match(html,/AMBIENTE TEST · V53\.2/);
  assert.match(html,/v50-fixes\.css\?v=51/);
- assert.match(html,/v52-cadastre\.css\?v=53\.3/);
+ assert.match(html,/v52-cadastre\.css\?v=53\.2/);
  assert.match(html,/desktop-library\.css\?v=51/);
  assert.match(html,/src\/app\.js\?v=53\.2/);
  for(const module of ['state','mobile-ui','map','backend']){
