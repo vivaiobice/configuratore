@@ -1,4 +1,4 @@
-import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE,soilRows} from './soil.js?v=55.3';
+import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE} from './soil.js?v=55.3';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 import {calculateManualPlants} from './project-calculator.js?v=45';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
@@ -19,8 +19,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V55.3</span></header>
- <div class="mobile-display-controls"><button id="mobile-tablet-view" class="tablet-view-switch" type="button" aria-label="Passa alla visualizzazione desktop" title="Passa alla visualizzazione desktop" hidden>📱 💻</button><button id="mobile-theme-toggle" type="button" aria-label="Cambia tema" title="Cambia tema">◐</button></div>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V55.4</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -30,8 +29,8 @@ export function createMobileUI(api){
  <main id="mobile-pages">
   <section data-screen="fields"><header class="mobile-page-heading"><h1>Campi</h1><div class="mobile-heading-actions"><button id="mobile-refresh-fields" aria-label="Aggiorna campi">${icon('refresh')}</button><button id="mobile-add-from-fields" aria-label="Aggiungi campo">${icon('plus')}</button></div></header><div id="mobile-fields-total"></div><div id="mobile-fields-list"></div></section>
   <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-detail-map" aria-label="Mappa satellitare interattiva del campo"></div><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Stampa / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
-  <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><button id="mobile-parameters-map">Modifica perimetro e passaggi</button><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Salvato su questo dispositivo. PDF e preventivo sono disponibili nella scheda del campo.</p></section>
-  <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><button id="mobile-load-code" type="button">Carica progetto</button><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
+  <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><button id="mobile-parameters-map" type="button">Modifica perimetro e passaggi</button><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Salvato su questo dispositivo. PDF e preventivo sono disponibili nella scheda del campo.</p></section>
+  <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><button id="mobile-load-code" type="button">Carica progetto esistente</button><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
   <section data-screen="profile"><header class="mobile-page-heading"><h1>Profilo</h1></header><div id="mobile-profile-content"></div><p id="mobile-auth-feedback" class="mobile-auth-feedback" role="status"></p></section>
  </main>
  <nav class="mobile-navigation" aria-label="Navigazione principale"><button data-view="map">${icon('map')}<span>Mappa</span></button><button data-view="fields">${icon('fields')}<span>Campi</span></button><button data-view="projects">${icon('projects')}<span>Progetti</span></button><button data-view="profile">${icon('profile')}<span>Profilo</span></button></nav>
@@ -109,7 +108,7 @@ export function createMobileUI(api){
  }
  function placeOrientation(){
   const parent=screen==='editor'?sheet.querySelector('[data-content="orientation"]'):$('.step[data-step="2"]');
-  move($('.range-field'),parent);move($('.orientation-presets'),parent);move($('.row-curve-controls'),parent);
+  move($('.range-field'),parent);move($('.orientation-presets'),parent);move($('.row-curve-controls'),sheet.querySelector('[data-content="orientation"]'));
  }
  function openSheet(name){
   if(!enabled)return;
@@ -143,11 +142,11 @@ export function createMobileUI(api){
   if(saving)return;if(screen==='parameters'&&!validateParameters())return;
   if(!api.getFields().some(f=>f.geometry)){showNotice('Disegna almeno un campo prima di salvare.');return;}
   saving=true;$('#mobile-save-field').disabled=true;
-  try{await api.saveProject($('#mobile-project-name').value);transaction=false;awaitingPerimeter=false;navigate('map');showNotice('Impianto salvato su questo dispositivo.');}
+  try{const fieldId=api.getField()?.activeFieldId;await api.saveProject($('#mobile-project-name').value);transaction=false;awaitingPerimeter=false;if(fieldId)api.selectField(fieldId);navigate('detail');showNotice('Impianto salvato su questo dispositivo.');}
   catch(error){showNotice(`Salvataggio non riuscito: ${error.message}`);}
   finally{saving=false;$('#mobile-save-field').disabled=false;}
  }
- function metricsHtml(field){const m=api.getMetrics(field);return `<section class="mobile-vines-summary"><span>Quantità commerciale</span><strong class="mobile-commercial-vines">${n(m.commercialPlants25)}</strong><small>Barbatelle calcolate: <b class="mobile-calculated-vines">${n(m.simulatedPlants)}</b></small></section><dl class="mobile-metrics">${[
+ function metricsHtml(field){const m=api.getMetrics(field);return `<section class="mobile-vines-summary"><span>Quantità commerciale barbatelle</span><strong class="mobile-commercial-vines">${n(m.commercialPlants25)}</strong><small>Barbatelle calcolate: <b class="mobile-calculated-vines">${n(m.simulatedPlants)}</b></small></section><dl class="mobile-metrics">${[
   ['Superficie',area(m.areaM2)],['Superficie netta',area(m.netAreaM2)],['Pali intermedi',n(m.intermediatePosts)],['Pali di testa',n(m.headPosts)],['Pali totali',n(m.totalPosts)],['Tratti di filare',n(m.rowCount)],['Metri di filare',`${n(m.rowLinearM)} m`],['Perimetro',`${n(m.perimeterM)} m`]
  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;}
  function preview(field){return renderProjectDiagramSvg({polygon:field.geometry,rows:api.getMetrics(field).rows});}
@@ -181,9 +180,10 @@ export function createMobileUI(api){
  function renderDetail(){
   const field=api.getField();$('#mobile-detail-title').textContent=field.label||'Campo';
   const soil=field.soil?.cartographic??field.soil;
+  const soilValues=[['Tessitura superficiale',soil?.texture],['Calcare superficiale',soil?.limestone],['Drenaggio',soil?.drainage],['Reazione superficiale',soil?.reaction]];
   $('#mobile-field-detail').innerHTML=`${metricsHtml(field)}<dl class="mobile-materials">${[
    ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
-  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl><section class="mobile-soil-detail"><h3>Suolo</h3><strong>Indicazione cartografica del suolo</strong><p>${escape(soil?.description||'Non analizzato')}${soil&&!soilProfileIsCurrent(field.soil,field.geometry)?' · Perimetro modificato: aggiorna i dati.':''}</p>${soil?`<dl class="mobile-materials">${soilRows(soil).map(([label,value])=>`<div><dt>${escape(label)}</dt><dd>${escape(String(value))}</dd></div>`).join('')}</dl>${soil.units?.length>1?`<p>Nel campo sono presenti più unità pedologiche. ${escape(soil.units.map(unit=>unit.description).join(' · '))}</p>`:''}<small>Fonte: ${escape(SOIL_SOURCE)} · CC BY 4.0 · ${escape(soil.retrievedAt?new Date(soil.retrievedAt).toLocaleDateString('it-IT'):'data non disponibile')}</small>`:''}<p class="soil-disclaimer">${escape(SOIL_DISCLAIMER)}</p><button type="button" data-mobile-refresh-soil>Aggiorna dati suolo</button><p data-mobile-soil-status role="status"></p></section><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
+  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}${soilValues.map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value||'Non disponibile')}</dd></div>`).join('')}</dl><div class="mobile-soil-footer"><small>Fonte: ${escape(SOIL_SOURCE)} · CC BY 4.0${soil?.retrievedAt?` · ${escape(new Date(soil.retrievedAt).toLocaleDateString('it-IT'))}`:''}${soil&&!soilProfileIsCurrent(field.soil,field.geometry)?' · Perimetro modificato: aggiorna i dati.':''}</small><small>${escape(SOIL_DISCLAIMER)}</small><button type="button" data-mobile-refresh-soil>Aggiorna dati suolo</button><p data-mobile-soil-status role="status"></p></div><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
   const refresh=$('[data-mobile-refresh-soil]');refresh.disabled=!field.geometry;refresh.addEventListener('click',async()=>{refresh.disabled=true;const status=$('[data-mobile-soil-status]');status.textContent='Consultazione della cartografia in corso…';try{const result=await api.analyzeSoil?.();if(result)renderDetail();else status.textContent='Dati del suolo temporaneamente non disponibili';}finally{if(refresh.isConnected)refresh.disabled=false;}});
  }
  function renderProjects(){
@@ -205,7 +205,7 @@ export function createMobileUI(api){
      editor.append(input,confirm);row.append(editor);input.focus?.();
     });
     remove.addEventListener('click',async()=>{const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;try{await api.deleteProject?.(item);renderProjects();showNotice('Progetto eliminato.');}catch(error){showNotice(`Eliminazione non riuscita: ${error.message}`);}});
-    actions.append(pdf,rename,remove);row.append(button,actions);list.append(row);
+    actions.append(rename,remove);row.append(button,pdf,actions);list.append(row);
    }
   }catch(error){showNotice(error.message);}
  }
@@ -266,12 +266,14 @@ export function createMobileUI(api){
   const next=api.isMobile();
   if(next===enabled){if(enabled)api.resizeMap();return;}
   enabled=next;
+  api.layoutCadastral?.(next);
   updateMapPresentation();
   if(next){
    document.body.classList.add('mobile-app-active');oldAdvancedOpen=$('.advanced').open;
    move(map,$('#mobile-map-host'));
-   move($('.field-manager'),$('[data-screen="parameters"]'));$('#mobile-parameters-preview').before($('.field-manager'));
+   move($('.field-manager'),$('[data-screen="parameters"]'));$('#mobile-parameters-map').before($('.field-manager'));
    move($('.step[data-step="2"]'),$('#mobile-parameters-body'));move($('.advanced'),$('#mobile-parameters-body'));$('.advanced').open=true;
+   move($('.mobile-campaign-year'),$('#mobile-parameters-body'));
    move($('.exclusion-panel'),sheet.querySelector('[data-content="cuts"]'));
    for(const [name,selectors] of Object.entries({search:['.search-shell'],layers:['.segmented','#cadastre-button','#cadastre-opacity-control','#soil-button','.soil-section'],perimeter:['#draw-map-button','#edit-vertices-button','#remove-vertex-button','#clear-field-button'],cuts:['#exclude-line-button','#exclude-zone-button']}))for(const selector of selectors)move($(selector),sheet.querySelector(`[data-content="${name}"]`));
    move($('#close-perimeter-button'),$('#mobile-drawing-actions'));
@@ -301,8 +303,6 @@ export function createMobileUI(api){
  $('#mobile-refresh-fields').addEventListener('click',event=>refreshProjects(event.currentTarget));$('#mobile-refresh-projects').addEventListener('click',event=>refreshProjects(event.currentTarget));
  $('#mobile-new-project').addEventListener('click',()=>{api.newProject();navigate('map');});
  $('#mobile-load-code').addEventListener('click',()=>api.openPublicProject?.());
- $('#mobile-tablet-view').addEventListener('click',()=>api.toggleTabletView?.());
- $('#mobile-theme-toggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark',{root:document.documentElement}));
  $('#mobile-undo').addEventListener('click',api.undoPoint);$('#mobile-stop-tool').addEventListener('click',()=>{api.stopTools();drawingState({active:false});});
  $('#mobile-finish-edit').addEventListener('click',()=>{api.stopTools();editingState({active:false});});
  $('#mobile-detail-pdf').addEventListener('click',()=>{try{api.openReportForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});$('#mobile-detail-quote').addEventListener('click',()=>api.finalAction('quote'));

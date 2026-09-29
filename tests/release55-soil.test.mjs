@@ -72,10 +72,20 @@ test('soil profile belongs to its field and survives project payload round trip'
   const snapshot=buildCloudSnapshot({environment:'TEST',project},()=>({}));
   assert.deepEqual(snapshotToFieldRows(snapshot,'p','u').map(field=>field.design_data.soil),[soil,null]);
 });
+test('mobile soil analysis reads four actual cartographic themes for the same field',async()=>{
+  const ring=[[8,44],[8.01,44],[8.01,44.01],[8,44.01],[8,44]],layers=[];
+  const map={on(){},off(){},getBounds:()=>({getWest:()=>8,getSouth:()=>44,getEast:()=>8.1,getNorth:()=>44.1}),getCanvas:()=>({clientWidth:400,clientHeight:300})};
+  const values={TessituraTopsoil:'classe_tessitura_t = Franco',CalcareTopsoil:'classe_calcare_t = Medio',Drenaggio:'classe_drenaggio = Buono',ReazioneTopsoil:'classe_reazione_t = Neutro'};
+  const controller=createSoilMapController({map,fetchImpl:async url=>{const layer=new URL(url).searchParams.get('LAYERS');layers.push(layer);return {ok:true,text:async()=>values[layer]};}});
+  const result=await controller.analyzeAll(ring);
+  assert.deepEqual(layers,['TessituraTopsoil','CalcareTopsoil','Drenaggio','ReazioneTopsoil']);
+  assert.deepEqual([result.cartographic.texture,result.cartographic.limestone,result.cartographic.drainage,result.cartographic.reaction],['Franco','Medio','Buono','Neutro']);
+  controller.destroy();
+});
 test('V55 exposes soil tools on desktop and mobile entry paths',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const mobile=readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-  assert.equal(pkg.version,'0.55.3');assert.match(html,/AMBIENTE TEST · V55\.3/);assert.match(html,/src\/app\.js\?v=55\.3/);assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);assert.match(mobile,/layers:.*\.soil-section/);
+  assert.equal(pkg.version,'0.55.4');assert.match(html,/AMBIENTE TEST · V55\.4/);assert.match(html,/src\/app\.js\?v=55\.4/);assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);assert.match(mobile,/layers:.*\.soil-section/);
 });
 test('soil map loads only on activation and a failed query never invents a soil value',async()=>{
   const handlers=new Map(),sources=new Map(),layers=new Map();const map={loaded:()=>true,getZoom:()=>14,getBounds:()=>({getWest:()=>8,getSouth:()=>44,getEast:()=>8.1,getNorth:()=>44.1}),getCanvas:()=>({clientWidth:400,clientHeight:300}),on:(event,fn)=>handlers.set(event,fn),off:(event)=>handlers.delete(event),getLayer:id=>layers.get(id),getSource:id=>sources.get(id),addSource:(id,source)=>sources.set(id,{...source,updateImage(value){this.url=value.url;}}),addLayer:layer=>layers.set(layer.id,layer),setLayoutProperty(){},project:()=>({x:100,y:100})};

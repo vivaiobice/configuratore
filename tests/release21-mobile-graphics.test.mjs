@@ -56,7 +56,7 @@ test('native form controls retain automatic touch behavior above the map',()=>{
 test('current release retains Guest registration and the dedicated iOS home icon',()=>{
  assert.match(html,/manifest\.webmanifest\?v=45/);
  assert.match(html,/apple-touch-icon-v26\.png/);
- assert.match(ui,/AMBIENTE TEST · V55\.3/);
+ assert.match(ui,/AMBIENTE TEST · V55\.4/);
 });
 test('favicon and web app use the approved transparent icon revision',()=>{
  const asset=fs.readFileSync(new URL('../assets/vivai-obice-icon-v26.png',import.meta.url));

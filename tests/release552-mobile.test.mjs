@@ -10,16 +10,15 @@ import {mountReportProjectContext} from '../src/report-context.js';
 
 const storage=()=>{const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};};
 
-test('iPad choice persists across rotations and honors desktop selection',()=>{
-  const store=storage();let landscape=false;
-  const media=()=>!landscape;
-  const first=createViewMode({storage:store,isTablet:()=>true,autoMobile:media});
-  assert.equal(first.isMobile(),true);landscape=true;assert.equal(first.isMobile(),false);
-  first.set('mobile');assert.equal(first.isMobile(),true);
-  const reopened=createViewMode({storage:store,isTablet:()=>true,autoMobile:media});assert.equal(reopened.isMobile(),true);
-  reopened.set('desktop');landscape=false;assert.equal(reopened.isMobile(),false);
-  reopened.set('auto');assert.equal(reopened.isMobile(),true);
-  assert.equal(createViewMode({storage:store,isTablet:()=>false,autoMobile:()=>true}).isMobile(),true);
+test('iPad uses mobile in portrait and desktop in landscape even with a stored legacy override',()=>{
+  const store=storage(),previous=globalThis.matchMedia;let portrait=true;
+  globalThis.matchMedia=()=>({matches:portrait});
+  try{
+    const mode=createViewMode({storage:store,isTablet:()=>true,autoMobile:()=>true});
+    mode.set('desktop');assert.equal(mode.isMobile(),true);
+    portrait=false;mode.set('mobile');assert.equal(mode.isMobile(),false);
+    assert.equal(createViewMode({storage:store,isTablet:()=>false,autoMobile:()=>true}).isMobile(),true);
+  }finally{globalThis.matchMedia=previous;}
 });
 
 test('project code loader requires editable access before returning a project',async()=>{

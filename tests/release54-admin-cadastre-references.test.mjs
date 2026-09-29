@@ -36,6 +36,17 @@ test('reference editor renders one presentation row, switches fields and emits u
   assert.equal(container.querySelector('[name="municipality"]').value,'Asti');assert.equal(events.length,1);
   editor.destroy();
 });
+test('mobile cadastral add stays beside remove on the final mappale after additions and removals',()=>{
+  const {document}=parseHTML('<div id="editor"></div>'),container=document.querySelector('#editor');
+  const editor=createCadastralReferenceEditor({document,container});editor.setMobile(true);editor.render([]);
+  for(let i=0;i<2;i++){
+    assert.ok(container.querySelector('[data-reference-row]:last-child .cadastral-reference-actions').contains(container.querySelector('[data-add-reference]')));
+    container.querySelector('[data-add-reference]').click();
+  }
+  container.querySelector('[data-reference-row]:last-child [data-remove-reference]').click();
+  assert.ok(container.querySelector('[data-reference-row]:last-child .cadastral-reference-actions').contains(container.querySelector('[data-add-reference]')));
+  editor.setMobile(false);assert.equal(container.lastElementChild.dataset.addReference,'');
+});
 test('Admin row exposes references and map data retains valid siblings', () => {
   const ring=[[8,44],[8.002,44],[8.002,44.002],[8,44.002],[8,44]];
   const [good,bad]=expandProjectFields([{id:'p',name:'P',field_plans:[{id:'a',label:'A',geometry:ring,orientationDeg:35,cadastralRefs:[{municipality:'Alba',sheet:'26',parcel:'278'}]},{id:'b',label:'B',geometry:[[0,0]]}]}]);

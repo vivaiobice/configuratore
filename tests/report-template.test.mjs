@@ -115,3 +115,9 @@ test('satellite page uses a single captured image with vectors already georefere
   assert.doesNotMatch(html,/class="map-overlay"/);
   assert.match(html,/class="technical-diagram"/);
 });
+test('mobile PDF names commercial barbatelle explicitly while desktop copy remains intact',()=>{
+  const model=reportModel(2),mobile=renderProjectReportHtml(model,{mobile:true}),desktop=renderProjectReportHtml(model);
+  assert.match(mobile,/Quantità commerciale di barbatelle/);
+  assert.doesNotMatch(mobile,/>Quantità commerciale</);
+  assert.match(desktop,/>Quantità commerciale</);
+});

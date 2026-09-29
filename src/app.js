@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.1';
-import { createMobileUI } from './mobile-ui.js?v=55.3';
+import { createMobileUI } from './mobile-ui.js?v=55.4';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
@@ -18,11 +18,11 @@ import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=55.1';
-import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=54';
-import {createSoilMapController} from './soil-map.js?v=55.3';
+import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=55.4';
+import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
-import {createViewMode} from './view-mode.js?v=55.2';
+import {createViewMode} from './view-mode.js?v=55.4';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
 import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=55.2';
 import {installPenTapFallback} from './pen-tap.js?v=55.2';
@@ -346,7 +346,7 @@ const soilMap=mapApi?.map?createSoilMapController({map:mapApi.map,onStatus:messa
 function renderSoilProfile(){const box=$('#soil-profile');if(!box)return;box.replaceChildren();const profile=state.project.soil,data=profile?.cartographic??profile;$('#soil-analyze').textContent=data?'Aggiorna dati suolo':'Analizza suolo del campo';if(!data?.description)return;renderSoilCard(box,data,{layer:data.layer});const source=document.createElement('p');source.textContent=`${data.samples||1} punti consultati · rilevazione ${data.retrievedAt||data.observedAt?new Date(data.retrievedAt||data.observedAt).toLocaleDateString('it-IT'):'non datata'}`;box.append(source);if(!soilProfileIsCurrent(profile,state.project.geometry)){const note=document.createElement('p');note.textContent='Perimetro modificato: aggiorna i dati del suolo.';box.append(note);}}
 $('#soil-button')?.addEventListener('click',()=>{if(!soilMap)return;soilMap.setActive(!soilMap.isActive());$('#soil-button').setAttribute('aria-pressed',String(soilMap.isActive()));$('#soil-legend').hidden=!soilMap.isActive();if(!soilMap.isActive())$('#soil-point-card').hidden=true;});
 $('#soil-layer-select')?.addEventListener('change',event=>{soilMap?.setLayer(event.target.value);$('#soil-legend').textContent=`${SOIL_LAYER_LABELS[event.target.value]} · Regione Piemonte · 1:50.000`;$('#soil-point-card').hidden=true;});
-async function analyzeActiveSoil(){const button=$('#soil-analyze');if(!button||button.disabled)return null;const id=state.project.activeFieldId;button.disabled=true;try{const soil=await soilMap?.analyze(state.project.geometry,{refresh:true});if(soil&&id===state.project.activeFieldId){patchProject({soil});renderSoilProfile();return soil;}return null;}finally{button.disabled=false;}}
+async function analyzeActiveSoil(){const button=$('#soil-analyze');if(!button||button.disabled)return null;const id=state.project.activeFieldId;button.disabled=true;try{const soil=await (isMobileMap()?soilMap?.analyzeAll(state.project.geometry,{refresh:true}):soilMap?.analyze(state.project.geometry,{refresh:true}));if(soil&&id===state.project.activeFieldId){patchProject({soil});renderSoilProfile();return soil;}return null;}finally{button.disabled=false;}}
 $('#soil-analyze')?.addEventListener('click',analyzeActiveSoil);
 
 $('#row-spacing').value = state.project.rowSpacingM ?? 2.5;
@@ -508,12 +508,6 @@ installPenTapFallback(document.body,()=>viewMode.isTablet()&&!isMobileMap(),{onM
   const rect=canvas.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top};
   map.fire('click',{point,lngLat:map.unproject(point),originalEvent:event});
 }});
-function updateTabletViewControls(){
-  const tablet=viewMode.isTablet(),mobile=isMobileMap(),desktop=$('#tablet-view-desktop'),mobileButton=$('#mobile-tablet-view');
-  for(const button of [desktop,mobileButton])if(button){button.hidden=!tablet;button.setAttribute('aria-label',mobile?'Passa alla visualizzazione desktop':'Passa alla visualizzazione mobile');button.title=button.getAttribute('aria-label');button.setAttribute('aria-pressed',String(viewMode.get()!=='auto'));}
-}
-function toggleTabletView(){viewMode.set(isMobileMap()?'desktop':'mobile');placeMapForViewport();updateTabletViewControls();}
-$('#tablet-view-desktop')?.addEventListener('click',toggleTabletView);
 function startDrawingField() { patchProject({ sourceType:'manual' }); mapApi?.beginDraw(); }
 function addFieldAndStartDrawing(){
   if(state.project.geometry){state={...state,project:addProjectField(state.project)};summarySaveFeedback.dirty();persist();loadActiveFieldOnMap();}
@@ -769,7 +763,6 @@ async function moveArchivedField(sourceItem,targetItem,field){
 }
 
 mobileUi = createMobileUI({
-  toggleTabletView,
   auth:authBridge,
   getMap:()=>mapApi?.map,
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
@@ -782,13 +775,13 @@ mobileUi = createMobileUI({
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,
   analyzeSoil:analyzeActiveSoil,
+  layoutCadastral:value=>cadastralReferenceEditor.setMobile(value),
   refreshProjects:refreshOwnedArchive,
   openPublicProject:openPublicProjectDialog,
   openReport:(item)=>openReportPopup({projectItem:item}),
   openReportForField:(id)=>openReportPopup({fieldId:id}),
   finalAction:requestFinalAction
 });
-updateTabletViewControls();
 
 desktopLibraryUi=createDesktopLibraryUI({
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
@@ -922,7 +915,7 @@ function openReportPopup({projectItem=null,fieldId=null}={}) {
   const requestId=globalThis.crypto.randomUUID();
   globalThis.localStorage.setItem(REPORT_CONTEXT_KEY(requestId),JSON.stringify(snapshot));
   globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'opened'}));
-  const popup=globalThis.open(`./report.html?handoff=${requestId}`, '_blank');
+  const popup=globalThis.open(`./report.html?handoff=${requestId}${isMobileMap()?'&source=mobile':''}`, '_blank');
   if(!popup){globalThis.localStorage.removeItem(REPORT_CONTEXT_KEY(requestId));throw new Error('Il browser ha bloccato la finestra del documento. Consenti i popup per questo sito e riprova.');}
   const onReportRequest=async(event)=>{
     if(event.key!==REPORT_HANDOFF_KEY)return;

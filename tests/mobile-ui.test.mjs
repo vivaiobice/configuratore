@@ -85,10 +85,11 @@ test('V26 field name precedes live preview on first configuration',()=>{
  const children=[...section.children];assert.ok(children.indexOf($('.field-manager'))<children.indexOf($('#mobile-parameters-preview')));
  assert.equal($('.map-wrap').classList.contains('mobile-viewer-only'),true);
 });
-test('planting year follows the shared field manager into mobile parameters and returns to desktop',()=>{
+test('planting year moves below mobile parameters and returns to the desktop field manager',()=>{
  const c=setup(),{$}=c;const year=$('#campaign-year');assert.ok(year);
  $('#mobile-add-field').click();c.ui.geometryCommitted();
- assert.ok($('section[data-screen="parameters"] .field-manager').contains(year));
+ assert.ok($('#mobile-parameters-body').contains(year));
+ assert.ok($('.advanced').compareDocumentPosition(year) & 4);
  c.desktop();assert.ok($('.panel-scroll>.field-manager').contains(year));
 });
 test('V26 dragging a button does not activate it',()=>{
@@ -121,7 +122,7 @@ test('V26 keyboard viewport reveals focused text field and resets after closing'
   assert.equal($('#mobile-app').classList.contains('mobile-keyboard-open'),false);
  }finally{delete globalThis.visualViewport;delete globalThis.innerHeight;}
 });
-test('mobile opens on map: add → editor → confirm → parameters → save → map',async()=>{
+test('mobile opens on map: add → editor → confirm → parameters → save → field detail',async()=>{
  const c=setup(),{$}=c;assert.equal(c.document.body.dataset.mobileScreen,'map');
  assert.equal($('.map-wrap').parentElement.id,'mobile-map-host');
  $('#mobile-add-field').click();assert.equal(c.begun,1);assert.equal(c.document.body.dataset.mobileScreen,'editor');
@@ -129,7 +130,8 @@ test('mobile opens on map: add → editor → confirm → parameters → save �
  assert.ok($('#mobile-parameters-body').contains($('#plant-spacing')));
  assert.ok($('#mobile-parameters-body').contains($('#rootstock')));
  $('#mobile-save-field').click();await new Promise(resolve=>setImmediate(resolve));
- assert.equal(c.saved,1);assert.equal(c.document.body.dataset.mobileScreen,'map');
+ assert.equal(c.saved,1);assert.equal(c.document.body.dataset.mobileScreen,'detail');
+ assert.equal($('.map-wrap').parentElement.id,'mobile-detail-map');
 });
 test('field detail uses the live interactive map without map controls',()=>{
  const c=setup(),{$}=c;$('[data-view="fields"]').click();assert.equal(c.document.body.dataset.mobileScreen,'fields');
@@ -152,11 +154,11 @@ test('desktop restoration keeps the same inputs and values',()=>{
  assert.equal($('.map-wrap').parentElement.className,'app-shell');assert.ok(!c.document.body.classList.contains('mobile-app-active'));
 });
 test('desktop startup never moves controls',()=>{const c=setup(false);assert.equal(c.$('.map-wrap').parentElement.className,'app-shell');assert.ok(c.$('.step[data-step="2"]').contains(c.$('#plant-spacing')));});
-test('tablet layout switch stays available while navigating mobile sections',()=>{
- const c=setup(),{$}=c;$('#mobile-tablet-view').hidden=false;
- $('[data-view="projects"]').click();assert.equal(c.document.body.dataset.mobileScreen,'projects');
- $('#mobile-tablet-view').click();assert.equal(c.viewToggles,1);
- $('[data-view="fields"]').click();assert.ok($('#mobile-tablet-view').isConnected);
+test('tablet layout switch is absent and the theme choice lives in Profile',()=>{
+ const c=setup(),{$}=c;
+ assert.equal($('#mobile-tablet-view'),null);
+ assert.equal($('#mobile-theme-toggle'),null);
+ $('[data-view="profile"]').click();assert.ok($('#mobile-theme-choice'));
 });
 test('projects view offers code lookup and opens a saved project in PDF preflight',()=>{
  const c=setup(),{$}=c;$('[data-view="projects"]').click();$('#mobile-load-code').click();assert.equal(c.loadedCode,1);
@@ -189,7 +191,7 @@ test('parameters use the live satellite map preview and return it to the home ma
  assert.equal($('.map-wrap').parentElement.id,'mobile-parameters-preview');
  assert.equal($('#mobile-parameters-preview').dataset.base,'satellite');
  $('#mobile-save-field').click();await new Promise(resolve=>setImmediate(resolve));
- assert.equal($('.map-wrap').parentElement.id,'mobile-map-host');
+ assert.equal($('.map-wrap').parentElement.id,'mobile-detail-map');
 });
 test('parameters live map exposes only the field recenter action in creation and later editing',()=>{
  const c=setup(),{$}=c;$('#mobile-add-field').click();c.ui.geometryCommitted();

@@ -32,11 +32,11 @@ export function createSoilMapController({map,fetchImpl=globalThis.fetch,onStatus
     const v=viewport(),coord={x:point.x*v.width/v.clientWidth,y:point.y*v.height/v.clientHeight};
     return read(buildSoilIdentifyUrl(v,coord,layer),signal);
   }
-  async function queryCoordinate([lon,lat],signal,options){
+  async function queryCoordinate([lon,lat],signal,options,theme=layer){
     // The regional WMS only resolves soil units at cartographic scale; a field-sized BBOX yields empty results.
     const width=256,height=256,offset=.02;
     const rounded=value=>Number(value.toFixed(6));
-    const url=buildSoilIdentifyUrl({west:rounded(lon-offset),south:rounded(lat-offset),east:rounded(lon+offset),north:rounded(lat+offset),width,height},{x:128,y:128},layer);
+    const url=buildSoilIdentifyUrl({west:rounded(lon-offset),south:rounded(lat-offset),east:rounded(lon+offset),north:rounded(lat+offset),width,height},{x:128,y:128},theme);
     return read(url,signal,options);
   }
   async function inspect(event){
@@ -63,9 +63,31 @@ export function createSoilMapController({map,fetchImpl=globalThis.fetch,onStatus
       onStatus(`${major.description} · ${queried} punti consultati${units.length>1?' · Nel campo sono presenti più unità pedologiche.':''} · dato indicativo`);return profile;
     }catch(error){if(current===sequence&&error.name!=='AbortError')onStatus('Dati del suolo temporaneamente non disponibili');return null;}
   }
+  async function analyzeAll(ring,{refresh=false}={}){
+    const points=soilSamplePoints(ring);if(!points.length){onStatus('Per analizzare il suolo disegna prima un campo.');return null;}
+    controller?.abort();controller=new AbortController();const current=++sequence;
+    const result={};let available=0,failed=0;
+    const themes=[['texture','texture'],['limestone','limestone'],['drainage','drainage'],['reaction','reaction']];
+    for(const [index,[theme,key]] of themes.entries()){
+      onStatus(`Consultazione dei dati del suolo: ${index+1}/4 temi…`);
+      try{
+        const ordered=[points[Math.floor(points.length/2)],...points.filter((_,i)=>i!==Math.floor(points.length/2))];
+        for(const coordinate of ordered){
+          if(current!==sequence)return null;
+          const info=await queryCoordinate(coordinate,controller.signal,{refresh},theme);
+          if(info?.[key]){result[key]=info[key];result.soilUnit??=info.soilUnit;result.code??=info.code;available++;break;}
+        }
+      }catch(error){if(error.name==='AbortError'||current!==sequence)return null;failed++;}
+    }
+    if(current!==sequence)return null;
+    if(!available){onStatus(failed?'Dati del suolo temporaneamente non disponibili':'Nessun dato sui suoli disponibile per questo campo.');return null;}
+    const profile=normalizeSoilProfile({...result,layer:'texture',description:result.texture||result.limestone||result.drainage||result.reaction,samples:1,retrievedAt:new Date().toISOString(),geometrySignature:soilGeometrySignature(ring)});
+    onStatus(failed?'Alcuni temi del suolo non sono disponibili; verifica le righe del campo.':'Dati cartografici del suolo aggiornati · indicativi');
+    return profile;
+  }
   function moved(){if(active)refresh();}
   function loaded(){if(active)refresh();}
   function error(event){if(active&&event?.sourceId===SOURCE)onStatus('Carta dei suoli non disponibile. Controlla la connessione o riprova più tardi.');}
   map.on?.('moveend',moved);map.on?.('resize',moved);map.on?.('load',loaded);map.on?.('click',inspect);map.on?.('error',error);
-  return {setActive,setLayer,refresh,analyze,inspect,isActive:()=>active,destroy(){if(destroyed)return;setActive(false);destroyed=true;controller?.abort();for(const [event,fn] of [['moveend',moved],['resize',moved],['load',loaded],['click',inspect],['error',error]])map.off?.(event,fn);}};
+  return {setActive,setLayer,refresh,analyze,analyzeAll,inspect,isActive:()=>active,destroy(){if(destroyed)return;setActive(false);destroyed=true;controller?.abort();for(const [event,fn] of [['moveend',moved],['resize',moved],['load',loaded],['click',inspect],['error',error]])map.off?.(event,fn);}};
 }
