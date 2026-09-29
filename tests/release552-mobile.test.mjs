@@ -78,6 +78,6 @@ test('mobile profile exposes desktop account fields and escapes stored user valu
   assert.equal(document.querySelector('[name="companyName"]').value,'Vivai Obice');
   assert.equal(document.querySelector('script'),null);assert.ok(document.querySelector('[data-mobile-profile-action="save"]'));
   assert.ok(document.querySelector('[data-mobile-profile-action="reset-password"]'));assert.ok(document.querySelector('[data-mobile-profile-action="logout"]'));
-  assert.ok(document.querySelector('[href="./admin/"]'));
+  assert.equal(document.querySelector('[href="./admin/"]'),null);
   document.querySelector('[name="phone"]').value=' 333 222 ';assert.equal(readMobileProfileForm(document.querySelector('form')).phone,'333 222');
 });

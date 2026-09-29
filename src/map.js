@@ -413,7 +413,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     if (selected) onFieldSelect(selected.properties?.fieldId || null);
   });
   map.on('touchstart', event => {
-    touchStartPoint = manualDrawing && event.points?.length === 1 ? event.points[0] : null;
+    touchStartPoint = event.points?.length === 1 ? event.points[0] : null;
   });
   map.on('touchmove', event => {
     if (!touchStartPoint) return;
@@ -425,6 +425,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     const point=touchStartPoint;
     touchStartPoint=null;
     if (point && manualDrawing) handleDrawingPoint({...event,point:event.point ?? point});
+    else if (point) {
+      const selected=map.queryRenderedFeatures?.(point,{layers:[PROJECT_GEOMETRY_FILL_ID,OTHER_FIELDS_FILL_ID]})?.[0];
+      if(selected)onFieldSelect(selected.properties?.fieldId||null);
+    }
   });
   map.on('touchcancel',()=>{touchStartPoint=null;});
 

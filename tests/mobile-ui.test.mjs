@@ -85,12 +85,12 @@ test('V26 field name precedes live preview on first configuration',()=>{
  const children=[...section.children];assert.ok(children.indexOf($('.field-manager'))<children.indexOf($('#mobile-parameters-preview')));
  assert.equal($('.map-wrap').classList.contains('mobile-viewer-only'),true);
 });
-test('planting year moves below mobile parameters and returns to the desktop field manager',()=>{
- const c=setup(),{$}=c;const year=$('#campaign-year');assert.ok(year);
+test('mobile uses the year and status within refinement and restores desktop inputs',()=>{
+ const c=setup(),{$}=c;const year=$('#campaign-year-desktop');assert.ok(year);
  $('#mobile-add-field').click();c.ui.geometryCommitted();
- assert.ok($('#mobile-parameters-body').contains(year));
- assert.ok($('.advanced').compareDocumentPosition(year) & 4);
- c.desktop();assert.ok($('.panel-scroll>.field-manager').contains(year));
+ assert.ok($('.advanced').contains(year));
+ assert.equal(Boolean($('#mobile-parameters-body>.mobile-campaign-year')),false);
+ c.desktop();assert.ok($('.panel-scroll .advanced').contains(year));
 });
 test('V26 dragging a button does not activate it',()=>{
  const c=setup(),button=c.$('#mobile-add-field');
@@ -181,9 +181,10 @@ test('mobile layer sheet keeps the Catasto opacity control with the Catasto butt
  assert.ok(content.contains($('#cadastre-button')));
  assert.ok(content.contains($('#cadastre-opacity-control')));
 });
-test('touch pointer activation reaches mobile controls even when Safari omits the synthetic click',()=>{
+test('touch pointer activation reaches mobile controls when Safari omits the native click',async()=>{
  const c=setup(),button=c.$('#mobile-add-field');
  const event=new c.document.defaultView.Event('pointerup',{bubbles:true,cancelable:true});Object.defineProperty(event,'pointerType',{value:'touch'});button.dispatchEvent(event);
+ await new Promise(resolve=>setTimeout(resolve,125));
  assert.equal(c.begun,1);assert.equal(c.document.body.dataset.mobileScreen,'editor');
 });
 test('parameters use the live satellite map preview and return it to the home map',async()=>{
@@ -286,7 +287,33 @@ test('mobile profile never exposes the desktop-only administration action',()=>{
  c.auth.emit({kind:'user',displayName:'Marco',username:'marco',email:'m@example.it',isAdmin:false});
  assert.equal($('#mobile-admin-link'),null);
  c.auth.emit({kind:'user',displayName:'Marco',username:'marco',email:'m@example.it',isAdmin:true});
- assert.equal($('#mobile-admin-link'),null);
+ assert.equal(Boolean($('#mobile-profile-content a[href="./admin/"]')),false);
+});
+
+test('project card has a dedicated adjacent action column and PDF belongs to the card',()=>{
+ const c=setup(),{$}=c;c.ui.navigate('projects');
+ const row=$('[data-mobile-project="p1"]');
+ assert.ok(row.querySelector('.mobile-project-actions'));
+ assert.ok(row.querySelector('[data-mobile-project-action="pdf"]'));
+ assert.equal(row.querySelectorAll('.mobile-project-actions button').length,2);
+});
+
+test('mobile refinement starts closed and retains a single editable planting year/status pair inside',()=>{
+ const c=setup(),{$}=c;c.ui.navigate('parameters');
+ assert.equal($('.advanced').open,false);
+ assert.ok($('.advanced #campaign-year-desktop'));
+ assert.ok($('.advanced #planting-status-desktop'));
+ assert.equal(Boolean($('#mobile-parameters-body > .mobile-campaign-year')),false);
+});
+
+test('mobile orientation editor has exclusive sections and no preset buttons',()=>{
+ const c=setup(),{$}=c;c.ui.navigate('editor');
+ $('[data-sheet="orientation"]').click();
+ const orientation=$('[data-content="orientation"]');
+ assert.equal(Boolean(orientation.querySelector('.orientation-presets')),false);
+ const sections=orientation.querySelectorAll('[data-filari-section]');assert.equal(sections.length,2);
+ sections[1].querySelector('summary').click();
+ assert.equal(sections[1].open,true);assert.equal(sections[0].open,false);
 });
 
 test('Campi and Progetti expose refresh beside their add actions and rerender after synchronization',async()=>{

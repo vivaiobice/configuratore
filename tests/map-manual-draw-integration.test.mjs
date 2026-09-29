@@ -91,6 +91,18 @@ test('tapping a rendered field exposes its id to the mobile field sheet',()=>{
  }finally{globalThis.maplibregl=oldMapLibre;}
 });
 
+test('a short finger tap selects the field and a drag does not',()=>{
+ const oldMapLibre=globalThis.maplibregl;try{
+  class SelectingMap extends FakeMap{queryRenderedFeatures(){return [{properties:{fieldId:'field-2'}}];}}
+  globalThis.maplibregl={Map:SelectingMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds};
+  let selected=null;initMap({container:'map',onFieldSelect:id=>selected=id});const map=globalThis.__fakeMap;
+  map.trigger('touchstart',{points:[{x:10,y:10}]});map.trigger('touchend',{points:[{x:10,y:10}]});
+  assert.equal(selected,'field-2');
+  selected=null;map.trigger('touchstart',{points:[{x:10,y:10}]});map.trigger('touchmove',{points:[{x:10,y:30}]});map.trigger('touchend',{points:[{x:10,y:30}]});
+  assert.equal(selected,null);
+ }finally{globalThis.maplibregl=oldMapLibre;}
+});
+
 test('manual draw closes by clicking the first vertex and emits a real closed polygon', () => {
   const oldMapLibre = globalThis.maplibregl;
   const oldDraw = globalThis.MapboxDraw;

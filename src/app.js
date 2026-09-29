@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.1';
-import { createMobileUI } from './mobile-ui.js?v=55.4';
+import { createMobileUI } from './mobile-ui.js?v=55.5';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
@@ -25,7 +25,7 @@ import {renderSoilCard} from './soil-card.js?v=55.1';
 import {createViewMode} from './view-mode.js?v=55.4';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
 import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=55.2';
-import {installPenTapFallback} from './pen-tap.js?v=55.2';
+import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
@@ -503,7 +503,7 @@ $('#add-field-button')?.addEventListener('click', () => { state = { ...state, pr
 $('#remove-field-button')?.addEventListener('click', () => { if ((state.project.fields?.length ?? 1) <= 1) return; if (!globalThis.confirm?.('Rimuovere il campo attivo dal progetto?')) return; state = { ...state, project:removeActiveProjectField(state.project) };summarySaveFeedback.dirty(); persist(); loadActiveFieldOnMap(); });
 
 function isMobileMap() { return viewMode.isMobile(); }
-installPenTapFallback(document.body,()=>viewMode.isTablet()&&!isMobileMap(),{onMapTap:event=>{
+installPenTapFallback(document.body,()=>viewMode.isTablet()&&!isMobileMap()||Boolean(publicProjectDialog?.open),{onMapTap:event=>{
   const map=mapApi?.map,canvas=map?.getCanvas?.();if(!canvas?.contains(event.target))return;
   const rect=canvas.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top};
   map.fire('click',{point,lngLat:map.unproject(point),originalEvent:event});
