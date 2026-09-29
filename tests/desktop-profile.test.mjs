@@ -18,11 +18,16 @@ test('desktop header shows Login for Guest',()=>{
  assert.ok(document.querySelector('#theme-toggle .theme-sun'));
 });
 
-test('signed-in trigger shows display name and toggles compact menu',()=>{
- const {document,auth}=fixture();auth.emit({kind:'user',displayName:'Marco',username:'marco',email:'m@example.it',isAdmin:false});
+test('signed-in desktop trigger shows the username and toggles compact menu',()=>{
+ const {document,auth}=fixture();auth.emit({kind:'user',displayName:'Marco Obice',username:'marco',email:'m@example.it',isAdmin:false});
  document.querySelector('#profile-trigger').click();
- assert.equal(document.querySelector('#profile-trigger').textContent.trim(),'Marco');
+ assert.equal(document.querySelector('#profile-trigger').textContent.trim(),'marco');
  assert.equal(document.querySelector('#profile-menu').hidden,false);
+});
+
+test('an older account without username displays its email identifier, never the full name',()=>{
+ const {document,auth}=fixture();auth.emit({kind:'user',displayName:'Mario Rossi',username:null,email:'mario@example.it'});
+ assert.equal(document.querySelector('#profile-trigger').textContent.trim(),'mario');
 });
 
 test('ordinary user cannot render admin entry',()=>{

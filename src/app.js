@@ -31,7 +31,7 @@ import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
 import { createAuthService } from './auth-service.js?v=49';
 import { createAuthBridge } from './auth-bridge.js';
-import { createProfileUI } from './profile-ui.js?v=49';
+import { createProfileUI } from './profile-ui.js?v=55.4.1';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';

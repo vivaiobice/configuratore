@@ -50,7 +50,7 @@ export function createProfileUI({authService,document=globalThis.document}){
     if(state.kind==='user')renderUserBody(body);else renderGuestBody(body);
     body.append(themeSelector());feedback('');node.hidden=false;
   }
-  function render(next){state=next??{kind:'guest'};trigger.textContent=state.kind==='user'?(state.displayName||'Profilo'):'Login';menu.replaceChildren();
+  function render(next){state=next??{kind:'guest'};trigger.textContent=state.kind==='user'?(String(state.username??'').trim()||String(state.email??'').split('@')[0]||'Profilo'):'Login';menu.replaceChildren();
     if(state.kind==='user'){
       const profile=document.createElement('button');profile.type='button';profile.textContent='Profilo';profile.addEventListener('click',openProfile);menu.append(profile);
       if(state.isAdmin){const admin=document.createElement('a');admin.href='./admin/';admin.textContent='Amministrazione';admin.setAttribute('role','menuitem');menu.append(admin);}
