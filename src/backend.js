@@ -12,7 +12,7 @@ async function edgeFunctionError(error,fallback){
 }
 
 export function validateContact(contact) {
-  const required = ['companyName', 'firstName', 'lastName', 'phone', 'email'];
+  const required = ['firstName', 'lastName', 'phone', 'email'];
   const missing = required.filter((key) => !String(contact?.[key] ?? '').trim());
   const email = String(contact?.email ?? '').trim();
   const errors = [...missing.map((key) => `${key}:required`)];
@@ -32,7 +32,7 @@ export function toContactRow(contact, { ownerUserId } = {}) {
   if (!check.valid) throw new TypeError(`Invalid contact: ${check.errors.join(',')}`);
   return {
     owner_user_id: ownerUserId,
-    company_name: contact.companyName.trim(),
+    company_name: String(contact.companyName ?? '').trim(),
     first_name: contact.firstName.trim(),
     last_name: contact.lastName.trim(),
     phone: contact.phone.trim(),

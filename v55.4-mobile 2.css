@@ -1,0 +1,39 @@
+/* V55.4: mobile layout only. The desktop selectors and controls stay as in V55.3. */
+@media screen {
+  #mobile-app .mobile-brand{display:flex;align-items:center;gap:10px;right:64px;max-width:calc(100% - 84px)}
+  #mobile-app .mobile-brand img{flex:0 0 auto;width:137px;height:43px}
+  #mobile-app .mobile-brand span{display:inline-block;margin:0;white-space:nowrap;font-size:8px;line-height:1.2;letter-spacing:.02em}
+  #mobile-app .mobile-home-bottom{top:calc(66px + env(safe-area-inset-top));bottom:auto;left:max(12px,env(safe-area-inset-left));right:max(60px,env(safe-area-inset-right))}
+  #mobile-app #mobile-active-field{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #mobile-app .mobile-page-heading h1{font-size:22px}
+  #mobile-app .mobile-page-heading{margin-bottom:14px}
+  #mobile-app .step-heading h2,#mobile-app .advanced-body h3{font-size:15px}
+  #mobile-app .mobile-project-row{position:relative;display:block}
+  #mobile-app .mobile-project-card{padding:12px 56px 10px 13px;min-height:78px;gap:3px}
+  #mobile-app .mobile-project-card strong{font-size:15px}
+  #mobile-app .mobile-project-card span,#mobile-app .mobile-project-card small{font-size:11px}
+  #mobile-app .mobile-project-row>button[data-mobile-project-action="pdf"]{position:absolute;top:10px;right:10px;z-index:3;width:42px;height:42px;min-height:42px;padding:5px;border-radius:11px;background:#dceee0;color:#174b32;font-size:23px}
+  #mobile-app .mobile-project-actions{flex-direction:row;justify-content:flex-end;gap:7px;margin-top:5px}
+  #mobile-app .mobile-project-actions button{min-height:36px;height:36px;padding:0 12px}
+  #mobile-app #mobile-parameters-map{min-height:46px;margin:0 0 12px;background:#265c40;color:#fff;border:1px solid #174b32;box-shadow:0 2px 6px #17302320;font-size:13px}
+  #mobile-app .field-manager{padding:13px;margin-bottom:12px}
+  #mobile-app .field-manager .mobile-campaign-year{display:none}
+  #mobile-app #mobile-parameters-body>.mobile-campaign-year{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0;padding:11px 12px;background:#fff;border:1px solid #e0e6dc;border-radius:13px}
+  #mobile-app #mobile-parameters-body>.mobile-campaign-year label{min-width:0}
+  #mobile-app #mobile-parameters-body>.mobile-campaign-year input,#mobile-app #mobile-parameters-body>.mobile-campaign-year select{width:100%}
+  #mobile-app .mobile-soil-footer{display:grid;gap:6px;margin:10px 0 15px;color:#64766b;font-size:10px;line-height:1.4}
+  #mobile-app .mobile-soil-footer small{font-size:10px}
+  #mobile-app .mobile-soil-footer button{justify-self:start;min-height:42px;background:#e8f3ea;border:1px solid #97baa1;color:#225939}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0;padding-bottom:8px;border-bottom:1px solid #edf0e8}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row label:first-child{grid-column:1/-1}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row label{min-width:0}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row .cadastral-reference-actions{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row .cadastral-reference-actions button{min-height:42px;font-size:11px;white-space:nowrap}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row .cadastral-reference-actions [data-remove-reference]{margin-left:auto}
+}
+@media screen and (max-width:380px){
+  #mobile-app .mobile-brand{gap:4px}
+  #mobile-app .mobile-brand img{width:123px}
+  #mobile-app .mobile-brand span{font-size:7px;padding:4px}
+  #mobile-app #cadastral-reference-editor .cadastral-reference-row .cadastral-reference-actions button{padding:7px 9px}
+}

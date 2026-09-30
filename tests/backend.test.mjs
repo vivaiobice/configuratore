@@ -13,9 +13,11 @@ function fakeRpcClient(data) {
   };
 }
 
-test('validateContact requires company, first name, last name, phone and valid email', () => {
+test('validateContact allows an empty company while requiring personal contact details', () => {
   assert.equal(validateContact({ companyName:'Vivai Obice', firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, true);
-  assert.equal(validateContact({ companyName:'', firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, false);
+  assert.equal(validateContact({ companyName:'', firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, true);
+  assert.equal(validateContact({ firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, true);
+  assert.equal(validateContact({ companyName:'', firstName:'', lastName:'Obice', phone:'3331234567', email:'marco@example.it' }).valid, false);
   assert.equal(validateContact({ companyName:'Vivai Obice', firstName:'Marco', lastName:'Obice', phone:'3331234567', email:'not-an-email' }).valid, false);
 });
 
@@ -68,6 +70,13 @@ test('toContactRow maps required contact fields and technical owner without expo
   const { toContactRow } = await import('../src/backend.js');
   const row = toContactRow({ companyName:' Vivai Obice ', firstName:' Marco ', lastName:' Obice ', phone:' 333 ', email:' TEST@EXAMPLE.IT ', privacyVersion:'v1', marketingConsent:true }, { ownerUserId:'u1' });
   assert.deepEqual(row, { owner_user_id:'u1', company_name:'Vivai Obice', first_name:'Marco', last_name:'Obice', phone:'333', email:'test@example.it', privacy_version:'v1', marketing_consent:true });
+});
+
+test('toContactRow sends an empty string for optional company as required by the live database', async () => {
+  const { toContactRow } = await import('../src/backend.js');
+  const row = toContactRow({firstName:' Marco ',lastName:' Obice ',phone:' 333 ',email:' MARCO@EXAMPLE.IT '},{ownerUserId:'u1'});
+  assert.equal(row.company_name,'');
+  assert.equal(row.email,'marco@example.it');
 });
 
 test('toProjectRow links saved contact when supplied', () => {

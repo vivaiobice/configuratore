@@ -5,13 +5,14 @@ import {createQuoteUI} from './quote-ui.js?v=55.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=53.2';
+import { initMap } from './map.js?v=55.6.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js?v=55.6.1';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6.2';
+import { requireSecureConnection } from './secure-context.js';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
@@ -906,6 +907,7 @@ async function runFinalAction(action) {
     openQuote();
     return;
   }
+  if (action === 'save' && cloudService) requireSecureConnection(globalThis.isSecureContext);
   if (action === 'save') await projectSync?.saveRevision();
   if (cloudService) {
     await saveCloudProject('saved');
@@ -950,6 +952,10 @@ function openReportPopup({projectItem=null,fieldId=null}={}) {
 function requestFinalAction(action) {
   if(action==='report'){try{openReportPopup();}catch(error){setStatus(error.message);}return;}
   if(action==='quote'){try{openQuote();}catch(error){setStatus(error.message);}return;}
+  if (action === 'save' && cloudService && globalThis.isSecureContext === false) {
+    try { requireSecureConnection(false); } catch (error) { setStatus(error.message); summarySaveFeedback.error(); }
+    return;
+  }
   pendingFinalAction = action;
   if (!state.contact) {
     $('#contact-feedback').textContent = action === 'quote' ? 'Inserisci i dati obbligatori per richiedere un preventivo.' : 'Inserisci i dati obbligatori per completare questa azione.';
@@ -966,6 +972,10 @@ $('#close-dialog')?.addEventListener('click', () => contactDialog?.close());
 $('#contact-form')?.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!event.currentTarget.reportValidity()) return;
+  if (cloudService) {
+    try { requireSecureConnection(globalThis.isSecureContext); }
+    catch (error) { $('#contact-feedback').textContent = error.message; return; }
+  }
   const data = new FormData(event.currentTarget);
   const contact = { companyName: data.get('company'), firstName: data.get('firstName'), lastName: data.get('lastName'), phone: data.get('phone'), email: data.get('email'), privacyVersion:'v1', marketingConsent:data.get('marketing') === 'on' };
   const submittedAction=pendingFinalAction;

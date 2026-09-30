@@ -994,6 +994,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
 
   function locate() {
     return new Promise((resolve, reject) => {
+      if (globalThis.isSecureContext === false) {
+        const error = new Error('Per usare il GPS apri il configuratore tramite HTTPS. Il browser non concede la posizione su un sito non sicuro.');
+        onStatus(error.message);
+        reject(error);
+        return;
+      }
       if (!navigator.geolocation) {
         const error = new Error('Geolocalizzazione non supportata dal dispositivo');
         onStatus(error.message);
@@ -1010,7 +1016,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
         resolve({ longitude, latitude, accuracy });
       }, (error) => {
         const message = error.code === 1
-          ? 'Permesso posizione negato. Puoi continuare usando la ricerca o la mappa.'
+          ? 'Permesso posizione negato dal dispositivo o dal browser. Abilita la posizione per questo sito nelle impostazioni e riprova.'
           : 'Posizione non disponibile. Puoi continuare usando la ricerca o la mappa.';
         onStatus(message);
         reject(error);

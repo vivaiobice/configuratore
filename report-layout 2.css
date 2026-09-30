@@ -1,0 +1,4 @@
+.document-field-map .report-map-panel{width:min(100%,590px);margin:10px auto}
+@media print{
+  .document-field-map .report-map-panel{width:130mm;max-width:130mm;margin:3mm auto}
+}

@@ -1,4 +1,4 @@
-import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toSessionRow, toVisitorRow } from './backend.js?v=55.6';
+import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toSessionRow, toVisitorRow } from './backend.js?v=55.6.2';
 import { mergeLocalProjects } from './local-projects.js';
 import { buildResumeUrl, newResumeToken, sha256Hex } from './resume.js';
 

@@ -1,0 +1,9 @@
+/* Desktop/mobile screen preview only; report-print.css retains the A4 layout. */
+.report-preview{overflow-x:auto}
+.report-preview .report-page{width:760px;max-width:none;height:1075px;aspect-ratio:auto}
+.report-form-grid .report-form-full{grid-column:1/-1}
+.report-address-field{position:relative}
+.report-address-suggestions{position:absolute;z-index:12;top:100%;left:0;right:0;max-height:210px;overflow-y:auto;padding:5px;background:#fff;border:1px solid #cbd5cc;border-radius:12px;box-shadow:0 12px 28px rgba(16,44,28,.16)}
+.report-address-suggestions[hidden]{display:none}
+.report-address-suggestions button{width:100%;padding:9px 12px;text-align:left;background:transparent;border:0;border-radius:7px;color:#183f28;cursor:pointer}
+.report-address-suggestions button:hover,.report-address-suggestions button:focus{background:#eaf2ec}

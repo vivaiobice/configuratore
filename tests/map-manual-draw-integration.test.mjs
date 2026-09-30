@@ -2,6 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initMap } from '../src/map.js';
 
+test('GPS explains that HTTPS is required before asking for location permission', async () => {
+  const oldMaplibre=globalThis.maplibregl;
+  const oldSecure=Object.getOwnPropertyDescriptor(globalThis,'isSecureContext');
+  try {
+    globalThis.maplibregl={Map:FakeMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:FakeBounds};
+    Object.defineProperty(globalThis,'isSecureContext',{configurable:true,value:false});
+    let status='';
+    const api=initMap({container:'map',onStatus:message=>{status=message;}});
+    await assert.rejects(api.locate(),/HTTPS/);
+    assert.match(status,/HTTPS/);
+  }finally{
+    globalThis.maplibregl=oldMaplibre;
+    if(oldSecure)Object.defineProperty(globalThis,'isSecureContext',oldSecure);
+    else delete globalThis.isSecureContext;
+  }
+});
+
 test('undoing a mobile drawing point updates closure readiness without committing',()=>{
  const previous=globalThis.maplibregl;
  try {
