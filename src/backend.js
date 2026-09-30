@@ -368,8 +368,9 @@ export function createBackend(client) {
       return true;
     },
     async requestQuote(row) {
-      const result = await client.from('quote_requests').insert(row).select('id,status').single();
-      if (result.error) throw result.error;
+      const result = await client.functions.invoke('submit-quote', { body:row });
+      if (result.error) throw await edgeFunctionError(result.error,'Invio preventivo non riuscito');
+      if (!result.data?.delivered) throw new Error(result.data?.error || 'Invio preventivo non confermato');
       return result.data;
     },
     async claimProject(publicCode, token) {

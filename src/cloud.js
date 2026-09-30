@@ -1,4 +1,4 @@
-import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toQuoteRequestRow, toSessionRow, toVisitorRow } from './backend.js?v=55.1';
+import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toSessionRow, toVisitorRow } from './backend.js?v=55.6';
 import { mergeLocalProjects } from './local-projects.js';
 import { buildResumeUrl, newResumeToken, sha256Hex } from './resume.js';
 
@@ -181,12 +181,12 @@ export function createCloudService({
     return snapshot({ status: 'saved' });
   }
 
-  async function requestQuote(state, metrics, message = '') {
+  async function requestQuote(state, metrics, {fieldIds,contact,requestKey} = {}) {
     await initialize();
-    if (!contactId) throw new Error('Contact required before quote request');
     if (!projectId) await saveProject(state, metrics, { status: 'saved' });
-    const quote = await backend.requestQuote(toQuoteRequestRow({ projectId, contactId, ownerUserId, environment, message }));
-    await saveProject(state, metrics, { status: 'quote_requested' });
+    const quote = await backend.requestQuote({ projectId, fieldIds, contact, requestKey, privacyAccepted:true });
+    if(!quote.delivered)throw new Error('Invio preventivo non confermato');
+    contactId=quote.contactId??contactId;
     await backend.recordEvent({
       owner_user_id: ownerUserId,
       project_id: projectId,

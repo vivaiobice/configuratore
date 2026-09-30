@@ -19,7 +19,7 @@ export function createMobileUI(api){
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>AMBIENTE TEST · V55.5</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>V55.6</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -174,7 +174,8 @@ export function createMobileUI(api){
    });
    button.addEventListener('click',()=>{if(suppressOpen){suppressOpen=false;return;}openField(field.id);});
    remove.type='button';remove.className='mobile-card-delete';remove.dataset.removeField=field.id;remove.setAttribute('aria-label',`Elimina ${field.label}`);remove.setAttribute('aria-hidden','true');remove.tabIndex=-1;remove.textContent='Elimina';remove.addEventListener('click',()=>deleteField(field.id));
-   row.append(remove,button);list.append(row);
+   const quote=document.createElement('button');quote.type='button';quote.className='mobile-field-quote';quote.dataset.fieldAction='quote';quote.setAttribute('aria-label',`Preventivo del campo ${field.label}`);quote.title='Preventivo';quote.textContent='✉';quote.addEventListener('click',()=>{try{api.openQuoteForField?.(field.id);}catch(error){showNotice(error.message);}});
+   row.append(remove,button,quote);list.append(row);
   }
  }
  function openField(id){if(transaction)return;api.selectField(id);navigate('detail');}
@@ -199,6 +200,7 @@ export function createMobileUI(api){
     const button=document.createElement('button');button.type='button';button.className='mobile-project-card';button.innerHTML=`<strong>${escape(item.name)}</strong><span>${item.project.fields.filter(f=>f.geometry).length} campi · ${new Date(item.savedAt).toLocaleDateString('it-IT')}</span><small>Apri progetto ›</small>`;button.addEventListener('click',()=>{api.loadProject(item);navigate('fields');});
     const actions=document.createElement('div');actions.className='mobile-project-actions';
     const pdf=document.createElement('button');pdf.type='button';pdf.dataset.mobileProjectAction='pdf';pdf.setAttribute('aria-label',`Prepara PDF del progetto ${item.name}`);pdf.title='Prepara PDF';pdf.textContent='⎙';pdf.addEventListener('click',()=>{try{api.openReport?.(item);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});
+    const quote=document.createElement('button');quote.type='button';quote.dataset.mobileProjectAction='quote';quote.setAttribute('aria-label',`Preventivo del progetto ${item.name}`);quote.title='Preventivo';quote.textContent='✉';quote.addEventListener('click',()=>{try{api.openQuote?.(item);}catch(error){showNotice(error.message);}});
     const rename=document.createElement('button');rename.type='button';rename.dataset.mobileProjectAction='rename';rename.textContent='Rinomina';
     const remove=document.createElement('button');remove.type='button';remove.dataset.mobileProjectAction='delete';remove.textContent='Elimina';
     rename.addEventListener('click',()=>{
@@ -210,7 +212,7 @@ export function createMobileUI(api){
      editor.append(input,confirm);row.append(editor);input.focus?.();
     });
     remove.addEventListener('click',async()=>{const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;try{await api.deleteProject?.(item);renderProjects();showNotice('Progetto eliminato.');}catch(error){showNotice(`Eliminazione non riuscita: ${error.message}`);}});
-    actions.append(rename,remove);row.append(button,pdf,actions);list.append(row);
+    actions.append(rename,remove);row.append(button,pdf,quote,actions);list.append(row);
    }
   }catch(error){showNotice(error.message);}
  }
@@ -313,7 +315,7 @@ export function createMobileUI(api){
  $('#mobile-load-code').addEventListener('click',()=>api.openPublicProject?.());
  $('#mobile-undo').addEventListener('click',api.undoPoint);$('#mobile-stop-tool').addEventListener('click',()=>{api.stopTools();drawingState({active:false});});
  $('#mobile-finish-edit').addEventListener('click',()=>{api.stopTools();editingState({active:false});});
- $('#mobile-detail-pdf').addEventListener('click',()=>{try{api.openReportForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});$('#mobile-detail-quote').addEventListener('click',()=>api.finalAction('quote'));
+ $('#mobile-detail-pdf').addEventListener('click',()=>{try{api.openReportForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});$('#mobile-detail-quote').addEventListener('click',()=>{try{api.openQuoteForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message);}});
  $('#mobile-delete-field').addEventListener('click',()=>deleteField(api.getField().activeFieldId));
  sheet.addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;
   if(b.id==='draw-map-button')awaitingPerimeter=true;

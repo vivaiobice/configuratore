@@ -9,7 +9,7 @@ const PROJECT_SELECT = [
   'post_spacing_m','head_posts','intermediate_posts','total_posts','mechanization','project_context_type',
   'project_context_note','grape_variety','rootstock','clone_selection','field_plans','active_field_id','contact_id',
   'contacts(id,company_name,first_name,last_name,phone,email,marketing_consent)',
-  'quote_requests(id,status,quote_number,message,created_at)'
+  'quote_requests(id,status,quote_number,message,delivery_status,email_sent_at,created_at)'
 ].join(',');
 
 export function createAdminService(client,{randomUUID=()=>globalThis.crypto.randomUUID()}={}) {

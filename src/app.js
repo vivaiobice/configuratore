@@ -1,15 +1,17 @@
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.1';
-import { createMobileUI } from './mobile-ui.js?v=55.5';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=51';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
+import { createMobileUI } from './mobile-ui.js?v=55.6';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6';
+import {createQuoteUI} from './quote-ui.js?v=55.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=37';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
 import { initMap } from './map.js?v=53.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
+import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.1';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=51';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
@@ -780,6 +782,8 @@ mobileUi = createMobileUI({
   openPublicProject:openPublicProjectDialog,
   openReport:(item)=>openReportPopup({projectItem:item}),
   openReportForField:(id)=>openReportPopup({fieldId:id}),
+  openQuote:(item)=>openQuote({projectItem:item}),
+  openQuoteForField:(id)=>openQuote({fieldId:id}),
   finalAction:requestFinalAction
 });
 
@@ -790,9 +794,26 @@ desktopLibraryUi=createDesktopLibraryUI({
   renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
   deleteField:(field)=>removeMobileField(field.id),
   loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject,
-  renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,moveField:moveArchivedField
+  renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,moveField:moveArchivedField,
+  openQuote:(item)=>openQuote({projectItem:item}),openQuoteForField:(id)=>openQuote({fieldId:id})
 });
 desktopLibraryUi.mount();
+
+const quoteUi=createQuoteUI({document,getProfile:()=>authBridge.getState(),onSubmit:async({projectItem,fieldIds,contact,requestKey})=>{
+  if(!cloudService||!projectSync)throw new Error('Connessione non disponibile. Riprova quando il progetto sarà sincronizzato.');
+  if(projectItem && state.project.localProjectId!==projectItem.id)loadMobileProject(projectItem);
+  const selected=new Set((state.project.fields??[]).map(field=>field.id));
+  if(fieldIds.some(id=>!selected.has(id)))throw new Error('Il campo non appartiene al progetto selezionato.');
+  const synced=await projectSync.saveRevision();
+  if(synced.state!=='synced'||!synced.projectId)throw new Error('Sincronizzazione non riuscita. Riprova dopo aver salvato il progetto.');
+  cloudService.selectProject({...state.cloud,projectId:synced.projectId});
+  const snapshot=await cloudService.requestQuote(state,latestMetrics??{}, {fieldIds,contact,requestKey});
+  state={...state,contact:{...contact,privacyVersion:'v1',marketingConsent:false}};
+  await persistCloudSnapshot(snapshot);
+}});
+function openQuote({projectItem=null,fieldId=null}={}){
+  quoteUi.open({projectItem,fieldId,project:state.project});
+}
 
 bindNumberInput('#row-spacing', 'rowSpacingM'); bindNumberInput('#plant-spacing', 'plantSpacingM'); bindNumberInput('#post-spacing', 'postSpacingM');
 $('#headland')?.addEventListener('input', (event) => {
@@ -882,16 +903,7 @@ async function runFinalAction(action) {
     return;
   }
   if (action === 'quote') {
-    if (!cloudService) {
-      $('#contact-feedback').textContent = 'Progetto salvato sul dispositivo. Il preventivo online si attiverà appena il backend sarà collegato.';
-      return;
-    }
-    const materialRequest = String(state.project.materialRequestNote ?? '').trim();
-    const heights=(state.project.fields??[]).filter(field=>Array.isArray(field.geometry)&&field.geometry.length>=4).map(field=>`${field.label}: ${field.plantHeightCm===60?60:40} cm`).join('; ');
-    const quoteMessage = `${materialRequest ? `Richiesta materiale da verificare: ${materialRequest}. ` : ''}Altezza barbatelle: ${heights||'40 cm'}.`;
-    const snapshot = await cloudService.requestQuote(state, latestMetrics ?? {}, quoteMessage);
-    await persistCloudSnapshot(snapshot);
-    $('#contact-feedback').textContent = 'Richiesta preventivo registrata.';
+    openQuote();
     return;
   }
   if (action === 'save') await projectSync?.saveRevision();
@@ -937,6 +949,7 @@ function openReportPopup({projectItem=null,fieldId=null}={}) {
 
 function requestFinalAction(action) {
   if(action==='report'){try{openReportPopup();}catch(error){setStatus(error.message);}return;}
+  if(action==='quote'){try{openQuote();}catch(error){setStatus(error.message);}return;}
   pendingFinalAction = action;
   if (!state.contact) {
     $('#contact-feedback').textContent = action === 'quote' ? 'Inserisci i dati obbligatori per richiedere un preventivo.' : 'Inserisci i dati obbligatori per completare questa azione.';
@@ -999,8 +1012,17 @@ async function initializeCloud() {
     });
     accountAuthService=authService;
     authBridge.attach(authService);
+    await backend.ensureAnonymousSession();
     const authState=await authService.refresh();
     await authService.resumePendingTransfer().catch(()=>{});
+    setLocalOwnerScope(authState.user?.id);
+    const ownedDraft=loadDraft(globalThis.localStorage);
+    state=ownedDraft?.project
+      ? {...createInitialState(),...ownedDraft,environment:'LIVE',project:ensureProjectFields(ownedDraft.project)}
+      : createInitialState();
+    state={...state,map:normalizeMapState(state.map)};
+    loadActiveFieldOnMap();renderFieldManager();renderExclusions();syncProjectControls();calculateAndRender();
+    mobileUi?.sync();desktopLibraryUi?.render();
     if (authState.user && authState.kind === 'user') {
       const hydrated=await hydrateOwnedProjects({
         backend,
@@ -1048,7 +1070,7 @@ async function initializeCloud() {
     }
     await persistCloudSnapshot(snapshot);
     try {
-      const queueAdapter = await createIndexedDbSyncAdapter(globalThis.indexedDB);
+      const queueAdapter = await createIndexedDbSyncAdapter(globalThis.indexedDB,`vivai-obice-configuratore-live-${authState.user?.id}`);
       projectSync = createProjectSync({
         backend,
         queue:createSyncQueue(queueAdapter),
@@ -1062,7 +1084,7 @@ async function initializeCloud() {
       console.warn('Cloud archive queue unavailable; local persistence remains active',syncError);
     }
     await cloudService.trackEvent('configurator_opened', { device:matchMedia('(max-width: 760px)').matches ? 'mobile' : 'desktop' });
-    setStatus('Backend TEST collegato. La bozza locale resta sempre disponibile.');
+    setStatus('Archivio collegato. La bozza resta disponibile su questo dispositivo.');
   } catch (error) {
     console.error(error);
     setStatus('Backend temporaneamente non disponibile. La bozza locale resta attiva.');

@@ -1,7 +1,10 @@
 const KEY='vivai-obice:configuratore:projects:v1';
 import {migrateProjectArchive} from './local-migrations.js';
+import {ownerStorageKey} from './local-owner-scope.js';
+import {APP_CONFIG} from './config.js';
+const archiveKey=()=>ownerStorageKey(KEY,APP_CONFIG.environment);
 export function readLocalProjects(storage){
- const raw=storage?.getItem?.(KEY);
+ const raw=storage?.getItem?.(archiveKey());
  if(!raw)return [];
  try {
   const envelope=migrateProjectArchive(JSON.parse(raw));
@@ -12,7 +15,7 @@ export function readLocalProjects(storage){
 }
 function clone(value){return globalThis.structuredClone?globalThis.structuredClone(value):JSON.parse(JSON.stringify(value));}
 function writeArchive(storage,projects){
- storage.setItem(KEY,JSON.stringify(migrateProjectArchive({version:2,projects})));
+ storage.setItem(archiveKey(),JSON.stringify(migrateProjectArchive({version:2,projects})));
 }
 export function writeLocalProject(storage,project,name,cloud={}){
  if(!storage?.setItem)throw new Error('Salvataggio sul dispositivo non disponibile.');

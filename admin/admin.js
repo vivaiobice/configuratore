@@ -1,11 +1,11 @@
 import { APP_CONFIG } from '../src/config.js';
 import { connectSupabase } from '../src/backend.js?v=51';
 import { resolveFieldLocation } from '../src/field-location.js?v=51';
-import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=54';
+import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=55.6';
 import { initAdminMap } from './admin-map.js?v=54';
 import { mountAdminFieldMap } from './admin-field-map.js?v=54';
 import { createAdminLocationManager } from './admin-location.js?v=51';
-import { createAdminService } from './admin-service.js?v=51';
+import { createAdminService } from './admin-service.js?v=55.6';
 import { createAdminViews } from './admin-views.js?v=54';
 
 const $=selector=>document.querySelector(selector);
@@ -112,7 +112,7 @@ async function saveFieldLocation(row,location){
 
 async function loadProjects(){
   const [projectRows,profileRows]=await Promise.all([service.loadProjects(),service.loadProfiles()]);
-  projects=projectRows.map(project=>({...project,company_name:project.contacts?.company_name??null,quote_requested:(project.quote_requests?.length??0)>0}));
+  projects=projectRows.map(project=>({...project,company_name:project.contacts?.company_name??null,quote_requested:(project.quote_requests??[]).some(quote=>quote.delivery_status==='sent')}));
   profiles=profileRows;render();
 }
 

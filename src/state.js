@@ -7,7 +7,7 @@ export function normalizeMapState(map = {}) {
 
 export function createInitialState() {
   const state = {
-    environment: 'TEST',
+    environment: 'LIVE',
     map: normalizeMapState(),
     project: {
       campaignYear: new Date().getFullYear(),

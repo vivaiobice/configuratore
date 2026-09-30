@@ -114,7 +114,7 @@ export function buildAdminProjects(projects = []) {
   const fieldRows = expandProjectFields(projects);
   return (projects ?? []).filter((project) => !project.deleted_at).map((project) => {
     const fields = fieldRows.filter((field) => field.projectId === String(project.id));
-    const quotes = Array.isArray(project.quote_requests) ? project.quote_requests : [];
+    const quotes = Array.isArray(project.quote_requests) ? project.quote_requests.filter(item=>item.delivery_status==='sent') : [];
     const quote = quotes.find((item) => item.quote_number) ?? quotes[0] ?? null;
     const row = {
       rowId:String(project.id), projectId:String(project.id), project, fields,

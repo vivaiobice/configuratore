@@ -16,6 +16,7 @@ export function createDesktopLibraryUI(api){
     main.append(title,detail);
     const actions=document.createElement('div');actions.className='desktop-library-item-actions';
     const open=document.createElement('button');open.type='button';open.dataset.fieldAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.selectField?.(field.id);close();});
+    const quote=document.createElement('button');quote.type='button';quote.dataset.fieldAction='quote';quote.textContent='Preventivo';quote.addEventListener('click',()=>api.openQuoteForField?.(field.id));
     const rename=document.createElement('button');rename.type='button';rename.dataset.fieldAction='rename';rename.textContent='Rinomina';
     const remove=document.createElement('button');remove.type='button';remove.dataset.fieldAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
     rename.addEventListener('click',()=>{
@@ -31,7 +32,7 @@ export function createDesktopLibraryUI(api){
       const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il campo “${field.label||'Campo'}”?`))return;
       try{await api.deleteField?.(field);render();root.querySelector('#desktop-library-feedback').textContent='Campo eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
     });
-    actions.append(open,rename,remove);row.append(main,actions);return row;
+    actions.append(open,quote,rename,remove);row.append(main,actions);return row;
   }
   function projectButton(item){
     const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopProject=item.id;
@@ -46,6 +47,7 @@ export function createDesktopLibraryUI(api){
     main.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}});
     const actions=document.createElement('div');actions.className='desktop-library-item-actions';
     const open=document.createElement('button');open.type='button';open.dataset.projectAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.loadProject?.(item);close();});
+    const quote=document.createElement('button');quote.type='button';quote.dataset.projectAction='quote';quote.textContent='Preventivo';quote.addEventListener('click',()=>api.openQuote?.(item));
     const rename=document.createElement('button');rename.type='button';rename.dataset.projectAction='rename';rename.textContent='Rinomina';
     const remove=document.createElement('button');remove.type='button';remove.dataset.projectAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
     rename.addEventListener('click',()=>{
@@ -61,7 +63,7 @@ export function createDesktopLibraryUI(api){
       const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;
       try{await api.deleteProject?.(item);render();root.querySelector('#desktop-library-feedback').textContent='Progetto eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
     });
-    actions.append(open,rename,remove);row.append(main,actions);
+    actions.append(open,quote,rename,remove);row.append(main,actions);
     row.dataset.expanded=String(expandedProjects.has(item.id));
     row.addEventListener('dragover',(event)=>{
       if(!draggedField||draggedField.sourceItem.id===item.id)return;
