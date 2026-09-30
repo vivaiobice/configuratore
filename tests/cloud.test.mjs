@@ -11,7 +11,7 @@ function fakeBackend() {
     async upsertSession(row){ calls.push(['session',row]); return { id:row.id }; },
     async upsertProject(row){ calls.push(['project',row]); return { id:row.id ?? 'p1', public_code:'VO-123', status:row.status }; },
     async saveContact(contact, options){ calls.push(['contact',contact,options]); return { id:'c1' }; },
-    async requestQuote(row){ calls.push(['quote',row]); return { id:'q1', status:'new' }; },
+    async requestQuote(row){ calls.push(['quote',row]); return { id:'q1', delivered:true }; },
     async recordEvent(row){ calls.push(['event',row]); return true; }
   };
 }
@@ -56,18 +56,26 @@ test('cloud service saves contact then links it to the project', async () => {
   assert.equal(projectCall[1].status, 'saved');
 });
 
-test('cloud service creates quote request and moves project status to quote_requested', async () => {
+test('cloud service confirms only delivered quote requests', async () => {
   const backend = fakeBackend();
   const cloud = createCloudService({ backend, sessionId:'s1', environment:'TEST', consentState:'necessary' });
   const contact = { companyName:'Vivai Obice', firstName:'Marco', lastName:'Obice', phone:'333', email:'marco@example.it' };
   await cloud.saveContactAndProject({ ...state, contact }, metrics, contact);
-  const result = await cloud.requestQuote({ ...state, contact }, metrics, 'Richiamatemi');
+  const result = await cloud.requestQuote({ ...state, contact }, metrics, {fieldIds:['f1'],contact,requestKey:'q-key'});
   assert.equal(result.quoteRequestId, 'q1');
   const quoteCall = backend.calls.find(([name]) => name === 'quote');
-  assert.equal(quoteCall[1].project_id, 'p1');
-  assert.equal(quoteCall[1].contact_id, 'c1');
-  const projectCall = backend.calls.filter(([name]) => name === 'project').at(-1);
-  assert.equal(projectCall[1].status, 'quote_requested');
+  assert.equal(quoteCall[1].projectId, 'p1');
+  assert.deepEqual(quoteCall[1].fieldIds, ['f1']);
+  assert.equal(quoteCall[1].requestKey,'q-key');
+  assert.equal(result.status,'quote_requested');
+});
+
+test('failed email does not produce a quote event or success state',async()=>{
+  const backend=fakeBackend();
+  backend.requestQuote=async()=>({id:'q-failed',delivered:false});
+  const cloud=createCloudService({backend,sessionId:'s1'});
+  await assert.rejects(()=>cloud.requestQuote(state,metrics,{fieldIds:['f1'],contact:{},requestKey:'key'}),/non confermato/);
+  assert.equal(backend.calls.some(([name,row])=>name==='event'&&row.event_type==='quote_requested'),false);
 });
 
 

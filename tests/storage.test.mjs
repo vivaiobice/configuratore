@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from '../src/storage.js';
+import {ownerStorageKey,setLocalOwnerScope} from '../src/local-owner-scope.js';
 
 function memoryStorage() {
   const data = new Map();
@@ -13,7 +14,7 @@ function memoryStorage() {
 
 test('V29 draft loads through the non-destructive in-memory migration', () => {
   const storage = memoryStorage();
-  storage.setItem('vivai-obice:configuratore:draft', JSON.stringify({
+  storage.setItem(ownerStorageKey('vivai-obice:configuratore:draft'), JSON.stringify({
     version:1, savedAt:'2026-01-02T00:00:00Z', state:{ project:{ localProjectId:'p-old', fields:[] } }
   }));
   const draft = loadDraft(storage);
@@ -47,6 +48,24 @@ test('newSessionId returns high entropy non-sequential identifiers', () => {
   const b = newSessionId();
   assert.notEqual(a, b);
   assert.ok(a.length >= 30);
+});
+
+test('session IDs remain valid UUIDs without randomUUID',()=>{
+  const previous=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{
+    getRandomValues(bytes){for(let i=0;i<bytes.length;i++)bytes[i]=i;return bytes;}
+  }});
+  try{assert.equal(newSessionId(),'00010203-0405-4607-8809-0a0b0c0d0e0f');}
+  finally{if(previous)Object.defineProperty(globalThis,'crypto',previous);else delete globalThis.crypto;}
+});
+
+test('saving a new draft returns the stable identity used by subsequent saves',()=>{
+  const storage=memoryStorage();
+  const first=saveDraft(storage,{project:{fields:[]}});
+  const second=saveDraft(storage,{...first,project:{...first.project,label:'Villa Ada'}});
+  assert.match(first.project.localProjectId,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(second.project.localProjectId,first.project.localProjectId);
+  assert.equal(loadDraft(storage).project.label,'Villa Ada');
 });
 
 test('consent can be stored as necessary-only or analytics', () => {

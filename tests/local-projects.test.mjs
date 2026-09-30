@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readLocalProjects,writeLocalProject,renameLocalProject,removeLocalProject} from '../src/local-projects.js';
+import {ownerStorageKey,setLocalOwnerScope} from '../src/local-owner-scope.js';
 const storage=()=>{const data=new Map();return {getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};};
 test('saved projects are independent snapshots and saving the same id updates instead of duplicating',()=>{
  const store=storage(),project={localProjectId:'p1',fields:[{id:'f1',label:'Vigneto'}]};
@@ -15,10 +16,11 @@ test('corrupt archives are not silently overwritten and failed storage does not 
 });
 test('V29 archive is accepted in memory and next successful write upgrades to version 2',()=>{
  const store=storage();
- store.setItem('vivai-obice:configuratore:projects:v1',JSON.stringify({version:1,projects:[{id:'old',name:'Old',savedAt:'2025-01-01T00:00:00Z',project:{localProjectId:'old',fields:[]}}]}));
+ const key=ownerStorageKey('vivai-obice:configuratore:projects:v1');
+ store.setItem(key,JSON.stringify({version:1,projects:[{id:'old',name:'Old',savedAt:'2025-01-01T00:00:00Z',project:{localProjectId:'old',fields:[]}}]}));
  assert.equal(readLocalProjects(store)[0].cloud.clientProjectId,'old');
  writeLocalProject(store,{localProjectId:'new',fields:[]},'New');
- const raw=JSON.parse(store.getItem('vivai-obice:configuratore:projects:v1'));
+ const raw=JSON.parse(store.getItem(key));
  assert.equal(raw.version,2);
  assert.equal(raw.projects.length,2);
 });

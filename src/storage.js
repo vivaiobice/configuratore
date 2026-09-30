@@ -1,16 +1,17 @@
 const DRAFT_KEY = 'vivai-obice:configuratore:draft';
 const CONSENT_KEY = 'vivai-obice:configuratore:consent';
 const DRAFT_VERSION = 2;
-import { migrateDraftEnvelope } from './local-migrations.js';
+import { migrateDraftEnvelope } from './local-migrations.js?v=55.6.1';
 import {ownerStorageKey} from './local-owner-scope.js';
 import {APP_CONFIG} from './config.js';
+import {secureUuid} from './secure-id.js';
 const draftKey=()=>ownerStorageKey(DRAFT_KEY,APP_CONFIG.environment);
 
 export function saveDraft(storage, state) {
   if (!storage?.setItem) return false;
   const envelope = migrateDraftEnvelope({ version: DRAFT_VERSION, savedAt: new Date().toISOString(), state });
   storage.setItem(draftKey(), JSON.stringify(envelope));
-  return true;
+  return envelope.state;
 }
 
 export function loadDraft(storage) {
@@ -26,13 +27,7 @@ export function loadDraft(storage) {
 }
 
 export function newSessionId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  if (globalThis.crypto?.getRandomValues) {
-    const bytes = new Uint8Array(24);
-    globalThis.crypto.getRandomValues(bytes);
-    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  }
-  throw new Error('Secure random generator unavailable');
+  return secureUuid();
 }
 
 export function getConsentState(storage) {

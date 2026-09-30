@@ -55,7 +55,7 @@ test('Admin row exposes references and map data retains valid siblings', () => {
 });
 test('V54 Admin assets remain in V55 entry points', () => {
   const index=readFileSync(new URL('../index.html',import.meta.url),'utf8');const admin=readFileSync(new URL('../admin/index.html',import.meta.url),'utf8');
-  assert.match(index,/AMBIENTE TEST · V55/);assert.match(index,/cadastral-reference-editor/);assert.match(admin,/id="admin-logout"[^>]*>Logout/);
+  assert.match(index,/V55/);assert.match(index,/cadastral-reference-editor/);assert.match(admin,/id="admin-logout"[^>]*>Logout/);
 });
 test('cadastral references survive cloud snapshot and legacy project payload round trips',()=>{
   const first=[{source:'manual',municipality:'Alba',sheet:'26',parcel:'278'},{source:'manual',municipality:'Alba',sheet:'26',parcel:'279'}];

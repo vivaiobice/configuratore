@@ -3,11 +3,11 @@ import { createMobileUI } from './mobile-ui.js?v=55.6';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6';
 import {createQuoteUI} from './quote-ui.js?v=55.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
 import { initMap } from './map.js?v=53.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
-import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js';
+import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js?v=55.6.1';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6';
@@ -131,7 +131,7 @@ function renderCadastralState(next = {}) {
   else if(next.loading)setStatus('Caricamento della cartografia catastale…');
   else setStatus('Catasto attivo. Riferimento cartografico informativo.');
 }
-function persist() { saveDraft(globalThis.localStorage, state); }
+function persist() { state=saveDraft(globalThis.localStorage, state)||state; }
 function track(type, payload = {}) { cloudService?.trackEvent(type, payload).catch((error) => console.warn('Analytics event not recorded', type, error)); }
 function numberOrNull(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed > 0 ? parsed : null; }
 function formatArea(value) { if (!value) return '—'; if (value >= 10000) return `${(value / 10000).toLocaleString('it-IT', { maximumFractionDigits: 2 })} ha`; return `${Math.round(value).toLocaleString('it-IT')} m²`; }

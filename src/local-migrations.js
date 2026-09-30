@@ -1,10 +1,11 @@
+import {secureUuid} from './secure-id.js';
+
 function clone(value) {
   return globalThis.structuredClone ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value));
 }
 
 function defaultId() {
-  if (!globalThis.crypto?.randomUUID) throw new Error('Secure project identity unavailable');
-  return globalThis.crypto.randomUUID();
+  return secureUuid();
 }
 
 function nowIso(now) {

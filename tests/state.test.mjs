@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInitialState, mergeProjectState } from '../src/state.js';
 
-test('initial state starts in TEST with empty project geometry', () => {
+test('initial state starts in LIVE with empty project geometry', () => {
   const state = createInitialState();
-  assert.equal(state.environment, 'TEST');
+  assert.equal(state.environment, 'LIVE');
   assert.equal(state.project.geometry, null);
   assert.equal(state.project.rowSpacingM, 2.5);
   assert.equal(state.project.plantSpacingM, 0.9);

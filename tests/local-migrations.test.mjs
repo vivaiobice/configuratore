@@ -45,3 +45,18 @@ test('unsupported or malformed envelopes are rejected without mutation', () => {
   assert.deepEqual(old, { version:99, state:{} });
   assert.throws(() => migrateProjectArchive({version:1,projects:'bad'},fixedId,fixedNow), /archive/i);
 });
+
+test('a draft can acquire a UUID when randomUUID is unavailable but secure random bytes exist', () => {
+  const previous=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{
+    getRandomValues(bytes){for(let i=0;i<bytes.length;i++)bytes[i]=i;return bytes;}
+  }});
+  try{
+    const envelope=migrateDraftEnvelope({version:2,state:{project:{fields:[]}}});
+    assert.equal(envelope.state.project.localProjectId,'00010203-0405-4607-8809-0a0b0c0d0e0f');
+    assert.equal(envelope.state.cloud.clientProjectId,envelope.state.project.localProjectId);
+  }finally{
+    if(previous)Object.defineProperty(globalThis,'crypto',previous);
+    else delete globalThis.crypto;
+  }
+});

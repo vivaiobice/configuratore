@@ -137,7 +137,7 @@ test('admin project totals derive from all fields instead of stale top-level val
   const projects=buildAdminProjects([{id:'p1',gross_area_m2:1,commercial_plants_25:1,field_plans:[
     {id:'a',metrics:{areaM2:100,commercialPlants25:50}},
     {id:'b',metrics:{areaM2:200,commercialPlants25:75}}
-  ],quote_requests:[{id:'q1',quote_number:'PREV-1'}]}]);
+  ],quote_requests:[{id:'q1',quote_number:'PREV-1',delivery_status:'sent'}]}]);
   assert.equal(projects[0].fieldCount,2);
   assert.equal(projects[0].areaM2,300);
   assert.equal(projects[0].commercialPlants,125);
