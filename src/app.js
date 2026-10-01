@@ -1,7 +1,7 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
 import { createMobileUI } from './mobile-ui.js?v=55.6.4';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6.3';
-import {createQuoteUI} from './quote-ui.js?v=55.6';
+import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.6.3';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
@@ -17,7 +17,7 @@ import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=34';
+import { createProjectSync } from './project-sync.js?v=55.6.6';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
@@ -821,8 +821,11 @@ const quoteUi=createQuoteUI({document,getProfile:()=>authBridge.getState(),onSub
   const selected=new Set((state.project.fields??[]).map(field=>field.id));
   if(fieldIds.some(id=>!selected.has(id)))throw new Error('Il campo non appartiene al progetto selezionato.');
   const synced=await projectSync.saveRevision();
-  if(synced.state!=='synced'||!synced.projectId)throw new Error('Sincronizzazione non riuscita. Riprova dopo aver salvato il progetto.');
+  if(synced.state!=='synced'||!synced.projectId)throw new Error(synced.state==='conflict'
+    ? 'Il progetto è stato aggiornato su un altro dispositivo. Ricaricalo dalla sezione Progetti e riprova.'
+    : `Sincronizzazione non riuscita: ${synced.lastError||'riprova tra poco'}. La richiesta non è stata inviata.`);
   cloudService.selectProject({...state.cloud,projectId:synced.projectId});
+  await saveCloudProject('saved');
   const snapshot=await cloudService.requestQuote(state,latestMetrics??{}, {fieldIds,contact,requestKey});
   state={...state,contact:{...contact,privacyVersion:'v1',marketingConsent:false}};
   await persistCloudSnapshot(snapshot);

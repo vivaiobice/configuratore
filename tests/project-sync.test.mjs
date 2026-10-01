@@ -17,7 +17,7 @@ function memoryQueue() {
   });
 }
 
-function createHarness({ fields=[validField()], response=null, failFirst=false } = {}) {
+function createHarness({ fields=[validField()], response=null, failFirst=false, applyHook=null } = {}) {
   let state = { environment:'TEST', project:{ localProjectId:'00000000-0000-4000-8000-000000000010', fields } };
   let sequence = 0;
   let shouldFail = failFirst;
@@ -27,6 +27,7 @@ function createHarness({ fields=[validField()], response=null, failFirst=false }
     calls:[],
     async applyProjectOperation(args) {
       this.calls.push(['apply',args]);
+      if (applyHook) return applyHook(args);
       if (shouldFail) { shouldFail=false; throw new Error('network'); }
       return response ?? { status:'applied', projectId:'server-p1', version:args.expectedVersion+1, latestRevisionNumber:0 };
     },
@@ -60,6 +61,26 @@ test('no cloud project is created before a valid perimeter exists', async () => 
   sync.service.schedule('parameter_changed');
   await sync.clock.runAll();
   assert.equal(sync.backend.calls.length, 0);
+});
+
+test('manual revision waits for an in-flight autosave before applying its snapshot', async () => {
+  let release;
+  const first=new Promise(resolve=>{release=resolve;});
+  let count=0;
+  const sync=createHarness({applyHook:async args=>{
+    if(++count===1)await first;
+    return {status:'applied',projectId:'server-p1',version:args.expectedVersion+1,latestRevisionNumber:0};
+  }});
+  const automatic=sync.service.flush();
+  await Promise.resolve();
+  const manual=sync.service.saveRevision();
+  release();
+  await automatic;
+  const result=await manual;
+  assert.equal(result.state,'synced');
+  const applies=sync.backend.calls.filter(([type])=>type==='apply').map(([,args])=>args.expectedVersion);
+  assert.deepEqual(applies,[0,1]);
+  assert.equal(sync.backend.calls.find(([type])=>type==='revision')[1].expectedVersion,2);
 });
 
 test('rapid changes collapse into one autosave with the final snapshot', async () => {

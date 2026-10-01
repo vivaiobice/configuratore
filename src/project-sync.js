@@ -31,6 +31,13 @@ export function createProjectSync({
   let suspended = false;
   let stateBeforeSuspend = syncState.state;
   let lastRevisionSnapshot = null;
+  let operationTail = Promise.resolve();
+
+  function serialize(work) {
+    const result = operationTail.then(work, work);
+    operationTail = result.catch(() => {});
+    return result;
+  }
 
   function publish(extra = {}) {
     const update = {
@@ -100,7 +107,7 @@ export function createProjectSync({
     }
   }
 
-  async function flush() {
+  async function flushInternal() {
     if (suspended) return syncState;
     if (timer) {
       cancelTimer(timer);
@@ -115,6 +122,8 @@ export function createProjectSync({
     return send(operation);
   }
 
+  function flush() { return serialize(flushInternal); }
+
   function schedule() {
     if (suspended) return;
     if (timer) cancelTimer(timer);
@@ -124,18 +133,24 @@ export function createProjectSync({
     }, debounceMs);
   }
 
-  async function retryPending() {
+  async function retryPendingInternal(projectClientId = null) {
     if (suspended) return syncState;
     for (const operation of await queue.pending()) {
+      if (projectClientId && operation.projectClientId !== projectClientId) continue;
       const result = await send(operation);
       if (result.state === 'error' || result.state === 'conflict') break;
     }
     return syncState;
   }
 
-  async function saveRevision({ reason='manual_save' } = {}) {
+  function retryPending() { return serialize(() => retryPendingInternal()); }
+
+  async function saveRevisionInternal({ reason='manual_save' } = {}) {
     if (suspended) return syncState;
-    const applied = await flush();
+    const snapshotBeforeSave = currentSnapshot();
+    const recovered = await retryPendingInternal(snapshotBeforeSave.clientProjectId);
+    if (recovered.state === 'error' || recovered.state === 'conflict') return recovered;
+    const applied = await flushInternal();
     const snapshot = currentSnapshot();
     if (applied.state === 'conflict') return applied;
     if (!lastRevisionSnapshot && applied.projectId && backend.loadLatestProjectRevision) {
@@ -162,6 +177,8 @@ export function createProjectSync({
     if(result.state==='synced')lastRevisionSnapshot=snapshot;
     return result;
   }
+
+  function saveRevision(options) { return serialize(() => saveRevisionInternal(options)); }
 
   function suspend(reason='manual') {
     if (!suspended) stateBeforeSuspend=syncState.state;

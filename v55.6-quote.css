@@ -3,10 +3,11 @@
 .quote-dialog form {display:grid;gap:12px}
 .quote-dialog .quote-project-name {font-weight:700;background:#e7f1e6;padding:10px 12px;border-radius:8px;margin:0}
 .quote-field-list {display:grid;gap:6px;max-height:23vh;overflow:auto}
-.quote-dialog details {border-top:1px solid #cad8c9;padding-top:10px}
-.quote-dialog summary {cursor:pointer;font-weight:700;padding:8px 0}
-.quote-dialog details label:not(.check-row) {display:grid;gap:4px;margin:8px 0}
-.quote-dialog details input:not([type=checkbox]) {width:100%;box-sizing:border-box;min-height:40px;padding:8px;border:1px solid #aeb9b0;border-radius:7px}
+.quote-dialog .quote-contact-toggle {width:100%;min-height:46px;text-align:left;border:0;border-top:1px solid #cad8c9;background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;touch-action:manipulation}
+.quote-dialog [data-contact] {display:grid;gap:8px}
+.quote-dialog [data-contact][hidden] {display:none}
+.quote-dialog [data-contact] label:not(.check-row) {display:grid;gap:4px;margin:8px 0}
+.quote-dialog [data-contact] input:not([type=checkbox]) {width:100%;box-sizing:border-box;min-height:40px;padding:8px;border:1px solid #aeb9b0;border-radius:7px}
 .quote-dialog .field-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 @media(max-width:560px){.quote-dialog .field-grid{grid-template-columns:1fr}}
 @media screen {

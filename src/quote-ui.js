@@ -1,18 +1,28 @@
+import {installPenTapFallback} from './pen-tap.js?v=55.5';
+
 export function createQuoteUI({document=globalThis.document,getProfile=()=>({}),onSubmit}){
   const dialog=document.createElement('dialog');dialog.className='quote-dialog';dialog.id='quote-dialog';
   dialog.innerHTML=`<form id="quote-form"><div class="dialog-heading"><div><p class="eyebrow">PREVENTIVO</p><h2>Richiesta a Vivai Obice</h2></div><button type="button" class="dialog-close" data-close aria-label="Chiudi">×</button></div>
     <p data-project class="quote-project-name"></p><p>Seleziona i campi da includere. Non sono indicati prezzi; ti contatteremo dopo la richiesta.</p>
     <div data-fields class="quote-field-list"></div>
-    <details data-contact><summary>Continua con i tuoi dati</summary>
+    <button type="button" class="quote-contact-toggle" data-contact-toggle aria-controls="quote-contact-fields" aria-expanded="false">Continua con i tuoi dati</button>
+    <div data-contact id="quote-contact-fields" hidden>
       <div class="field-grid"><label>Nome<input name="firstName" autocomplete="given-name" required></label><label>Cognome<input name="lastName" autocomplete="family-name" required></label></div>
       <label>Azienda (facoltativa)<input name="companyName" autocomplete="organization"></label>
       <div class="field-grid"><label>Telefono<input name="phone" type="tel" autocomplete="tel" required></label><label>E-mail<input name="email" type="email" autocomplete="email" required></label></div>
       <label class="check-row"><input name="privacy" type="checkbox" required> Ho letto l’informativa privacy per la gestione della richiesta.</label>
       <button class="primary-button wide" type="submit">Invia richiesta preventivo</button>
-    </details><p data-feedback class="form-feedback" role="status"></p></form>`;
+    </div><p data-feedback class="form-feedback" role="status"></p></form>`;
   document.body.append(dialog);
   let context=null,requestKey=null,sending=false;
   const form=dialog.querySelector('form'),feedback=dialog.querySelector('[data-feedback]');
+  const contact=dialog.querySelector('[data-contact]'),contactToggle=dialog.querySelector('[data-contact-toggle]');
+  contactToggle.addEventListener('click',()=>{
+    contact.hidden=!contact.hidden;
+    contactToggle.setAttribute('aria-expanded',String(!contact.hidden));
+    if(!contact.hidden)contact.querySelector('input')?.focus({preventScroll:true});
+  });
+  installPenTapFallback(dialog,()=>dialog.open);
   dialog.querySelector('[data-close]').addEventListener('click',()=>dialog.close());
   dialog.addEventListener('close',()=>{context=null;requestKey=null;feedback.textContent='';});
   dialog.querySelector('[data-fields]').addEventListener('change',()=>{requestKey=null;});
@@ -47,7 +57,7 @@ export function createQuoteUI({document=globalThis.document,getProfile=()=>({}),
     if(!fields.length){feedback.textContent='Salva il perimetro di almeno un campo prima di richiedere il preventivo.';}
     const profile=getProfile();
     for(const key of ['firstName','lastName','companyName','phone','email'])form.elements.namedItem(key).value=profile?.[key]??'';
-    dialog.querySelector('[data-contact]').open=false;
+    contact.hidden=true;contactToggle.setAttribute('aria-expanded','false');
     dialog.showModal();
   }
   return {open,dialog};

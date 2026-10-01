@@ -16,5 +16,13 @@ test('quote dialog names the actual project, scopes fields and preloads the sign
   assert.equal(ui.dialog.querySelector('[data-project]').textContent,'Progetto: Vigneto A');
   assert.deepEqual([...ui.dialog.querySelectorAll('[data-field]')].filter(input=>input.checked).map(input=>input.value),['b']);
   assert.equal(form.querySelector('[name="firstName"]').value,'Ada');
+  const toggle=ui.dialog.querySelector('[data-contact-toggle]');
+  const contact=ui.dialog.querySelector('[data-contact]');
+  assert.equal(contact.hidden,true);
+  toggle.click();
+  assert.equal(contact.hidden,false);
+  assert.equal(toggle.getAttribute('aria-expanded'),'true');
+  ui.open({projectItem,fieldId:'b'});
+  assert.equal(contact.hidden,true);
   assert.throws(()=>ui.open({projectItem,fieldId:'unrelated'}),/non appartiene/);
 });
