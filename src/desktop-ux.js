@@ -81,6 +81,7 @@ export function createSaveFeedback(button,{idleLabel='Salva il progetto'}={}){
  return{
   saving:()=>set('Salvataggio…','saving',true),
   saved:()=>set('✓ Progetto salvato','saved'),
+  local:()=>set('Bozza salvata sul dispositivo','local'),
   dirty:()=>set(idleLabel,'dirty'),
   error:()=>set('Salvataggio non riuscito','error')
  };

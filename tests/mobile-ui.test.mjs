@@ -8,7 +8,7 @@ const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
 function setup(mobile=true,mapInstance=null,withCompass=false){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
- const $=s=>document.querySelector(s);let begun=0,saved=0,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,reportField=null,viewToggles=0;
+ const $=s=>document.querySelector(s);let begun=0,saved=0,lastSaveOptions=null,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,reportField=null,viewToggles=0;
  if(withCompass){
   const group=document.createElement('div');group.className='maplibregl-ctrl-group';
   const compass=document.createElement('button');compass.className='maplibregl-ctrl-compass';compass.setAttribute('aria-label','Reset bearing to north');
@@ -25,10 +25,10 @@ function setup(mobile=true,mapInstance=null,withCompass=false){
   emit(value){authState=value;for(const fn of authListeners)fn(value);}};
  const ui=createMobileUI({isMobile:()=>mobile,getMap:()=>mapInstance,getField:()=>project,getFields:()=>project.fields,getMetrics:()=>metrics,auth,
   resizeMap(){},focusAll(){},stopTools(){},finishEdit(){},undoPoint(){},beginEdit(){begun++;},beginNewField(){begun++;},
-  selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(){saved++;},listProjects:()=>projects,loadProject(){},newProject(){},async refreshProjects(){refreshed++;},
+  selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(name,options){saved++;lastSaveOptions=options;return options?.commitCloud?{location:'cloud'}:{location:'local'};},listProjects:()=>projects,loadProject(){},newProject(){},async refreshProjects(){refreshed++;},
   async renameProject(item,name){renamedProject=[item.id,name];item.name=name;},async deleteProject(item){deletedProject=item.id;projects.splice(projects.indexOf(item),1);},confirm:()=>true,
   finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){},openPublicProject(){loadedCode++;},openReport(item){reportProject=item;},openReportForField(id){reportField=id;},toggleTabletView(){viewToggles++;}});
- return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},get loadedCode(){return loadedCode;},get reportProject(){return reportProject;},get reportField(){return reportField;},get viewToggles(){return viewToggles;},desktop(){mobile=false;ui.sync();}};
+ return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get lastSaveOptions(){return lastSaveOptions;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},get loadedCode(){return loadedCode;},get reportProject(){return reportProject;},get reportField(){return reportField;},get viewToggles(){return viewToggles;},desktop(){mobile=false;ui.sync();}};
 }
 test('V26 mobile perimeter becomes light and subordinate to rows, desktop paints restore exactly',()=>{
  const paints=new Map([
@@ -132,6 +132,14 @@ test('mobile opens on map: add → editor → confirm → parameters → save �
  $('#mobile-save-field').click();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(c.saved,1);assert.equal(c.document.body.dataset.mobileScreen,'detail');
  assert.equal($('.map-wrap').parentElement.id,'mobile-detail-map');
+});
+
+test('the mobile Projects save command requests cloud save and reports its destination',async()=>{
+ const c=setup(),{$}=c;
+ c.ui.navigate('projects');$('#mobile-save-project').click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.lastSaveOptions?.commitCloud,true);
+ assert.match($('#mobile-notice').textContent,/online/);
 });
 test('field detail uses the live interactive map without map controls',()=>{
  const c=setup(),{$}=c;$('[data-view="fields"]').click();assert.equal(c.document.body.dataset.mobileScreen,'fields');

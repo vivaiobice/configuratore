@@ -146,10 +146,10 @@ export function createMobileUI(api){
  async function save(){
   if(saving)return;if(screen==='parameters'&&!validateParameters())return;
   if(!api.getFields().some(f=>f.geometry)){showNotice('Disegna almeno un campo prima di salvare.');return;}
-  saving=true;$('#mobile-save-field').disabled=true;
-  try{const fieldId=api.getField()?.activeFieldId;await api.saveProject($('#mobile-project-name').value);transaction=false;awaitingPerimeter=false;if(fieldId)api.selectField(fieldId);navigate('detail');showNotice('Impianto salvato su questo dispositivo.');}
+  saving=true;$('#mobile-save-field').disabled=true;$('#mobile-save-project').disabled=true;
+  try{const fieldId=api.getField()?.activeFieldId;const result=await api.saveProject($('#mobile-project-name').value,{commitCloud:screen==='projects'});transaction=false;awaitingPerimeter=false;if(fieldId)api.selectField(fieldId);navigate('detail');showNotice(result?.location==='cloud'?'Progetto salvato online.':'Impianto salvato su questo dispositivo.');}
   catch(error){showNotice(`Salvataggio non riuscito: ${error.message}`);}
-  finally{saving=false;$('#mobile-save-field').disabled=false;}
+  finally{saving=false;$('#mobile-save-field').disabled=false;$('#mobile-save-project').disabled=false;}
  }
  function metricsHtml(field){const m=api.getMetrics(field);return `<section class="mobile-vines-summary"><span>Quantità commerciale barbatelle</span><strong class="mobile-commercial-vines">${n(m.commercialPlants25)}</strong><small>Barbatelle calcolate: <b class="mobile-calculated-vines">${n(m.simulatedPlants)}</b></small></section><dl class="mobile-metrics">${[
   ['Superficie',area(m.areaM2)],['Superficie netta',area(m.netAreaM2)],['Pali intermedi',n(m.intermediatePosts)],['Pali di testa',n(m.headPosts)],['Pali totali',n(m.totalPosts)],['Tratti di filare',n(m.rowCount)],['Metri di filare',`${n(m.rowLinearM)} m`],['Perimetro',`${n(m.perimeterM)} m`]

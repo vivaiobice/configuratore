@@ -44,15 +44,15 @@ export function createProfileUI({authService,document=globalThis.document}){
   function renderUserBody(node){
     node.innerHTML=`<form class="profile-details"><div class="profile-fields"><label>Nome<input name="firstName" autocomplete="given-name" value="${esc(state.firstName)}"></label><label>Cognome<input name="lastName" autocomplete="family-name" value="${esc(state.lastName)}"></label><label class="profile-wide">Azienda<input name="companyName" autocomplete="organization" value="${esc(state.companyName)}"></label><label class="profile-wide">Indirizzo<input name="address" autocomplete="street-address" value="${esc(state.address)}"></label><label>CAP<input name="postalCode" autocomplete="postal-code" value="${esc(state.postalCode)}"></label><label>Località<input name="city" autocomplete="address-level2" value="${esc(state.city)}"></label><label>Provincia<input name="province" autocomplete="address-level1" maxlength="2" value="${esc(state.province)}"></label><label>Partita IVA<input name="vatNumber" autocomplete="off" value="${esc(state.vatNumber)}"></label><label>Telefono<input name="phone" autocomplete="tel" value="${esc(state.phone)}"></label><label>E-mail<input value="${esc(state.email)}" readonly></label></div><button class="profile-primary" data-profile-action="save" type="button">Salva dati profilo</button></form><div class="profile-account-actions"><button data-profile-action="reset-password" type="button">Reimposta password</button><button data-profile-action="logout" type="button">Esci / Logout</button></div>`;
   }
-  function openProfile(){
+  function openProfile(message=''){
     closeMenu();const node=ensureDialog(),body=node.querySelector('.profile-dialog-body');
     node.querySelector('#profile-dialog-title').textContent=state.kind==='user'?'Il tuo profilo':'Accedi';
     if(state.kind==='user')renderUserBody(body);else renderGuestBody(body);
-    body.append(themeSelector());feedback('');node.hidden=false;
+    body.append(themeSelector());feedback(message);node.hidden=false;
   }
   function render(next){state=next??{kind:'guest'};trigger.textContent=state.kind==='user'?(String(state.username??'').trim()||String(state.email??'').split('@')[0]||'Profilo'):'Login';menu.replaceChildren();
     if(state.kind==='user'){
-      const profile=document.createElement('button');profile.type='button';profile.textContent='Profilo';profile.addEventListener('click',openProfile);menu.append(profile);
+      const profile=document.createElement('button');profile.type='button';profile.textContent='Profilo';profile.addEventListener('click',()=>openProfile());menu.append(profile);
       if(state.isAdmin){const admin=document.createElement('a');admin.href='./admin/';admin.textContent='Amministrazione';admin.setAttribute('role','menuitem');menu.append(admin);}
       const logout=document.createElement('button');logout.type='button';logout.textContent='Esci';logout.addEventListener('click',async()=>{closeMenu();await authService.logout();});menu.append(logout);
     }else closeMenu();

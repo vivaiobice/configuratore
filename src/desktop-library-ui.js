@@ -1,4 +1,4 @@
-import {createSaveFeedback} from './desktop-ux.js?v=36';
+import {createSaveFeedback} from './desktop-ux.js?v=55.6.3';
 const text=(value)=>String(value??'');
 
 export function createDesktopLibraryUI(api){
@@ -160,7 +160,7 @@ export function createDesktopLibraryUI(api){
     const saveButton=root.querySelector('#desktop-library-save'),saveFeedback=createSaveFeedback(saveButton,{idleLabel:'Salva progetto'});
     saveButton.addEventListener('click',async()=>{
       saveFeedback.saving();
-      try{await api.saveProject?.();render();saveFeedback.saved();root.querySelector('#desktop-library-feedback').textContent='Progetto salvato correttamente.';}
+      try{const result=await api.saveProject?.();render();if(result?.location==='cloud'){saveFeedback.saved();root.querySelector('#desktop-library-feedback').textContent='Progetto salvato online.';}else{saveFeedback.local();root.querySelector('#desktop-library-feedback').textContent='Bozza salvata su questo dispositivo.';}}
       catch(error){saveFeedback.error();root.querySelector('#desktop-library-feedback').textContent=`Salvataggio non riuscito: ${text(error.message)}`;}
     });
     root.querySelector('#desktop-library-new').addEventListener('click',()=>{api.newProject?.();close();});

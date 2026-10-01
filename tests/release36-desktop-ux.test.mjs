@@ -44,6 +44,7 @@ test('desktop save feedback exposes saving, success, dirty and error states',asy
  const feedback=createSaveFeedback(document.querySelector('#save'));
  feedback.saving();assert.equal(document.querySelector('#save').textContent,'Salvataggio…');
  feedback.saved();assert.equal(document.querySelector('#save').textContent,'✓ Progetto salvato');
+ feedback.local();assert.equal(document.querySelector('#save').textContent,'Bozza salvata sul dispositivo');
  feedback.dirty();assert.equal(document.querySelector('#save').textContent,'Salva il progetto');
  feedback.error();assert.equal(document.querySelector('#save').textContent,'Salvataggio non riuscito');
 });

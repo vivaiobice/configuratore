@@ -16,7 +16,7 @@ test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
   assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6\\.2`));
  }
  for(const module of ['desktop-library-ui','cloud']){
-  assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6(?:\\.2)?`));
+  assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6(?:\\.[23])?`));
  }
 });
 

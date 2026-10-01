@@ -13,7 +13,7 @@ test('desktop library exposes selectable Campi and Progetti without replacing th
  const projects=[{id:'p1',name:'Progetto Alba',savedAt:'2026-09-22T00:00:00Z',project:{fields}}];
  let selected=null,loaded=null,refreshed=0,saved=0,renamed=null,deleted=null,renamedField=null,deletedField=null;
  const ui=module.createDesktopLibraryUI({document,isDesktop:()=>true,getFields:()=>fields,getProjects:()=>projects,
-  selectField:id=>selected=id,loadProject:item=>loaded=item.id,refreshProjects:async()=>{refreshed++;},saveProject:async()=>{saved++;},
+  selectField:id=>selected=id,loadProject:item=>loaded=item.id,refreshProjects:async()=>{refreshed++;},saveProject:async()=>{saved++;return {location:'local'};},
   renameField:async(field,name)=>{renamedField=[field.id,name];field.label=name;},deleteField:async(field)=>{deletedField=field.id;},
   renameProject:async(item,name)=>{renamed=[item.id,name];item.name=name;},deleteProject:async(item)=>{deleted=item.id;projects.splice(projects.indexOf(item),1);},confirm:()=>true});
  ui.mount();
@@ -42,8 +42,8 @@ test('desktop library exposes selectable Campi and Progetti without replacing th
  await document.querySelector('#desktop-library-save').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(saved,1);
- assert.equal(document.querySelector('#desktop-library-save').textContent,'✓ Progetto salvato');
- assert.match(document.querySelector('#desktop-library-feedback').textContent,/Progetto salvato/);
+ assert.equal(document.querySelector('#desktop-library-save').textContent,'Bozza salvata sul dispositivo');
+ assert.match(document.querySelector('#desktop-library-feedback').textContent,/Bozza salvata su questo dispositivo/);
  assert.ok(document.querySelector('.app-shell'),'original editor remains mounted');
 
  document.querySelector('#desktop-projects-trigger').click();

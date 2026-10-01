@@ -1,8 +1,8 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=55.6';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6';
+import { createMobileUI } from './mobile-ui.js?v=55.6.3';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6.3';
 import {createQuoteUI} from './quote-ui.js?v=55.6';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=53.2';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.6.3';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
 import { initMap } from './map.js?v=55.6.2';
@@ -12,6 +12,7 @@ import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6.2';
 import { requireSecureConnection } from './secure-context.js';
+import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
@@ -34,7 +35,7 @@ import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
 import { createAuthService } from './auth-service.js?v=49';
 import { createAuthBridge } from './auth-bridge.js';
-import { createProfileUI } from './profile-ui.js?v=55.4.1';
+import { createProfileUI } from './profile-ui.js?v=55.6.3';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
@@ -689,11 +690,34 @@ function cancelMobileEdit() {
   state = mobileTransactionSnapshot; mobileTransactionSnapshot = null;
   persist(); loadActiveFieldOnMap();
 }
-async function saveMobileProject(name = '') {
+function promptForProfile(action='salvare') {
+  const profile=authBridge.getState();
+  if(profile.kind!=='user')return false;
+  const missing=missingProjectProfileFields(profile);
+  if(!missing.length)return false;
+  const message=`Completa il Profilo per ${action} il progetto: ${missing.join(', ')}. L'azienda è facoltativa.`;
+  setStatus(message);
+  if(mobileUi?.isActive?.()){
+    mobileUi.navigate('profile');
+    const feedback=$('#mobile-auth-feedback');if(feedback)feedback.textContent=message;
+  }else profileUi.openProfile(message);
+  return true;
+}
+
+async function saveMobileProject(name = '', {commitCloud=false} = {}) {
   ensureLocalProjectIdentity(name || state.project.localProjectName || 'Il mio impianto');
-  await projectSync?.saveRevision();
   writeLocalProject(globalThis.localStorage, state.project, state.project.localProjectName, state.cloud);
   mobileTransactionSnapshot = null;
+  if(commitCloud && authBridge.getState().kind==='user'){
+    if(promptForProfile('salvare'))throw new Error('Completa i dati indicati nel Profilo. La bozza resta sul dispositivo.');
+    if(!cloudService)throw new Error('Archivio online non disponibile. La bozza resta sul dispositivo.');
+    state={...state,contact:projectContactFromProfile(authBridge.getState())};persist();
+    const revision=await projectSync?.saveRevision();assertSavedRevision(revision);
+    await saveCloudProject('saved');
+    return {location:'cloud'};
+  }
+  await projectSync?.saveRevision();
+  return {location:'local'};
 }
 function loadMobileProject(item) {
   if (!item?.project) return;
@@ -794,7 +818,7 @@ desktopLibraryUi=createDesktopLibraryUI({
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
   renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
   deleteField:(field)=>removeMobileField(field.id),
-  loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName),newProject:newMobileProject,
+  loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName,{commitCloud:true}),newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,moveField:moveArchivedField,
   openQuote:(item)=>openQuote({projectItem:item}),openQuoteForField:(id)=>openQuote({fieldId:id})
 });
@@ -908,18 +932,22 @@ async function runFinalAction(action) {
     return;
   }
   if (action === 'save' && cloudService) requireSecureConnection(globalThis.isSecureContext);
-  if (action === 'save') await projectSync?.saveRevision();
+  if (action === 'save') { const revision=await projectSync?.saveRevision();if(cloudService)assertSavedRevision(revision); }
   if (cloudService) {
     await saveCloudProject('saved');
     $('#contact-feedback').textContent = 'Progetto salvato.';
+    if(action==='save')summarySaveFeedback.saved();
   } else {
-    $('#contact-feedback').textContent = 'Progetto salvato su questo dispositivo.';
+    const message='Bozza salvata su questo dispositivo. Archivio online non disponibile.';
+    $('#contact-feedback').textContent = message;
+    setStatus(message);
+    if(action==='save')summarySaveFeedback.local();
   }
-  if(action==='save')summarySaveFeedback.saved();
   }catch(error){if(action==='save')summarySaveFeedback.error();throw error;}
 }
 
 function openReportPopup({projectItem=null,fieldId=null}={}) {
+  if(promptForProfile('scaricare'))return;
   let snapshot;
   try{
     snapshot=prepareReportContext(state,{projectItem,fieldId});
@@ -954,6 +982,12 @@ function requestFinalAction(action) {
   if(action==='quote'){try{openQuote();}catch(error){setStatus(error.message);}return;}
   if (action === 'save' && cloudService && globalThis.isSecureContext === false) {
     try { requireSecureConnection(false); } catch (error) { setStatus(error.message); summarySaveFeedback.error(); }
+    return;
+  }
+  if(action==='save' && authBridge.getState().kind==='user'){
+    if(promptForProfile('salvare'))return;
+    state={...state,contact:projectContactFromProfile(authBridge.getState())};persist();
+    runFinalAction('save').catch(error=>{console.error(error);setStatus(error.message||'Salvataggio non riuscito. La bozza resta sul dispositivo.');});
     return;
   }
   pendingFinalAction = action;
@@ -994,15 +1028,16 @@ $('#contact-form')?.addEventListener('submit', async (event) => {
     if (action && action !== 'save') await runFinalAction(action);
     if (action === 'save') {
       summarySaveFeedback.saving();
-      await projectSync?.saveRevision();
+      const revision=await projectSync?.saveRevision();if(cloudService)assertSavedRevision(revision);
       if (cloudService) $('#contact-feedback').textContent = 'Progetto salvato.';
-      summarySaveFeedback.saved();
+      if(cloudService)summarySaveFeedback.saved();else summarySaveFeedback.local();
     }
     setTimeout(() => contactDialog?.close(), action === 'report' ? 250 : 900);
   } catch (error) {
     if(submittedAction==='save')summarySaveFeedback.error();
     console.error(error);
-    $('#contact-feedback').textContent = 'Salvataggio cloud non riuscito. La bozza resta disponibile su questo dispositivo.';
+    state={...state,contact:null};persist();
+    $('#contact-feedback').textContent = `Salvataggio cloud non riuscito: ${error.message||'riprova più tardi'}. La bozza resta su questo dispositivo.`;
   }
 });
 

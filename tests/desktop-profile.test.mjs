@@ -25,6 +25,13 @@ test('signed-in desktop trigger shows the username and toggles compact menu',()=
  assert.equal(document.querySelector('#profile-menu').hidden,false);
 });
 
+test('opening Profile from save shows which personal details are still missing',()=>{
+ const {document,auth,ui}=fixture();
+ auth.emit({kind:'user',displayName:'Marco',username:'marco',email:'m@example.it'});
+ ui.openProfile('Completa il Profilo: Nome, Telefono.');
+ assert.match(document.querySelector('.profile-dialog .profile-feedback').textContent,/Nome, Telefono/);
+});
+
 test('an older account without username displays its email identifier, never the full name',()=>{
  const {document,auth}=fixture();auth.emit({kind:'user',displayName:'Mario Rossi',username:null,email:'mario@example.it'});
  assert.equal(document.querySelector('#profile-trigger').textContent.trim(),'mario');
