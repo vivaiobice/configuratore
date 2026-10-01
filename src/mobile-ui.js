@@ -14,12 +14,13 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 
 export function createMobileUI(api){
  const $=s=>document.querySelector(s), map=$('.map-wrap'), homes=new Map();
+ const releaseLabel=escape($('.test-badge')?.textContent?.trim()??'');
  let enabled=false,screen='map',drawing=false,editing=false,awaitingPerimeter=false,transaction=false,saving=false;
  let oldAdvancedOpen=false,oldCompassLabel=null;
  const root=document.createElement('div');root.id='mobile-app';root.className='mobile-only';
  root.innerHTML=`
  <div id="mobile-map-host"></div>
- <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>V55.6</span></header>
+ <header class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"/><span>${releaseLabel}</span></header>
  <div class="mobile-home-tools"><button data-sheet="search" aria-label="Cerca località">${icon('search')}</button><button data-sheet="calculator" aria-label="Calcolatore rapido">${icon('calc')}</button><button data-sheet="layers" aria-label="Livelli mappa">${icon('layers')}</button></div>
  <div class="mobile-home-bottom"><button id="mobile-active-field" class="mobile-field-chip"></button></div>
  <button id="mobile-add-field" class="mobile-primary" aria-label="Aggiungi campo">${icon('plus')}<span>Campo</span></button>
@@ -29,7 +30,7 @@ export function createMobileUI(api){
  <main id="mobile-pages">
   <section data-screen="fields"><header class="mobile-page-heading"><h1>Campi</h1><div class="mobile-heading-actions"><button id="mobile-refresh-fields" aria-label="Aggiorna campi">${icon('refresh')}</button><button id="mobile-add-from-fields" aria-label="Aggiungi campo">${icon('plus')}</button></div></header><div id="mobile-fields-total"></div><div id="mobile-fields-list"></div></section>
   <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-detail-map" aria-label="Mappa satellitare interattiva del campo"></div><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Stampa / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
-  <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><button id="mobile-parameters-map" type="button">Modifica perimetro e passaggi</button><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Salvato su questo dispositivo. PDF e preventivo sono disponibili nella scheda del campo.</p></section>
+  <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><button id="mobile-parameters-map" type="button">Modifica perimetro e passaggi</button><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Con accesso effettuato: salvataggio online. Come Guest: salvataggio su questo dispositivo.</p></section>
   <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><button id="mobile-load-code" type="button">Carica progetto esistente</button><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
   <section data-screen="profile"><header class="mobile-page-heading"><h1>Profilo</h1></header><div id="mobile-profile-content"></div><p id="mobile-auth-feedback" class="mobile-auth-feedback" role="status"></p></section>
  </main>
@@ -147,7 +148,7 @@ export function createMobileUI(api){
   if(saving)return;if(screen==='parameters'&&!validateParameters())return;
   if(!api.getFields().some(f=>f.geometry)){showNotice('Disegna almeno un campo prima di salvare.');return;}
   saving=true;$('#mobile-save-field').disabled=true;$('#mobile-save-project').disabled=true;
-  try{const fieldId=api.getField()?.activeFieldId;const result=await api.saveProject($('#mobile-project-name').value,{commitCloud:screen==='projects'});transaction=false;awaitingPerimeter=false;if(fieldId)api.selectField(fieldId);navigate('detail');showNotice(result?.location==='cloud'?'Progetto salvato online.':'Impianto salvato su questo dispositivo.');}
+  try{const fieldId=api.getField()?.activeFieldId;const result=await api.saveProject($('#mobile-project-name').value,{commitCloud:screen==='projects'||api.auth?.getState?.().kind==='user'});transaction=false;awaitingPerimeter=false;if(fieldId)api.selectField(fieldId);navigate('detail');showNotice(result?.location==='cloud'?'Progetto salvato online.':'Impianto salvato su questo dispositivo.');}
   catch(error){showNotice(`Salvataggio non riuscito: ${error.message}`);}
   finally{saving=false;$('#mobile-save-field').disabled=false;$('#mobile-save-project').disabled=false;}
  }

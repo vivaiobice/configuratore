@@ -30,6 +30,16 @@ export function newSessionId() {
   return secureUuid();
 }
 
+export function getOwnerSessionId(storage,ownerUserId,idFactory=newSessionId) {
+  if(!ownerUserId)throw new TypeError('Session owner required');
+  const key=`vivai-obice:configuratore:session:${ownerUserId}`;
+  const existing=storage?.getItem?.(key);
+  if(existing)return existing;
+  const id=idFactory();
+  storage?.setItem?.(key,id);
+  return id;
+}
+
 export function getConsentState(storage) {
   const value = storage?.getItem?.(CONSENT_KEY) ?? null;
   return value === 'necessary' || value === 'analytics' ? value : null;

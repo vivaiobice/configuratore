@@ -6,6 +6,10 @@ import {createMobileUI} from '../src/mobile-ui.js';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
+test('mobile release label follows the version displayed in the main header',()=>{
+ const c=setup();
+ assert.equal(c.$('.mobile-brand span').textContent,c.$('.test-badge').textContent);
+});
 function setup(mobile=true,mapInstance=null,withCompass=false){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
  const $=s=>document.querySelector(s);let begun=0,saved=0,lastSaveOptions=null,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,reportField=null,viewToggles=0;
@@ -139,6 +143,15 @@ test('the mobile Projects save command requests cloud save and reports its desti
  c.ui.navigate('projects');$('#mobile-save-project').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(c.lastSaveOptions?.commitCloud,true);
+ assert.match($('#mobile-notice').textContent,/online/);
+});
+test('signed-in mobile field save commits the project online',async()=>{
+ const c=setup(),{$}=c;
+ c.auth.emit({kind:'user',user:{id:'account-user'},displayName:'Marco',email:'marco@example.it'});
+ $('#mobile-add-field').click();c.ui.geometryCommitted();
+ $('#mobile-save-field').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(c.lastSaveOptions?.commitCloud,true);
+ assert.equal(c.document.body.dataset.mobileScreen,'detail');
  assert.match($('#mobile-notice').textContent,/online/);
 });
 test('field detail uses the live interactive map without map controls',()=>{

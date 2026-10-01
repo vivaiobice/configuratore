@@ -144,5 +144,4 @@ test('V38 stylesheet remains loaded beneath the current release overrides',()=>{
   const mobileUi=fs.readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   assert.match(html,/desktop-v38\.css\?v=38/);
   assert.match(html,/V55/);
-  assert.match(mobileUi,/V55\.6/);
 });

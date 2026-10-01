@@ -1,5 +1,5 @@
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=55.6.3';
+import { createMobileUI } from './mobile-ui.js?v=55.6.4';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6.3';
 import {createQuoteUI} from './quote-ui.js?v=55.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.6.3';
@@ -7,7 +7,7 @@ import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
 import { initMap } from './map.js?v=55.6.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
-import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from './storage.js?v=55.6.1';
+import { loadDraft, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=55.6.4';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6.2';
@@ -107,15 +107,6 @@ $('#public-project-form')?.addEventListener('submit',async(event)=>{
 const desktopQuickCalculator=createDesktopQuickCalculator({document,calculate:calculateManualPlants,onCalculate:(areaM2)=>track('manual_area_calculated',{areaM2})});
 desktopQuickCalculator.mount();
 const summarySaveFeedback=createSaveFeedback($('#summary-save-project'));
-const sessionId = (() => {
-  const existing = globalThis.sessionStorage?.getItem('vivai-obice:configuratore:session');
-  if (existing) return existing;
-  const id = newSessionId();
-  globalThis.sessionStorage?.setItem('vivai-obice:configuratore:session', id);
-  return id;
-})();
-void sessionId;
-
 const statusEl = $('#map-status');
 const cadastralParcelStatusEl = $('#cadastre-parcel-status');
 function setStatus(message) { if (statusEl) statusEl.textContent = message; }
@@ -1094,7 +1085,7 @@ async function initializeCloud() {
     }
     cloudService = createCloudService({
       backend,
-      sessionId,
+      sessionId:getOwnerSessionId(globalThis.sessionStorage,authState.user?.id),
       environment:state.environment ?? APP_CONFIG.environment,
       consentState:getConsentState(globalThis.localStorage) ?? 'necessary',
       referrer:document.referrer,

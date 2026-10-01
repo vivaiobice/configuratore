@@ -56,7 +56,11 @@ test('native form controls retain automatic touch behavior above the map',()=>{
 test('current release retains Guest registration and the dedicated iOS home icon',()=>{
  assert.match(html,/manifest\.webmanifest\?v=45/);
  assert.match(html,/apple-touch-icon-v26\.png/);
- assert.match(ui,/V55\.6/);
+});
+test('Home Screen installation declares standalone display for iOS',()=>{
+ assert.equal(JSON.parse(read('manifest.webmanifest')).display,'standalone');
+ assert.match(html,/<meta name="apple-mobile-web-app-capable" content="yes"\s*\/>/);
+ assert.match(html,/<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"\s*\/>/);
 });
 test('favicon and web app use the approved transparent icon revision',()=>{
  const asset=fs.readFileSync(new URL('../assets/vivai-obice-icon-v26.png',import.meta.url));

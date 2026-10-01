@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadDraft, saveDraft, newSessionId, getConsentState, setConsentState } from '../src/storage.js';
+import { loadDraft, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from '../src/storage.js';
 import {ownerStorageKey,setLocalOwnerScope} from '../src/local-owner-scope.js';
 
 function memoryStorage() {
@@ -48,6 +48,19 @@ test('newSessionId returns high entropy non-sequential identifiers', () => {
   const b = newSessionId();
   assert.notEqual(a, b);
   assert.ok(a.length >= 30);
+});
+
+test('browser session IDs are stable for one owner and distinct after account switching',()=>{
+ const storage=memoryStorage();
+ storage.setItem('vivai-obice:configuratore:session','old-shared-session');
+ let counter=0;
+ const next=()=>`session-${++counter}`;
+ const guest=getOwnerSessionId(storage,'guest-user',next);
+ assert.equal(getOwnerSessionId(storage,'guest-user',next),guest);
+ const account=getOwnerSessionId(storage,'account-user',next);
+ assert.notEqual(account,guest);
+ assert.notEqual(account,'old-shared-session');
+ assert.equal(getOwnerSessionId(storage,'account-user',next),account);
 });
 
 test('session IDs remain valid UUIDs without randomUUID',()=>{
