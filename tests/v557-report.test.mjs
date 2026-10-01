@@ -36,10 +36,12 @@ test('orchestrator overview includes only chosen fields and passes the cadastre 
  assert.ok(result.html.includes('Visione aerea generale'));
 });
 
-test('missing saved cadastral and soil data are explicit and missing soil categories are not fabricated',()=>{
+test('field data page includes only known cadastral and soil values',()=>{
  const model=buildProjectReportModel({state});const {document}=parseHTML(renderProjectReportHtml(model));
- const barbera=[...document.querySelectorAll('.document-field-data')].find(node=>node.textContent.includes('Barbera'));assert.match(barbera.textContent,/Riferimenti catastali: non inseriti/);assert.match(barbera.textContent,/Analisi del suolo: non disponibile/);
- const soil=[...document.querySelectorAll('.document-field-evidence')].filter(node=>node.textContent.includes('Analisi del suolo')).map(node=>node.textContent).join(' ');assert.match(soil,/pHNon disponibile/);assert.match(soil,/DrenaggioBuono/);
+ const barbera=[...document.querySelectorAll('.document-field-data')].find(node=>node.textContent.includes('Barbera'));assert.doesNotMatch(barbera.textContent,/Riferimenti catastali|Dati del suolo/);
+ const moscato=[...document.querySelectorAll('.document-field-data')].find(node=>node.textContent.includes('Moscato'));
+ assert.match(moscato.textContent,/Drenaggio: Buono/);assert.doesNotMatch(moscato.textContent,/pH: Non disponibile/);
+ assert.equal(document.querySelectorAll('.document-field-evidence').length,0);
 });
 
 test('satellite overview exports every field name and row with the cadastral layer at 60%',async()=>{

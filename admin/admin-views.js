@@ -12,7 +12,7 @@ const COLUMNS={
 };
 const TITLES={fields:'Campi',projects:'Progetti',clients:'Clienti / Utenti'};
 
-export function createAdminViews({document=globalThis.document,onSelect=()=>{},onFieldPreviewOpen=()=>null,onProjectAction=async()=>null,onFieldLocationSave=async()=>null}={}){
+export function createAdminViews({document=globalThis.document,onSelect=()=>{},onFieldPreviewOpen=()=>null,onProjectAction=async()=>null,onFieldLocationSave=async()=>null,onFieldManage=async()=>null}={}){
   if(!document)throw new TypeError('Document required');
   const head=document.querySelector('#admin-table-head'),body=document.querySelector('#admin-table-body');
   const detail=document.querySelector('#admin-detail'),detailTitle=document.querySelector('#detail-title'),detailGrid=document.querySelector('#detail-grid'),detailChildren=document.querySelector('#detail-children');
@@ -42,11 +42,24 @@ export function createAdminViews({document=globalThis.document,onSelect=()=>{},o
     form.append(title,grid,save,feedback);return form;
   }
 
+  function fieldActions(row){
+    const wrap=document.createElement('div');wrap.className='admin-field-actions';
+    const rename=document.createElement('button');rename.type='button';rename.className='secondary-button';rename.dataset.adminRenameField='';rename.textContent='Rinomina campo';
+    const input=document.createElement('input');input.dataset.adminFieldName='';input.value=row.label||'';input.maxLength=80;input.setAttribute('aria-label','Nuovo nome del campo');input.hidden=true;
+    const save=document.createElement('button');save.type='button';save.className='primary-button';save.dataset.adminSaveFieldName='';save.textContent='Salva nome';save.hidden=true;
+    const remove=document.createElement('button');remove.type='button';remove.className='secondary-button danger-soft';remove.dataset.adminDeleteField='';remove.textContent='Elimina campo';
+    const feedback=document.createElement('p');feedback.className='admin-inline-feedback';feedback.setAttribute('role','status');
+    rename.addEventListener('click',()=>{input.hidden=false;save.hidden=false;input.focus?.();});
+    save.addEventListener('click',async()=>{save.disabled=true;try{const result=await onFieldManage('rename',row,input.value);feedback.textContent=result?.message||'Campo rinominato.';}catch(error){feedback.textContent=error.message||'Rinomina non riuscita.';}finally{save.disabled=false;}});
+    remove.addEventListener('click',async()=>{if(globalThis.confirm&&!globalThis.confirm(`Eliminare il campo “${row.label||'Campo'}”?`))return;remove.disabled=true;try{const result=await onFieldManage('delete',row,'');feedback.textContent=result?.message||'Campo eliminato.';}catch(error){feedback.textContent=error.message||'Eliminazione non riuscita.';remove.disabled=false;}});
+    wrap.append(rename,input,save,remove,feedback);return wrap;
+  }
+
   function closeNested(panel,rowId){disposeNested(rowId);openFieldRowIds.delete(rowId);panel.remove();}
   function mountNested(entry,row){
     if(entry.querySelector(`[data-field-panel="${row.rowId}"]`))return;
     const panel=document.createElement('article');panel.className='admin-nested-field';panel.dataset.fieldPanel=row.rowId;
-    const bar=document.createElement('div');bar.className='admin-head';const title=document.createElement('h4');title.textContent=row.label||'Campo';const close=document.createElement('button');close.type='button';close.className='secondary-button';close.dataset.fieldClose=row.rowId;close.textContent='Chiudi campo';close.addEventListener('click',event=>{event.stopPropagation();closeNested(panel,row.rowId);});bar.append(title,close);panel.append(bar,fieldGrid(row),locationEditor(row));
+    const bar=document.createElement('div');bar.className='admin-head';const title=document.createElement('h4');title.textContent=row.label||'Campo';const close=document.createElement('button');close.type='button';close.className='secondary-button';close.dataset.fieldClose=row.rowId;close.textContent='Chiudi campo';close.addEventListener('click',event=>{event.stopPropagation();closeNested(panel,row.rowId);});bar.append(title,close);panel.append(bar,fieldGrid(row),fieldActions(row),locationEditor(row));
     if(row.geometryValid){const mapHost=document.createElement('div');mapHost.className='admin-field-map';mapHost.dataset.fieldMap=row.rowId;panel.append(mapHost);const preview=onFieldPreviewOpen(row,mapHost);previewDisposers.set(row.rowId,preview);if(preview?.available===false){mapHost.classList.add('admin-map-placeholder');mapHost.textContent='Anteprima cartografica non disponibile';}}else{const placeholder=document.createElement('p');placeholder.className='admin-map-placeholder';placeholder.textContent='Geometria non disponibile';panel.append(placeholder);}
     entry.append(panel);
   }
@@ -81,7 +94,7 @@ export function createAdminViews({document=globalThis.document,onSelect=()=>{},o
   function renderFieldChildren(fields=[]){if(!detailChildren)return;detailChildren.replaceChildren();if(!fields.length)return;const title=document.createElement('h3');title.textContent='Campi del progetto';detailChildren.append(title);for(const field of fields){const button=document.createElement('button');button.type='button';button.className='admin-child-field';button.textContent=`${field.label} · ${area(field.areaM2)} · ${lifecycle(field.plantingStatus)}`;button.addEventListener('click',()=>onSelect('fields',field));detailChildren.append(button);}}
   function renderDetail(kind,row){
     if(!row||!detail||!detailGrid)return;selectedRowId=row.rowId;for(const tableRow of body?.querySelectorAll?.('tr[data-row-id]')??[])tableRow.classList.toggle('selected',tableRow.dataset.rowId===selectedRowId);disposeFieldPreview();detail.hidden=false;detailGrid.replaceChildren();if(detailChildren)detailChildren.replaceChildren();for(const action of document.querySelectorAll('.admin-project-actions'))action.hidden=kind!=='projects';const locationForm=document.querySelector('#field-location-form');if(locationForm){locationForm.hidden=kind!=='fields';if(kind==='fields')for(const key of ['locationLabel','municipality','province','region']){const input=locationForm.elements.namedItem(key);if(input)input.value=String(row.field?.[key]??(key==='locationLabel'?row.location:row[key])??'');}}
-    if(kind==='fields'){detailTitle.textContent=`${row.label||'Campo'} · ${row.projectCode||row.projectName||'Progetto'}`;const grid=fieldGrid(row);detailGrid.append(...grid.children);const host=document.querySelector('#detail-field-map');if(host){host.hidden=false;host.classList.remove('admin-map-placeholder');host.textContent='';if(row.geometryValid){fieldPreviewDisposer=onFieldPreviewOpen(row,host);if(fieldPreviewDisposer?.available===false){host.classList.add('admin-map-placeholder');host.textContent='Anteprima cartografica non disponibile';}}else{host.classList.add('admin-map-placeholder');host.textContent='Geometria non disponibile';}}}
+    if(kind==='fields'){detailTitle.textContent=`${row.label||'Campo'} · ${row.projectCode||row.projectName||'Progetto'}`;const grid=fieldGrid(row);detailGrid.append(...grid.children,fieldActions(row));const host=document.querySelector('#detail-field-map');if(host){host.hidden=false;host.classList.remove('admin-map-placeholder');host.textContent='';if(row.geometryValid){fieldPreviewDisposer=onFieldPreviewOpen(row,host);if(fieldPreviewDisposer?.available===false){host.classList.add('admin-map-placeholder');host.textContent='Anteprima cartografica non disponibile';}}else{host.classList.add('admin-map-placeholder');host.textContent='Geometria non disponibile';}}}
     else if(kind==='projects'){detailTitle.textContent=`${row.name||'Progetto'} · ${row.code||'—'}`;detailGrid.append(detailItem('Cliente',row.client),detailItem('Stato CRM',STATUS_LABELS[row.status]||row.status),detailItem('Campi',number(row.fieldCount)),detailItem('Superficie totale',area(row.areaM2)),detailItem('Piante commerciali',number(row.commercialPlants)));renderFieldChildren(row.fields);}
     else{detailTitle.textContent=row.displayName||'Cliente';detailGrid.append(detailItem('E-mail',row.email||'—'),detailItem('Telefono',row.phone||'—'),detailItem('Località',row.city||'—'),detailItem('Provincia',row.province||'—'),detailItem('Progetti',number(row.projectCount)),detailItem('Campi',number(row.fieldCount)),detailItem('Superficie totale',area(row.areaM2)),detailItem('Barbatelle totali',number(row.commercialPlants)),detailItem('Barbatelle da piantare',number(row.plantsToPlant)));renderFieldChildren(row.fields);}
     if(kind!=='projects')detail.scrollIntoView?.({behavior:'smooth',block:'start'});

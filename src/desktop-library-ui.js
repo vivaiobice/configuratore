@@ -18,6 +18,8 @@ export function createDesktopLibraryUI(api){
     const actions=document.createElement('div');actions.className='desktop-library-item-actions';
     const open=document.createElement('button');open.type='button';open.dataset.fieldAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.selectField?.(field.id);close();});
     const quote=document.createElement('button');quote.type='button';quote.dataset.fieldAction='quote';quote.textContent='Preventivo';quote.addEventListener('click',()=>api.openQuoteForField?.(field.id));
+    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.fieldAction='pdf';pdf.textContent='Stampa';pdf.addEventListener('click',()=>api.openReportForField?.(field.id));
+    const duplicate=document.createElement('button');duplicate.type='button';duplicate.dataset.fieldAction='duplicate';duplicate.textContent='Duplica';duplicate.addEventListener('click',()=>{try{api.duplicateField?.(field);close();}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Duplicazione non riuscita: ${text(error.message)}`;}});
     const rename=document.createElement('button');rename.type='button';rename.dataset.fieldAction='rename';rename.textContent='Rinomina';
     const remove=document.createElement('button');remove.type='button';remove.dataset.fieldAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
     rename.addEventListener('click',()=>{
@@ -33,7 +35,7 @@ export function createDesktopLibraryUI(api){
       const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il campo “${field.label||'Campo'}”?`))return;
       try{await api.deleteField?.(field);render();root.querySelector('#desktop-library-feedback').textContent='Campo eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
     });
-    actions.append(open,quote,rename,remove);row.append(main,actions);return row;
+    actions.append(open,quote,pdf,rename,duplicate,remove);row.append(main,actions);return row;
   }
   function projectButton(item){
     const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopProject=item.id;
@@ -134,7 +136,7 @@ export function createDesktopLibraryUI(api){
     if(!root)return;
     root.querySelector('h2').textContent=mode==='fields'?'Campi del progetto':'Archivio progetti';
     root.querySelector('#desktop-library-new').hidden=mode!=='projects';
-    root.querySelector('#desktop-library-save').hidden=mode!=='projects';
+    root.querySelector('#desktop-library-save').hidden=false;
     root.querySelector('#desktop-user-projects').hidden=mode!=='projects'||api.isAdmin?.()!==true;
     const list=root.querySelector('.desktop-library-list');list.replaceChildren();
     const items=mode==='fields'?(api.getFields?.()??[]):(api.getProjects?.()??[]);
@@ -161,7 +163,7 @@ export function createDesktopLibraryUI(api){
       catch(error){root.querySelector('#desktop-library-feedback').textContent=`Sincronizzazione non riuscita: ${text(error.message)}`;}
       finally{busy=false;refreshButton.disabled=false;}
     });
-    const saveButton=root.querySelector('#desktop-library-save'),saveFeedback=createSaveFeedback(saveButton,{idleLabel:'Salva progetto'});
+    const saveButton=root.querySelector('#desktop-library-save'),saveFeedback=createSaveFeedback(saveButton,{idleLabel:'Salva modifiche'});
     saveButton.addEventListener('click',async()=>{
       saveFeedback.saving();
       try{const result=await api.saveProject?.();render();if(result?.location==='cloud'){saveFeedback.saved();root.querySelector('#desktop-library-feedback').textContent='Progetto salvato online.';}else{saveFeedback.local();root.querySelector('#desktop-library-feedback').textContent='Bozza salvata su questo dispositivo.';}}

@@ -1,4 +1,5 @@
 import {buildOverviewMapModel} from './report-overview.js';
+import {refreshFieldSoilForReport} from './soil-report.js';
 import { loadDraft } from './storage.js';
 import { ensureProjectFields } from './fields.js?v=55.1';
 import { calculateProject } from './project-calculator.js?v=45';
@@ -8,7 +9,7 @@ import { buildReportMapModel } from './report-map-model.js?v=45';
 import { captureSatelliteImage } from './report-satellite.js?v=55.7';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=55.7';
+import { renderProjectReportHtml } from './report-template.js?v=1.0.1';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js?v=55.1';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
@@ -40,12 +41,14 @@ export function createReportOrchestrator({
   buildShareUrl=buildSharedReportUrl,
   qrRenderer=renderReportQrSvg,
   renderer=renderProjectReportHtml,
+  refreshSoil=async()=>null,
   now=()=>new Date()
 }={}){
   return {
     async generate({preflight,state,hostForField,hostForOverview,fieldLocations={},baseUrl=globalThis.location?.href??'https://vivaiobice.github.io/'}={}){
       if(!canIssueReport(preflight))throw new Error('Accetta l’avvertenza e completa i dati richiesti prima di generare il documento.');
       const fields=selectedFields(state,preflight.selectedFieldIds);
+      const freshSoils=await Promise.all(fields.map(field=>refreshSoil(field).catch(()=>null)));
       if(!sync?.saveRevision||typeof issueReport!=='function')throw new Error('Sincronizzazione documento non disponibile.');
       const revision=await sync.saveRevision({reason:'report_issue'});
       if(revision?.state==='conflict'||revision?.status==='conflict')throw new Error('Conflitto di versione: aggiorna il progetto prima di generare il documento.');
@@ -74,8 +77,12 @@ export function createReportOrchestrator({
       if(!reportId)throw new Error('Il documento non è stato registrato.');
       const shareUrl=buildShareUrl(baseUrl,reportId,token);
       const qrSvg=qrRenderer(shareUrl);
+      const reportState={...state,project:{...state.project,fields:ensureProjectFields(state.project).fields.map(field=>{
+        const index=fields.findIndex(item=>String(item.id??item.clientFieldId)===String(field.id??field.clientFieldId));
+        return index>=0&&freshSoils[index]?{...field,soil:freshSoils[index]}:field;
+      })}};
       const reportModel=buildProjectReportModel({
-        state,selectedFieldIds:preflight.selectedFieldIds,getMetrics:metricsForField,mapAssets,overview,recipient:preflight.recipient,
+        state:reportState,selectedFieldIds:preflight.selectedFieldIds,getMetrics:metricsForField,mapAssets,overview,recipient:preflight.recipient,
         report:{id:reportId,projectId,projectCode:state?.cloud?.publicCode,revisionNumber,generatedAt:issued?.createdAt??acceptedAt,shareUrl,qrSvg,disclaimerVersion:DISCLAIMER_VERSION}
       });
       const html=renderer(reportModel);
@@ -115,6 +122,7 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   if(mobileSource){
     documentRef.documentElement.dataset.reportSource='mobile';
     const printStyles=documentRef.createElement('link');printStyles.rel='stylesheet';printStyles.href='./v55.4-report-print.css?v=55.4';printStyles.media='print';documentRef.head.append(printStyles);
+    const compactStyles=documentRef.createElement('link');compactStyles.rel='stylesheet';compactStyles.href='./v1.0.1-report-print.css?v=1.0.1';compactStyles.media='print';documentRef.head.append(compactStyles);
   }
   const requestId=params.get('handoff');
   const reportSnapshot=readReportContext(storage,requestId);
@@ -135,6 +143,7 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   const generate=documentRef.querySelector('#report-generate');
   const print=documentRef.querySelector('#report-print');
   const copy=documentRef.querySelector('#report-copy-link');
+  const printTop=documentRef.querySelector('#report-print-top'),copyTop=documentRef.querySelector('#report-copy-link-top');
   const warning=documentRef.querySelector('#report-warning');
   const preview=documentRef.querySelector('#report-preview');
   const host=documentRef.querySelector('#report-satellite-host');
@@ -162,13 +171,13 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   suggestPlantLocality();
   mountReportAddressAutocomplete({documentRef,form});
   let finalResult=null;
-  function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
+  function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;if(printTop)printTop.disabled=print.disabled;if(copyTop)copyTop.disabled=copy.disabled;}
   options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});suggestPlantLocality();accept.checked=false;finalResult=null;refresh();});
   form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});if(['plantLocation','province'].includes(event.target.name))localityEdited=true;accept.checked=false;finalResult=null;refresh();});
   function updateOverview(){preflight=updateReportPreflight(preflight,{type:'overview/set',enabled:overviewInput.checked,cadastre:cadastreInput.checked});cadastreInput.disabled=!overviewInput.checked;cadastreInput.checked=preflight.overview.cadastre;accept.checked=false;finalResult=null;refresh();}
   overviewInput?.addEventListener('change',updateOverview);cadastreInput?.addEventListener('change',updateOverview);
   accept.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'disclaimer/set',accepted:accept.checked});if(!accept.checked)finalResult=null;refresh();});
-  const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel,cadastre})=>captureSatelliteImage({container,mapModel,cadastre,maplibregl}),issueReport:payload=>backend.issueProjectReport(payload),renderer:model=>renderProjectReportHtml(model,{mobile:mobileSource})}):null;
+  const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel,cadastre})=>captureSatelliteImage({container,mapModel,cadastre,maplibregl}),refreshSoil:field=>refreshFieldSoilForReport(field,{signal:AbortSignal.timeout(12000)}),issueReport:payload=>backend.issueProjectReport(payload),renderer:model=>renderProjectReportHtml(model,{mobile:mobileSource})}):null;
   generate.addEventListener('click',async()=>{
     warning.hidden=true;generate.disabled=true;generate.textContent='Generazione in corso…';
     try{state=requestId?reportSnapshot:loadDraft(storage);if(!state)throw new Error('Il progetto di riferimento non è più disponibile. Riapri il PDF dal configuratore.');finalResult=await orchestrator.generate({preflight,state,fieldLocations,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -181,6 +190,7 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
     globalThis.print?.();
   });
   copy.addEventListener('click',async()=>{if(finalResult?.shareUrl){await copyWithFallback(finalResult.shareUrl,documentRef);copy.textContent='Link copiato';setTimeout(()=>{copy.textContent='Copia link';},1600);}});
+  printTop?.addEventListener('click',()=>print.click());copyTop?.addEventListener('click',()=>copy.click());
   refresh();return {getPreflight:()=>preflight};
 }
 

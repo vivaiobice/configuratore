@@ -7,22 +7,22 @@ const html=fs.readFileSync(new URL('index.html',root),'utf8');
 const app=fs.readFileSync(new URL('src/app.js',root),'utf8');
 
 test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
- assert.match(html,/V55/);
+ assert.match(html,/1\.0\.1/);
  assert.match(html,/v50-fixes\.css\?v=51/);
  assert.match(html,/v52-cadastre\.css\?v=53\.3/);
  assert.match(html,/desktop-library\.css\?v=51/);
- assert.match(html,/src\/app\.js\?v=55/);
+ assert.match(html,/src\/app\.js\?v=1\.0\.1/);
  for(const module of ['map']){
   assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6\\.2`));
  }
- assert.match(app,/desktop-library-ui\.js\?v=55\.7/);
+ assert.match(app,/desktop-library-ui\.js\?v=1\.0\.1/);
  for(const module of ['cloud']){
   assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6(?:\\.[23])?`));
  }
 });
 
 test('current entry points refresh report, shared and administration modules',()=>{
- assert.match(fs.readFileSync(new URL('report.html',root),'utf8'),/src\/report\.js\?v=55/);
+ assert.match(fs.readFileSync(new URL('report.html',root),'utf8'),/src\/report\.js\?v=1\.0\.1/);
  assert.match(fs.readFileSync(new URL('shared-project.html',root),'utf8'),/shared-project-entry\.js\?v=55/);
- assert.match(fs.readFileSync(new URL('admin/index.html',root),'utf8'),/admin\.js\?v=55\.7/);
+ assert.match(fs.readFileSync(new URL('admin/index.html',root),'utf8'),/admin\.js\?v=1\.0\.1/);
 });

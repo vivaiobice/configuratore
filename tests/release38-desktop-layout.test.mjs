@@ -143,5 +143,5 @@ test('desktop V38 stylesheet orders advanced groups and keeps desktop-only contr
 test('V38 stylesheet remains loaded beneath the current release overrides',()=>{
   const mobileUi=fs.readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   assert.match(html,/desktop-v38\.css\?v=38/);
-  assert.match(html,/V55/);
+  assert.match(html,/1\.0\.1/);
 });

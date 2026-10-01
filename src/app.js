@@ -1,8 +1,8 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=55.7';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.7';
+import { createMobileUI } from './mobile-ui.js?v=1.0.1';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.7';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
@@ -24,7 +24,7 @@ import {ensureQuoteRevision} from './quote-sync.js?v=55.6.7';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=55.1';
+import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.0.1';
 import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=55.7';
 import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
@@ -773,6 +773,12 @@ function removeMobileField(fieldId) {
   state = { ...state, project:ensureProjectFields(project) };
   mobileTransactionSnapshot = null; persist(); loadActiveFieldOnMap();
 }
+function duplicateFieldInCurrentProject(fieldId) {
+  state={...state,project:duplicateProjectField(state.project,fieldId)};
+  persist();loadActiveFieldOnMap();mapApi?.focusActiveField?.();
+  setStatus('Copia creata: modifica i punti del perimetro per posizionare il nuovo campo.');
+  return state.project.activeFieldId;
+}
 
 async function renameArchivedProject(item,name){
   const saved=await renameArchivedProjectRecord({
@@ -826,6 +832,7 @@ mobileUi = createMobileUI({
   beginNewField:beginMobileNewField, beginEdit:beginMobileEdit, cancelEdit:cancelMobileEdit,
   selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },
   removeField:removeMobileField,
+  duplicateField:duplicateFieldInCurrentProject,beginDuplicateEdit:()=>mapApi?.beginVertexEditing?.(),
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,
   analyzeSoil:analyzeActiveSoil,
@@ -847,6 +854,8 @@ desktopLibraryUi=createDesktopLibraryUI({
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
   renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
   deleteField:(field)=>removeMobileField(field.id),
+  duplicateField:(field)=>{duplicateFieldInCurrentProject(field.id);mapApi?.beginVertexEditing?.();},
+  openReportForField:(id)=>openReportPopup({fieldId:id}),
   loadProject:loadMobileProject,refreshProjects:refreshOwnedArchive,saveProject:()=>saveMobileProject(state.project.localProjectName,{commitCloud:true}),newProject:newMobileProject,
   renameProject:renameArchivedProject,deleteProject:deleteArchivedProject,moveField:moveArchivedField,
   openQuote:(item)=>openQuote({projectItem:item}),openQuoteForField:(id)=>openQuote({fieldId:id})

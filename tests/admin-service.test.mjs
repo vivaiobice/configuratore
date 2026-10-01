@@ -63,6 +63,17 @@ test('admin locality update reuses an operation id supplied by a retry coordinat
   assert.equal(client.calls.find(call=>call[1]==='admin_set_field_location')[2].p_operation_id,'stable-retry-id');
 });
 
+test('admin field rename and delete use an authenticated, versioned RPC',async()=>{
+ const client=fakeClient(),admin=createAdminService(client,{randomUUID:()=> 'admin-op'});
+ await admin.manageField({projectId:'p1',fieldId:'f1',version:12,action:'rename',label:'Nuovo nome'});
+ await admin.manageField({projectId:'p2',fieldId:'f2',version:7,action:'delete'});
+ assert.deepEqual(client.calls.filter(call=>call[1]==='admin_manage_field'),[
+  ['rpc','admin_manage_field',{p_operation_id:'admin-op',p_project_id:'p1',p_client_field_id:'f1',p_expected_version:12,p_action:'rename',p_label:'Nuovo nome'}],
+  ['rpc','admin_manage_field',{p_operation_id:'admin-op',p_project_id:'p2',p_client_field_id:'f2',p_expected_version:7,p_action:'delete',p_label:''}]
+ ]);
+ await assert.rejects(()=>admin.manageField({action:'rename',label:'  ',projectId:'p1',fieldId:'f1',version:1}),/nome/i);
+});
+
 test('project projection includes archive ownership and revision metadata', async () => {
   const client=fakeClient();
   await createAdminService(client).loadProjects();

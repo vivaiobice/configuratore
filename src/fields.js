@@ -102,6 +102,21 @@ export function addProjectField(project) {
   return mirrorField({ ...base, fields:[...base.fields, field] }, field);
 }
 
+export function duplicateProjectField(project,fieldId,idFactory=newId) {
+  const base=ensureProjectFields(project);
+  const original=base.fields.find(field=>String(field.id)===String(fieldId));
+  if(!original)throw new Error('Campo da duplicare non trovato.');
+  const id=String(idFactory());
+  if(!id||base.fields.some(field=>String(field.id)===id))throw new Error('Identificativo del nuovo campo non valido.');
+  const deepCopy=globalThis.structuredClone??(value=>JSON.parse(JSON.stringify(value)));
+  const copy=createDefaultField(id,base.fields.length+1,{
+    ...deepCopy(original),id,label:`Copia di ${original.label||'Campo'}`,labelCustomized:true,
+    soil:null
+  });
+  delete copy.clientFieldId;
+  return mirrorField({...base,fields:[...base.fields,copy]},copy);
+}
+
 export function switchProjectField(project, fieldId) {
   const base = ensureProjectFields(project);
   const active = base.fields.find((field) => field.id === fieldId);

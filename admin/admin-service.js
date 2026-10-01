@@ -16,6 +16,19 @@ export function createAdminService(client,{randomUUID=()=>globalThis.crypto.rand
   if (!client) throw new TypeError('Supabase client required');
 
   return {
+    async manageField({operationId=randomUUID(),projectId,fieldId,version,action,label=''}={}){
+      if(!['rename','delete'].includes(action))throw new TypeError('Azione campo non valida.');
+      const clean=String(label??'').trim();
+      if(action==='rename'&&!clean)throw new TypeError('Inserisci un nome per il campo.');
+      if(!projectId||!fieldId||!Number.isInteger(Number(version)))throw new TypeError('Progetto o campo non valido.');
+      const result=await client.rpc('admin_manage_field',{
+        p_operation_id:operationId,p_project_id:projectId,p_client_field_id:String(fieldId),
+        p_expected_version:Number(version),p_action:action,p_label:action==='rename'?clean:''
+      });
+      if(result.error)throw result.error;
+      if(result.data?.status==='conflict')throw new Error('Il progetto è stato modificato su un altro dispositivo. Aggiorna e riprova.');
+      return result.data;
+    },
     async setFieldLocation(payload={}){
       const result=await client.rpc('admin_set_field_location',{
         p_operation_id:payload.operationId??randomUUID(),p_project_id:payload.projectId,p_client_field_id:payload.fieldId,

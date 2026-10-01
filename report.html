@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="./report-preview.css?v=45" media="screen">
   <link rel="stylesheet" href="./v55.2-report.css?v=55.2" media="screen">
   <link rel="stylesheet" href="./v55.7-report.css?v=55.7">
+  <link rel="stylesheet" href="./v1.0.1-report.css?v=1.0.1" media="screen">
+  <link rel="stylesheet" href="./v1.0.1-report-print.css?v=1.0.1" media="print">
 </head>
 <body>
   <header class="report-app-header report-screen-only">
@@ -31,15 +33,15 @@
       </div>
 
       <div id="report-project-context" class="report-project-context report-card" aria-live="polite"></div>
-      <fieldset id="report-field-selection" class="report-card">
-        <legend>Campi da includere</legend>
+      <section id="report-field-selection" class="report-card" role="group" aria-labelledby="report-field-selection-title">
+        <h2 id="report-field-selection-title">Campi da includere</h2>
         <div id="report-field-options" class="report-field-options" aria-live="polite"></div>
-      </fieldset>
+      </section>
 
-      <fieldset class="report-card"><legend>Visione aerea generale</legend>
-        <label class="report-consent"><input id="report-overview" type="checkbox"> <span>Includi nella pagina 2 una vista satellitare di tutti i campi selezionati, con nomi e filari</span></label>
-        <label class="report-consent"><input id="report-overview-cadastre" type="checkbox" disabled> <span>Aggiungi il livello Catasto al 60%</span></label>
-      </fieldset>
+      <section class="report-card" role="group" aria-labelledby="report-overview-title"><h2 id="report-overview-title">Visione aerea generale</h2>
+        <label class="report-consent"><input id="report-overview" type="checkbox"> <span>Includi una vista satellitare di tutti i campi</span></label>
+        <label class="report-consent"><input id="report-overview-cadastre" type="checkbox" disabled> <span>Aggiungi vista Catasto</span></label>
+      </section>
       <form id="report-recipient-form" class="report-card" novalidate>
         <h2>Destinatario</h2>
         <p class="report-form-note">Questi dati personalizzano soltanto il documento e non modificano il profilo.</p>
@@ -74,12 +76,12 @@
       </div>
     </section>
 
-    <section id="report-preview" class="report-preview" aria-live="polite" aria-label="Anteprima documento">
+    <section class="report-preview-column" aria-label="Anteprima e azioni documento"><div class="report-preview-toolbar report-screen-only"><button id="report-print-top" type="button" disabled>Stampa / salva PDF</button><button id="report-copy-link-top" type="button" disabled>Copia link</button></div><div id="report-preview" class="report-preview" aria-live="polite" aria-label="Anteprima documento">
       <div class="report-preview-empty report-screen-only">L’anteprima comparirà qui dopo la verifica dei dati.</div>
-    </section>
+    </div></section>
     <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
   </main>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="./src/report.js?v=55.7"></script>
+  <script type="module" src="./src/report.js?v=1.0.1"></script>
 </body>
 </html>

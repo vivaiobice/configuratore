@@ -31,6 +31,19 @@ test('field detail mounts and disposes its satellite preview lifecycle',()=>{
  assert.equal(opened,1);views.clearDetail();assert.equal(disposed,1);views.destroy();assert.equal(disposed,1);
 });
 
+test('admin field detail can rename and delete the selected field',async()=>{
+ const calls=[];const {document,views}=fixture({onFieldManage:async(action,row,label)=>{calls.push([action,row.fieldId,label]);return {message:'Aggiornato'};}});
+ const row={rowId:'p1:f1',projectId:'p1',fieldId:'f1',label:'Campo Nord',field:{geometry:polygon},geometryValid:true};
+ views.renderDetail('fields',row);
+ document.querySelector('[data-admin-rename-field]').click();
+ document.querySelector('[data-admin-field-name]').value='Campo Est';
+ document.querySelector('[data-admin-save-field-name]').click();
+ await new Promise(resolve=>setImmediate(resolve));
+ document.querySelector('[data-admin-delete-field]').click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(calls,[['rename','f1','Campo Est'],['delete','f1','']]);
+});
+
 test('projects omit grape variety and clients expose aggregate totals',()=>{
  const {document,views}=fixture();
  views.renderSection('projects',[{rowId:'p1',date:'2026-09-01',code:'VO-1',name:'Progetto',client:'Azienda',status:'saved',fieldCount:2,areaM2:3000,commercialPlants:1400,quoteRequested:true,quoteNumber:''}]);

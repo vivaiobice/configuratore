@@ -5,13 +5,13 @@ import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdmin
 import { initAdminMap } from './admin-map.js?v=55.7';
 import { mountAdminFieldMap } from './admin-field-map.js?v=55.7';
 import { createAdminLocationManager } from './admin-location.js?v=51';
-import { createAdminService } from './admin-service.js?v=55.6';
-import { createAdminViews } from './admin-views.js?v=54';
+import { createAdminService } from './admin-service.js?v=1.0.1';
+import { createAdminViews } from './admin-views.js?v=1.0.1';
 
 const $=selector=>document.querySelector(selector);
 let client=null,service=null,currentUser=null,projects=[],profiles=[],adminMap=null,locationManager=null;
 let activeSection='fields',selectedProjectId=null,selectedRow=null;
-const views=createAdminViews({document,onSelect:selectRow,onProjectAction:handleProjectAction,onFieldLocationSave:saveFieldLocation,onFieldPreviewOpen:(row,container)=>mountAdminFieldMap({container,row})});
+const views=createAdminViews({document,onSelect:selectRow,onProjectAction:handleProjectAction,onFieldLocationSave:saveFieldLocation,onFieldManage:manageAdminField,onFieldPreviewOpen:(row,container)=>mountAdminFieldMap({container,row})});
 
 function projectFilters(){
   return {
@@ -108,6 +108,14 @@ async function selectMapField({projectId,fieldId}){
 async function saveFieldLocation(row,location){
   if(!locationManager)throw new Error('Servizio località non disponibile.');
   await locationManager.save(row,location);return {message:'Località del campo aggiornata.'};
+}
+async function manageAdminField(action,row,label){
+  await service.manageField({projectId:row.projectId,fieldId:row.fieldId,version:row.project?.version,action,label});
+  await loadProjects();
+  if(action==='delete'){views.clearDetail();selectedRow=null;return {message:'Campo eliminato dal progetto.'};}
+  const updated=expandProjectFields(projects).find(item=>item.rowId===row.rowId);
+  if(updated)await selectRow('fields',updated);
+  return {message:'Nome del campo aggiornato.'};
 }
 
 async function loadProjects(){

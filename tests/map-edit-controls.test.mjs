@@ -152,6 +152,19 @@ test('other project fields render as passive polygons without replacing active g
   } finally { ctx.restore(); }
 });
 
+test('main map keeps field name markers in editing and no-selection overview modes',()=>{
+ const ctx=setup();
+ try{
+  const a=[[10,10],[20,10],[20,20],[10,10]],b=[[30,30],[40,30],[40,40],[30,30]];
+  ctx.api.setActiveFieldLabel('Moscato');ctx.api.setGeometry(a);
+  ctx.api.setOtherFields([{id:'b',label:'Barbera',geometry:b}]);
+  const visible=()=>globalThis.__editMarkers.filter(marker=>!marker.removed&&marker.element?.className?.includes('field-label-marker')).map(marker=>marker.element.textContent);
+  assert.deepEqual(visible().sort(),['Barbera','Moscato']);
+  ctx.api.clearGeometry();ctx.api.setOtherFields([{id:'a',label:'Moscato',geometry:a},{id:'b',label:'Barbera',geometry:b}]);
+  assert.deepEqual(visible().sort(),['Barbera','Moscato']);
+ }finally{ctx.restore();}
+});
+
 test('changing fields removes handles and editing restarts on the new geometry',()=>{
  const ctx=setup();
  try {
