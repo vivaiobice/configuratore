@@ -1,5 +1,6 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
+import {createMapFieldLabelOverlay} from './map-field-label-overlay.js';
 import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=53.2';
 import { createCadastralOverlay } from './cadastral-overlay.js?v=53.2';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
@@ -86,6 +87,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let otherFieldLabelMarkers = [];
   let activeFieldLabelMarker = null;
   let currentActiveFieldLabel = 'Campo';
+  const fieldLabelOverlay=createMapFieldLabelOverlay({map});
   let drawEditingSuspended = false;
   let editableFeatureId = null;
   let vertexEditing = false;
@@ -528,10 +530,19 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function clearActiveFieldLabel() {
     activeFieldLabelMarker?.remove?.();
     activeFieldLabelMarker = null;
+    if(fieldLabelOverlay)renderAllFieldLabels();
+  }
+
+  function renderAllFieldLabels(){
+    fieldLabelOverlay?.setFields([
+      ...currentOtherFields,
+      ...(committedGeometry?[{geometry:committedGeometry,label:currentActiveFieldLabel}]:[])
+    ]);
   }
 
   function renderActiveFieldLabel() {
     clearActiveFieldLabel();
+    if(fieldLabelOverlay)return;
     if (!committedGeometry || typeof document === 'undefined' || typeof globalThis.maplibregl?.Marker !== 'function') return;
     const point = interiorLabelPoint(committedGeometry);
     if (!point) return;
@@ -543,6 +554,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
 
   function renderOtherFieldLabels() {
     clearOtherFieldLabelMarkers();
+    if(fieldLabelOverlay){renderAllFieldLabels();return;}
     if (typeof document === 'undefined' || typeof globalThis.maplibregl?.Marker !== 'function') return;
     for (const field of currentOtherFields) {
       const point = interiorLabelPoint(field?.geometry);

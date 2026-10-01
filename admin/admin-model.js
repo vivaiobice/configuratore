@@ -76,8 +76,18 @@ export function patchAdminFieldLocation(projects=[],row={},value={}){
   });
 }
 
-export function expandProjectFields(projects = []) {
+function ownerLabel(project,profile){
+  if(project?.owner_kind==='guest'){
+    const existing=String(profile?.username??'').trim();if(/^Guest\d{4,}$/i.test(existing))return existing;
+    const digits=String(project?.owner_user_id??project?.id??'').replace(/\D/g,'').slice(-4).padStart(4,'0');
+    return `Guest${digits}`;
+  }
+  return String(profile?.username??'').trim()||String(profile?.display_name??'').trim()||'Utente';
+}
+
+export function expandProjectFields(projects = [],profiles = []) {
   const rows = [];
+  const byOwner=new Map((profiles??[]).map(profile=>[String(profile.user_id),profile]));
   for (const project of projects ?? []) {
     if (project?.deleted_at) continue;
     let fields = Array.isArray(project?.field_plans) ? project.field_plans : [];
@@ -90,10 +100,11 @@ export function expandProjectFields(projects = []) {
       const municipality = String(field?.municipality || project?.municipality || '').trim();
       const location = String(field?.locationLabel || municipality || project?.location_label || '').trim();
       const client = contactLabel(project);
+      const userLabel=ownerLabel(project,byOwner.get(String(project.owner_user_id)));
       const row = {
         rowId:`${project.id}:${id}`, projectId:String(project.id), fieldId:id, index, project, field,
         projectDate:project.created_at ?? null, projectName:project.name ?? 'Progetto', projectCode:project.public_code ?? '',
-        client, location, municipality, province:field?.province ?? project?.province ?? '', year, plantingStatus,
+        client, userLabel, location, municipality, province:field?.province ?? project?.province ?? '', year, plantingStatus,
         label, cadastralRefs:normalizeCadastralReferences(field?.cadastralRefs??(fields.length===1?project?.cadastral_refs:[])),grapeVariety:field?.grapeVariety ?? project?.grape_variety ?? '', cloneSelection:field?.cloneSelection ?? project?.clone_selection ?? '',
         rootstock:field?.rootstock ?? project?.rootstock ?? '', areaM2:fieldMetric(field,project,'areaM2'),
         netAreaM2:fieldMetric(field,project,'netAreaM2','areaM2'), calculatedPlants:fieldMetric(field,project,'simulatedPlants'),
@@ -103,7 +114,7 @@ export function expandProjectFields(projects = []) {
         totalPosts:fieldMetric(field,project,'totalPosts'), geometry:ringFrom(field?.geometry), geometryValid:validRing(field?.geometry),
         environment:project.environment ?? '', status:project.status ?? '', ownerKind:project.owner_kind ?? '', origin:project.origin ?? ''
       };
-      row.searchText = [row.projectCode,row.projectName,row.label,row.client,row.location,row.municipality,row.province,row.grapeVariety,row.cloneSelection,row.rootstock].map(text).join(' ');
+      row.searchText = [row.projectCode,row.projectName,row.label,row.client,row.userLabel,row.location,row.municipality,row.province,row.grapeVariety,row.cloneSelection,row.rootstock].map(text).join(' ');
       rows.push(row);
     });
   }

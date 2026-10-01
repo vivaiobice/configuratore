@@ -13,9 +13,9 @@ test('project title opens its PDF and shows aggregate area and calculated vines 
  ui.mount();ui.open('projects');
  const row=document.querySelector('[data-desktop-project="p1"]');
  assert.match(row.textContent,/4\.000 m²/);assert.match(row.textContent,/1\.650 viti/);
- const pdf=row.querySelector('[data-project-action="pdf"]');assert.ok(pdf);pdf.click();assert.equal(printed,'p1');
+ const pdf=document.querySelector('#desktop-library-print');assert.ok(pdf);pdf.click();assert.equal(printed,'p1');
  assert.equal(row.dataset.expanded,'false');
- for(const action of ['open','quote','rename','delete'])assert.ok(row.querySelector(`[data-project-action="${action}"]`));
+ for(const action of ['expand','edit','rename','delete'])assert.ok(row.querySelector(`[data-project-action="${action}"]`));
 });
 
 test('admin project entry is hidden for ordinary accounts and revealed only in Projects',()=>{

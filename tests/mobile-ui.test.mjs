@@ -12,7 +12,7 @@ test('mobile release label follows the version displayed in the main header',()=
 });
 function setup(mobile=true,mapInstance=null,withCompass=false){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
- const $=s=>document.querySelector(s);let begun=0,saved=0,lastSaveOptions=null,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,reportField=null,viewToggles=0;
+ const $=s=>document.querySelector(s);let begun=0,saved=0,lastSaveOptions=null,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,quoteProject=null,reportField=null,viewToggles=0;
  if(withCompass){
   const group=document.createElement('div');group.className='maplibregl-ctrl-group';
   const compass=document.createElement('button');compass.className='maplibregl-ctrl-compass';compass.setAttribute('aria-label','Reset bearing to north');
@@ -31,8 +31,8 @@ function setup(mobile=true,mapInstance=null,withCompass=false){
   resizeMap(){},focusAll(){},stopTools(){},finishEdit(){},undoPoint(){},beginEdit(){begun++;},beginNewField(){begun++;},
   selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(name,options){saved++;lastSaveOptions=options;return options?.commitCloud?{location:'cloud'}:{location:'local'};},listProjects:()=>projects,loadProject(){},newProject(){},async refreshProjects(){refreshed++;},
   async renameProject(item,name){renamedProject=[item.id,name];item.name=name;},async deleteProject(item){deletedProject=item.id;projects.splice(projects.indexOf(item),1);},confirm:()=>true,
-  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){},openPublicProject(){loadedCode++;},openReport(item){reportProject=item;},openReportForField(id){reportField=id;},toggleTabletView(){viewToggles++;}});
- return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get lastSaveOptions(){return lastSaveOptions;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},get loadedCode(){return loadedCode;},get reportProject(){return reportProject;},get reportField(){return reportField;},get viewToggles(){return viewToggles;},desktop(){mobile=false;ui.sync();}};
+  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){},openPublicProject(){loadedCode++;},openReport(item){reportProject=item;},openQuote(item){quoteProject=item;},openReportForField(id){reportField=id;},toggleTabletView(){viewToggles++;}});
+ return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get lastSaveOptions(){return lastSaveOptions;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},get loadedCode(){return loadedCode;},get reportProject(){return reportProject;},get quoteProject(){return quoteProject;},get reportField(){return reportField;},get viewToggles(){return viewToggles;},desktop(){mobile=false;ui.sync();}};
 }
 test('V26 mobile perimeter becomes light and subordinate to rows, desktop paints restore exactly',()=>{
  const paints=new Map([
@@ -183,7 +183,7 @@ test('tablet layout switch is absent and the theme choice lives in Profile',()=>
 });
 test('projects view offers code lookup and opens a saved project in PDF preflight',()=>{
  const c=setup(),{$}=c;$('[data-view="projects"]').click();$('#mobile-load-code').click();assert.equal(c.loadedCode,1);
- const pdf=$('[data-mobile-project-action="pdf"]');assert.ok(pdf);pdf.click();
+ const pdf=$('#mobile-projects-print');assert.ok(pdf);pdf.click();
  assert.equal(c.reportProject.name,'Progetto prova');assert.equal(c.document.body.dataset.mobileScreen,'projects');
 });
 test('field PDF entry refers to the current field',()=>{
@@ -311,12 +311,24 @@ test('mobile profile never exposes the desktop-only administration action',()=>{
  assert.equal(Boolean($('#mobile-profile-content a[href="./admin/"]')),false);
 });
 
-test('project card has a dedicated adjacent action column and PDF belongs to the card',()=>{
+test('project card groups edits while PDF and quote target the selected project above',()=>{
  const c=setup(),{$}=c;c.ui.navigate('projects');
  const row=$('[data-mobile-project="p1"]');
  assert.ok(row.querySelector('.mobile-project-actions'));
- assert.ok(row.querySelector('[data-mobile-project-action="pdf"]'));
+ assert.ok(row.querySelector('[data-mobile-project-action="edit"]'));
+ assert.ok($('#mobile-projects-print'));assert.ok($('#mobile-projects-quote'));
  assert.equal(row.querySelectorAll('.mobile-project-actions button').length,2);
+ $('#mobile-projects-quote').click();assert.equal(c.quoteProject.name,'Progetto prova');
+ row.querySelector('[data-mobile-project-action="edit"]').click();assert.equal(row.querySelector('.mobile-project-actions').hidden,false);
+});
+
+test('mobile field card keeps thumbnail and grouped edits while general actions stay above',()=>{
+ const c=setup(),{$}=c;c.ui.navigate('fields');
+ assert.ok($('.mobile-card-preview svg'));
+ assert.ok($('#mobile-fields-print'));assert.ok($('#mobile-fields-quote'));
+ assert.equal($('[data-field-action="pdf"]'),null);
+ const edit=$('[data-field-action="edit"]');edit.click();assert.equal($('.mobile-field-row-actions').hidden,false);
+ $('#mobile-fields-print').click();assert.equal(c.reportProject,undefined);
 });
 
 test('mobile refinement starts closed and retains a single editable planting year/status pair inside',()=>{

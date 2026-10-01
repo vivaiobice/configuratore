@@ -16,13 +16,15 @@ export function createCadastralReferenceEditor({document,container,onChange=()=>
   })]);
   function appendRow(ref={}) {
     const row=document.createElement('div');row.dataset.referenceRow='';row.className='cadastral-reference-row';originals.set(row,{...ref});
-    for(const [name,title] of [['municipality','Comune'],['section','Sezione'],['sheet','Foglio'],['parcel','Particella']]) {
+    const columns=[['municipality','Comune'],...(ref.section?[['section','Sezione']]:[]),['sheet','Foglio'],['parcel','Particella']];
+    row.classList.toggle('has-section',Boolean(ref.section));
+    for(const [name,title] of columns) {
       const label=document.createElement('label');label.textContent=title;const input=document.createElement('input');input.className='control-input';input.name=name;input.value=String(ref[name]??'');input.setAttribute('aria-label',`${title} riferimento catastale ${rows().length+1}`);label.append(input);row.append(label);
     }
     const actions=document.createElement('div');actions.className='cadastral-reference-actions';
-    const remove=document.createElement('button');remove.type='button';remove.dataset.removeReference='';remove.textContent='Rimuovi';actions.append(remove);row.append(actions);container.append(row);
+    const remove=document.createElement('button');remove.type='button';remove.dataset.removeReference='';remove.textContent='×';remove.title='Rimuovi mappale';remove.setAttribute('aria-label',`Rimuovi mappale ${rows().length+1}`);actions.append(remove);row.append(actions);container.append(row);
   }
-  function placeAdd(){const add=container.querySelector('[data-add-reference]');if(!add)return;if(mobile)rows().at(-1)?.querySelector('.cadastral-reference-actions')?.prepend(add);else container.append(add);}
+  function placeAdd(){const add=container.querySelector('[data-add-reference]');if(add)container.append(add);}
   function emit(){onChange(values());}
   function click(event){if(event.target.closest('[data-add-reference]')){appendRow();placeAdd();emit();return;}const remove=event.target.closest('[data-remove-reference]');if(remove){const row=remove.closest('[data-reference-row]');const add=row?.querySelector('[data-add-reference]');if(add)container.append(add);row?.remove();if(!rows().length)appendRow();placeAdd();emit();}}
   function change(event){if(event.target.matches?.('input[name]')){const row=event.target.closest('[data-reference-row]');originals.set(row,{...originals.get(row),source:'manual'});emit();}}

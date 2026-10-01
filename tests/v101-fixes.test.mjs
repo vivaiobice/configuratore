@@ -22,14 +22,15 @@ test('a duplicated field keeps editable layout and cadastral values but has its 
 
 test('the field list offers save, duplicate, and report actions for the project',async()=>{
  const {document}=parseHTML(readFileSync(new URL('../index.html',import.meta.url),'utf8'));
- const item={id:'f1',label:'Campo',geometry:polygon};let saved=0,duplicated='',printed='';
- const ui=createDesktopLibraryUI({document,isDesktop:()=>true,getFields:()=>[item],getProjects:()=>[],saveProject:async()=>{saved++;return {location:'cloud'};},duplicateField:field=>{duplicated=field.id;},openReportForField:id=>{printed=id;}});
+ const item={id:'f1',label:'Campo',geometry:polygon};let saved=0,duplicated='',printed=0;
+ const ui=createDesktopLibraryUI({document,isDesktop:()=>true,getFields:()=>[item],getProjects:()=>[],saveProject:async()=>{saved++;return {location:'cloud'};},duplicateField:field=>{duplicated=field.id;},openReport:()=>{printed++;}});
  ui.mount();document.querySelector('#desktop-fields-trigger').click();
  assert.ok(document.querySelector('#desktop-library-save:not([hidden])'));
+ document.querySelector('[data-field-action="edit"]').click();
  document.querySelector('[data-field-action="duplicate"]').click();
- document.querySelector('[data-field-action="pdf"]').click();
+ document.querySelector('#desktop-library-print').click();
  await document.querySelector('#desktop-library-save').click();await new Promise(resolve=>setImmediate(resolve));
- assert.equal(duplicated,'f1');assert.equal(printed,'f1');assert.equal(saved,1);
+ assert.equal(duplicated,'f1');assert.equal(printed,1);assert.equal(saved,1);
 });
 
 test('report page 2 places overview below all project totals; field evidence remains on the data page',()=>{

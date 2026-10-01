@@ -36,15 +36,15 @@ test('reference editor renders one presentation row, switches fields and emits u
   assert.equal(container.querySelector('[name="municipality"]').value,'Asti');assert.equal(events.length,1);
   editor.destroy();
 });
-test('mobile cadastral add stays beside remove on the final mappale after additions and removals',()=>{
+test('mobile cadastral add stays below compact rows after additions and removals',()=>{
   const {document}=parseHTML('<div id="editor"></div>'),container=document.querySelector('#editor');
   const editor=createCadastralReferenceEditor({document,container});editor.setMobile(true);editor.render([]);
   for(let i=0;i<2;i++){
-    assert.ok(container.querySelector('[data-reference-row]:last-child .cadastral-reference-actions').contains(container.querySelector('[data-add-reference]')));
+    assert.equal(container.lastElementChild.dataset.addReference,'');
     container.querySelector('[data-add-reference]').click();
   }
-  container.querySelector('[data-reference-row]:last-child [data-remove-reference]').click();
-  assert.ok(container.querySelector('[data-reference-row]:last-child .cadastral-reference-actions').contains(container.querySelector('[data-add-reference]')));
+  [...container.querySelectorAll('[data-reference-row]')].at(-1).querySelector('[data-remove-reference]').click();
+  assert.equal(container.lastElementChild.dataset.addReference,'');
   editor.setMobile(false);assert.equal(container.lastElementChild.dataset.addReference,'');
 });
 test('Admin row exposes references and map data retains valid siblings', () => {

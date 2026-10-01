@@ -1,13 +1,13 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.0.1';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.1';
+import { createMobileUI } from './mobile-ui.js?v=1.0.2';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.2';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.7';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=55.6.2';
+import { initMap } from './map.js?v=1.0.2';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraft, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=55.6.4';
 import {setLocalOwnerScope} from './local-owner-scope.js';
@@ -25,7 +25,7 @@ import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.0.1';
-import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=55.7';
+import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=1.0.2';
 import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
@@ -184,6 +184,7 @@ function calculateAndRender() {
   const plantsText = result.simulatedPlants ? result.simulatedPlants.toLocaleString('it-IT') : '—';
   const commercialPlantsText = result.commercialPlants25 ? result.commercialPlants25.toLocaleString('it-IT') : '—';
   setText('#summary-area', areaText);
+  setText('#summary-net-area', formatArea(result.netAreaM2));
   setText('#summary-perimeter', perimeterText);
   setText('#summary-rows', rowsText);
   setText('#summary-linear', linearText);
@@ -831,6 +832,7 @@ mobileUi = createMobileUI({
   stopTools:()=>mapApi?.stopTools(), finishEdit:()=>mapApi?.finishVertexEditing(), undoPoint:()=>mapApi?.undoDrawPoint(), finishDraw:()=>mapApi?.finishDraw(),
   beginNewField:beginMobileNewField, beginEdit:beginMobileEdit, cancelEdit:cancelMobileEdit,
   selectField:(id)=>{ state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap(); },
+  renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
   removeField:removeMobileField,
   duplicateField:duplicateFieldInCurrentProject,beginDuplicateEdit:()=>mapApi?.beginVertexEditing?.(),
   saveProject:saveMobileProject, listProjects:()=>readLocalProjects(globalThis.localStorage), loadProject:loadMobileProject, newProject:newMobileProject,
@@ -848,7 +850,7 @@ mobileUi = createMobileUI({
 });
 
 desktopLibraryUi=createDesktopLibraryUI({
-  document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
+  document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),getActiveProjectId:()=>state.project.localProjectId,
   getFieldMetrics:(field)=>calculateFieldProject(field),
   isAdmin:()=>authBridge.getState().isAdmin,openUserProjects:()=>userProjectsView.open(),openReport:(item)=>openReportPopup({projectItem:item}),
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},

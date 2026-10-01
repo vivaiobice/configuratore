@@ -22,19 +22,21 @@ test('desktop library exposes selectable Campi and Progetti without replacing th
  document.querySelector('#desktop-fields-trigger').click();
  assert.ok(document.querySelector('[data-desktop-field="f1"] [data-field-action="rename"]'));
  assert.ok(document.querySelector('[data-desktop-field="f1"] [data-field-action="delete"]'));
- document.querySelector('[data-desktop-field="f1"] [data-field-action="open"]').click();
+ document.querySelector('[data-desktop-field="f1"] .desktop-library-item-main').click();
  assert.equal(selected,'f1');
  document.querySelector('#desktop-fields-trigger').click();
+ document.querySelector('[data-desktop-field="f1"] [data-field-action="edit"]').click();
  document.querySelector('[data-desktop-field="f1"] [data-field-action="rename"]').click();
  const fieldInput=document.querySelector('[data-desktop-field="f1"] input');fieldInput.value='Campo Sud';
  await document.querySelector('[data-desktop-field="f1"] [data-field-action="confirm-rename"]').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(renamedField,['f1','Campo Sud']);
+ document.querySelector('[data-desktop-field="f1"] [data-field-action="edit"]').click();
  await document.querySelector('[data-desktop-field="f1"] [data-field-action="delete"]').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(deletedField,'f1');
  document.querySelector('#desktop-projects-trigger').click();
- document.querySelector('[data-desktop-project="p1"] [data-project-action="open"]').click();
+ document.querySelector('[data-desktop-project="p1"] .desktop-library-item-main').click();
  assert.equal(loaded,'p1');
  await document.querySelector('#desktop-library-refresh').click();
  await new Promise(resolve=>setImmediate(resolve));
@@ -42,11 +44,12 @@ test('desktop library exposes selectable Campi and Progetti without replacing th
  await document.querySelector('#desktop-library-save').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(saved,1);
- assert.equal(document.querySelector('#desktop-library-save').textContent,'Bozza salvata sul dispositivo');
- assert.match(document.querySelector('#desktop-library-feedback').textContent,/Bozza salvata su questo dispositivo/);
+ assert.equal(document.querySelector('#desktop-library-save').dataset.saveState,'local');
+ assert.match(document.querySelector('#desktop-library-feedback').textContent,/Bozza salvata sul dispositivo/);
  assert.ok(document.querySelector('.app-shell'),'original editor remains mounted');
 
  document.querySelector('#desktop-projects-trigger').click();
+ document.querySelector('[data-desktop-project="p1"] [data-project-action="edit"]').click();
  document.querySelector('[data-desktop-project="p1"] [data-project-action="rename"]').click();
  const renameInput=document.querySelector('[data-desktop-project="p1"] input');renameInput.value='Progetto rinominato';
  await document.querySelector('[data-desktop-project="p1"] [data-project-action="confirm-rename"]').click();
@@ -54,6 +57,7 @@ test('desktop library exposes selectable Campi and Progetti without replacing th
  assert.deepEqual(renamed,['p1','Progetto rinominato']);
  assert.equal(document.querySelector('[data-desktop-project="p1"] strong').textContent,'Progetto rinominato');
 
+ document.querySelector('[data-desktop-project="p1"] [data-project-action="edit"]').click();
  await document.querySelector('[data-desktop-project="p1"] [data-project-action="delete"]').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(deleted,'p1');
@@ -71,8 +75,8 @@ test('project archive expands fields and confirms touch field movement in-app',a
  const ui=module.createDesktopLibraryUI({document,isDesktop:()=>true,getFields:()=>[],getProjects:()=>projects,
   moveField:async(source,target,field)=>moves.push([source.id,target.id,field.id])});
  ui.mount();document.querySelector('#desktop-projects-trigger').click();
- const main=document.querySelector('[data-desktop-project="p1"] .desktop-library-item-main');
- main.click();
+ const expand=document.querySelector('[data-desktop-project="p1"] [data-project-action="expand"]');
+ expand.click();
  assert.equal(document.querySelector('[data-desktop-project="p1"]').dataset.expanded,'true');
  assert.ok(document.querySelector('[data-project-field="p1:f1"]'));
  assert.match(document.querySelector('[data-project-field="p1:f1"]').textContent,/Da realizzare/);

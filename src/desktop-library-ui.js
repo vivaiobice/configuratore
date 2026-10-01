@@ -1,73 +1,77 @@
 import {projectSummaryText} from './project-summary.js?v=55.7';
-import {createSaveFeedback} from './desktop-ux.js?v=55.7';
+import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 const text=(value)=>String(value??'');
+const ICON={print:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6zM17 12h1"/></svg>',mail:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>',edit:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16ZM13.5 6.5l4 4"/></svg>',save:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1Zm3 0v7h10V3M7 21v-8h10v8"/></svg>',refresh:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/></svg>',new:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>',expand:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'};
+function setIcon(button,name,label){button.innerHTML=ICON[name];button.title=label;button.setAttribute('aria-label',label);button.classList.add('library-icon-action');return button;}
 
 export function createDesktopLibraryUI(api){
   const document=api.document??globalThis.document;
   let root=null,mode='fields',busy=false;
   const expandedProjects=new Set();
-  let draggedField=null,pendingMove=null;
+  let draggedField=null,pendingMove=null,actionProjectId='';
+  const notice=message=>{root.querySelector('#desktop-library-feedback').textContent=message;};
 
   function close(){if(root)root.hidden=true;}
   function fieldButton(field){
-    const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopField=field.id;
-    const main=document.createElement('div');main.className='desktop-library-item-main';
+    const row=document.createElement('article');row.className='desktop-library-item desktop-field-card';row.dataset.desktopField=field.id;
+    const main=document.createElement('button');main.type='button';main.className='desktop-library-item-main';main.setAttribute('aria-label',`Apri il campo ${field.label||'Campo'}`);
+    const thumbnail=document.createElement('div');thumbnail.className='desktop-field-thumbnail';
+    thumbnail.innerHTML=renderProjectDiagramSvg({polygon:field.geometry,rows:fieldMetrics(field).rows??[]});
+    const content=document.createElement('div');content.className='desktop-field-info';
     const title=document.createElement('strong');title.textContent=field.label||'Campo';
-    const detail=document.createElement('span');detail.textContent=Array.isArray(field.geometry)&&field.geometry.length>=4?'Perimetro salvato':'Perimetro da completare';
-    main.append(title,detail);
+    const metrics=fieldMetrics(field),detail=document.createElement('span');
+    detail.textContent=`${(Number(metrics.commercialPlants25)||0).toLocaleString('it-IT')} barbatelle comm. · ${(Number(metrics.rowCount)||0).toLocaleString('it-IT')} filari · ${field.grapeVariety||'Vitigno da definire'}`;
+    content.append(title,detail);main.append(thumbnail,content);main.addEventListener('click',()=>{api.selectField?.(field.id);close();});
     const actions=document.createElement('div');actions.className='desktop-library-item-actions';
-    const open=document.createElement('button');open.type='button';open.dataset.fieldAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.selectField?.(field.id);close();});
-    const quote=document.createElement('button');quote.type='button';quote.dataset.fieldAction='quote';quote.textContent='Preventivo';quote.addEventListener('click',()=>api.openQuoteForField?.(field.id));
-    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.fieldAction='pdf';pdf.textContent='Stampa';pdf.addEventListener('click',()=>api.openReportForField?.(field.id));
-    const duplicate=document.createElement('button');duplicate.type='button';duplicate.dataset.fieldAction='duplicate';duplicate.textContent='Duplica';duplicate.addEventListener('click',()=>{try{api.duplicateField?.(field);close();}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Duplicazione non riuscita: ${text(error.message)}`;}});
-    const rename=document.createElement('button');rename.type='button';rename.dataset.fieldAction='rename';rename.textContent='Rinomina';
-    const remove=document.createElement('button');remove.type='button';remove.dataset.fieldAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
+    const edit=setIcon(document.createElement('button'),'edit',`Modifica ${field.label||'Campo'}`);edit.type='button';edit.dataset.fieldAction='edit';edit.setAttribute('aria-expanded','false');
+    const options=document.createElement('div');options.className='desktop-library-edit-options';options.hidden=true;
+    edit.addEventListener('click',()=>{options.hidden=!options.hidden;edit.setAttribute('aria-expanded',String(!options.hidden));});
+    const duplicate=document.createElement('button');duplicate.type='button';duplicate.dataset.fieldAction='duplicate';duplicate.textContent='Duplica';duplicate.title='Duplica campo';duplicate.addEventListener('click',()=>{try{api.duplicateField?.(field);close();}catch(error){notice(`Duplicazione non riuscita: ${text(error.message)}`);}});
+    const rename=document.createElement('button');rename.type='button';rename.dataset.fieldAction='rename';rename.textContent='Rinomina';rename.title='Rinomina campo';
+    const remove=document.createElement('button');remove.type='button';remove.dataset.fieldAction='delete';remove.className='danger-soft';remove.textContent='Elimina';remove.title='Elimina campo';
     rename.addEventListener('click',()=>{
       if(row.querySelector('.desktop-library-rename'))return;
       const editor=document.createElement('div');editor.className='desktop-library-rename';
       const input=document.createElement('input');input.value=field.label||'Campo';input.maxLength=80;input.setAttribute('aria-label','Nuovo nome campo');
       const confirm=document.createElement('button');confirm.type='button';confirm.dataset.fieldAction='confirm-rename';confirm.textContent='Salva';
       const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annulla';cancel.addEventListener('click',()=>editor.remove());
-      confirm.addEventListener('click',async()=>{try{await api.renameField?.(field,input.value);render();root.querySelector('#desktop-library-feedback').textContent='Campo rinominato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Rinomina non riuscita: ${text(error.message)}`;}});
+      confirm.addEventListener('click',async()=>{try{await api.renameField?.(field,input.value);render();notice('Campo rinominato.');}catch(error){notice(`Rinomina non riuscita: ${text(error.message)}`);}});
       editor.append(input,confirm,cancel);row.append(editor);input.focus?.();input.select?.();
     });
     remove.addEventListener('click',async()=>{
       const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il campo “${field.label||'Campo'}”?`))return;
-      try{await api.deleteField?.(field);render();root.querySelector('#desktop-library-feedback').textContent='Campo eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
+      try{await api.deleteField?.(field);render();notice('Campo eliminato.');}catch(error){notice(`Eliminazione non riuscita: ${text(error.message)}`);}
     });
-    actions.append(open,quote,pdf,rename,duplicate,remove);row.append(main,actions);return row;
+    options.append(rename,duplicate,remove);actions.append(edit,options);row.append(main,actions);return row;
   }
   function projectButton(item){
-    const row=document.createElement('article');row.className='desktop-library-item';row.dataset.desktopProject=item.id;
-    const main=document.createElement('div');main.className='desktop-library-item-main';
+    const row=document.createElement('article');row.className='desktop-library-item desktop-project-card';row.dataset.desktopProject=item.id;
+    const main=document.createElement('button');main.type='button';main.className='desktop-library-item-main';main.setAttribute('aria-label',`Apri il progetto ${item.name||'Progetto'}`);
     const title=document.createElement('strong');title.textContent=item.name||'Progetto';
-    const fields=(item.project?.fields??[]).filter((field)=>Array.isArray(field?.geometry)&&field.geometry.length>=4).length;
     const detail=document.createElement('span');detail.textContent=`${projectSummaryText(item.project,api.getFieldMetrics)} · ${item.savedAt?new Date(item.savedAt).toLocaleDateString('it-IT'):'bozza locale'}`;
-    const titlebar=document.createElement('div');titlebar.className='project-titlebar';
-    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.projectAction='pdf';pdf.textContent='Stampa/PDF';pdf.setAttribute('aria-label',`Stampa/PDF del progetto ${item.name||'Progetto'}`);pdf.addEventListener('click',event=>{event.stopPropagation();try{api.openReport?.(item);}catch(error){root.querySelector('#desktop-library-feedback').textContent=error.message;}});titlebar.append(title,pdf);main.append(titlebar,detail);
-    main.tabIndex=0;main.setAttribute('role','button');main.setAttribute('aria-expanded',String(expandedProjects.has(item.id)));
-    const toggle=()=>{expandedProjects.has(item.id)?expandedProjects.delete(item.id):expandedProjects.add(item.id);render();};
-    main.addEventListener('click',toggle);
-    main.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}});
+    main.append(title,detail);main.addEventListener('click',()=>{api.loadProject?.(item);close();});
     const actions=document.createElement('div');actions.className='desktop-library-item-actions';
-    const open=document.createElement('button');open.type='button';open.dataset.projectAction='open';open.textContent='Apri';open.addEventListener('click',()=>{api.loadProject?.(item);close();});
-    const quote=document.createElement('button');quote.type='button';quote.dataset.projectAction='quote';quote.textContent='Preventivo';quote.addEventListener('click',()=>api.openQuote?.(item));
-    const rename=document.createElement('button');rename.type='button';rename.dataset.projectAction='rename';rename.textContent='Rinomina';
-    const remove=document.createElement('button');remove.type='button';remove.dataset.projectAction='delete';remove.className='danger-soft';remove.textContent='Elimina';
+    const expand=setIcon(document.createElement('button'),'expand',`Mostra i campi di ${item.name||'Progetto'}`);expand.type='button';expand.dataset.projectAction='expand';expand.setAttribute('aria-expanded',String(expandedProjects.has(item.id)));
+    expand.addEventListener('click',()=>{expandedProjects.has(item.id)?expandedProjects.delete(item.id):expandedProjects.add(item.id);render();});
+    const edit=setIcon(document.createElement('button'),'edit',`Modifica ${item.name||'Progetto'}`);edit.type='button';edit.dataset.projectAction='edit';edit.setAttribute('aria-expanded','false');
+    const options=document.createElement('div');options.className='desktop-library-edit-options';options.hidden=true;
+    edit.addEventListener('click',()=>{options.hidden=!options.hidden;edit.setAttribute('aria-expanded',String(!options.hidden));});
+    const rename=document.createElement('button');rename.type='button';rename.dataset.projectAction='rename';rename.textContent='Rinomina';rename.title='Rinomina progetto';
+    const remove=document.createElement('button');remove.type='button';remove.dataset.projectAction='delete';remove.className='danger-soft';remove.textContent='Elimina';remove.title='Elimina progetto';
     rename.addEventListener('click',()=>{
       if(row.querySelector('.desktop-library-rename'))return;
       const editor=document.createElement('div');editor.className='desktop-library-rename';
       const input=document.createElement('input');input.value=item.name||'Progetto';input.maxLength=80;input.setAttribute('aria-label','Nuovo nome progetto');
       const confirm=document.createElement('button');confirm.type='button';confirm.dataset.projectAction='confirm-rename';confirm.textContent='Salva';
       const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annulla';cancel.addEventListener('click',()=>editor.remove());
-      confirm.addEventListener('click',async()=>{try{await api.renameProject?.(item,input.value);render();root.querySelector('#desktop-library-feedback').textContent='Progetto rinominato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Rinomina non riuscita: ${text(error.message)}`;}});
+      confirm.addEventListener('click',async()=>{try{await api.renameProject?.(item,input.value);render();notice('Progetto rinominato.');}catch(error){notice(`Rinomina non riuscita: ${text(error.message)}`);}});
       editor.append(input,confirm,cancel);row.append(editor);input.focus?.();input.select?.();
     });
     remove.addEventListener('click',async()=>{
       const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;
-      try{await api.deleteProject?.(item);render();root.querySelector('#desktop-library-feedback').textContent='Progetto eliminato.';}catch(error){root.querySelector('#desktop-library-feedback').textContent=`Eliminazione non riuscita: ${text(error.message)}`;}
+      try{await api.deleteProject?.(item);render();notice('Progetto eliminato.');}catch(error){notice(`Eliminazione non riuscita: ${text(error.message)}`);}
     });
-    actions.append(open,quote,rename,remove);row.append(main,actions);
+    options.append(rename,remove);actions.append(expand,edit,options);row.append(main,actions);
     row.dataset.expanded=String(expandedProjects.has(item.id));
     row.addEventListener('dragover',(event)=>{
       if(!draggedField||draggedField.sourceItem.id===item.id)return;
@@ -138,12 +142,19 @@ export function createDesktopLibraryUI(api){
     root.querySelector('#desktop-library-new').hidden=mode!=='projects';
     root.querySelector('#desktop-library-save').hidden=false;
     root.querySelector('#desktop-user-projects').hidden=mode!=='projects'||api.isAdmin?.()!==true;
+    const target=root.querySelector('#desktop-library-project-target'),projects=api.getProjects?.()??[];
+    target.parentElement.hidden=mode!=='projects';target.replaceChildren();
+    for(const item of projects){const option=document.createElement('option');option.value=item.id;option.textContent=item.name||'Progetto';target.append(option);}
+    const current=projects.find(item=>item.id===actionProjectId)||projects.find(item=>item.id===api.getActiveProjectId?.())||projects[0];
+    actionProjectId=current?.id??'';for(const option of target.querySelectorAll('option'))option.selected=option.value===actionProjectId;
+    root.querySelector('#desktop-library-print').disabled=mode==='projects'&&!current;
+    root.querySelector('#desktop-library-quote').disabled=mode==='projects'&&!current;
     const list=root.querySelector('.desktop-library-list');list.replaceChildren();
     const items=mode==='fields'?(api.getFields?.()??[]):(api.getProjects?.()??[]);
     if(!items.length){const empty=document.createElement('p');empty.className='desktop-library-empty';empty.textContent=mode==='fields'?'Nessun campo disegnato.':'Nessun progetto archiviato.';list.append(empty);return;}
     for(const item of items)list.append(mode==='fields'?fieldButton(item):projectButton(item));
   }
-  function open(next){if(!api.isDesktop?.())return;mode=next;root.hidden=false;render();}
+  function open(next){if(!api.isDesktop?.())return;mode=next;actionProjectId='';root.hidden=false;render();}
   function mount(){
     if(root)return;
     const actions=document.querySelector('.topbar-actions');if(!actions)return;
@@ -151,8 +162,13 @@ export function createDesktopLibraryUI(api){
     const projects=document.createElement('button');projects.id='desktop-projects-trigger';projects.type='button';projects.textContent='Progetti';
     fields.addEventListener('click',()=>open('fields'));projects.addEventListener('click',()=>open('projects'));actions.prepend(fields,projects);
     root=document.createElement('section');root.id='desktop-library';root.className='desktop-library';root.hidden=true;
-    root.innerHTML='<div class="desktop-library-card" role="dialog" aria-modal="true" aria-labelledby="desktop-library-title"><header><h2 id="desktop-library-title"></h2><button id="desktop-library-close" type="button" aria-label="Chiudi">×</button></header><div class="desktop-library-actions"><button id="desktop-library-refresh" type="button">↻ Aggiorna</button><button id="desktop-library-save" type="button">Salva progetto</button><button id="desktop-library-new" type="button">+ Nuovo progetto</button><button id="desktop-user-projects" type="button" hidden>Progetti degli utenti</button></div><div class="desktop-library-list"></div><p id="desktop-library-feedback" role="status"></p></div><section id="desktop-field-move-dialog" class="desktop-field-move-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-field-move-title" hidden><div><h3 id="desktop-field-move-title">Sposta campo</h3><p data-move-message></p><label>Progetto di destinazione<select></select></label><p data-move-error role="alert"></p><footer><button type="button" data-move-cancel>Annulla</button><button type="button" data-move-next>Continua</button><button type="button" data-move-confirm hidden>Sposta campo</button></footer></div></section>';
+    root.innerHTML='<div class="desktop-library-card" role="dialog" aria-modal="true" aria-labelledby="desktop-library-title"><header><h2 id="desktop-library-title"></h2><button id="desktop-library-close" type="button" aria-label="Chiudi">×</button></header><div class="desktop-library-actions"><label class="desktop-library-project-target">Progetto<select id="desktop-library-project-target" aria-label="Progetto per stampa e preventivo"></select></label><button id="desktop-library-print" type="button"></button><button id="desktop-library-quote" type="button"></button><button id="desktop-library-refresh" type="button"></button><button id="desktop-library-save" type="button"></button><button id="desktop-library-new" type="button"></button><button id="desktop-user-projects" type="button" hidden>Progetti degli utenti</button></div><div class="desktop-library-list"></div><p id="desktop-library-feedback" role="status"></p></div><section id="desktop-field-move-dialog" class="desktop-field-move-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-field-move-title" hidden><div><h3 id="desktop-field-move-title">Sposta campo</h3><p data-move-message></p><label>Progetto di destinazione<select></select></label><p data-move-error role="alert"></p><footer><button type="button" data-move-cancel>Annulla</button><button type="button" data-move-next>Continua</button><button type="button" data-move-confirm hidden>Sposta campo</button></footer></div></section>';
     document.body.append(root);
+    for(const [id,icon,label] of [['desktop-library-print','print','Stampa / PDF del progetto'],['desktop-library-quote','mail','Richiedi preventivo del progetto'],['desktop-library-refresh','refresh','Aggiorna progetti'],['desktop-library-save','save','Salva modifiche'],['desktop-library-new','new','Nuovo progetto']])setIcon(root.querySelector(`#${id}`),icon,label);
+    root.querySelector('#desktop-library-project-target').addEventListener('change',event=>{actionProjectId=event.target.value;});
+    const projectForAction=()=>mode==='fields'?null:(api.getProjects?.()??[]).find(item=>item.id===actionProjectId);
+    root.querySelector('#desktop-library-print').addEventListener('click',()=>{try{api.openReport?.(projectForAction());}catch(error){notice(error.message||'Documento non disponibile.');}});
+    root.querySelector('#desktop-library-quote').addEventListener('click',()=>{try{api.openQuote?.(projectForAction());}catch(error){notice(error.message||'Preventivo non disponibile.');}});
     root.querySelector('#desktop-library-close').addEventListener('click',close);
     root.querySelector('#desktop-user-projects').addEventListener('click',()=>{if(api.isAdmin?.())api.openUserProjects?.();});
     root.addEventListener('click',(event)=>{if(event.target===root)close();});
@@ -163,11 +179,12 @@ export function createDesktopLibraryUI(api){
       catch(error){root.querySelector('#desktop-library-feedback').textContent=`Sincronizzazione non riuscita: ${text(error.message)}`;}
       finally{busy=false;refreshButton.disabled=false;}
     });
-    const saveButton=root.querySelector('#desktop-library-save'),saveFeedback=createSaveFeedback(saveButton,{idleLabel:'Salva modifiche'});
+    const saveButton=root.querySelector('#desktop-library-save');
     saveButton.addEventListener('click',async()=>{
-      saveFeedback.saving();
-      try{const result=await api.saveProject?.();render();if(result?.location==='cloud'){saveFeedback.saved();root.querySelector('#desktop-library-feedback').textContent='Progetto salvato online.';}else{saveFeedback.local();root.querySelector('#desktop-library-feedback').textContent='Bozza salvata su questo dispositivo.';}}
-      catch(error){saveFeedback.error();root.querySelector('#desktop-library-feedback').textContent=`Salvataggio non riuscito: ${text(error.message)}`;}
+      saveButton.disabled=true;saveButton.dataset.saveState='saving';notice('Salvataggio in corso…');
+      try{const result=await api.saveProject?.();render();saveButton.dataset.saveState=result?.location==='cloud'?'saved':'local';notice(result?.location==='cloud'?'Progetto salvato online.':'Bozza salvata sul dispositivo.');}
+      catch(error){saveButton.dataset.saveState='error';notice(`Salvataggio non riuscito: ${text(error.message)}`);}
+      finally{saveButton.disabled=false;}
     });
     root.querySelector('#desktop-library-new').addEventListener('click',()=>{api.newProject?.();close();});
     root.querySelector('[data-move-cancel]').addEventListener('click',closeMoveDialog);

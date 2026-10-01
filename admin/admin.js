@@ -1,12 +1,12 @@
 import { APP_CONFIG } from '../src/config.js';
 import { connectSupabase } from '../src/backend.js?v=51';
 import { resolveFieldLocation } from '../src/field-location.js?v=51';
-import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=55.6';
+import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=1.0.2';
 import { initAdminMap } from './admin-map.js?v=55.7';
 import { mountAdminFieldMap } from './admin-field-map.js?v=55.7';
 import { createAdminLocationManager } from './admin-location.js?v=51';
 import { createAdminService } from './admin-service.js?v=1.0.1';
-import { createAdminViews } from './admin-views.js?v=1.0.1';
+import { createAdminViews } from './admin-views.js?v=1.0.2';
 
 const $=selector=>document.querySelector(selector);
 let client=null,service=null,currentUser=null,projects=[],profiles=[],adminMap=null,locationManager=null;
@@ -29,7 +29,7 @@ function rowFilters(){
 
 function filteredData(){
   const base=filterProjects(projects,projectFilters());
-  const fieldRows=filterAdminRows(expandProjectFields(base),rowFilters());
+  const fieldRows=filterAdminRows(expandProjectFields(base,profiles),rowFilters());
   const allowedProjects=new Set(fieldRows.map(row=>row.projectId));
   const projectRows=filterAdminRows(buildAdminProjects(base).filter(row=>!$('#filter-planting-status').value||allowedProjects.has(row.projectId)),{query:$('#filter-query').value,minPlants:$('#filter-plants').value,minArea:$('#filter-area').value});
   const clientRows=filterAdminRows(buildAdminClients(base,profiles),{query:$('#filter-query').value,minPlants:$('#filter-plants').value,minArea:$('#filter-area').value});
@@ -113,7 +113,7 @@ async function manageAdminField(action,row,label){
   await service.manageField({projectId:row.projectId,fieldId:row.fieldId,version:row.project?.version,action,label});
   await loadProjects();
   if(action==='delete'){views.clearDetail();selectedRow=null;return {message:'Campo eliminato dal progetto.'};}
-  const updated=expandProjectFields(projects).find(item=>item.rowId===row.rowId);
+  const updated=expandProjectFields(projects,profiles).find(item=>item.rowId===row.rowId);
   if(updated)await selectRow('fields',updated);
   return {message:'Nome del campo aggiornato.'};
 }
