@@ -115,11 +115,18 @@ export function createProjectSync({
     }
     const snapshot = currentSnapshot();
     if (!snapshot.fields.some((field) => field.cloudReady)) return syncState;
+    const superseded = (await queue.pending()).filter((item) =>
+      item.type === 'autosave' && item.projectClientId === snapshot.clientProjectId
+    );
     const operation = operationFactory(
       'autosave', snapshot.clientProjectId, snapshot, syncState.serverVersion, idFactory
     );
     await queue.enqueue(operation);
-    return send(operation);
+    const result = await send(operation);
+    if (result.state === 'synced') {
+      for (const older of superseded) await queue.acknowledge(older.id);
+    }
+    return result;
   }
 
   function flush() { return serialize(flushInternal); }
@@ -148,8 +155,11 @@ export function createProjectSync({
   async function saveRevisionInternal({ reason='manual_save' } = {}) {
     if (suspended) return syncState;
     const snapshotBeforeSave = currentSnapshot();
-    const recovered = await retryPendingInternal(snapshotBeforeSave.clientProjectId);
-    if (recovered.state === 'error' || recovered.state === 'conflict') return recovered;
+    if (syncState.state === 'conflict') return syncState;
+    if (syncState.state !== 'synced') {
+      const recovered = await retryPendingInternal(snapshotBeforeSave.clientProjectId);
+      if (recovered.state === 'error' || recovered.state === 'conflict') return recovered;
+    }
     const applied = await flushInternal();
     const snapshot = currentSnapshot();
     if (applied.state === 'conflict') return applied;

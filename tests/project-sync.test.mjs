@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProjectSync } from '../src/project-sync.js';
-import { createSyncQueue } from '../src/sync-queue.js';
+import { createOperation, createSyncQueue } from '../src/sync-queue.js';
 
 function validField() {
   return { id:'f1', label:'Campo 1', geometry:[[8,44],[8.01,44],[8.01,44.01],[8,44]], orientationDeg:0 };
@@ -81,6 +81,30 @@ test('manual revision waits for an in-flight autosave before applying its snapsh
   const applies=sync.backend.calls.filter(([type])=>type==='apply').map(([,args])=>args.expectedVersion);
   assert.deepEqual(applies,[0,1]);
   assert.equal(sync.backend.calls.find(([type])=>type==='revision')[1].expectedVersion,2);
+});
+
+test('a successful full snapshot supersedes an older failed autosave before requesting a quote revision', async () => {
+  const sync=createHarness({failFirst:true});
+  await sync.service.flush();
+  assert.equal(sync.service.status().state,'error');
+  assert.equal((await sync.queue.pending()).length,1);
+  await sync.service.flush();
+  assert.equal(sync.service.status().state,'synced');
+  assert.equal((await sync.queue.pending()).length,0);
+  const result=await sync.service.saveRevision();
+  assert.equal(result.state,'synced');
+  assert.equal((await sync.queue.pending()).length,0);
+});
+
+test('an already synchronized project can save a revision despite a stale autosave left in its queue',async()=>{
+  const sync=createHarness();
+  await sync.queue.enqueue(createOperation('autosave','00000000-0000-4000-8000-000000000010',
+    {clientProjectId:'00000000-0000-4000-8000-000000000010',fields:[{cloudReady:true}]},0,()=> 'old-operation'));
+  sync.service.adoptCloudState({projectId:'server-p1',version:10,syncState:'synced'});
+  const result=await sync.service.saveRevision();
+  assert.equal(result.state,'synced');
+  assert.equal(sync.backend.calls.find(([type])=>type==='apply')[1].expectedVersion,10);
+  assert.equal((await sync.queue.pending()).length,0);
 });
 
 test('rapid changes collapse into one autosave with the final snapshot', async () => {

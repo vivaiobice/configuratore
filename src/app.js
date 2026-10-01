@@ -17,7 +17,8 @@ import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=55.6.6';
+import { createProjectSync } from './project-sync.js?v=55.6.7';
+import {ensureQuoteRevision} from './quote-sync.js?v=55.6.7';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
@@ -820,9 +821,9 @@ const quoteUi=createQuoteUI({document,getProfile:()=>authBridge.getState(),onSub
   if(projectItem && state.project.localProjectId!==projectItem.id)loadMobileProject(projectItem);
   const selected=new Set((state.project.fields??[]).map(field=>field.id));
   if(fieldIds.some(id=>!selected.has(id)))throw new Error('Il campo non appartiene al progetto selezionato.');
-  const synced=await projectSync.saveRevision();
+  const synced=await ensureQuoteRevision({sync:projectSync,backend:cloudBackend,getState:()=>state,getMetrics:(field)=>calculateFieldProject(field)});
   if(synced.state!=='synced'||!synced.projectId)throw new Error(synced.state==='conflict'
-    ? 'Il progetto è stato aggiornato su un altro dispositivo. Ricaricalo dalla sezione Progetti e riprova.'
+    ? 'Il progetto online contiene modifiche diverse. La bozza locale resta invariata: apri Progetti, aggiorna e verifica i campi prima di riprovare.'
     : `Sincronizzazione non riuscita: ${synced.lastError||'riprova tra poco'}. La richiesta non è stata inviata.`);
   cloudService.selectProject({...state.cloud,projectId:synced.projectId});
   await saveCloudProject('saved');
