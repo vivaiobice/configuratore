@@ -1,7 +1,9 @@
 const clean=value=>String(value??'').trim();
 
-export function manualCadastralReference({municipality,sheet,parcel}={}) {
+export function manualCadastralReference({municipality,section,sheet,parcel,lookupKey}={}) {
   const item={source:'manual',municipality:clean(municipality),sheet:clean(sheet),parcel:clean(parcel)};
+  if(clean(section))item.section=clean(section);
+  if(clean(lookupKey))item.lookupKey=clean(lookupKey);
   return item.municipality||item.sheet||item.parcel?item:null;
 }
 
@@ -10,9 +12,10 @@ export function normalizeCadastralReferences(value) {
   for(const original of Array.isArray(value)?value:[]) {
     if(!original||typeof original!=='object'||Array.isArray(original))continue;
     if(original.source==='manual'||['municipality','sheet','parcel'].some(key=>key in original)) {
-      const item=manualCadastralReference(original);
+      const base=manualCadastralReference(original);
+      const item=original.source==='automatic'?{...original,...base,source:'automatic'}:base;
       if(!item)continue;
-      const key=[item.municipality,item.sheet,item.parcel].map(part=>part.toLocaleLowerCase('it')).join('\u0000');
+      const key=[item.municipality,item.section||'',item.sheet,item.parcel].map(part=>part.toLocaleLowerCase('it')).join('\u0000');
       if(seen.has(key))continue;
       seen.add(key);result.push(item);
     } else result.push({...original});

@@ -1,14 +1,22 @@
-import {normalizeCadastralReferences,manualCadastralReference} from './cadastral-references.js?v=54';
+import {normalizeCadastralReferences,manualCadastralReference} from './cadastral-references.js?v=55.7';
 
 export function createCadastralReferenceEditor({document,container,onChange=()=>{}}) {
   if(!container||!document)throw new TypeError('Editor container required');
   let legacy=[];
+  const originals=new WeakMap();
   let mobile=false;
   const rows=()=>[...container.querySelectorAll('[data-reference-row]')];
-  const values=()=>normalizeCadastralReferences([...legacy,...rows().map(row=>manualCadastralReference(Object.fromEntries(['municipality','sheet','parcel'].map(key=>[key,row.querySelector(`[name="${key}"]`)?.value]))))]);
+  const values=()=>normalizeCadastralReferences([...legacy,...rows().map(row=>{
+    const original=originals.get(row)??{};
+    const value=manualCadastralReference({...Object.fromEntries(['municipality','section','sheet','parcel'].map(key=>[key,row.querySelector(`[name="${key}"]`)?.value])),lookupKey:original.lookupKey});
+    if(!value)return null;
+    const updated={...original,...value,source:original.source==='automatic'?'automatic':'manual'};
+    if(!value.section)delete updated.section;
+    return updated;
+  })]);
   function appendRow(ref={}) {
-    const row=document.createElement('div');row.dataset.referenceRow='';row.className='cadastral-reference-row';
-    for(const [name,title] of [['municipality','Comune'],['sheet','Foglio'],['parcel','Particella']]) {
+    const row=document.createElement('div');row.dataset.referenceRow='';row.className='cadastral-reference-row';originals.set(row,{...ref});
+    for(const [name,title] of [['municipality','Comune'],['section','Sezione'],['sheet','Foglio'],['parcel','Particella']]) {
       const label=document.createElement('label');label.textContent=title;const input=document.createElement('input');input.className='control-input';input.name=name;input.value=String(ref[name]??'');input.setAttribute('aria-label',`${title} riferimento catastale ${rows().length+1}`);label.append(input);row.append(label);
     }
     const actions=document.createElement('div');actions.className='cadastral-reference-actions';
@@ -17,7 +25,7 @@ export function createCadastralReferenceEditor({document,container,onChange=()=>
   function placeAdd(){const add=container.querySelector('[data-add-reference]');if(!add)return;if(mobile)rows().at(-1)?.querySelector('.cadastral-reference-actions')?.prepend(add);else container.append(add);}
   function emit(){onChange(values());}
   function click(event){if(event.target.closest('[data-add-reference]')){appendRow();placeAdd();emit();return;}const remove=event.target.closest('[data-remove-reference]');if(remove){const row=remove.closest('[data-reference-row]');const add=row?.querySelector('[data-add-reference]');if(add)container.append(add);row?.remove();if(!rows().length)appendRow();placeAdd();emit();}}
-  function change(event){if(event.target.matches?.('input[name]'))emit();}
+  function change(event){if(event.target.matches?.('input[name]')){const row=event.target.closest('[data-reference-row]');originals.set(row,{...originals.get(row),source:'manual'});emit();}}
   container.addEventListener('click',click);container.addEventListener('change',change);
   return {
     render(refs,{municipality=''}={}) {

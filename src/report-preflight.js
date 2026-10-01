@@ -90,6 +90,7 @@ export function createReportPreflight({ state, profile = {}, contact = null } = 
     selectionMode: selectedFieldIds.length === fieldOptions.length && fieldOptions.length ? 'all' : 'custom',
     singleField: fieldOptions.length === 1,
     recipient: recipientFrom(contact ?? state?.contact ?? {}, profile),
+    overview: {enabled:false,cadastre:false},
     disclaimerAccepted: false,
     disclaimerVersion: DISCLAIMER_VERSION,
     validationErrors: []
@@ -98,6 +99,7 @@ export function createReportPreflight({ state, profile = {}, contact = null } = 
 
 export function updateReportPreflight(model, action = {}) {
   if (!model || typeof model !== 'object') throw new TypeError('Preflight documento non valido.');
+  if(action.type==='overview/set')return finalized({...model,overview:{enabled:action.enabled===true,cadastre:action.enabled===true&&action.cadastre===true},disclaimerAccepted:false});
   if (action.type === 'disclaimer/set') return finalized({ ...model, disclaimerAccepted: action.accepted === true });
   if (action.type === 'selection/set') {
     const allowed = new Set(model.fieldOptions.filter((field) => field.valid).map((field) => field.id));

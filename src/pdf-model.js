@@ -1,3 +1,4 @@
+import {soilProfileIsCurrent} from './soil.js';
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
 import { ensureProjectFields } from './fields.js?v=55.1';
 
@@ -110,6 +111,9 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
       label:mapAssets.location?.label||field.locationLabel||'',municipality:mapAssets.location?.municipality||field.municipality||'',
       province:mapAssets.location?.province||field.province||'',region:field.region||''
     },
+    cadastralRefs:field.cadastralRefs??[],
+    soil:field.soil??null,
+    soilCurrent:soilProfileIsCurrent(field.soil,field.geometry),
     geometry:field.geometry??null,
     exclusions:Array.isArray(field.exclusions)?field.exclusions:[],
     rows:Array.isArray(metrics.rows)?metrics.rows:[],
@@ -144,7 +148,7 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
 }
 
 export function buildProjectReportModel({
-  state,selectedFieldIds,getMetrics=()=>({}),report={},recipient={},mapAssets={}
+  state,selectedFieldIds,getMetrics=()=>({}),report={},recipient={},mapAssets={},overview=null
 }={}){
   const project=ensureProjectFields(state?.project??{});
   const all=project.fields??[];
@@ -178,6 +182,7 @@ export function buildProjectReportModel({
       plantLocation:recipient.plantLocation||'',province:recipient.province||'',reference:recipient.reference||''
     },
     fields,
+    overview,
     summary:{
       fieldCount:fields.length,
       grossAreaM2:total(fields,field=>field.metrics.grossAreaM2),

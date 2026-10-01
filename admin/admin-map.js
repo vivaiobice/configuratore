@@ -1,3 +1,4 @@
+import {createFieldNameMarkers} from '../src/field-name-markers.js';
 import {satelliteStyle} from '../src/satellite-style.js?v=51';
 import {buildAdminMapData} from './admin-map-data.js?v=54';
 import {mountAdminCadastre} from './admin-cadastre.js?v=54';
@@ -27,6 +28,7 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     positionOptions:{enableHighAccuracy:true},trackUserLocation:true,showUserLocation:true,showUserHeading:true
   }),'top-right');
   map.dragRotate?.enable?.();map.touchZoomRotate?.enableRotation?.();
+  const names=createFieldNameMarkers({map});
   let pending = { type:'FeatureCollection', features:[] };
   let extra=buildAdminMapData([]);
   let selectedFeatureId=null,destroyed=false;
@@ -42,7 +44,8 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     map.addLayer({id:'admin-exclusion-line',type:'line',source:'admin-exclusions',paint:{'line-color':'#d84638','line-width':2}});
     map.addLayer({id:'admin-row-lines',type:'line',source:'admin-rows',minzoom:13,paint:{'line-color':'#ffffff','line-width':2}});
     map.addLayer({ id:'project-line', type:'line', source:'projects', paint:{ 'line-color':'#ffd42a', 'line-width':['case',['boolean',['feature-state','selected'],false],5,2.5] } });
-    map.addLayer({id:'project-label',type:'symbol',source:'projects',minzoom:13,layout:{'text-field':['get','displayLabel'],'text-size':12,'text-font':['Open Sans Bold'],'text-allow-overlap':false,'text-padding':8},paint:{'text-color':'#183f28','text-halo-color':'#fff','text-halo-width':2}});
+    map.addLayer({id:'project-label',type:'symbol',source:'projects',layout:{visibility:'none',... {'text-field':['get','displayLabel'],'text-size':12,'text-font':['Open Sans Bold'],'text-allow-overlap':false,'text-padding':8}},paint:{'text-color':'#183f28','text-halo-color':'#fff','text-halo-width':2}});
+    names.setFields(pending.features.map(feature=>({label:feature.properties?.displayLabel,geometry:feature.geometry.coordinates[0]})));
     const selectFeature=(event)=>{const properties=event.features?.[0]?.properties??{};if(properties.projectId)onProjectClick({projectId:properties.projectId,fieldId:properties.fieldId??''});};
     map.on('click', 'project-fill', selectFeature);
     map.on('click', 'project-label', selectFeature);
@@ -53,6 +56,7 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
   function setProjects(collection) {
     pending = collection ?? { type:'FeatureCollection', features:[] };
     map.getSource('projects')?.setData(pending);
+    names.setFields(pending.features.map(feature=>({label:feature.properties?.displayLabel,geometry:feature.geometry?.coordinates?.[0]})));
     const bounds = boundsForFeatureCollection(pending);
     if (bounds) map.fitBounds([[bounds.west,bounds.south],[bounds.east,bounds.north]], { padding:40, maxZoom:16, duration:0 });
     if(selectedFeatureId&&!pending.features.some(feature=>String(feature.id)===String(selectedFeatureId)))selectedFeatureId=null;
@@ -75,7 +79,7 @@ export function initAdminMap({ container, onProjectClick = () => {} }) {
     return true;
   }
 
-  function destroy(){if(destroyed)return;destroyed=true;cadastre?.destroy();map.remove();}
+  function destroy(){if(destroyed)return;destroyed=true;names.destroy();cadastre?.destroy();map.remove();}
 
   return { map, setProjects, setFields, focusField, clearSelection, destroy };
 }

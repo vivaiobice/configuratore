@@ -1,8 +1,10 @@
+import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
+import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=55.6.4';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.6.3';
+import { createMobileUI } from './mobile-ui.js?v=55.7';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=55.7';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.6.3';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=55.7';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
 import { initMap } from './map.js?v=55.6.2';
@@ -23,7 +25,7 @@ import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
 import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=55.1';
-import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=55.4';
+import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=55.7';
 import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
@@ -53,6 +55,7 @@ state = { ...state, project:updateActiveFieldProject(state.project, {
   headlandWidthM:normalizeHeadlandForMechanization(state.project.headlandWidthM, state.project.mechanizedHarvest)
 }) };
 let mapApi = null;
+let overviewMode=false;
 const viewMode=createViewMode();
 let mobileUi = null;
 let desktopLibraryUi = null;
@@ -70,6 +73,9 @@ let curveEditingActive=false;
 let curveControlInteracting=false;
 let cadastralOverlayActive=false;
 const authBridge=createAuthBridge();
+let adminReadClient=null;
+const userProjectsView=createUserProjectsView({document,auth:authBridge,loadData:()=>loadUserProjectsData(adminReadClient)});
+authBridge.subscribe(()=>desktopLibraryUi?.render());
 initializeTheme();
 const profileUi=createProfileUI({authService:authBridge,document});
 profileUi.mount();
@@ -187,10 +193,11 @@ function calculateAndRender() {
   setText('#summary-commercial', commercialPlantsText);
   mobileUi?.renderField();
   renderManualAreaCalculation();
-  mapApi?.setRows(result.rows);
-  mapApi?.setExclusions(project.exclusions ?? []);
+  mapApi?.setRows(overviewMode?[]:result.rows);
+  mapApi?.setExclusions(overviewMode?[]:(project.exclusions ?? []));
   mapApi?.setActiveFieldLabel(project.label ?? 'Campo');
   syncOtherFieldsOnMap();
+  if(overviewMode)setOverviewControls(true);
   const centerButton = $('#center-field-button');
   if (centerButton) centerButton.disabled = !project.geometry;
   renderProjectAdvice(project);
@@ -240,8 +247,9 @@ function renderCurveControls(){
     card.append(heading,position,offset);list.append(card);
   });
 }
-function patchProject(patch) { state = mergeProjectState(state, patch); summarySaveFeedback.dirty(); persist(); calculateAndRender(); projectSync?.schedule('project_changed'); }
+function patchProject(patch) { if(overviewMode&&!Object.keys(patch).every(key=>['localProjectName','campaignYear'].includes(key)))return; state = mergeProjectState(state, patch); summarySaveFeedback.dirty(); persist(); calculateAndRender(); projectSync?.schedule('project_changed'); }
 function patchMaterialProject(patch) {
+  if(overviewMode)return;
   state = mergeProjectState(state, patch);
   state = { ...state, project:autoNameActiveProjectField(state.project) };
   summarySaveFeedback.dirty();
@@ -256,6 +264,7 @@ const fieldLocationCoordinator=createFieldLocationCoordinator({
   }
 });
 function patchGeometry(geometry, patch = {}) {
+  if(overviewMode)return;
   const proposed = applyGeometryWithSuggestedOrientation({ ...state.project, ...patch }, geometry);
   state = { ...state, project:updateActiveFieldProject(state.project, { ...patch, geometry:proposed.geometry, orientationDeg:proposed.orientationDeg, orientationLocked:proposed.orientationLocked }) };
   summarySaveFeedback.dirty();
@@ -264,6 +273,7 @@ function patchGeometry(geometry, patch = {}) {
   calculateAndRender();
   renderSoilProfile();
   void fieldLocationCoordinator.refresh(activeField(state.project));
+  scheduleCadastralLookup(activeField(state.project));
   void projectSync?.flush();
 }
 function bindNumberInput(selector, key) { $(selector)?.addEventListener('input', (event) => patchProject({ [key]: numberOrNull(event.target.value) })); }
@@ -423,14 +433,24 @@ function syncProjectControls() {
 }
 
 const cadastralReferenceEditor=createCadastralReferenceEditor({document,container:$('#cadastral-reference-editor'),onChange:refs=>patchProject({cadastralRefs:refs})});
+const cadastralCoordinator=createCadastralCoordinator({
+ getScope:()=>`${authBridge.getState()?.user?.id??''}|${state.cloud?.projectId??state.project.localProjectId??''}`,
+ getField:id=>(ensureProjectFields(state.project).fields??[]).find(field=>String(field.id)===id),
+ apply:(refs,field)=>{state={...state,project:updateProjectField(state.project,field.id,{cadastralRefs:refs})};summarySaveFeedback.dirty();persist();projectSync?.schedule('field_cadastre_changed');if(field.id===state.project.activeFieldId){cadastralReferenceEditor.render(refs,{municipality:field.municipality});if(overviewMode)setOverviewControls(true);}},
+ onStatus:(status,id,detail)=>{if(id!==state.project.activeFieldId)return;const node=$('#cadastral-auto-status');if(node)node.textContent=status==='loading'?'Ricerca delle particelle toccate dal perimetro…':status==='ready'?`${detail} particelle rilevate. Puoi correggere i dati.`:status==='empty'?'Nessuna particella disponibile per questo perimetro. I dati inseriti sono conservati.':`Ricerca non disponibile: ${detail}. I dati inseriti sono conservati.`;}
+});
+let cadastralLookupTimer=null;
+function scheduleCadastralLookup(field){clearTimeout(cadastralLookupTimer);if(field?.geometry)cadastralLookupTimer=setTimeout(()=>void cadastralCoordinator.refresh(field),700);}
+$('#cadastral-auto-refresh')?.addEventListener('click',()=>void cadastralCoordinator.refresh(activeField(state.project),{force:true}));
 const desktopFieldSelectors=createDesktopFieldSelectors({document,onSelect:(id)=>{
+  if(!id){enterOverviewMode();return;}
   state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();mapApi?.focusActiveField();
 }});
 desktopFieldSelectors.mount();
 
 function renderFieldManager() {
   mobileUi?.renderField();
-  desktopFieldSelectors.render(state.project.fields ?? [],state.project.activeFieldId);
+  desktopFieldSelectors.render(state.project.fields ?? [],overviewMode?'':state.project.activeFieldId);
   const remove = $('#remove-field-button'); if (remove) remove.disabled = (state.project.fields?.length ?? 1) <= 1;
   const fieldName = $('#field-name');
   if (fieldName && fieldName.value !== (state.project.label ?? '')) fieldName.value = state.project.label ?? '';
@@ -456,7 +476,7 @@ function renderExclusions() {
 
 function syncOtherFieldsOnMap() {
   const otherFields = (state.project.fields ?? [])
-    .filter((field) => field.id !== state.project.activeFieldId && Array.isArray(field.geometry) && field.geometry.length >= 4)
+    .filter((field) => (overviewMode||field.id !== state.project.activeFieldId) && Array.isArray(field.geometry) && field.geometry.length >= 4)
     .map((field) => {
       const metrics = calculateFieldProject(field);
       return { ...field, rows:metrics.rows };
@@ -465,7 +485,20 @@ function syncOtherFieldsOnMap() {
   mapApi?.setActiveFieldLabel(state.project.label ?? 'Campo');
 }
 
+const overviewDisabledControls=new Map();
+function setOverviewControls(disabled){
+ document.body.classList.toggle('map-overview-mode',disabled);
+ const selector='#cadastral-auto-refresh,#draw-map-button,#edit-vertices-button,#exclude-zone-button,#exclude-line-button,#field-name,#remove-field-button,#draw-button,#plant-spacing,#row-spacing,#orientation,#orientation-output,#row-curve-controls input,#row-curve-controls button,#curve-add-button,#curve-edit-button,#curve-reset-button,#curve-equidistance,#headland,#post-spacing,#mechanized,#grape-variety,#clone-selection,#rootstock,#plant-height,#material-request-note,#planting-status,#planting-status-desktop,#project-context,#project-context-note,#cadastral-reference-editor input,#cadastral-reference-editor button,#soil-analyze,#exclusion-list input,#exclusion-list button,#clear-field-button,#edit-field-button,#remove-vertex-button,#exclude-area-button,#exclude-linear-button';
+ if(disabled)for(const node of document.querySelectorAll(selector)){if(!overviewDisabledControls.has(node))overviewDisabledControls.set(node,node.disabled);node.disabled=true;}
+ else{for(const [node,previous] of overviewDisabledControls)node.disabled=previous;overviewDisabledControls.clear();}
+}
+function enterOverviewMode(){
+ mapApi?.stopTools?.();curveEditingActive=false;mapApi?.finishRowCurveEditing?.();mapApi?.clearGeometry();overviewMode=true;
+ syncOtherFieldsOnMap();desktopFieldSelectors.render(state.project.fields??[],'');setOverviewControls(true);mapApi?.focusAllFields?.();setStatus('Vista generale: nessun campo selezionato. Seleziona un campo per modificarlo.');
+}
+
 function loadActiveFieldOnMap() {
+  overviewMode=false;setOverviewControls(false);
   curveEditingActive=false;
   mapApi?.finishRowCurveEditing?.();
   mapApi?.clearGeometry();
@@ -473,13 +506,15 @@ function loadActiveFieldOnMap() {
   if (state.project.geometry) mapApi?.setGeometry(state.project.geometry);
   mapApi?.setExclusions(state.project.exclusions ?? []);
   syncProjectControls(); renderFieldManager(); renderExclusions(); calculateAndRender();
+  scheduleCadastralLookup(activeField(state.project));
 }
 
 $('#field-name')?.addEventListener('input', (event) => {
+  if(overviewMode)return;
   state = { ...state, project:renameActiveProjectField(state.project, event.target.value) };
   summarySaveFeedback.dirty();
   persist();
-  desktopFieldSelectors.render(state.project.fields ?? [],state.project.activeFieldId);
+  desktopFieldSelectors.render(state.project.fields ?? [],overviewMode?'':state.project.activeFieldId);
   mapApi?.setActiveFieldLabel(state.project.label);
   syncOtherFieldsOnMap();
 });
@@ -504,7 +539,7 @@ installPenTapFallback(document.body,()=>viewMode.isTablet()&&!isMobileMap()||Boo
   const rect=canvas.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top};
   map.fire('click',{point,lngLat:map.unproject(point),originalEvent:event});
 }});
-function startDrawingField() { patchProject({ sourceType:'manual' }); mapApi?.beginDraw(); }
+function startDrawingField() { if(overviewMode)return;patchProject({ sourceType:'manual' }); mapApi?.beginDraw(); }
 function addFieldAndStartDrawing(){
   if(state.project.geometry){state={...state,project:addProjectField(state.project)};summarySaveFeedback.dirty();persist();loadActiveFieldOnMap();}
   startDrawingField();
@@ -519,7 +554,7 @@ $('#exclude-line-button')?.addEventListener('click', () => mapApi?.beginLinearEx
 $('#edit-vertices-button')?.addEventListener('click', () => vertexEditingActive ? mapApi?.finishVertexEditing() : mapApi?.beginVertexEditing());
 $('#center-field-button')?.addEventListener('click', () => mapApi?.focusActiveField());
 $('#remove-vertex-button')?.addEventListener('click', () => vertexRemovalActive ? mapApi?.finishVertexRemoval() : mapApi?.beginVertexRemoval());
-$('#clear-field-button')?.addEventListener('click', () => { if (!state.project.geometry && !(state.project.exclusions?.length)) return; fieldLocationCoordinator.invalidate();mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual' }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
+$('#clear-field-button')?.addEventListener('click', () => { if(overviewMode)return;cadastralCoordinator.invalidate();if (!state.project.geometry && !(state.project.exclusions?.length)) return; fieldLocationCoordinator.invalidate();mapApi?.clearGeometry(); patchProject({ geometry:null, exclusions:[], sourceType:'manual' }); renderExclusions(); setStatus('Campo cancellato. Puoi disegnare un nuovo perimetro.'); });
 async function locateFrom(source) {
   try {
     await mapApi?.locate();
@@ -797,6 +832,7 @@ mobileUi = createMobileUI({
   layoutCadastral:value=>cadastralReferenceEditor.setMobile(value),
   refreshProjects:refreshOwnedArchive,
   openPublicProject:openPublicProjectDialog,
+  openUserProjects:()=>userProjectsView.open(),
   openReport:(item)=>openReportPopup({projectItem:item}),
   openReportForField:(id)=>openReportPopup({fieldId:id}),
   openQuote:(item)=>openQuote({projectItem:item}),
@@ -807,6 +843,7 @@ mobileUi = createMobileUI({
 desktopLibraryUi=createDesktopLibraryUI({
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),
   getFieldMetrics:(field)=>calculateFieldProject(field),
+  isAdmin:()=>authBridge.getState().isAdmin,openUserProjects:()=>userProjectsView.open(),openReport:(item)=>openReportPopup({projectItem:item}),
   selectField:(id)=>{state={...state,project:switchProjectField(state.project,id)};persist();loadActiveFieldOnMap();},
   renameField:(field,name)=>{state={...state,project:renameActiveProjectField(switchProjectField(state.project,field.id),name)};persist();loadActiveFieldOnMap();},
   deleteField:(field)=>removeMobileField(field.id),
@@ -1039,6 +1076,7 @@ $('#contact-form')?.addEventListener('submit', async (event) => {
 async function initializeCloud() {
   try {
     const client = await connectSupabase({ url:APP_CONFIG.supabaseUrl, publishableKey:APP_CONFIG.supabasePublishableKey });
+    adminReadClient=client;
     if (!client) return;
     const resumeRequest = parseResumeParams(globalThis.location.href);
     const resumeBaseUrl = `${globalThis.location.origin}${globalThis.location.pathname}`;

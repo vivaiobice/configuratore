@@ -1,4 +1,4 @@
-import {normalizeCadastralReferences} from './cadastral-references.js?v=54';
+import {normalizeCadastralReferences} from './cadastral-references.js?v=55.7';
 import {normalizeSoilProfile} from './soil.js?v=55.1';
 
 const FIELD_KEYS = [

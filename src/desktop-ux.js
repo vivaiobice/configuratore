@@ -52,6 +52,7 @@ export function createDesktopFieldSelectors({document=globalThis.document,onSele
  function render(fields=[],activeId=''){
   for(const select of nodes()){
    select.replaceChildren();
+   const none=document.createElement("option");none.value="";none.textContent="Nessun campo";none.selected=!activeId;select.append(none);
    for(const field of fields){const option=document.createElement('option');option.value=field.id;option.textContent=field.label;option.selected=field.id===activeId;select.append(option);}
   }
  }
@@ -59,7 +60,7 @@ export function createDesktopFieldSelectors({document=globalThis.document,onSele
   for(const select of nodes())select.addEventListener('change',event=>{
    const target=event.target;
    const value=target.value??target.selectedOptions?.[0]?.value??[...(target.options??[])].find(option=>option.selected)?.value;
-   if(value)onSelect(value);
+   if(value!==undefined&&value!==null)onSelect(value);
   });
   return controller;
  }

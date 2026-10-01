@@ -1,4 +1,4 @@
-import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=54';
+import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=55.7';
 function text(value) { return String(value ?? '').trim().toLowerCase(); }
 
 function finite(...values) {

@@ -1,4 +1,4 @@
-import {formatCadastralReference} from '../src/cadastral-references.js?v=54';
+import {formatCadastralReference} from '../src/cadastral-references.js?v=55.7';
 const STATUS_LABELS={draft:'Bozza',saved:'Salvato',pdf_downloaded:'PDF scaricato',quote_requested:'Preventivo richiesto',contacted:'Contattato',client:'Cliente'};
 const number=value=>(Number(value)||0).toLocaleString('it-IT',{useGrouping:true});
 const area=value=>`${Math.round(Number(value)||0).toLocaleString('it-IT')} m²`;

@@ -1,13 +1,14 @@
+import {buildOverviewMapModel} from './report-overview.js';
 import { loadDraft } from './storage.js';
 import { ensureProjectFields } from './fields.js?v=55.1';
 import { calculateProject } from './project-calculator.js?v=45';
-import { buildProjectReportModel } from './pdf-model.js?v=55';
-import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=51';
+import { buildProjectReportModel } from './pdf-model.js?v=55.7';
+import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=55.7';
 import { buildReportMapModel } from './report-map-model.js?v=45';
-import { captureSatelliteImage } from './report-satellite.js?v=51';
+import { captureSatelliteImage } from './report-satellite.js?v=55.7';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=55.4';
+import { renderProjectReportHtml } from './report-template.js?v=55.7';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend } from './backend.js?v=55.1';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
@@ -42,7 +43,7 @@ export function createReportOrchestrator({
   now=()=>new Date()
 }={}){
   return {
-    async generate({preflight,state,hostForField,fieldLocations={},baseUrl=globalThis.location?.href??'https://vivaiobice.github.io/'}={}){
+    async generate({preflight,state,hostForField,hostForOverview,fieldLocations={},baseUrl=globalThis.location?.href??'https://vivaiobice.github.io/'}={}){
       if(!canIssueReport(preflight))throw new Error('Accetta l’avvertenza e completa i dati richiesti prima di generare il documento.');
       const fields=selectedFields(state,preflight.selectedFieldIds);
       if(!sync?.saveRevision||typeof issueReport!=='function')throw new Error('Sincronizzazione documento non disponibile.');
@@ -60,6 +61,11 @@ export function createReportOrchestrator({
         mapAssets[field.id??field.clientFieldId]={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution,satelliteOverlayMapModel:capture.overlayModel,location:fieldLocations[field.id??field.clientFieldId]};
       }
 
+      let overview=null;
+      if(preflight.overview?.enabled){
+        const capture=await captureSatellite({container:hostForOverview?.()??hostForField?.(fields[0]),mapModel:buildOverviewMapModel(fields,metricsForField),cadastre:preflight.overview.cadastre});
+        overview={satelliteImage:capture.dataUrl,mapAttribution:capture.attribution,cadastre:preflight.overview.cadastre};
+      }
       const token=tokenFactory();
       const tokenHash=await hashToken(token);
       const acceptedAt=now().toISOString();
@@ -69,7 +75,7 @@ export function createReportOrchestrator({
       const shareUrl=buildShareUrl(baseUrl,reportId,token);
       const qrSvg=qrRenderer(shareUrl);
       const reportModel=buildProjectReportModel({
-        state,selectedFieldIds:preflight.selectedFieldIds,getMetrics:metricsForField,mapAssets,recipient:preflight.recipient,
+        state,selectedFieldIds:preflight.selectedFieldIds,getMetrics:metricsForField,mapAssets,overview,recipient:preflight.recipient,
         report:{id:reportId,projectId,projectCode:state?.cloud?.publicCode,revisionNumber,generatedAt:issued?.createdAt??acceptedAt,shareUrl,qrSvg,disclaimerVersion:DISCLAIMER_VERSION}
       });
       const html=renderer(reportModel);
@@ -132,6 +138,8 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   const warning=documentRef.querySelector('#report-warning');
   const preview=documentRef.querySelector('#report-preview');
   const host=documentRef.querySelector('#report-satellite-host');
+  const overviewInput=documentRef.querySelector('#report-overview');
+  const cadastreInput=documentRef.querySelector('#report-overview-cadastre');
   const full=documentRef.querySelector('#report-disclaimer-full');
   if(full)full.textContent='Il presente documento è uno studio preliminare ed esemplificativo di supporto alla valutazione di un possibile impianto viticolo. Non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa, asseverazione, direzione lavori o garanzia di realizzabilità. Prima dell’esecuzione devono essere verificati sul posto confini, quote, pendenze, vincoli, accessi, distanze, sottoservizi e prescrizioni applicabili.';
   options.replaceChildren();
@@ -157,8 +165,10 @@ export async function bootReportPage({documentRef=globalThis.document,storage=gl
   function refresh(){generate.disabled=!canIssueReport(preflight)||!backend||Boolean(finalResult);print.disabled=!finalResult?.printEnabled;copy.disabled=!finalResult?.copyEnabled;}
   options.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'selection/set',fieldIds:[...options.querySelectorAll('input:checked')].map(input=>input.value)});suggestPlantLocality();accept.checked=false;finalResult=null;refresh();});
   form.addEventListener('input',event=>{if(event.target.name)preflight=updateReportPreflight(preflight,{type:'recipient/update',field:event.target.name,value:event.target.value});if(['plantLocation','province'].includes(event.target.name))localityEdited=true;accept.checked=false;finalResult=null;refresh();});
+  function updateOverview(){preflight=updateReportPreflight(preflight,{type:'overview/set',enabled:overviewInput.checked,cadastre:cadastreInput.checked});cadastreInput.disabled=!overviewInput.checked;cadastreInput.checked=preflight.overview.cadastre;accept.checked=false;finalResult=null;refresh();}
+  overviewInput?.addEventListener('change',updateOverview);cadastreInput?.addEventListener('change',updateOverview);
   accept.addEventListener('change',()=>{preflight=updateReportPreflight(preflight,{type:'disclaimer/set',accepted:accept.checked});if(!accept.checked)finalResult=null;refresh();});
-  const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel})=>captureSatelliteImage({container,mapModel,maplibregl}),issueReport:payload=>backend.issueProjectReport(payload),renderer:model=>renderProjectReportHtml(model,{mobile:mobileSource})}):null;
+  const orchestrator=backend?createReportOrchestrator({sync:{saveRevision:()=>waitForReportRevision(storage,{requestId})},captureSatellite:({container,mapModel,cadastre})=>captureSatelliteImage({container,mapModel,cadastre,maplibregl}),issueReport:payload=>backend.issueProjectReport(payload),renderer:model=>renderProjectReportHtml(model,{mobile:mobileSource})}):null;
   generate.addEventListener('click',async()=>{
     warning.hidden=true;generate.disabled=true;generate.textContent='Generazione in corso…';
     try{state=requestId?reportSnapshot:loadDraft(storage);if(!state)throw new Error('Il progetto di riferimento non è più disponibile. Riapri il PDF dal configuratore.');finalResult=await orchestrator.generate({preflight,state,fieldLocations,hostForField:()=>host,baseUrl:globalThis.location.href});preview.innerHTML=finalResult.html;documentRef.title=buildReportPdfFilename({code:finalResult.model?.project?.code,recipient:finalResult.model?.recipient}).replace(/\.pdf$/i,'');preview.scrollIntoView({behavior:'smooth',block:'start'});}

@@ -15,7 +15,8 @@ test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
  for(const module of ['map']){
   assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6\\.2`));
  }
- for(const module of ['desktop-library-ui','cloud']){
+ assert.match(app,/desktop-library-ui\.js\?v=55\.7/);
+ for(const module of ['cloud']){
   assert.match(app,new RegExp(`\\./${module}\\.js\\?v=55\\.6(?:\\.[23])?`));
  }
 });
@@ -23,5 +24,5 @@ test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
 test('current entry points refresh report, shared and administration modules',()=>{
  assert.match(fs.readFileSync(new URL('report.html',root),'utf8'),/src\/report\.js\?v=55/);
  assert.match(fs.readFileSync(new URL('shared-project.html',root),'utf8'),/shared-project-entry\.js\?v=55/);
- assert.match(fs.readFileSync(new URL('admin/index.html',root),'utf8'),/admin\.js\?v=55\.6/);
+ assert.match(fs.readFileSync(new URL('admin/index.html',root),'utf8'),/admin\.js\?v=55\.7/);
 });

@@ -1,3 +1,4 @@
+import {projectSummaryText} from './project-summary.js?v=55.7';
 import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE} from './soil.js?v=55.3';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 import {calculateManualPlants} from './project-calculator.js?v=45';
@@ -31,7 +32,7 @@ export function createMobileUI(api){
   <section data-screen="fields"><header class="mobile-page-heading"><h1>Campi</h1><div class="mobile-heading-actions"><button id="mobile-refresh-fields" aria-label="Aggiorna campi">${icon('refresh')}</button><button id="mobile-add-from-fields" aria-label="Aggiungi campo">${icon('plus')}</button></div></header><div id="mobile-fields-total"></div><div id="mobile-fields-list"></div></section>
   <section data-screen="detail"><header class="mobile-page-heading"><button data-go="fields" aria-label="Torna ai campi">${icon('back')}</button><h1 id="mobile-detail-title">Campo</h1></header><div id="mobile-detail-map" aria-label="Mappa satellitare interattiva del campo"></div><div id="mobile-field-detail"></div><div class="mobile-two-actions"><button id="mobile-edit-parameters" class="mobile-primary">Modifica impianto</button><button id="mobile-edit-map">Modifica sulla mappa</button></div><div class="mobile-two-actions"><button id="mobile-detail-pdf">Stampa / PDF</button><button id="mobile-detail-quote">Preventivo</button></div><button id="mobile-delete-field" class="mobile-delete-field">Elimina campo</button></section>
   <section data-screen="parameters"><header class="mobile-page-heading"><button id="mobile-cancel-field">Annulla</button><h1>Imposta l’impianto</h1></header><button id="mobile-parameters-map" type="button">Modifica perimetro e passaggi</button><div id="mobile-parameters-preview"></div><div id="mobile-parameters-body"></div><div id="mobile-parameters-metrics"></div><p id="mobile-save-error" role="alert"></p><button id="mobile-save-field" class="mobile-primary">Salva impianto</button><p class="mobile-storage-note">Con accesso effettuato: salvataggio online. Come Guest: salvataggio su questo dispositivo.</p></section>
-  <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><button id="mobile-load-code" type="button">Carica progetto esistente</button><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><div id="mobile-projects-list"></div></section>
+  <section data-screen="projects"><header class="mobile-page-heading"><h1>Progetti</h1><div class="mobile-heading-actions"><button id="mobile-refresh-projects" aria-label="Aggiorna progetti">${icon('refresh')}</button><button id="mobile-new-project">${icon('plus')} Nuovo</button></div></header><button id="mobile-load-code" type="button">Carica progetto esistente</button><label class="mobile-label">Nome progetto<input id="mobile-project-name" maxlength="80" placeholder="Il mio impianto"/></label><button id="mobile-save-project" class="mobile-primary">Salva progetto attuale</button><p class="mobile-storage-note">Progetti salvati su questo dispositivo</p><button id="mobile-user-projects" type="button" hidden>Progetti degli utenti</button><div id="mobile-projects-list"></div></section>
   <section data-screen="profile"><header class="mobile-page-heading"><h1>Profilo</h1></header><div id="mobile-profile-content"></div><p id="mobile-auth-feedback" class="mobile-auth-feedback" role="status"></p></section>
  </main>
  <nav class="mobile-navigation" aria-label="Navigazione principale"><button data-view="map">${icon('map')}<span>Mappa</span></button><button data-view="fields">${icon('fields')}<span>Campi</span></button><button data-view="projects">${icon('projects')}<span>Progetti</span></button><button data-view="profile">${icon('profile')}<span>Profilo</span></button></nav>
@@ -194,13 +195,14 @@ export function createMobileUI(api){
   const refresh=$('[data-mobile-refresh-soil]');refresh.disabled=!field.geometry;refresh.addEventListener('click',async()=>{refresh.disabled=true;const status=$('[data-mobile-soil-status]');status.textContent='Consultazione della cartografia in corso…';try{const result=await api.analyzeSoil?.();if(result)renderDetail();else status.textContent='Dati del suolo temporaneamente non disponibili';}finally{if(refresh.isConnected)refresh.disabled=false;}});
  }
  function renderProjects(){
-  const list=$('#mobile-projects-list');list.replaceChildren();$('#mobile-project-name').value=api.getField().localProjectName||'Il mio impianto';
+  const list=$('#mobile-projects-list');list.replaceChildren();
+  const adminButton=$('#mobile-user-projects');if(adminButton)adminButton.hidden=api.auth?.getState?.().isAdmin!==true;$('#mobile-project-name').value=api.getField().localProjectName||'Il mio impianto';
   try{const items=api.listProjects();if(!items.length)list.innerHTML='<p class="mobile-empty">Nessun progetto archiviato. La bozza corrente è conservata automaticamente.</p>';
    for(const item of items){
     const row=document.createElement('article');row.className='mobile-project-row';row.dataset.mobileProject=item.id;
-    const button=document.createElement('button');button.type='button';button.className='mobile-project-card';button.innerHTML=`<strong>${escape(item.name)}</strong><span>${item.project.fields.filter(f=>f.geometry).length} campi · ${new Date(item.savedAt).toLocaleDateString('it-IT')}</span><small>Apri progetto ›</small>`;button.addEventListener('click',()=>{api.loadProject(item);navigate('fields');});
+    const button=document.createElement('button');button.type='button';button.className='mobile-project-card';button.innerHTML=`<strong>${escape(item.name)}</strong><span>${escape(projectSummaryText(item.project,api.getMetrics))} · ${item.savedAt?new Date(item.savedAt).toLocaleDateString('it-IT'):'bozza locale'}</span><small>Apri progetto ›</small>`;button.addEventListener('click',()=>{api.loadProject(item);navigate('fields');});
     const actions=document.createElement('div');actions.className='mobile-project-actions';
-    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.mobileProjectAction='pdf';pdf.setAttribute('aria-label',`Prepara PDF del progetto ${item.name}`);pdf.title='Prepara PDF';pdf.textContent='⎙';pdf.addEventListener('click',()=>{try{api.openReport?.(item);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});
+    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.mobileProjectAction='pdf';pdf.setAttribute('aria-label',`Prepara PDF del progetto ${item.name}`);pdf.title='Prepara PDF';pdf.textContent='Stampa/PDF';pdf.addEventListener('click',()=>{try{api.openReport?.(item);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});
     const quote=document.createElement('button');quote.type='button';quote.dataset.mobileProjectAction='quote';quote.setAttribute('aria-label',`Preventivo del progetto ${item.name}`);quote.title='Preventivo';quote.textContent='✉';quote.addEventListener('click',()=>{try{api.openQuote?.(item);}catch(error){showNotice(error.message);}});
     const rename=document.createElement('button');rename.type='button';rename.dataset.mobileProjectAction='rename';rename.textContent='Rinomina';
     const remove=document.createElement('button');remove.type='button';remove.dataset.mobileProjectAction='delete';remove.textContent='Elimina';
@@ -213,7 +215,7 @@ export function createMobileUI(api){
      editor.append(input,confirm);row.append(editor);input.focus?.();
     });
     remove.addEventListener('click',async()=>{const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il progetto “${item.name||'Progetto'}”?`))return;try{await api.deleteProject?.(item);renderProjects();showNotice('Progetto eliminato.');}catch(error){showNotice(`Eliminazione non riuscita: ${error.message}`);}});
-    actions.append(rename,remove);row.append(button,pdf,quote,actions);list.append(row);
+    actions.append(rename,remove);const titlebar=document.createElement('div');titlebar.className='mobile-project-titlebar';titlebar.append(button,pdf);row.append(titlebar,quote,actions);list.append(row);
    }
   }catch(error){showNotice(error.message);}
  }
@@ -316,6 +318,7 @@ export function createMobileUI(api){
  $('#mobile-load-code').addEventListener('click',()=>api.openPublicProject?.());
  $('#mobile-undo').addEventListener('click',api.undoPoint);$('#mobile-stop-tool').addEventListener('click',()=>{api.stopTools();drawingState({active:false});});
  $('#mobile-finish-edit').addEventListener('click',()=>{api.stopTools();editingState({active:false});});
+ $('#mobile-user-projects')?.addEventListener('click',()=>{if(api.auth?.getState?.().isAdmin)api.openUserProjects?.();});
  $('#mobile-detail-pdf').addEventListener('click',()=>{try{api.openReportForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message||'Impossibile aprire il documento.');}});$('#mobile-detail-quote').addEventListener('click',()=>{try{api.openQuoteForField?.(api.getField().activeFieldId);}catch(error){showNotice(error.message);}});
  $('#mobile-delete-field').addEventListener('click',()=>deleteField(api.getField().activeFieldId));
  sheet.addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;
@@ -330,7 +333,7 @@ export function createMobileUI(api){
   const rect=canvas.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top};
   instance.fire('click',{point,lngLat:instance.unproject(point),originalEvent:event});
  }});
- api.auth?.subscribe?.(next=>{authState=next;if(screen==='profile')renderProfile();});
+ api.auth?.subscribe?.(next=>{authState=next;if(screen==='profile')renderProfile();if(screen==='projects')renderProjects();});
  const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();
  return controller;

@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="./report-layout.css?v=45">
   <link rel="stylesheet" href="./report-preview.css?v=45" media="screen">
   <link rel="stylesheet" href="./v55.2-report.css?v=55.2" media="screen">
+  <link rel="stylesheet" href="./v55.7-report.css?v=55.7">
 </head>
 <body>
   <header class="report-app-header report-screen-only">
@@ -35,6 +36,10 @@
         <div id="report-field-options" class="report-field-options" aria-live="polite"></div>
       </fieldset>
 
+      <fieldset class="report-card"><legend>Visione aerea generale</legend>
+        <label class="report-consent"><input id="report-overview" type="checkbox"> <span>Includi nella pagina 2 una vista satellitare di tutti i campi selezionati, con nomi e filari</span></label>
+        <label class="report-consent"><input id="report-overview-cadastre" type="checkbox" disabled> <span>Aggiungi il livello Catasto al 60%</span></label>
+      </fieldset>
       <form id="report-recipient-form" class="report-card" novalidate>
         <h2>Destinatario</h2>
         <p class="report-form-note">Questi dati personalizzano soltanto il documento e non modificano il profilo.</p>
@@ -75,6 +80,6 @@
     <div id="report-satellite-host" class="report-satellite-host" aria-hidden="true"></div>
   </main>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="./src/report.js?v=55.4"></script>
+  <script type="module" src="./src/report.js?v=55.7"></script>
 </body>
 </html>

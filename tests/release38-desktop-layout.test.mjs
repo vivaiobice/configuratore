@@ -19,11 +19,11 @@ test('desktop field selectors render the same fields and emit one selection',()=
   controls.render([{id:'a',label:'Moscato'},{id:'b',label:'Barbera'}],'b');
   for(const selector of ['#field-select','#map-field-select']){
     const select=document.querySelector(selector);
-    assert.deepEqual([...select.options].map(option=>option.textContent),['Moscato','Barbera']);
+    assert.deepEqual([...select.options].map(option=>option.textContent),['Nessun campo','Moscato','Barbera']);
     assert.equal(select.value,'b');
   }
   const mapSelect=document.querySelector('#map-field-select');
-  mapSelect.options[0].selected=true;
+  mapSelect.options[1].selected=true;
   mapSelect.dispatchEvent(new document.defaultView.Event('change'));
   assert.deepEqual(selected,['a']);
 });

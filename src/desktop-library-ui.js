@@ -1,4 +1,5 @@
-import {createSaveFeedback} from './desktop-ux.js?v=55.6.3';
+import {projectSummaryText} from './project-summary.js?v=55.7';
+import {createSaveFeedback} from './desktop-ux.js?v=55.7';
 const text=(value)=>String(value??'');
 
 export function createDesktopLibraryUI(api){
@@ -39,8 +40,9 @@ export function createDesktopLibraryUI(api){
     const main=document.createElement('div');main.className='desktop-library-item-main';
     const title=document.createElement('strong');title.textContent=item.name||'Progetto';
     const fields=(item.project?.fields??[]).filter((field)=>Array.isArray(field?.geometry)&&field.geometry.length>=4).length;
-    const detail=document.createElement('span');detail.textContent=`${fields} campi · ${item.savedAt?new Date(item.savedAt).toLocaleDateString('it-IT'):'bozza locale'}`;
-    main.append(title,detail);
+    const detail=document.createElement('span');detail.textContent=`${projectSummaryText(item.project,api.getFieldMetrics)} · ${item.savedAt?new Date(item.savedAt).toLocaleDateString('it-IT'):'bozza locale'}`;
+    const titlebar=document.createElement('div');titlebar.className='project-titlebar';
+    const pdf=document.createElement('button');pdf.type='button';pdf.dataset.projectAction='pdf';pdf.textContent='Stampa/PDF';pdf.setAttribute('aria-label',`Stampa/PDF del progetto ${item.name||'Progetto'}`);pdf.addEventListener('click',event=>{event.stopPropagation();try{api.openReport?.(item);}catch(error){root.querySelector('#desktop-library-feedback').textContent=error.message;}});titlebar.append(title,pdf);main.append(titlebar,detail);
     main.tabIndex=0;main.setAttribute('role','button');main.setAttribute('aria-expanded',String(expandedProjects.has(item.id)));
     const toggle=()=>{expandedProjects.has(item.id)?expandedProjects.delete(item.id):expandedProjects.add(item.id);render();};
     main.addEventListener('click',toggle);
@@ -133,6 +135,7 @@ export function createDesktopLibraryUI(api){
     root.querySelector('h2').textContent=mode==='fields'?'Campi del progetto':'Archivio progetti';
     root.querySelector('#desktop-library-new').hidden=mode!=='projects';
     root.querySelector('#desktop-library-save').hidden=mode!=='projects';
+    root.querySelector('#desktop-user-projects').hidden=mode!=='projects'||api.isAdmin?.()!==true;
     const list=root.querySelector('.desktop-library-list');list.replaceChildren();
     const items=mode==='fields'?(api.getFields?.()??[]):(api.getProjects?.()??[]);
     if(!items.length){const empty=document.createElement('p');empty.className='desktop-library-empty';empty.textContent=mode==='fields'?'Nessun campo disegnato.':'Nessun progetto archiviato.';list.append(empty);return;}
@@ -146,9 +149,10 @@ export function createDesktopLibraryUI(api){
     const projects=document.createElement('button');projects.id='desktop-projects-trigger';projects.type='button';projects.textContent='Progetti';
     fields.addEventListener('click',()=>open('fields'));projects.addEventListener('click',()=>open('projects'));actions.prepend(fields,projects);
     root=document.createElement('section');root.id='desktop-library';root.className='desktop-library';root.hidden=true;
-    root.innerHTML='<div class="desktop-library-card" role="dialog" aria-modal="true" aria-labelledby="desktop-library-title"><header><h2 id="desktop-library-title"></h2><button id="desktop-library-close" type="button" aria-label="Chiudi">×</button></header><div class="desktop-library-actions"><button id="desktop-library-refresh" type="button">↻ Aggiorna</button><button id="desktop-library-save" type="button">Salva progetto</button><button id="desktop-library-new" type="button">+ Nuovo progetto</button></div><div class="desktop-library-list"></div><p id="desktop-library-feedback" role="status"></p></div><section id="desktop-field-move-dialog" class="desktop-field-move-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-field-move-title" hidden><div><h3 id="desktop-field-move-title">Sposta campo</h3><p data-move-message></p><label>Progetto di destinazione<select></select></label><p data-move-error role="alert"></p><footer><button type="button" data-move-cancel>Annulla</button><button type="button" data-move-next>Continua</button><button type="button" data-move-confirm hidden>Sposta campo</button></footer></div></section>';
+    root.innerHTML='<div class="desktop-library-card" role="dialog" aria-modal="true" aria-labelledby="desktop-library-title"><header><h2 id="desktop-library-title"></h2><button id="desktop-library-close" type="button" aria-label="Chiudi">×</button></header><div class="desktop-library-actions"><button id="desktop-library-refresh" type="button">↻ Aggiorna</button><button id="desktop-library-save" type="button">Salva progetto</button><button id="desktop-library-new" type="button">+ Nuovo progetto</button><button id="desktop-user-projects" type="button" hidden>Progetti degli utenti</button></div><div class="desktop-library-list"></div><p id="desktop-library-feedback" role="status"></p></div><section id="desktop-field-move-dialog" class="desktop-field-move-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-field-move-title" hidden><div><h3 id="desktop-field-move-title">Sposta campo</h3><p data-move-message></p><label>Progetto di destinazione<select></select></label><p data-move-error role="alert"></p><footer><button type="button" data-move-cancel>Annulla</button><button type="button" data-move-next>Continua</button><button type="button" data-move-confirm hidden>Sposta campo</button></footer></div></section>';
     document.body.append(root);
     root.querySelector('#desktop-library-close').addEventListener('click',close);
+    root.querySelector('#desktop-user-projects').addEventListener('click',()=>{if(api.isAdmin?.())api.openUserProjects?.();});
     root.addEventListener('click',(event)=>{if(event.target===root)close();});
     const refreshButton=root.querySelector('#desktop-library-refresh');
     refreshButton.addEventListener('click',async()=>{
