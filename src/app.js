@@ -1,10 +1,10 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.0.3';
+import { createMobileUI } from './mobile-ui.js?v=1.0.4';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.3';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.4';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
 import { initMap } from './map.js?v=1.0.2';

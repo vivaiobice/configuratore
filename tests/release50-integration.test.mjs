@@ -11,7 +11,7 @@ test('current shell cache-busts archive, field, map and lifecycle assets',()=>{
  assert.match(html,/v50-fixes\.css\?v=51/);
  assert.match(html,/v52-cadastre\.css\?v=53\.3/);
  assert.match(html,/desktop-library\.css\?v=51/);
- assert.match(html,/src\/app\.js\?v=1\.0\.3/);
+ assert.match(html,/src\/app\.js\?v=1\.0\.4/);
  assert.match(app,/\.\/map\.js\?v=1\.0\.2/);
   assert.match(app,/desktop-library-ui\.js\?v=1\.0\.3/);
  for(const module of ['cloud']){

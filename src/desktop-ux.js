@@ -54,7 +54,7 @@ export function createDesktopQuickCalculator({document=globalThis.document,calcu
  const mount=()=>{
   trigger?.addEventListener('click',()=>{open();render();});closeButton?.addEventListener('click',close);
   dialog?.addEventListener('click',event=>{if(event.target===dialog)close();});
-  switcher?.addEventListener('click',()=>{inverse=!inverse;switcher.setAttribute('aria-pressed',String(inverse));switcher.textContent=inverse?'Calcola dalle dimensioni':'Parti dal numero di viti';if(areaField)areaField.hidden=inverse;if(vinesField)vinesField.hidden=!inverse;if(results)results.hidden=inverse;if(netAreaResult)netAreaResult.hidden=!inverse;render();});
+  switcher?.addEventListener('click',()=>{inverse=!inverse;switcher.setAttribute('aria-pressed',String(inverse));const action=inverse?'Calcola viti dalla superficie':'Calcola superficie dal numero di viti';switcher.title=action;switcher.setAttribute('aria-label',action);if(areaField)areaField.hidden=inverse;if(vinesField)vinesField.hidden=!inverse;if(results)results.hidden=inverse;if(netAreaResult)netAreaResult.hidden=!inverse;render();});
   for(const input of [area,vines,plantSpacing,rowSpacing])input?.addEventListener('input',render);
   area?.addEventListener('change',()=>{const value=Number(area.value);if(Number.isFinite(value)&&value>0)onCalculate(value);});
   return controller;

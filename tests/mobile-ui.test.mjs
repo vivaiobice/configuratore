@@ -113,11 +113,20 @@ test('V26 rapid result separates barbatelle count from rounded order',()=>{
 test('mobile rapid calculator switches to vines and shows the corresponding net area',()=>{
  const c=setup(),{$}=c,mode=$('#mobile-quick-mode');
  assert.ok(mode);mode.click();assert.equal(mode.getAttribute('aria-pressed'),'true');
+ assert.ok(mode.closest('.mobile-quick-heading'));
+ assert.ok(mode.querySelector('svg'));
+ assert.equal(mode.title,'Calcola viti dalla superficie');
  assert.equal($('#mobile-quick-area-field').hidden,true);
  $('#mobile-quick-vines').value='1025';$('#mobile-quick-plants').value='0.8';$('#mobile-quick-rows').value='2.4';
  $('#mobile-quick-vines').dispatchEvent(new c.document.defaultView.Event('input'));
  assert.match($('#mobile-quick-result').textContent.replace(/\./g,''),/1968 m²/);
  mode.click();assert.equal($('#mobile-quick-area-field').hidden,false);
+});
+test('mobile excluded areas stay in the map tools and return inside refinement on desktop',()=>{
+ const c=setup(),{$}=c;
+ assert.ok($('[data-content="cuts"] .exclusion-panel'));
+ c.desktop();
+ assert.ok($('.advanced-body > .exclusion-panel'));
 });
 test('mobile project actions use the loaded project without a dropdown',()=>{
  const c=setup(),{$}=c;c.project.localProjectId='p1';

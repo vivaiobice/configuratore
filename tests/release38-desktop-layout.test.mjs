@@ -68,8 +68,12 @@ test('desktop quick calculator switches from surface to vines and renders net ar
   controller.mount();
   const switcher=document.querySelector('#manual-calculator-mode');
   assert.ok(switcher);
+  assert.ok(switcher.closest('.manual-calculator-heading'));
+  assert.ok(switcher.querySelector('svg'));
+  assert.equal(switcher.title,'Calcola superficie dal numero di viti');
   switcher.click();
   assert.equal(switcher.getAttribute('aria-pressed'),'true');
+  assert.equal(switcher.title,'Calcola viti dalla superficie');
   assert.equal(document.querySelector('#manual-area-field').hidden,true);
   assert.equal(document.querySelector('#manual-vines-field').hidden,false);
   const vines=document.querySelector('#manual-vines');vines.value='1025';
@@ -78,6 +82,7 @@ test('desktop quick calculator switches from surface to vines and renders net ar
   vines.dispatchEvent(new document.defaultView.Event('input'));
   assert.equal(document.querySelector('#manual-net-area').textContent,'1.968 m²');
   switcher.click();
+  assert.equal(switcher.title,'Calcola superficie dal numero di viti');
   assert.equal(document.querySelector('#manual-area-field').hidden,false);
   assert.equal(document.querySelector('#manual-vines-field').hidden,true);
 });
