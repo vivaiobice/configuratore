@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initMap} from '../src/map.js';
 import {parseHTML} from 'linkedom';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import {restoreWorkspaceForOwner} from '../src/tool-switch.js';
+import {workspaceContextMatches} from '../src/workspace-restore-gate.js';
 
 class Source{constructor(spec){this.data=spec.data;}setData(value){this.data=value;}}
 class Bounds{constructor(){}extend(){return this;}}
@@ -11,6 +15,53 @@ class MapStub{
   addControl(){}addSource(id,spec){this.sources.set(id,new Source(spec));}getSource(id){return this.sources.get(id);}addLayer(spec){this.layers.set(spec.id,spec);}getLayer(id){return this.layers.get(id);}getCanvas(){return this.canvas;}getCanvasContainer(){return this.container;}getContainer(){return this.container;}loaded(){return true;}project([lon,lat]){return{x:lon*10,y:lat*10};}fitBounds(){}
   getCenter(){return{lng:this.camera.center[0],lat:this.camera.center[1]};}getZoom(){return this.camera.zoom;}getBearing(){return this.camera.bearing;}jumpTo({center,zoom,bearing}){this.camera={center,zoom,bearing};}setBearing(value){this.camera.bearing=value;}easeTo({bearing}){if(Number.isFinite(bearing))this.camera.bearing=bearing;}
 }
+
+const appSource=readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
+const restoreSource=appSource.slice(appSource.indexOf('function restorePendingWorkspace('),appSource.indexOf('function track('));
+function restorationContext(mapApi,snapshot){
+ const workspace={version:1,ownerId:'A',projectId:'P',fieldId:'F',map:snapshot,navigation:{}};
+ const context={mapApi,pendingWorkspace:workspace,restoringWorkspace:true,state:{project:{localProjectId:'P',activeFieldId:'F'}},
+  restoreWorkspaceForOwner,workspaceContextMatches,authBridge:{getState:()=>({user:{id:'A'}})},mobileUi:null,mapWrap:null,
+  syncCurveEditor(){},renderCurveControls(){},setMapFullscreen(){},setStatus(){},persist(){context.persisted=(context.persisted??0)+1;},
+  $:selector=>selector==='.panel-scroll'?{scrollTop:0}:null};
+ runInNewContext(restoreSource+"restorePendingWorkspace('A');",context);return context;
+}
+
+test('workspace restores after the one-time load even while satellite tiles are pending',()=>{
+ const previous=globalThis.maplibregl;try{
+  class BusyMap extends MapStub{loaded(){return false;}}
+  globalThis.maplibregl={Map:BusyMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:Bounds};
+  const api=initMap({container:'map'}),map=MapStub.current;map.emit('load');
+  const snapshot={drawing:true,mode:'perimeter',vertices:[[8,44],[8.01,44]],previousPerimeter:null,editRing:null};
+  const context=restorationContext(api,snapshot);
+  assert.equal(context.restoringWorkspace,false,'editor readiness must not wait for another load event');
+  assert.equal(context.pendingWorkspace,null);assert.equal(context.persisted,1);
+  assert.deepEqual(api.capturePendingEdit().vertices,snapshot.vertices);
+}finally{globalThis.maplibregl=previous;}
+});
+
+test('initial editor setup restores once and later tile activity never re-locks the workspace',()=>{
+ const previous=globalThis.maplibregl;try{
+  class BusyMap extends MapStub{loaded(){return false;}}
+  globalThis.maplibregl={Map:BusyMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:Bounds};
+  const api=initMap({container:'map'}),map=MapStub.current;
+  const context=restorationContext(api,{drawing:false,mode:'perimeter',vertices:[],previousPerimeter:null,editRing:null});
+  assert.equal(context.restoringWorkspace,true);map.emit('load');
+  assert.equal(context.restoringWorkspace,false);assert.equal(context.persisted,1);
+  map.emit('styledata');map.emit('sourcedata');map.emit('idle');
+  assert.equal(context.restoringWorkspace,false);assert.equal(context.persisted,1);
+}finally{globalThis.maplibregl=previous;}
+});
+
+test('switching a confirmed field applies its geometry after load while tiles remain pending',()=>{
+ const previous=globalThis.maplibregl;try{
+  class BusyMap extends MapStub{loaded(){return false;}}
+  globalThis.maplibregl={Map:BusyMap,NavigationControl:class{},ScaleControl:class{},LngLatBounds:Bounds};
+  const api=initMap({container:'map'}),map=MapStub.current;map.emit('load');
+  const ring=[[8,44],[8.01,44],[8.01,44.01],[8,44.01],[8,44]];api.setGeometry(ring);
+  assert.deepEqual(map.getSource('project-geometry').data.features[0]?.geometry.coordinates[0],ring);
+}finally{globalThis.maplibregl=previous;}
+});
 
 test('two unfinished perimeter vertices restore without committing a field',()=>{
   const previous=globalThis.maplibregl;
