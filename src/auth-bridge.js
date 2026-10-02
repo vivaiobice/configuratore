@@ -4,10 +4,12 @@ export function createAuthBridge(){
   const call=(name,...args)=>{if(!service?.[name])throw new Error('Accesso temporaneamente non disponibile');return service[name](...args);};
   return {
     getState:()=>state,
+    get supportsCountsTransfer(){return Boolean(service?.supportsCountsTransfer);},
     subscribe(listener){listeners.add(listener);listener(state);return()=>listeners.delete(listener);},
     attach(next){detach?.();service=next;state=next.getState?.()??state;detach=next.subscribe?.(emit)??null;return state;},
     login:value=>call('login',value),register:value=>call('register',value),logout:()=>call('logout'),
     updateProfile:value=>call('updateProfile',value),
+    resumePendingTransfer:()=>call('resumePendingTransfer'),
     requestPasswordReset:value=>call('requestPasswordReset',value),completePasswordReset:value=>call('completePasswordReset',value)
   };
 }

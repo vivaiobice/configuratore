@@ -1,25 +1,28 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.0.4&counts=1';
+import { createMobileUI } from './mobile-ui.js?v=1.2.0';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3&counts=1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.4';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=1.0.2&counts=1';
+import { initMap } from './map.js?v=1.2.0';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
 import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=counts1';
-import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=counts1';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.0';
 import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
 import {mountToolMenu} from './tool-menu.js?v=counts1';
-import {mountCountsDesktopSummary} from './counts-desktop-summary.js?v=counts1';
+import {mountCountsDesktopSummary} from './counts-desktop-summary.js?v=1.2.0';
 import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=counts2';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=counts2';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6.2';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.0';
+import {rememberCountsOwner} from './counts-offline-owner.js';
+import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.0';
+import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.0';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.0';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
@@ -43,9 +46,9 @@ import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
-import { createAuthService } from './auth-service.js?v=49';
-import { createAuthBridge } from './auth-bridge.js';
-import { createProfileUI } from './profile-ui.js?v=55.6.3&counts=1';
+import { createAuthService } from './auth-service.js?v=1.2.0';
+import { createAuthBridge } from './auth-bridge.js?v=1.2.0';
+import { createProfileUI } from './profile-ui.js?v=1.2.0';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
@@ -79,6 +82,7 @@ let mobileTransactionSnapshot = null;
 let pendingWorkspace=storedRecord?.workspace??null;
 let restoringWorkspace=false;
 let switchingTool=false;
+let coordinatedIdentityChange=false,identitySaveFailed=false,identityFrozen=false;
 let fieldDirectory=null,countsGateway=null;
 let countsConfig;
 try{countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:APP_CONFIG.countsEnabled});}
@@ -92,7 +96,7 @@ let adminReadClient=null;
 const userProjectsView=createUserProjectsView({document,auth:authBridge,loadData:()=>loadUserProjectsData(adminReadClient)});
 authBridge.subscribe(()=>desktopLibraryUi?.render());
 initializeTheme();
-const profileUi=createProfileUI({authService:authBridge,document,countsEnabled:countsConfig.enabled,onCounts:()=>switchToCounts('lists')});
+const profileUi=createProfileUI({authService:authBridge,document,countsEnabled:countsConfig.enabled,onCounts:()=>switchToCounts('resume')});
 profileUi.mount();
 const publicProjectDialog=$('#public-project-dialog');
 function openPublicProjectDialog(){
@@ -132,6 +136,7 @@ const summarySaveFeedback=createSaveFeedback($('#summary-save-project'));
 const statusEl = $('#map-status');
 const cadastralParcelStatusEl = $('#cadastre-parcel-status');
 function setStatus(message) { if (statusEl) statusEl.textContent = message; }
+mountWorkspaceRestoreGate({document,isPending:()=>restoringWorkspace&&Boolean(pendingWorkspace),onBlocked:()=>setStatus('Ripristino della bozza in corso. Puoi aprire Conteggi dal logo; attendi prima di modificare il campo.')});
 function renderCadastralState(next = {}) {
   const active=Boolean(next.visible);
   const button=$('#cadastre-button');
@@ -156,6 +161,7 @@ function captureWorkspace(){
       transactionSnapshot:mobileTransactionSnapshot},savedAt:new Date().toISOString()};
 }
 function persist() {
+  if(identityFrozen)return;
   if(!state.project.localProjectId)state={...state,project:{...state.project,localProjectId:newSessionId()}};
   const workspace=restoringWorkspace||!authBridge.getState()?.user?.id?pendingWorkspace:captureWorkspace();
   state=saveDraft(globalThis.localStorage,state,workspace)||state;
@@ -168,7 +174,7 @@ async function switchToCounts(view,params={}){
     if(view!=='new'||params.fieldId)clearPendingFieldContext(globalThis.sessionStorage);
     const ownerId=authBridge.getState()?.user?.id;
     if(!state.project.localProjectId)state={...state,project:{...state.project,localProjectId:newSessionId()}};
-    await checkpointBeforeSwitch({storage:globalThis.localStorage,state,ownerId,capture:captureWorkspace,
+    await checkpointBeforeSwitch({storage:globalThis.localStorage,state,ownerId,capture:captureWorkspace,pendingWorkspace:restoringWorkspace?pendingWorkspace:null,
       enqueue:()=>projectSync?.enqueueForLater?.(),navigate:()=>globalThis.location.assign(url)});
   }catch(error){setStatus(error.message||'Salvataggio non riuscito. Resta nel configuratore e riprova.');throw error;}
   finally{switchingTool=false;}
@@ -198,19 +204,24 @@ async function loadCountsForField(fieldId){
 }
 function restorePendingWorkspace(ownerId){
   const workspace=restoreWorkspaceForOwner({workspace:pendingWorkspace,state},ownerId,state.project.localProjectId);
-  pendingWorkspace=null;
-  if(!workspace){restoringWorkspace=false;return false;}
+  if(!workspace){pendingWorkspace=null;restoringWorkspace=false;return false;}
   restoringWorkspace=true;
   try{
     mobileTransactionSnapshot=workspace.navigation?.transactionSnapshot??null;
+    curveEditingActive=Boolean(workspace.map?.curveEditing);syncCurveEditor();renderCurveControls();
     if($('.advanced'))$('.advanced').open=Boolean(workspace.navigation?.advancedOpen);
     mobileUi?.restoreSession?.(workspace.navigation?.mobile);
     if(mapWrap&&Boolean(workspace.navigation?.fullscreen)!==mapWrap.classList.contains('fullscreen-map'))setMapFullscreen(Boolean(workspace.navigation?.fullscreen));
-    if(mapApi?.map?.loaded?.())mapApi.restorePendingEdit(workspace.map);
-    else mapApi?.map?.once?.('load',()=>mapApi?.restorePendingEdit(workspace.map));
+    const restoreMap=()=>{
+      if(!workspaceContextMatches(workspace,{ownerId:authBridge.getState()?.user?.id,projectId:state.project.localProjectId,fieldId:state.project.activeFieldId},pendingWorkspace))return;
+      if(!workspace.map||mapApi?.restorePendingEdit(workspace.map)){pendingWorkspace=null;restoringWorkspace=false;persist();}
+      else setStatus('La bozza locale è conservata, ma il ripristino dell’editor richiede una verifica.');
+    };
+    if(mapApi?.map?.loaded?.())restoreMap();
+    else mapApi?.map?.once?.('load',restoreMap);
     if(Number.isFinite(workspace.navigation?.panelScroll))$('.panel-scroll').scrollTop=workspace.navigation.panelScroll;
     return true;
-  }finally{restoringWorkspace=false;}
+  }catch(error){setStatus('La bozza locale è conservata. Ripristino non completato: '+error.message);return false;}
 }
 function track(type, payload = {}) { cloudService?.trackEvent(type, payload).catch((error) => console.warn('Analytics event not recorded', type, error)); }
 function numberOrNull(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed > 0 ? parsed : null; }
@@ -1036,6 +1047,7 @@ $('#consent-analytics')?.addEventListener('click', () => { setConsentState(globa
 const contactDialog = $('#contact-dialog');
 
 async function persistCloudSnapshot(snapshot) {
+  if(identityFrozen)return;
   state = mergeCloudSnapshot(state, snapshot);
   persist();
 }
@@ -1181,23 +1193,25 @@ async function initializeCloud() {
     const authService=createAuthService({
       client,backend,storage:globalThis.localStorage,
       resetRedirectTo:`${globalThis.location.origin}${globalThis.location.pathname}`,
-      beforeIdentityChange:() => projectSync?.suspend('identity_transfer'),
-      afterIdentityChange:()=>globalThis.location.reload()
+      beforeIdentityChange:async context=>{
+        persist();
+        if(context?.action==='login'&&authBridge.getState().kind==='guest'&&countsGateway&&(await countsGateway.hasLocalWork())&&!context.transferCounts)throw new Error(COUNTS_CONFIG.guestTransferEnabled?'Scegli di trasferire i conteggi ospite prima di accedere, oppure crea un nuovo account mantenendo questa sessione.':'I conteggi ospite sono conservati. Il trasferimento a un account esistente richiede l’attivazione del servizio; puoi creare un nuovo account mantenendoli.');
+        projectSync?.suspend('identity_transfer');
+        coordinatedIdentityChange=true;
+      },
+      countsTransferEnvironment:COUNTS_CONFIG.guestTransferEnabled?APP_CONFIG.environment:null,
+      countsTransferBackend:new URL(APP_CONFIG.supabaseUrl).origin,
+      onGuestCountsTransfer:async proof=>{
+        const temporary=createDesktopCountsGateway({client,ownerId:proof.targetOwnerId,environment:APP_CONFIG.environment,backendUrl:APP_CONFIG.supabaseUrl,syncEnabled:COUNTS_CONFIG.syncEnabled});
+        try{await temporary.adoptGuestWork(proof);}finally{await temporary.destroy();}
+      },
+      afterIdentityChange:()=>{if(!identitySaveFailed)globalThis.location.reload();}
     });
     accountAuthService=authService;
     authBridge.attach(authService);
     await backend.ensureAnonymousSession();
     const authState=await authService.refresh();
-    await authService.resumePendingTransfer().catch(()=>{});
     setLocalOwnerScope(authState.user?.id);
-    if(countsConfig.enabled){
-      fieldDirectory=createFieldDirectory({client,auth:authBridge,environment:APP_CONFIG.environment});
-      try{
-        countsGateway=createDesktopCountsGateway({client,ownerId:authState.user?.id,environment:APP_CONFIG.environment,
-          backendUrl:APP_CONFIG.supabaseUrl,syncEnabled:COUNTS_CONFIG.syncEnabled});
-        if(countsGateway)mountCountsDesktopSummary({document,gateway:countsGateway,onOpen:switchToCounts});
-      }catch(error){console.warn('Gateway Conteggi non disponibile nell’ambiente corrente',error);}
-    }
     const ownedRecord=loadDraftRecord(globalThis.localStorage);
     const ownedDraft=ownedRecord?.state;
     pendingWorkspace=ownedRecord?.workspace??null;
@@ -1206,16 +1220,41 @@ async function initializeCloud() {
       ? {...createInitialState(),...ownedDraft,environment:'LIVE',project:ensureProjectFields(ownedDraft.project)}
       : createInitialState();
     state={...state,map:normalizeMapState(state.map)};
+    authBridge.subscribe(next=>rememberCountsOwner(globalThis.localStorage,COUNTS_CONFIG,next));
+    const identityRequests=new AbortController(),projectBackend=bindBackendToIdentity(createBackend(client,{requestSignal:identityRequests.signal}),identityRequests.signal);
+    cloudBackend=projectBackend;
+    let identityCheckpoint;
+    const identityGuard=installIdentityGuard({client,ownerId:authState.user?.id,isCoordinated:()=>coordinatedIdentityChange,
+      onSuspend:session=>{identityFrozen=true;identityRequests.abort();countsGateway?.suspend();projectSync?.suspend('identity_changed');rememberCountsOwner(globalThis.localStorage,COUNTS_CONFIG,{user:session?.user??null});},
+      onCheckpoint:()=>{identityCheckpoint={state:structuredClone(state),workspace:restoringWorkspace&&pendingWorkspace?pendingWorkspace:captureWorkspace()};if(!saveDraft(globalThis.localStorage,identityCheckpoint.state,identityCheckpoint.workspace))throw new Error('Salvataggio locale non disponibile');},
+      onHide:(problem,session)=>{
+        identitySaveFailed=Boolean(problem);authService.invalidateSession(session);
+        for(const node of document.body.children)if(!['SCRIPT','STYLE','LINK'].includes(node.tagName)){node.style.setProperty('display','none','important');node.inert=true;}
+        const notice=document.createElement('section');notice.setAttribute('role','alert');notice.className='identity-change-notice';notice.textContent=problem?'Il profilo è cambiato. Conserva questa scheda: la bozza del profilo precedente non è ancora salvata.':'Il profilo è cambiato. Ripristino della sessione corretta…';
+        if(problem){const retry=document.createElement('button');retry.type='button';retry.textContent='Riprova il salvataggio';retry.addEventListener('click',()=>{try{if(!saveDraft(globalThis.localStorage,identityCheckpoint.state,identityCheckpoint.workspace))throw new Error('Salvataggio non disponibile');globalThis.location.reload();}catch(error){notice.firstChild.textContent='Bozza conservata in questa scheda. '+error.message;}});notice.append(retry);}
+        document.body.append(notice);
+      },onReload:()=>globalThis.location.reload()});
+    await authService.resumePendingTransfer().catch(()=>{});
+    if(identityGuard.isStopped())return;
+    if(countsConfig.enabled){
+      fieldDirectory=createFieldDirectory({client,auth:authBridge,environment:APP_CONFIG.environment});
+      try{
+        countsGateway=createDesktopCountsGateway({client,ownerId:authState.user?.id,environment:APP_CONFIG.environment,
+          backendUrl:APP_CONFIG.supabaseUrl,syncEnabled:COUNTS_CONFIG.syncEnabled});
+        if(countsGateway)mountCountsDesktopSummary({document,gateway:countsGateway,onOpen:switchToCounts});
+      }catch(error){console.warn('Gateway Conteggi non disponibile nell’ambiente corrente',error);}
+    }
     loadActiveFieldOnMap();renderFieldManager();renderExclusions();syncProjectControls();calculateAndRender();
     mobileUi?.sync();desktopLibraryUi?.render();
     if (authState.user && authState.kind === 'user') {
       const hydrated=await hydrateOwnedProjects({
-        backend,
+        backend:projectBackend,
         ownerUserId:authState.user.id,
         storage:globalThis.localStorage,
         currentProject:state.project,
         environment:state.environment ?? APP_CONFIG.environment
       });
+      if(identityGuard.isStopped())return;
       startupConflict=restoreVersionConflict({workspace:pendingWorkspace,state},hydrated.projects);
       if (hydrated.activeProject&&!restoreWorkspaceForOwner({workspace:pendingWorkspace,state},authState.user.id,state.project.localProjectId))loadMobileProject(hydrated.activeProject);
       mobileUi?.sync();
@@ -1224,7 +1263,7 @@ async function initializeCloud() {
     const requestedProjectId=new URL(globalThis.location.href).searchParams.get('openProject');
     if(requestedProjectId && authState.kind === 'user') {
       try {
-        const authorizedProject=await backend.loadEditableProject(requestedProjectId);
+        const authorizedProject=await projectBackend.loadEditableProject(requestedProjectId);
         loadMobileProject(projectPayloadToArchiveItem(authorizedProject));
         const cleanUrl=new URL(globalThis.location.href);
         cleanUrl.searchParams.delete('openProject');
@@ -1235,7 +1274,7 @@ async function initializeCloud() {
       }
     }
     cloudService = createCloudService({
-      backend,
+      backend:projectBackend,
       sessionId:getOwnerSessionId(globalThis.sessionStorage,authState.user?.id),
       environment:state.environment ?? APP_CONFIG.environment,
       consentState:getConsentState(globalThis.localStorage) ?? 'necessary',
@@ -1258,12 +1297,13 @@ async function initializeCloud() {
     await persistCloudSnapshot(snapshot);
     try {
       const queueAdapter = await createIndexedDbSyncAdapter(globalThis.indexedDB,`vivai-obice-configuratore-live-${authState.user?.id}`);
+      if(identityGuard.isStopped())return;
       projectSync = createProjectSync({
-        backend,
+        backend:projectBackend,
         queue:createSyncQueue(queueAdapter),
         getState:() => state,
         getMetrics:(field) => calculateFieldProject(field ?? state.project),
-        onSnapshot:(cloud) => { state=mergeCloudSnapshot(state,cloud); persist(); }
+        onSnapshot:(cloud) => { if(identityFrozen)return;state=mergeCloudSnapshot(state,cloud); persist(); }
       });
       if(startupConflict)projectSync.suspend('version_conflict');
       else{

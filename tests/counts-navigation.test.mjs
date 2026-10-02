@@ -1,8 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 const nav=await import('../conteggi/navigation.js').catch(()=>({}));
 const id='00000000-0000-4000-8000-000000000001';
-test('direct opening shows lists and a malformed link cannot create data or redirect',()=>{
- assert.equal(nav.parseCountsUrl?.('https://example.it/conteggi')?.view,'lists');
+test('direct opening resumes the counter and a malformed link cannot create data or redirect',()=>{
+ assert.equal(nav.parseCountsUrl?.('https://example.it/conteggi')?.view,'resume');
  for(const q of ['?integrationVersion=9&view=new','?integrationVersion=1&view=counter&countId=bad','?returnUrl=https://evil.it']){
   const v=nav.parseCountsUrl('https://example.it/conteggi/'+q);assert.equal(v.view,'lists');assert.ok(v.error);
  }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initMap} from '../src/map.js';
+import {parseHTML} from 'linkedom';
 
 class Source{constructor(spec){this.data=spec.data;}setData(value){this.data=value;}}
 class Bounds{constructor(){}extend(){return this;}}
@@ -35,4 +36,29 @@ test('a started perimeter with zero points still restores drawing mode',()=>{
     const second=initMap({container:'map',onGeometryChange:()=>committed++,onDrawingState:value=>drawing=value});MapStub.current.emit('load');
     assert.equal(second.restorePendingEdit(pending),true);assert.equal(drawing.active,true);assert.equal(committed,0);
   }finally{globalThis.maplibregl=previous;}
+});
+
+test('curve editor control points and editing mode survive a tool switch',()=>{
+ const previous=globalThis.maplibregl,previousDocument=globalThis.document;const {document}=parseHTML('<html><body></body></html>');
+ class Marker{constructor(){Marker.count++;}setLngLat(){return this;}addTo(){return this;}on(){}remove(){Marker.count--;}}Marker.count=0;
+ try{
+  globalThis.document=document;globalThis.maplibregl={Map:MapStub,Marker,NavigationControl:class{},ScaleControl:class{},LngLatBounds:Bounds};
+  const first=initMap({container:'map'});MapStub.current.emit('load');
+  const editor={geometry:[[8,44],[8.001,44],[8.001,44.001],[8,44.001],[8,44]],orientationDeg:23,points:[{id:'curve-1',position:0.5,offsetM:2}],active:true};
+  first.setRowCurveEditor(editor);const draft=first.capturePendingEdit();assert.equal(draft.curveEditing,true);
+  const second=initMap({container:'map'});MapStub.current.emit('load');second.setRowCurveEditor({...editor,active:false});
+  second.restorePendingEdit(draft);assert.equal(second.capturePendingEdit().curveEditing,true);
+ }finally{globalThis.maplibregl=previous;globalThis.document=previousDocument;}
+});
+
+for(const mode of ['exclusion','linear-exclusion'])test(`unfinished ${mode} restores without changing the confirmed perimeter`,()=>{
+ const previous=globalThis.maplibregl;try{
+  globalThis.maplibregl={Map:MapStub,NavigationControl:class{},ScaleControl:class{},LngLatBounds:Bounds};
+  const ring=[[8,44],[8.001,44],[8.001,44.001],[8,44.001],[8,44]];let changes=0;
+  const first=initMap({container:'map',onGeometryChange:()=>changes++});MapStub.current.emit('load');first.setGeometry(ring);
+  if(mode==='exclusion')first.beginExclusionDraw();else first.beginLinearExclusionDraw();
+  MapStub.current.emit('click',{lngLat:{lng:8.0001,lat:44.0001}});const pending=first.capturePendingEdit();assert.equal(pending.mode,mode);
+  const second=initMap({container:'map',onGeometryChange:()=>changes++});MapStub.current.emit('load');second.setGeometry(ring);second.restorePendingEdit(pending);
+  assert.deepEqual(second.capturePendingEdit().vertices,pending.vertices);assert.equal(second.capturePendingEdit().drawing,true);assert.equal(changes,0);
+ }finally{globalThis.maplibregl=previous;}
 });

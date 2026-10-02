@@ -5,6 +5,9 @@ export function createProfileUI({authService,document=globalThis.document,counts
   if(!authService||!document)throw new TypeError('Auth service e document richiesti');
   const trigger=document.querySelector('#profile-trigger'),menu=document.querySelector('#profile-menu');
   let state=authService.getState?.()??{kind:'guest'},unsubscribe=null,dialog=null;
+  const transferWarning=document.createElement('section');transferWarning.id='counts-transfer-recovery';transferWarning.className='profile-transfer-warning';transferWarning.setAttribute('role','status');transferWarning.hidden=true;
+  const transferText=document.createElement('p'),retryTransfer=document.createElement('button');retryTransfer.type='button';retryTransfer.textContent='Riprova il trasferimento';transferWarning.append(transferText,retryTransfer);
+  retryTransfer.addEventListener('click',async()=>{retryTransfer.disabled=true;try{await authService.resumePendingTransfer();}catch(error){transferText.textContent='Gli appunti ospite sono conservati. '+(error.message||'Trasferimento non completato.');}finally{retryTransfer.disabled=false;}});
   const closeMenu=()=>{menu.hidden=true;menu.classList.add('profile-menu');trigger.setAttribute('aria-expanded','false');};
   function themeSelector(){const label=document.createElement('label');label.className='profile-theme-label';label.textContent='Preferenza tema';const select=document.createElement('select');select.dataset.themeChoice='true';for(const [value,title] of [['light','Modalità luminosa'],['dark','Dark Mode'],['auto','Automatico']]){const option=document.createElement('option');option.value=value;option.textContent=title;option.selected=value===getTheme();select.append(option);}select.addEventListener('change',()=>setTheme(select.value,{root:document.documentElement}));label.append(select);return label;}
   function feedback(message,error=false){const node=dialog?.querySelector('.profile-feedback');if(node){node.textContent=message||'';node.classList.toggle('error',error);}}
@@ -23,7 +26,7 @@ export function createProfileUI({authService,document=globalThis.document,counts
       if(authAction==='show-login'){register.hidden=true;login.hidden=false;return;}
       feedback('Attendi…');
       try{
-        if(authAction==='login')await authService.login({identifier:login.querySelector('[name="identifier"]').value,password:login.querySelector('[name="password"]').value});
+        if(authAction==='login')await authService.login({identifier:login.querySelector('[name="identifier"]').value,password:login.querySelector('[name="password"]').value,...(login.querySelector('[name="transferCounts"]')?.checked?{transferCounts:true}:{})});
         if(authAction==='register')await authService.register({displayName:register.querySelector('[name="displayName"]').value,email:register.querySelector('[name="email"]').value,username:register.querySelector('[name="username"]').value,password:register.querySelector('[name="newPassword"]').value});
         if(authAction==='reset')await authService.requestPasswordReset(login.querySelector('[name="identifier"]').value);
         if(profileAction==='save'){
@@ -40,6 +43,9 @@ export function createProfileUI({authService,document=globalThis.document,counts
   }
   function renderGuestBody(node){
     node.innerHTML='<div class="profile-login"><label>E-mail o username<input name="identifier" autocomplete="username"></label><label>Password<input name="password" type="password" autocomplete="current-password"></label><button class="profile-primary" data-auth-action="login">Accedi</button><button data-auth-action="show-register">Crea account</button><button data-auth-action="reset">Password dimenticata?</button></div><div class="profile-register" hidden><label>Nome profilo<input name="displayName" autocomplete="name"></label><label>E-mail<input name="email" type="email" autocomplete="email"></label><label>Username<input name="username" autocomplete="username" placeholder="anche solo numeri"></label><label>Password<input name="newPassword" type="password" autocomplete="new-password"></label><button class="profile-primary" data-auth-action="register">Crea account</button><button data-auth-action="show-login">Ho già un account</button></div>';
+    const login=node.querySelector('.profile-login');
+    if(authService.supportsCountsTransfer){const label=document.createElement('label');label.className='profile-counts-transfer';label.innerHTML='<input type="checkbox" name="transferCounts"> Trasferisci anche i conteggi ospite a questo account';login.insertBefore(label,login.querySelector('[data-auth-action="login"]'));}
+    const info=document.createElement('p');info.className='profile-counts-info';info.textContent='Creando un nuovo account mantieni gli appunti della sessione ospite. Se hai già conteggi ospite, scegli di trasferirli prima di accedere a un account esistente.';login.append(info);
   }
   function renderUserBody(node){
     node.innerHTML=`<form class="profile-details"><div class="profile-fields"><label>Nome<input name="firstName" autocomplete="given-name" value="${esc(state.firstName)}"></label><label>Cognome<input name="lastName" autocomplete="family-name" value="${esc(state.lastName)}"></label><label class="profile-wide">Azienda<input name="companyName" autocomplete="organization" value="${esc(state.companyName)}"></label><label class="profile-wide">Indirizzo<input name="address" autocomplete="street-address" value="${esc(state.address)}"></label><label>CAP<input name="postalCode" autocomplete="postal-code" value="${esc(state.postalCode)}"></label><label>Località<input name="city" autocomplete="address-level2" value="${esc(state.city)}"></label><label>Provincia<input name="province" autocomplete="address-level1" maxlength="2" value="${esc(state.province)}"></label><label>Partita IVA<input name="vatNumber" autocomplete="off" value="${esc(state.vatNumber)}"></label><label>Telefono<input name="phone" autocomplete="tel" value="${esc(state.phone)}"></label><label>E-mail<input value="${esc(state.email)}" readonly></label></div><button class="profile-primary" data-profile-action="save" type="button">Salva dati profilo</button></form><div class="profile-account-actions"><button data-profile-action="reset-password" type="button">Reimposta password</button><button data-profile-action="logout" type="button">Esci / Logout</button></div>`;
@@ -53,6 +59,7 @@ export function createProfileUI({authService,document=globalThis.document,counts
   }
   function countsButton(){const button=document.createElement('button');button.type='button';button.dataset.profileCounts='true';button.textContent='Conteggi · Rimesse, pali e appunti di campo';button.addEventListener('click',()=>{closeMenu();if(dialog)dialog.hidden=true;Promise.resolve().then(onCounts).catch(error=>{openProfile(error.message||'Conteggi non disponibile.');});});return button;}
   function render(next){state=next??{kind:'guest'};trigger.textContent=state.kind==='user'?(String(state.username??'').trim()||String(state.email??'').split('@')[0]||'Profilo'):'Login';menu.replaceChildren();
+    transferWarning.hidden=state.transfer?.status!=='pending';if(!transferWarning.hidden)transferText.textContent='Trasferimento non completato. Gli appunti ospite sono conservati; puoi riprovare con connessione nello stesso profilo.';
     if(state.kind==='user'){
       const profile=document.createElement('button');profile.type='button';profile.textContent='Profilo';profile.addEventListener('click',()=>openProfile());menu.append(profile);
       if(countsEnabled)menu.append(countsButton());
@@ -62,7 +69,7 @@ export function createProfileUI({authService,document=globalThis.document,counts
   }
   function onTrigger(){if(state.kind!=='user'){openProfile();return;}const opening=menu.hidden;menu.hidden=!opening;trigger.setAttribute('aria-expanded',String(opening));}
   function onKey(event){if(event.key==='Escape'){closeMenu();if(dialog)dialog.hidden=true;}}
-  function mount(){trigger.addEventListener('click',onTrigger);document.addEventListener('keydown',onKey);unsubscribe=authService.subscribe(render);render(state);}
-  function destroy(){trigger.removeEventListener('click',onTrigger);document.removeEventListener('keydown',onKey);unsubscribe?.();dialog?.remove();}
+  function mount(){document.body.append(transferWarning);trigger.addEventListener('click',onTrigger);document.addEventListener('keydown',onKey);unsubscribe=authService.subscribe(render);render(state);}
+  function destroy(){trigger.removeEventListener('click',onTrigger);document.removeEventListener('keydown',onKey);unsubscribe?.();dialog?.remove();transferWarning.remove();}
   return {mount,destroy,openProfile};
 }

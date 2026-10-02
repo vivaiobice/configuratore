@@ -1,3 +1,5 @@
+> Documento storico. Stato corrente: [STATO_PIATTAFORMA.md](../../STATO_PIATTAFORMA.md). Le indicazioni organizzative su due Work e gli esiti/configurazioni del passato non descrivono il rilascio 1.1.0.
+
 # Conteggi — implementazione per revisione e integrazione
 
 Consegna del 2 ottobre 2026. Codice verificato: commit `322e175be0acdc42fa30149d761e05cfa396179e`.

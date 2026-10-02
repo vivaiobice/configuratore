@@ -32,9 +32,8 @@ test('opening Conteggi from an unsynced field keeps its local reference without 
   try{
     await ui.ready;
     assert.match(document.querySelector('#counts-main').textContent,/Moscato.*bozza/i);
-    document.querySelector('[name="category"] option[value="plants"]').setAttribute('selected','');
-    document.querySelector('[name="pendingLocal"]').checked=true;
-    document.querySelector('[data-action="create-count"]').click();await ui.whenIdle();
+    document.querySelector('[data-action="increment"]').click();await ui.whenIdle();
+    document.querySelector('[data-action="confirm-count"]').click();await ui.whenIdle();
     assert.equal(document.querySelector('#counts-status').classList.contains('error'),false,document.querySelector('#counts-status').textContent);
     const lists=await gateway.listRecentLists();const record=(await gateway.getList(lists[0].listId)).counts[0];
     assert.equal(record.field.associationStatus,'pending');

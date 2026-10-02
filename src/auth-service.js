@@ -3,23 +3,29 @@ import {profileView,validateRegistration,classifyIdentifier} from './auth-model.
 const PENDING_TRANSFER_KEY='vivai-obice:auth:pending-transfer';
 const GENERIC_ERROR='Credenziali non valide';
 
-export function createAuthService({client,backend,storage=globalThis.localStorage,resetRedirectTo=globalThis.location?.origin,beforeIdentityChange=()=>{},afterIdentityChange=()=>{}}){
+export function createAuthService({client,backend,storage=globalThis.localStorage,resetRedirectTo=globalThis.location?.origin,beforeIdentityChange=()=>{},afterIdentityChange=()=>{},countsTransferEnvironment=null,countsTransferBackend=null,onGuestCountsTransfer=null}){
   if(!client?.auth||!backend)throw new TypeError('Auth client e backend richiesti');
   const listeners=new Set();
-  let state={kind:'loading',displayName:'Profilo',username:null,email:null,isAdmin:false,user:null,transfer:null};
+  let refreshEpoch=0,state={kind:'loading',displayName:'Profilo',username:null,email:null,isAdmin:false,user:null,transfer:null};
   const emit=next=>{state={...state,...next};for(const listener of listeners)listener(state);return state;};
   const pending=()=>{try{return JSON.parse(storage?.getItem(PENDING_TRANSFER_KEY)||'null');}catch{return null;}};
   const savePending=value=>value?storage?.setItem(PENDING_TRANSFER_KEY,JSON.stringify(value)):storage?.removeItem(PENDING_TRANSFER_KEY);
+  function invalidateSession(session){refreshEpoch++;return emit({...profileView(session,null),transfer:state.transfer});}
 
-  async function refresh(sessionOverride=null){
-    const response=sessionOverride?{data:{session:sessionOverride}}:await client.auth.getSession();
+  async function refresh(sessionOverride=undefined){
+    const version=++refreshEpoch;
+    const response=sessionOverride!==undefined?{data:{session:sessionOverride}}:await client.auth.getSession();
     const session=response?.data?.session??null;
     const profile=session?.user?.id&&typeof backend.getProfile==='function'?await backend.getProfile(session.user.id):null;
+    if(version!==refreshEpoch)return state;
+    const current=await client.auth.getSession();
+    if(version!==refreshEpoch)return state;
+    if(current?.data?.session?.user?.id!==session?.user?.id)return invalidateSession(current?.data?.session??null);
     return emit({...profileView(session,profile),transfer:state.transfer});
   }
 
   async function register(input){
-    await beforeIdentityChange();
+    await beforeIdentityChange({action:'register'});
     try{
     const value=validateRegistration(input);
     const promoted=await backend.promoteGuestAccount(value);
@@ -33,14 +39,20 @@ export function createAuthService({client,backend,storage=globalThis.localStorag
     const record=pending();
     if(!record)return emit({transfer:null});
     try{
+      if(record.transferCounts&&(!countsTransferEnvironment||!onGuestCountsTransfer||record.countsEnvironment!==countsTransferEnvironment||(countsTransferBackend&&record.countsBackend!==countsTransferBackend)))throw new Error('Trasferimento dei conteggi in attesa nel suo ambiente originale. Gli appunti sono conservati.');
       const result=await backend.consumeGuestTransferGrant(record.token);
+      if(record.transferCounts){
+        const proof=await backend.claimGuestCounts(record.token,record.countsEnvironment);
+        await onGuestCountsTransfer(proof);
+      }
       savePending(null);
       return emit({transfer:{status:'completed',transferredProjectCount:Number(result?.transferredProjectCount??0)}});
     }catch(error){emit({transfer:{status:'pending',message:'Sincronizzazione in attesa'}});throw error;}
   }
 
-  async function login({identifier,password}){
-    await beforeIdentityChange();
+  async function login({identifier,password,transferCounts=false}){
+    if(transferCounts&&(!countsTransferEnvironment||!onGuestCountsTransfer))throw new Error('Trasferimento conteggi non ancora configurato.');
+    await beforeIdentityChange({action:'login',transferCounts});
     try{
     const normalized=classifyIdentifier(identifier).value;
     const current=await client.auth.getSession();
@@ -48,7 +60,7 @@ export function createAuthService({client,backend,storage=globalThis.localStorag
     let grant=null;
     if(guestSession?.user?.is_anonymous===true){
       grant=await backend.createGuestTransferGrant();
-      savePending({token:grant,createdAt:new Date().toISOString()});
+      savePending({token:grant,createdAt:new Date().toISOString(),...(transferCounts?{transferCounts:true,countsEnvironment:countsTransferEnvironment,countsBackend:countsTransferBackend}:{})});
     }
     const session=await backend.loginByIdentifier({identifier:normalized,password:String(password??'')});
     const signed=await client.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token});
@@ -60,7 +72,7 @@ export function createAuthService({client,backend,storage=globalThis.localStorag
   }
 
   async function logout(){
-    await beforeIdentityChange();
+    await beforeIdentityChange({action:'logout'});
     try{
     const result=await client.auth.signOut();if(result.error)throw result.error;
     const guest=await backend.ensureAnonymousSession();
@@ -95,5 +107,5 @@ export function createAuthService({client,backend,storage=globalThis.localStorag
     return emit({...profileView({user:state.user},row),transfer:state.transfer});
   }
 
-  return {getState:()=>state,subscribe(listener){listeners.add(listener);listener(state);return()=>listeners.delete(listener);},refresh,register,login,logout,requestPasswordReset,completePasswordReset,updateProfile,resumePendingTransfer};
+  return {supportsCountsTransfer:Boolean(countsTransferEnvironment&&onGuestCountsTransfer),getState:()=>state,subscribe(listener){listeners.add(listener);listener(state);return()=>listeners.delete(listener);},refresh,invalidateSession,register,login,logout,requestPasswordReset,completePasswordReset,updateProfile,resumePendingTransfer};
 }

@@ -1,5 +1,16 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {IDBFactory} from './counts-support.mjs';
 import {createCountsRuntime} from '../conteggi/runtime.js';
+test('guest appunti require an explicit handoff before login; registering keeps the same owner',async t=>{
+ const previousDB=globalThis.indexedDB;globalThis.indexedDB=new IDBFactory();let hook,checkpoints=0;
+ const session={user:{id:'00000000-0000-4000-8000-000000000010',is_anonymous:true}};
+ const client={auth:{getSession:async()=>({data:{session}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}};
+ const runtime=await createCountsRuntime({config:{environment:'TEST',backendUrl:'https://backend.example',syncEnabled:false,guestTransferEnabled:true},client,backendFactory:()=>({getProfile:async()=>null}),authFactory:options=>{hook=options.beforeIdentityChange;return {refresh:async()=>{}};},beforeIdentityChange:async()=>{checkpoints++;}});
+ t.after(async()=>{await runtime.destroy();globalThis.indexedDB=previousDB;});
+ await runtime.gateway.createList({title:'Appunti ospite'});
+ await assert.rejects(hook({action:'login',transferCounts:false}),/trasferire/i);
+ assert.equal(checkpoints,0);assert.equal((await runtime.gateway.listLists()).items.length,1);
+ await hook({action:'register'});await hook({action:'login',transferCounts:true});assert.equal(checkpoints,2);
+});
 test('token refresh preserves the active tool; external account change isolates it even if old checkpoint fails',async t=>{
  globalThis.indexedDB=new IDBFactory();let current={user:{id:'00000000-0000-4000-8000-000000000010',is_anonymous:true}},callback,checkpoints=0,failCheckpoint=false;
  const client={auth:{getSession:async()=>({data:{session:current}}),onAuthStateChange(fn){callback=fn;return {data:{subscription:{unsubscribe(){}}}};}}};const runtime=await createCountsRuntime({config:{environment:'TEST',backendUrl:'https://backend.example',syncEnabled:false},client,backendFactory:()=>({getProfile:async()=>null}),authFactory:()=>({refresh:async()=>{}}),beforeIdentityChange:async()=>{checkpoints++;if(failCheckpoint)throw new Error('Storage failure');}});

@@ -1,8 +1,12 @@
-# Vivai Obice — Configuratore
+# Vivai Obice — piattaforma unica 1.2.0
 
-Web app autonoma per la progettazione preliminare di impianti viticoli.
+Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. Conteggi apre subito il contatore a impulsi; dettagli e destinazione si gestiscono dopo il salvataggio. Ambiente configurato: LIVE; i servizi cloud Conteggi restano disattivati finché non installati.
 
-Stato: ambiente TEST · release V53.3 WebApp.
+- Stato corrente e verifiche: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
+- Pubblicazione del pacchetto unico e attivazione backend: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
+- Riproduzione locale: `npm ci`, `npm ci --prefix conteggi`, `npm test`, `npm run check`.
+
+Le note che seguono descrivono rilasci storici del configuratore e non attestano la configurazione corrente.
 
 ## V53.3 — stato attivo del selettore mappa in Dark Mode
 

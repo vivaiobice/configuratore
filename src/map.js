@@ -1071,6 +1071,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       const started=snapshot.editingExclusionId?beginExclusionEditing(snapshot.editingExclusionId):beginVertexEditing();
       if(started){editRing=snapshot.editRing.map(point=>[...point]);renderEditHandles();}
     }else if(snapshot.vertexRemovalActive)beginVertexRemoval();
+    if(snapshot.curveEditing)setRowCurveEditor({...rowCurveEditor,active:true});
     if(snapshot.camera&&validPoint(snapshot.camera.center)&&Number.isFinite(snapshot.camera.zoom)&&Number.isFinite(snapshot.camera.bearing))
       map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
     return true;

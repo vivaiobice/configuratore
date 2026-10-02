@@ -196,10 +196,13 @@ export function toQuoteRequestRow({ projectId, contactId, ownerUserId, environme
   };
 }
 
-export function createBackend(client) {
+export function createBackend(client,{requestSignal=null}={}) {
   if (!client) throw new TypeError('Supabase client required');
   async function rpc(name, args) {
-    const result = await client.rpc(name, args);
+    if(requestSignal?.aborted)throw new Error('Account cambiato: operazione sospesa.');
+    const query=client.rpc(name,args);
+    const result=await (requestSignal&&typeof query.abortSignal==='function'?query.abortSignal(requestSignal):query);
+    if(requestSignal?.aborted)throw new Error('Account cambiato: operazione sospesa.');
     if (result.error) throw result.error;
     return result.data;
   }
@@ -267,6 +270,7 @@ export function createBackend(client) {
     async consumeGuestTransferGrant(token) {
       return rpc('consume_guest_transfer_grant', { p_token:token });
     },
+    async claimGuestCounts(token,environment){return rpc('counts_claim_guest',{p_token:token,p_environment:environment});},
     async loginByIdentifier({ identifier, password }) {
       const result = await client.functions.invoke('login-by-identifier', { body:{ identifier, password } });
       if (result.error) throw await edgeFunctionError(result.error,'Credenziali non valide');

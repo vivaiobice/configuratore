@@ -25,7 +25,7 @@ test('auth bridge forwards profile updates to the attached auth service',async()
 
 test('app suspends project sync before identity changes and mounts both profile surfaces',()=>{
   const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
-  assert.match(app,/beforeIdentityChange:\s*\(\)\s*=>\s*projectSync\?\.suspend/);
+  assert.match(app,/beforeIdentityChange:\s*async context=>\{[\s\S]*?persist\(\);[\s\S]*?projectSync\?\.suspend\('identity_transfer'\)/);
   assert.match(app,/createMobileUI\([\s\S]+auth:authBridge/);
   assert.match(app,/createProfileUI\(\{authService:authBridge/);
 });
@@ -50,8 +50,8 @@ test('startup downloads the signed-in owner archive before creating the sync coo
 test('release cache-busts changed authentication and sync modules',()=>{
   const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
   assert.match(app,/from '\.\/project-sync\.js\?v=55\.6\.7&counts=1'/);
-  assert.match(app,/from '\.\/backend\.js\?v=55\.6\.2'/);
+  assert.match(app,/from '\.\/backend\.js\?v=1\.2\.0'/);
   assert.match(app,/from '\.\/cloud\.js\?v=55\.6\.2'/);
   assert.match(app,/from '\.\/local-projects\.js\?v=55\.6\.1'/);
-  assert.match(app,/from '\.\/auth-service\.js\?v=49'/);
+  assert.match(app,/from '\.\/auth-service\.js\?v=1\.2\.0'/);
 });

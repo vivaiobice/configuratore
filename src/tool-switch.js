@@ -14,9 +14,9 @@ export function restoreVersionConflict(record,archive){
   return Boolean(remote&&Number(remote.cloud?.version)>version);
 }
 
-export async function checkpointBeforeSwitch({storage,state,ownerId,capture,navigate,enqueue=()=>{}}){
+export async function checkpointBeforeSwitch({storage,state,ownerId,capture,pendingWorkspace=null,navigate,enqueue=()=>{}}){
   if(!ownerId||!state?.project||typeof capture!=='function')throw new Error('Identità o bozza non disponibile. Riprova tra poco.');
-  const workspace=capture();
+  const workspace=pendingWorkspace??capture();
   if(workspace?.ownerId!==ownerId||workspace?.projectId!==state.project.localProjectId)throw new Error('Identità della bozza cambiata: resta nell’editor.');
   if(!saveDraft(storage,state,workspace))throw new Error('Salvataggio locale non disponibile. Riprova senza uscire.');
   const verified=restoreWorkspaceForOwner(loadDraftRecord(storage),ownerId,workspace.projectId);

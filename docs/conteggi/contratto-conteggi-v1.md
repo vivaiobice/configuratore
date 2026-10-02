@@ -1,3 +1,5 @@
+> Documento storico. Stato corrente: [STATO_PIATTAFORMA.md](../../STATO_PIATTAFORMA.md). Le indicazioni organizzative su due Work e gli esiti/configurazioni del passato non descrivono il rilascio 1.1.0.
+
 # Conteggi Vivai Obice scheda per il Work Configuratore
 
 **Contratto V1 — proposta tecnica del Work Conteggi, 2 ottobre 2026.**

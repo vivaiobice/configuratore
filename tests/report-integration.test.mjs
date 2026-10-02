@@ -74,7 +74,8 @@ test('shared edit handoff loads only an authorized cloud project into the editor
   const backend=fs.readFileSync(new URL('../src/backend.js',import.meta.url),'utf8');
   assert.match(app,/searchParams\.get\('openProject'\)/);
   assert.match(app,/authState\.kind === 'user'/);
-  assert.match(app,/backend\.loadEditableProject\(requestedProjectId\)/);
+  assert.match(app,/projectBackend\.loadEditableProject\(requestedProjectId\)/);
+  assert.match(app,/projectBackend=bindBackendToIdentity\(createBackend/);
   assert.match(backend,/async loadEditableProject\(projectId\)/);
   assert.doesNotMatch(app,/claimProject\(requestedProjectId/);
 });

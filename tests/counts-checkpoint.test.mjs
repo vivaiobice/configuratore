@@ -36,3 +36,10 @@ test('a newer cloud version keeps the restored draft and stops automatic reconci
   assert.equal(restoreVersionConflict({workspace:sample(),state:{cloud:{projectId:'cloud-1'}}},[{cloud:{projectId:'cloud-1',version:4}}]),true);
   assert.equal(restoreVersionConflict({workspace:sample(),state:{cloud:{projectId:'cloud-1'}}},[{cloud:{projectId:'cloud-1',version:3}}]),false);
 });
+
+test('switch before map load preserves the saved pending vertices instead of the empty live editor',async()=>{
+ const storage=memory();setLocalOwnerScope('guest-a');let captures=0;
+ const state={project:{localProjectId:'project-local',activeFieldId:'field-1'}},pendingWorkspace=sample();
+ await checkpointBeforeSwitch({storage,state,ownerId:'guest-a',pendingWorkspace,capture:()=>{captures++;return {...sample(),map:{vertices:[]}};}});
+ assert.equal(captures,0);assert.equal(loadDraftRecord(storage).workspace.map.vertices.length,2);setLocalOwnerScope(null);
+});

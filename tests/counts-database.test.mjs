@@ -4,6 +4,18 @@ const list={listId,title:'Rimesse',status:'open',deleted:false};
 const count={countId,listId,category:'plants',title:'Barbera',varietyLabel:null,quantity:27,notes:'Riga 2\nDa rimpiazzare',field:null,deleted:false};
 async function database(){const db=new PGlite();await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid primary key,is_anonymous boolean default false);CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;CREATE TABLE public.projects(id uuid primary key,owner_user_id uuid,environment text,name text,deleted_at timestamptz);CREATE TABLE public.project_fields(project_id uuid,owner_user_id uuid,client_field_id text,label text,deleted_at timestamptz);INSERT INTO auth.users VALUES ('${owner}',true),('${other}',false);`);const file=(await readdir(new URL('../supabase/migrations/',import.meta.url))).find(f=>f.endsWith('_counts_v1.sql'));assert.ok(file,'migration exists');await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));return db;}
 async function apply(db,kind,value,revision=0,op=crypto.randomUUID(),who=owner,env='TEST'){return (await db.query('select public.counts_apply($1,$2,$3,$4,$5,$6::jsonb) as result',[who,env,op,kind,revision,JSON.stringify(value)])).rows[0].result;}
+test('moving a reading keeps its ID and rootstock while refusing foreign destinations',async()=>{const db=await database();try{
+ const migrations=(await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('_counts_reading_moves.sql'));
+ for(const file of migrations)await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ await apply(db,'list',list);await apply(db,'count',count);
+ const destination=crypto.randomUUID();await apply(db,'list',{...list,listId:destination,title:'Altro elenco'});
+ const moved={...count,listId:destination,category:'posts',rootstockLabel:'Kober 5 BB'};
+ const result=await apply(db,'count',moved,1);assert.equal(result.value.revision,2);
+ const row=(await db.query('select id,list_id,data from counts_entries where id=$1',[countId])).rows[0];assert.equal(row.list_id,destination);assert.equal(row.data.rootstockLabel,'Kober 5 BB');assert.equal(row.data.quantity,27);
+ const foreign=crypto.randomUUID();await apply(db,'list',{...list,listId:foreign},0,crypto.randomUUID(),other);
+ await assert.rejects(apply(db,'count',{...moved,listId:foreign},2),/NOT_FOUND_OR_FORBIDDEN/);
+ await assert.rejects(apply(db,'count',{...moved,listId:listId},1),/VERSION_CONFLICT/);
+ }finally{await db.close();}});
 test('SQL ownership, CAS, operation idempotency and tombstones preserve counts',async()=>{const db=await database();try{
  const op=crypto.randomUUID();const one=await apply(db,'list',list,0,op);assert.equal(one.value.revision,1);assert.deepEqual(await apply(db,'list',list,0,op),one);
  await assert.rejects(apply(db,'list',{...list,title:'changed'},0,op),/VALIDATION_ERROR/);

@@ -1,3 +1,5 @@
+> Documento storico. Stato corrente: [STATO_PIATTAFORMA.md](../../STATO_PIATTAFORMA.md). Le indicazioni organizzative su due Work e gli esiti/configurazioni del passato non descrivono il rilascio 1.1.0.
+
 # Vivai Obice — Scheda di interscambio per il Work Conteggi
 
 **Contratto V1; fotografia del configuratore 1.0.5, 2 ottobre 2026.** Passare questa scheda all'altro Work insieme all'appendice comune del prompt allegato. «Proposto» significa interfaccia da implementare/coordinare, non funzione già disponibile.
