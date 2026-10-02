@@ -15,7 +15,14 @@ export function mountToolMenu({document=globalThis.document,onCounts,onError=()=
   const editorLogo=mobileButton.querySelector('img').cloneNode(true);editorLogo.alt='';editorButton.append(editorLogo,arrow.cloneNode(true));editor.prepend(editorButton);mark(editorButton);
   let active=null;
   function close(){panel.hidden=true;triggers.forEach(button=>button.setAttribute('aria-expanded','false'));active=null;}
-  function open(trigger){active=trigger;panel.hidden=false;triggers.forEach(button=>button.setAttribute('aria-expanded',String(button===trigger)));const rect=trigger.getBoundingClientRect?.();if(rect){panel.style.left=`${Math.max(8,rect.left)}px`;panel.style.top=`${rect.bottom+6}px`;}selected.focus?.();}
+  function open(trigger){
+    // Keep mobile options in the same touch surface as their trigger. Safari's
+    // missing-click fallback is installed on #mobile-app, not document.body.
+    const host=trigger.closest('#mobile-app')??document.body;
+    if(panel.parentElement!==host)host.append(panel);
+    active=trigger;panel.hidden=false;triggers.forEach(button=>button.setAttribute('aria-expanded',String(button===trigger)));
+    const rect=trigger.getBoundingClientRect?.();if(rect){panel.style.left=`${Math.max(8,rect.left)}px`;panel.style.top=`${rect.bottom+6}px`;}selected.focus?.();
+  }
   function toggle(event){event.preventDefault?.();if(!panel.hidden&&active===event.currentTarget)close();else open(event.currentTarget);}
   const handlers=[];
   for(const trigger of triggers){const click=event=>toggle(event),key=event=>{if(event.key===' '){event.preventDefault();toggle(event);}};trigger.addEventListener('click',click);trigger.addEventListener('keydown',key);handlers.push([trigger,click,key]);}

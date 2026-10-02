@@ -3,7 +3,7 @@
 .brand[aria-haspopup="menu"]:focus-visible,.mobile-brand-tool-trigger:focus-visible,.mobile-editor-tool-trigger:focus-visible{outline:3px solid #397451;outline-offset:3px}
 .tool-selector{position:fixed;z-index:200;min-width:205px;padding:5px;border:1px solid #dce2dd;border-radius:12px;background:#fff;color:#142019;box-shadow:0 12px 35px #14201930}
 .tool-selector[hidden]{display:none}
-.tool-selector button{display:block;width:100%;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:inherit;text-align:left;font:inherit;font-size:13px;cursor:pointer}
+.tool-selector button,#mobile-app .tool-selector button{display:block;width:100%;min-height:48px;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:inherit;text-align:left;font:inherit;font-size:13px;cursor:pointer;touch-action:manipulation}
 .tool-selector button:hover,.tool-selector button:focus-visible{background:#edf4ef}
 .mobile-brand-tool-trigger,.mobile-editor-tool-trigger{display:none}
 .vo-service-footer{position:fixed;z-index:9;right:14px;bottom:8px;display:flex;gap:8px;max-width:70%;padding:4px 7px;border-radius:7px;background:#ffffffdf;color:#516058;font-size:9px;line-height:1.25;pointer-events:none}

@@ -1,6 +1,6 @@
 export const APP_CONFIG = Object.freeze({
   environment: 'LIVE',
-  version: '1.2.0',
+  version: '1.2.1',
   countsEnabled: true,
   supabaseUrl: 'https://lnclwslcjufwdbmsxljf.supabase.co',
   supabasePublishableKey: 'sb_publishable_ElSTuv9KWcsPgh6pJAA0KA_ww3LxrPo'

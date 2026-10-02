@@ -19,7 +19,7 @@ test('mobile editor context can be restored without confirming or cancelling its
  assert.equal(second.ui.captureSession().transaction,true);
  assert.equal(second.cancelled,0);assert.equal(second.saved,0);
 });
-function setup(mobile=true,mapInstance=null,withCompass=false){
+function setup(mobile=true,mapInstance=null,withCompass=false,extraApi={}){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
  const $=s=>document.querySelector(s);let begun=0,saved=0,lastSaveOptions=null,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,quoteProject=null,reportField=null,viewToggles=0;
  if(withCompass){
@@ -40,9 +40,16 @@ function setup(mobile=true,mapInstance=null,withCompass=false){
   resizeMap(){},focusAll(){},stopTools(){},finishEdit(){},undoPoint(){},beginEdit(){begun++;},beginNewField(){begun++;},
   selectField(){},removeField(id){removed.push(id);project.fields=project.fields.filter(field=>field.id!==id);},cancelEdit(){cancelled++;},saveProject(name,options){saved++;lastSaveOptions=options;return options?.commitCloud?{location:'cloud'}:{location:'local'};},listProjects:()=>projects,loadProject(){},newProject(){},async refreshProjects(){refreshed++;},
   async renameProject(item,name){renamedProject=[item.id,name];item.name=name;},async deleteProject(item){deletedProject=item.id;projects.splice(projects.indexOf(item),1);},confirm:()=>true,
-  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){},openPublicProject(){loadedCode++;},openReport(item){reportProject=item;},openQuote(item){quoteProject=item;},openReportForField(id){reportField=id;},toggleTabletView(){viewToggles++;}});
+  finishDraw:async()=>true,drawField(){},focusField(){},finalAction(){},openPublicProject(){loadedCode++;},openReport(item){reportProject=item;},openQuote(item){quoteProject=item;},openReportForField(id){reportField=id;},toggleTabletView(){viewToggles++;},...extraApi});
  return {$,ui,document,project,metrics,auth,authCalls,originalCompassGroup,get begun(){return begun;},get saved(){return saved;},get lastSaveOptions(){return lastSaveOptions;},get cancelled(){return cancelled;},get refreshed(){return refreshed;},get removed(){return removed;},get renamedProject(){return renamedProject;},get deletedProject(){return deletedProject;},get loadedCode(){return loadedCode;},get reportProject(){return reportProject;},get quoteProject(){return quoteProject;},get reportField(){return reportField;},get viewToggles(){return viewToggles;},desktop(){mobile=false;ui.sync();}};
 }
+test('mobile Profile opens the impulse counter for both guests and signed-in users',async()=>{
+ const opened=[],c=setup(true,null,false,{countsEnabled:true,openCounts:view=>opened.push(view)});
+ c.ui.navigate('profile');c.$('.mobile-counts-link').click();await Promise.resolve();
+ c.auth.emit({kind:'user',displayName:'Mario',email:'m@example.com',profile:{}});
+ c.$('.mobile-counts-link').click();await Promise.resolve();
+ assert.deepEqual(opened,['resume','resume']);
+});
 test('V26 mobile perimeter becomes light and subordinate to rows, desktop paints restore exactly',()=>{
  const paints=new Map([
   ['project-geometry-line',{'line-color':'#1d6b45','line-width':4}],

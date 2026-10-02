@@ -1,6 +1,6 @@
-# Vivai Obice — piattaforma unica 1.2.0
+# Vivai Obice — piattaforma unica 1.2.1
 
-Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. Conteggi apre subito il contatore a impulsi; dettagli e destinazione si gestiscono dopo il salvataggio. Ambiente configurato: LIVE; i servizi cloud Conteggi restano disattivati finché non installati.
+Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. Comfortaa in tutta l’interfaccia, caricato da un asset locale. Il menu strumenti e il Profilo aprono direttamente il contatore anche su mobile. Conteggi apre subito il contatore a impulsi; dettagli e destinazione si gestiscono dopo il salvataggio. Ambiente configurato: LIVE; i servizi cloud Conteggi restano disattivati finché non installati.
 
 - Stato corrente e verifiche: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
 - Pubblicazione del pacchetto unico e attivazione backend: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).

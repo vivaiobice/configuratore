@@ -258,7 +258,7 @@ export function createMobileUI(api){
  function addCountsProfileAccess(content){
   if(!api.countsEnabled)return;
   const button=document.createElement('button');button.type='button';button.className='mobile-counts-link';button.textContent='Conteggi · Rimesse, pali e appunti di campo';
-  button.addEventListener('click',()=>Promise.resolve().then(()=>api.openCounts?.('lists')).catch(error=>showNotice(error.message||'Conteggi non disponibile.')));
+  button.addEventListener('click',()=>Promise.resolve().then(()=>api.openCounts?.('resume')).catch(error=>showNotice(error.message||'Conteggi non disponibile.')));
   content.append(button);
  }
  function renderField(){

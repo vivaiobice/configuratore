@@ -10,11 +10,11 @@ const {chromium,devices}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+
 const output=process.env.COUNTS_BROWSER_OUTPUT??'.counts-work/browser';await mkdir(output,{recursive:true});
 let base=process.env.COUNTS_BROWSER_BASE,server,browser;
 if(!base){
- const root=fileURLToPath(new URL('../',import.meta.url));
+ const root=resolve(fileURLToPath(new URL('../',import.meta.url)));
  server=createServer(async(req,res)=>{try{
   let pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);if(pathname.endsWith('/'))pathname+='index.html';
   const path=resolve(root,'.'+pathname);if(!path.startsWith(root+'/'))throw new Error('Forbidden');
-  const bytes=await readFile(path);res.setHeader('Content-Type',({'.js':'application/javascript','.html':'text/html','.css':'text/css','.png':'image/png'})[extname(path)]??'application/octet-stream');res.end(bytes);
+   const bytes=await readFile(path);res.setHeader('Content-Type',({'.js':'application/javascript','.html':'text/html','.css':'text/css','.png':'image/png','.ttf':'font/ttf'})[extname(path)]??'application/octet-stream');res.end(bytes);
  }catch{res.writeHead(404);res.end('Not found');}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));base='http://127.0.0.1:'+server.address().port;
 }
@@ -33,8 +33,11 @@ try{
    if(url.pathname==='/conteggi/boot.js')return route.fulfill({contentType:'application/javascript',body:fixture});return route.continue();
   });
   const idle=()=>page.evaluate(()=>fixture.ui.whenIdle());
-  const click=async action=>{await page.locator(`[data-action="${action}"]`).first().click();await idle();};
-  await page.goto(base+'/conteggi/');await page.waitForFunction(()=>globalThis.fixture);
+  const click=async action=>{const button=page.locator(`[data-action="${action}"]`).first();await button[options.hasTouch?'tap':'click']();await idle();};
+  await page.goto(base+'/conteggi/');await page.waitForFunction(()=>globalThis.fixture).catch(error=>{throw new Error(error.message+'; page errors: '+errors.join('; '));});
+  await page.evaluate(()=>document.fonts.ready);
+  assert.equal(await page.evaluate(()=>document.fonts.check('16px Comfortaa')),true);
+  assert.equal(await page.locator('#quantity-display').evaluate(node=>getComputedStyle(node).fontFamily.startsWith('Comfortaa')),true);
   assert.equal(await page.locator('#quantity-display').textContent(),'0');assert.equal(await page.locator('select').count(),0);
   await page.locator('[name="title"]').fill('Lettura filare 2');await idle();
   await page.evaluate(()=>{for(let i=0;i<27;i++)document.querySelector('[data-action="increment"]').click();});await idle();
@@ -52,7 +55,7 @@ try{
   assert.equal(await page.locator('.count-row strong').textContent(),'100');assert.match(await page.locator('.reading-material').textContent(),/Kober 5 BB/);
   await click('add-count');await click('increment');await click('confirm-count');assert.equal(await page.locator('.count-row').count(),2);assert.equal((await page.evaluate(()=>fixture.gateway.listRecentLists())).length,1);
   await click('open-count');await click('details-new-list');await page.locator('[name="listTitle"]').fill('Rimesse collina');await click('move-new-list');assert.equal(await page.locator('.list-heading h2').textContent(),'Rimesse collina');
-  await click('add-count');await click('increment');await click('counter-menu');await page.locator('[data-tool="configurator"]').click();await page.waitForURL(base+'/index.html');
+  await click('add-count');await click('increment');await click('counter-menu');await page.locator('[data-tool="configurator"]:visible').click();await page.waitForURL(base+'/index.html');
   await page.goto(base+'/conteggi/');await page.waitForFunction(()=>globalThis.fixture);assert.equal(await page.locator('#quantity-display').textContent(),'1');
   await page.evaluate(()=>fixture.gateway.setScope({backend:'https://fixture.example',environment:'TEST',owner:'00000000-0000-4000-8000-000000000011'}));await idle();assert.equal(await page.locator('#quantity-display').textContent(),'0');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);

@@ -1,4 +1,4 @@
-# Pubblicazione — piattaforma Vivai Obice 1.2.0
+# Pubblicazione — piattaforma Vivai Obice 1.2.1
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
@@ -20,7 +20,7 @@ Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consu
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.0 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.1 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 
@@ -88,3 +88,9 @@ La lettura aperta si conserva localmente nello scope del proprietario e diventa 
 Se il backend Conteggi è già stato installato con la versione precedente, applicare soltanto `20261002220000_counts_reading_moves.sql`, quindi aggiornare le tre funzioni con i sorgenti di questo pacchetto. La migrazione preserva i permessi e consente lo spostamento di una riga solo tra elenchi dello stesso proprietario/ambiente. Non cancellare né rieseguire le migrazioni già applicate. Portainnesto è un dato facoltativo nella riga JSON e nel riepilogo; le vecchie righe restano valide. Finché i flag sono disattivati, il comando di trasmissione spiega che il servizio non è ancora attivo.
 
 Collaudo aggiuntivo: ingresso senza form, tocchi rapidi, suono/vibrazione dove supportati, flash, −1 a zero, annullamento e conferma azzeramento, ricarica prima di salvare, due letture nello stesso elenco giornaliero, titolo, dettagli e campo, spostamento tra elenchi e creazione di un nuovo elenco, cambio account e proposta concorrente. `scripts/counts-browser.mjs` è aggiornato a questo flusso e richiede Playwright con Chromium installato.
+
+## Correzione touch e Comfortaa 1.2.1
+
+Pubblicare il pacchetto completo, incluso `fonts.css`, `assets/fonts/Comfortaa-Variable.ttf` e relativa licenza. Il font non richiede Google Fonts né una connessione esterna. Il worker usa una nuova cache `vivai-obice-counts-static-1.2.1`; il manifest offline include anche font e foglio condiviso. Nessuna nuova migrazione o funzione backend per questa correzione.
+
+Dopo la pubblicazione, chiudere le vecchie schede, riaprire online e controllare `1.2.1 · LIVE`. Su iPhone/iPad provare logo in alto → Conteggi, logo dell’editor → Conteggi e Profilo → Conteggi, da ospite e da utente: deve comparire subito il contatore. Non cancellare i dati del sito. Le prove locali in Chromium sono riuscite; il test Safari su dispositivo resta da eseguire.

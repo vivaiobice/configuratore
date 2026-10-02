@@ -3,6 +3,26 @@ import assert from 'node:assert/strict';
 import {parseHTML} from 'linkedom';
 import {mountToolMenu} from '../src/tool-menu.js';
 import {createDesktopLibraryUI} from '../src/desktop-library-ui.js';
+import {installPenTapFallback} from '../src/pen-tap.js';
+
+for(const triggerClass of ['mobile-brand-tool-trigger','mobile-editor-tool-trigger'])test(`${triggerClass}: a finger tap selects Conteggi when Safari omits the native click`,async()=>{
+  const {document,window}=parseHTML('<html><body><a class="brand" href="#"><img></a><div id="mobile-app"><div class="mobile-brand"><img></div><div class="mobile-editor-top"></div></div></body></html>');
+  const root=document.querySelector('#mobile-app');let calls=0;
+  installPenTapFallback(root,()=>true,{delayMs:5});
+  const menu=mountToolMenu({document,onCounts:()=>calls++});
+  const tap=async node=>{
+    for(const type of ['pointerdown','pointerup']){const event=new window.Event(type,{bubbles:true,cancelable:true});Object.assign(event,{pointerType:'touch',pointerId:1,clientX:20,clientY:20});node.dispatchEvent(event);}
+    await new Promise(resolve=>setTimeout(resolve,20));
+  };
+  await tap(document.querySelector('.'+triggerClass));
+  assert.equal(document.querySelector('#tool-selector').hidden,false);
+  const option=document.querySelector('[data-tool="counts"]');await tap(option);
+  assert.equal(calls,1);assert.equal(document.querySelector('#tool-selector').hidden,true);
+  // Linkedom runs target listeners before capture. Verify cancellation here;
+  // the browser runner checks that capture prevents duplicate navigation.
+  const lateClick=new window.Event('click',{bubbles:true,cancelable:true});Object.assign(lateClick,{pointerType:'touch',detail:1});option.dispatchEvent(lateClick);await Promise.resolve();
+  assert.equal(lateClick.defaultPrevented,true);menu.destroy();
+});
 
 test('original logo opens two accessible tools; active tool closes without navigation',async()=>{
   const {document}=parseHTML('<html><body><header><a class="brand" href="#"><img src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice"></a></header><div class="mobile-brand"><img src="./assets/logo-vivai-obice-v14.png?v=14"></div><div class="mobile-editor-top"></div></body></html>');

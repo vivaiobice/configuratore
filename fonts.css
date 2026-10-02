@@ -1,0 +1,14 @@
+@font-face {
+  font-family: 'Comfortaa';
+  src: url('./assets/fonts/Comfortaa-Variable.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+/* One locally hosted family for the complete platform, including form controls,
+   map labels and dialogs whose legacy styles specify their own font. */
+:root { --font-ui: 'Comfortaa', Arial, sans-serif; }
+html, body, body *, body *::before, body *::after {
+  font-family: var(--font-ui) !important;
+}
