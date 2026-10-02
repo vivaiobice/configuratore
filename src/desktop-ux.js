@@ -1,3 +1,5 @@
+import {calculateManualArea} from './project-calculator.js?v=1.0.3';
+
 function formatItalianInteger(value){
  const integer=Math.trunc(Number(value));
  return integer>0?String(integer).replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'—';
@@ -28,9 +30,22 @@ export function createDesktopQuickCalculator({document=globalThis.document,calcu
  const rowSpacing=document?.querySelector?.('#manual-row-spacing');
  const theoretical=document?.querySelector?.('#manual-theoretical');
  const commercial=document?.querySelector?.('#manual-commercial');
+ const switcher=document?.querySelector?.('#manual-calculator-mode');
+ const areaField=document?.querySelector?.('#manual-area-field');
+ const vinesField=document?.querySelector?.('#manual-vines-field');
+ const vines=document?.querySelector?.('#manual-vines');
+ const results=document?.querySelector?.('#manual-calculator-results');
+ const netArea=document?.querySelector?.('#manual-net-area');
+ const netAreaResult=document?.querySelector?.('#manual-net-area-result');
+ let inverse=false;
  const open=()=>{if(!dialog)return;if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');};
  const close=()=>{if(!dialog)return;if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open');};
  const render=()=>{
+  if(inverse){
+   const result=calculateManualArea({plants:vines?.value,rowSpacingM:rowSpacing?.value,plantSpacingM:plantSpacing?.value});
+   if(netArea)netArea.textContent=result.areaM2>0?`${result.areaM2.toLocaleString('it-IT',{useGrouping:true,maximumFractionDigits:2})} m²`:'—';
+   return;
+  }
   if(typeof calculate!=='function')return;
   const result=calculate({areaM2:area?.value,rowSpacingM:rowSpacing?.value,plantSpacingM:plantSpacing?.value});
   if(theoretical)theoretical.textContent=formatItalianInteger(result?.theoreticalPlants);
@@ -39,7 +54,8 @@ export function createDesktopQuickCalculator({document=globalThis.document,calcu
  const mount=()=>{
   trigger?.addEventListener('click',()=>{open();render();});closeButton?.addEventListener('click',close);
   dialog?.addEventListener('click',event=>{if(event.target===dialog)close();});
-  for(const input of [area,plantSpacing,rowSpacing])input?.addEventListener('input',render);
+  switcher?.addEventListener('click',()=>{inverse=!inverse;switcher.setAttribute('aria-pressed',String(inverse));switcher.textContent=inverse?'Calcola dalle dimensioni':'Parti dal numero di viti';if(areaField)areaField.hidden=inverse;if(vinesField)vinesField.hidden=!inverse;if(results)results.hidden=inverse;if(netAreaResult)netAreaResult.hidden=!inverse;render();});
+  for(const input of [area,vines,plantSpacing,rowSpacing])input?.addEventListener('input',render);
   area?.addEventListener('change',()=>{const value=Number(area.value);if(Number.isFinite(value)&&value>0)onCalculate(value);});
   return controller;
  };

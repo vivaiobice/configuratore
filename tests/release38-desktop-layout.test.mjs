@@ -62,6 +62,26 @@ test('desktop quick calculator uses its own spacing values',()=>{
   assert.equal(document.querySelector('#manual-commercial').textContent,'2.500');
 });
 
+test('desktop quick calculator switches from surface to vines and renders net area',()=>{
+  const {document}=parseHTML(html);
+  const controller=createDesktopQuickCalculator({document,calculate:calculateManualPlants});
+  controller.mount();
+  const switcher=document.querySelector('#manual-calculator-mode');
+  assert.ok(switcher);
+  switcher.click();
+  assert.equal(switcher.getAttribute('aria-pressed'),'true');
+  assert.equal(document.querySelector('#manual-area-field').hidden,true);
+  assert.equal(document.querySelector('#manual-vines-field').hidden,false);
+  const vines=document.querySelector('#manual-vines');vines.value='1025';
+  document.querySelector('#manual-plant-spacing').value='0.8';
+  document.querySelector('#manual-row-spacing').value='2.4';
+  vines.dispatchEvent(new document.defaultView.Event('input'));
+  assert.equal(document.querySelector('#manual-net-area').textContent,'1.968 m²');
+  switcher.click();
+  assert.equal(document.querySelector('#manual-area-field').hidden,false);
+  assert.equal(document.querySelector('#manual-vines-field').hidden,true);
+});
+
 test('desktop map exposes a compact ordered tool rail and a field picker',()=>{
   const {document}=parseHTML(html);
   assert.ok(document.querySelector('.topbar > .topbar-actions > .map-command-bar > #public-project-trigger'));

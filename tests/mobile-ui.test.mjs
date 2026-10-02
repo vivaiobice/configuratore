@@ -20,7 +20,7 @@ function setup(mobile=true,mapInstance=null,withCompass=false){
   $('.map-wrap').append(group);originalCompassGroup=group;
  }
  const field={id:'f1',label:'Campo 1',geometry:[[8,44],[8.001,44],[8.001,44.001],[8,44]],exclusions:[]};
- const project={activeFieldId:'f1',fields:[field],...field};
+ const project={activeFieldId:'f1',localProjectId:'p1',fields:[field],...field};
  const projects=[{id:'p1',name:'Progetto prova',savedAt:'2026-09-22T00:00:00Z',project:{fields:[field]}}];
  const metrics={areaM2:1000,netAreaM2:900,rows:[],simulatedPlants:400,intermediatePosts:80,headPosts:20,totalPosts:100};
  const authCalls=[];let authState={kind:'guest',displayName:'Guest',username:null,email:null,isAdmin:false};const authListeners=new Set();
@@ -109,6 +109,22 @@ test('V26 rapid result separates barbatelle count from rounded order',()=>{
  $('#mobile-quick-area').dispatchEvent(new c.document.defaultView.Event('input',{bubbles:true}));
  assert.equal($('#mobile-quick-result strong')?.textContent.replace(/\./g,''),'2223');
  assert.match(($('#mobile-quick-result small')?.textContent??'').replace(/\./g,''),/2225/);
+});
+test('mobile rapid calculator switches to vines and shows the corresponding net area',()=>{
+ const c=setup(),{$}=c,mode=$('#mobile-quick-mode');
+ assert.ok(mode);mode.click();assert.equal(mode.getAttribute('aria-pressed'),'true');
+ assert.equal($('#mobile-quick-area-field').hidden,true);
+ $('#mobile-quick-vines').value='1025';$('#mobile-quick-plants').value='0.8';$('#mobile-quick-rows').value='2.4';
+ $('#mobile-quick-vines').dispatchEvent(new c.document.defaultView.Event('input'));
+ assert.match($('#mobile-quick-result').textContent.replace(/\./g,''),/1968 m²/);
+ mode.click();assert.equal($('#mobile-quick-area-field').hidden,false);
+});
+test('mobile project actions use the loaded project without a dropdown',()=>{
+ const c=setup(),{$}=c;c.project.localProjectId='p1';
+ c.ui.navigate('projects');
+ assert.ok(!$('#mobile-project-action-target'));
+ $('#mobile-projects-print').click();$('#mobile-projects-quote').click();
+ assert.equal(c.reportProject?.id,'p1');assert.equal(c.quoteProject?.id,'p1');
 });
 test('V26 keyboard viewport reveals focused text field and resets after closing',()=>{
  const listeners={};globalThis.innerHeight=850;

@@ -41,14 +41,14 @@ test('projects keep archive expansion but open on card click and group edit acti
  for(const id of ['desktop-library-refresh','desktop-library-save','desktop-library-new','desktop-library-print','desktop-library-quote'])assert.ok(document.querySelector(`#${id}`).title);
 });
 
-test('project toolbar sends PDF and quote for the explicitly chosen archive item',()=>{
+test('project toolbar uses the open project without an archive dropdown',()=>{
  const document=documentFor(),items=[{id:'a',name:'Primo',project:{fields:[field]}},{id:'b',name:'Secondo',project:{fields:[field]}}];let pdf='',quote='';
- const ui=createDesktopLibraryUI({document,isDesktop:()=>true,getProjects:()=>items,getFields:()=>[],getActiveProjectId:()=>items[0].id,openReport:item=>pdf=item.id,openQuote:item=>quote=item.id});
+ let activeId='b';const ui=createDesktopLibraryUI({document,isDesktop:()=>true,getProjects:()=>items,getFields:()=>[],getActiveProjectId:()=>activeId,openReport:item=>pdf=item.id,openQuote:item=>quote=item.id});
  ui.mount();ui.open('projects');
- const target=document.querySelector('#desktop-library-project-target');target.querySelector('option[value="b"]').selected=true;
- target.dispatchEvent(new document.defaultView.Event('change',{bubbles:true}));
+ assert.ok(!document.querySelector('#desktop-library-project-target'));
  document.querySelector('#desktop-library-print').click();document.querySelector('#desktop-library-quote').click();
  assert.equal(pdf,'b');assert.equal(quote,'b');
+ activeId='a';ui.render();document.querySelector('#desktop-library-print').click();assert.equal(pdf,'a');
 });
 
 test('cadastral row keeps comune, foglio, particella, and circular remove on one line',()=>{

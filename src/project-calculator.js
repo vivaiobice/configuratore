@@ -12,6 +12,14 @@ export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   return { theoreticalPlants, commercialPlants25:roundUpTo25(theoreticalPlants) };
 }
 
+export function calculateManualArea({ plants, rowSpacingM, plantSpacingM }) {
+  const count = Number(plants);
+  const rows = Number(rowSpacingM);
+  const vines = Number(plantSpacingM);
+  if (!Number.isSafeInteger(count) || count <= 0 || !Number.isFinite(rows) || rows <= 0 || !Number.isFinite(vines) || vines <= 0) return { areaM2:0 };
+  return { areaM2:count * rows * vines };
+}
+
 function emptyResult() {
   return {
     areaM2: 0,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { calculateManualPlants } from '../src/project-calculator.js';
+import { calculateManualPlants, calculateManualArea } from '../src/project-calculator.js';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
@@ -16,6 +16,16 @@ test('manual area calculator fails closed for missing or invalid values', () => 
   assert.deepEqual(calculateManualPlants({ areaM2: 0, rowSpacingM: 2.5, plantSpacingM: 1 }), { theoreticalPlants: 0, commercialPlants25: 0 });
   assert.deepEqual(calculateManualPlants({ areaM2: 1000, rowSpacingM: 0, plantSpacingM: 1 }), { theoreticalPlants: 0, commercialPlants25: 0 });
   assert.deepEqual(calculateManualPlants({ areaM2: 1000, rowSpacingM: 2.5, plantSpacingM: null }), { theoreticalPlants: 0, commercialPlants25: 0 });
+});
+
+test('inverse calculator derives net area from actual vines and spacing, not commercial packs', () => {
+  assert.equal(calculateManualArea({plants:1025,rowSpacingM:2.4,plantSpacingM:0.8}).areaM2,1968);
+  assert.equal(calculateManualArea({plants:100,rowSpacingM:2.5,plantSpacingM:0.9}).areaM2,225);
+});
+
+test('inverse calculator rejects empty, fractional, and invalid vine counts or spacing', () => {
+  for (const plants of ['',0,-1,3.5,'abc']) assert.equal(calculateManualArea({plants,rowSpacingM:2.4,plantSpacingM:0.8}).areaM2,0);
+  assert.equal(calculateManualArea({plants:100,rowSpacingM:0,plantSpacingM:0.8}).areaM2,0);
 });
 
 test('public UI exposes a manual surface calculator independent from polygon drawing', () => {

@@ -1,14 +1,14 @@
 import {projectSummaryText} from './project-summary.js?v=55.7';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 const text=(value)=>String(value??'');
-const ICON={print:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6zM17 12h1"/></svg>',mail:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>',edit:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16ZM13.5 6.5l4 4"/></svg>',save:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1Zm3 0v7h10V3M7 21v-8h10v8"/></svg>',refresh:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/></svg>',new:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>',expand:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'};
+const ICON={print:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6zM17 12h1"/></svg>',mail:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>',edit:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16ZM13.5 6.5l4 4"/></svg>',save:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1Zm3 0v7h10V3M7 21v-8h10v8"/></svg>',refresh:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.5-5.7M20 4v6h-6"/></svg>',new:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>',expand:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'};
 function setIcon(button,name,label){button.innerHTML=ICON[name];button.title=label;button.setAttribute('aria-label',label);button.classList.add('library-icon-action');return button;}
 
 export function createDesktopLibraryUI(api){
   const document=api.document??globalThis.document;
   let root=null,mode='fields',busy=false;
   const expandedProjects=new Set();
-  let draggedField=null,pendingMove=null,actionProjectId='';
+  let draggedField=null,pendingMove=null;
   const notice=message=>{root.querySelector('#desktop-library-feedback').textContent=message;};
 
   function close(){if(root)root.hidden=true;}
@@ -142,19 +142,15 @@ export function createDesktopLibraryUI(api){
     root.querySelector('#desktop-library-new').hidden=mode!=='projects';
     root.querySelector('#desktop-library-save').hidden=false;
     root.querySelector('#desktop-user-projects').hidden=mode!=='projects'||api.isAdmin?.()!==true;
-    const target=root.querySelector('#desktop-library-project-target'),projects=api.getProjects?.()??[];
-    target.parentElement.hidden=mode!=='projects';target.replaceChildren();
-    for(const item of projects){const option=document.createElement('option');option.value=item.id;option.textContent=item.name||'Progetto';target.append(option);}
-    const current=projects.find(item=>item.id===actionProjectId)||projects.find(item=>item.id===api.getActiveProjectId?.())||projects[0];
-    actionProjectId=current?.id??'';for(const option of target.querySelectorAll('option'))option.selected=option.value===actionProjectId;
-    root.querySelector('#desktop-library-print').disabled=mode==='projects'&&!current;
-    root.querySelector('#desktop-library-quote').disabled=mode==='projects'&&!current;
+    const projects=api.getProjects?.()??[];
+    root.querySelector('#desktop-library-print').disabled=mode==='projects'&&!projects.length;
+    root.querySelector('#desktop-library-quote').disabled=mode==='projects'&&!projects.length;
     const list=root.querySelector('.desktop-library-list');list.replaceChildren();
     const items=mode==='fields'?(api.getFields?.()??[]):(api.getProjects?.()??[]);
     if(!items.length){const empty=document.createElement('p');empty.className='desktop-library-empty';empty.textContent=mode==='fields'?'Nessun campo disegnato.':'Nessun progetto archiviato.';list.append(empty);return;}
     for(const item of items)list.append(mode==='fields'?fieldButton(item):projectButton(item));
   }
-  function open(next){if(!api.isDesktop?.())return;mode=next;actionProjectId='';root.hidden=false;render();}
+  function open(next){if(!api.isDesktop?.())return;mode=next;root.hidden=false;render();}
   function mount(){
     if(root)return;
     const actions=document.querySelector('.topbar-actions');if(!actions)return;
@@ -162,11 +158,10 @@ export function createDesktopLibraryUI(api){
     const projects=document.createElement('button');projects.id='desktop-projects-trigger';projects.type='button';projects.textContent='Progetti';
     fields.addEventListener('click',()=>open('fields'));projects.addEventListener('click',()=>open('projects'));actions.prepend(fields,projects);
     root=document.createElement('section');root.id='desktop-library';root.className='desktop-library';root.hidden=true;
-    root.innerHTML='<div class="desktop-library-card" role="dialog" aria-modal="true" aria-labelledby="desktop-library-title"><header><h2 id="desktop-library-title"></h2><button id="desktop-library-close" type="button" aria-label="Chiudi">×</button></header><div class="desktop-library-actions"><label class="desktop-library-project-target">Progetto<select id="desktop-library-project-target" aria-label="Progetto per stampa e preventivo"></select></label><button id="desktop-library-print" type="button"></button><button id="desktop-library-quote" type="button"></button><button id="desktop-library-refresh" type="button"></button><button id="desktop-library-save" type="button"></button><button id="desktop-library-new" type="button"></button><button id="desktop-user-projects" type="button" hidden>Progetti degli utenti</button></div><div class="desktop-library-list"></div><p id="desktop-library-feedback" role="status"></p></div><section id="desktop-field-move-dialog" class="desktop-field-move-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-field-move-title" hidden><div><h3 id="desktop-field-move-title">Sposta campo</h3><p data-move-message></p><label>Progetto di destinazione<select></select></label><p data-move-error role="alert"></p><footer><button type="button" data-move-cancel>Annulla</button><button type="button" data-move-next>Continua</button><button type="button" data-move-confirm hidden>Sposta campo</button></footer></div></section>';
+    root.innerHTML='<div class="desktop-library-card" role="dialog" aria-modal="true" aria-labelledby="desktop-library-title"><header><h2 id="desktop-library-title"></h2><button id="desktop-library-close" type="button" aria-label="Chiudi">×</button></header><div class="desktop-library-actions"><button id="desktop-library-print" type="button"></button><button id="desktop-library-quote" type="button"></button><button id="desktop-library-refresh" type="button"></button><button id="desktop-library-save" type="button"></button><button id="desktop-library-new" type="button"></button><button id="desktop-user-projects" type="button" hidden>Progetti degli utenti</button></div><div class="desktop-library-list"></div><p id="desktop-library-feedback" role="status"></p></div><section id="desktop-field-move-dialog" class="desktop-field-move-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-field-move-title" hidden><div><h3 id="desktop-field-move-title">Sposta campo</h3><p data-move-message></p><label>Progetto di destinazione<select></select></label><p data-move-error role="alert"></p><footer><button type="button" data-move-cancel>Annulla</button><button type="button" data-move-next>Continua</button><button type="button" data-move-confirm hidden>Sposta campo</button></footer></div></section>';
     document.body.append(root);
-    for(const [id,icon,label] of [['desktop-library-print','print','Stampa / PDF del progetto'],['desktop-library-quote','mail','Richiedi preventivo del progetto'],['desktop-library-refresh','refresh','Aggiorna progetti'],['desktop-library-save','save','Salva modifiche'],['desktop-library-new','new','Nuovo progetto']])setIcon(root.querySelector(`#${id}`),icon,label);
-    root.querySelector('#desktop-library-project-target').addEventListener('change',event=>{actionProjectId=event.target.value;});
-    const projectForAction=()=>mode==='fields'?null:(api.getProjects?.()??[]).find(item=>item.id===actionProjectId);
+    for(const [id,icon,label] of [['desktop-library-print','print','Stampa / PDF del progetto aperto'],['desktop-library-quote','mail','Richiedi preventivo del progetto aperto'],['desktop-library-refresh','refresh','Aggiorna progetti'],['desktop-library-save','save','Salva modifiche'],['desktop-library-new','new','Nuovo progetto']])setIcon(root.querySelector(`#${id}`),icon,label);
+    const projectForAction=()=>mode==='fields'?null:(api.getProjects?.()??[]).find(item=>item.id===api.getActiveProjectId?.())??(api.getActiveProjectId?null:(api.getProjects?.()??[])[0]);
     root.querySelector('#desktop-library-print').addEventListener('click',()=>{try{api.openReport?.(projectForAction());}catch(error){notice(error.message||'Documento non disponibile.');}});
     root.querySelector('#desktop-library-quote').addEventListener('click',()=>{try{api.openQuote?.(projectForAction());}catch(error){notice(error.message||'Preventivo non disponibile.');}});
     root.querySelector('#desktop-library-close').addEventListener('click',close);

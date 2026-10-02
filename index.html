@@ -38,6 +38,7 @@
   <link rel="stylesheet" href="./v55.7.css?v=55.7" />
   <link rel="stylesheet" href="./v1.0.1.css?v=1.0.1" />
   <link rel="stylesheet" href="./v1.0.2.css?v=1.0.2" />
+  <link rel="stylesheet" href="./v1.0.3.css?v=1.0.3" />
 </head>
 <body>
   <header class="topbar">
@@ -45,7 +46,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">1.0.2</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">1.0.3</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -227,15 +228,19 @@
       <div class="dialog-heading"><div><p class="eyebrow">STRUMENTO RAPIDO</p><h2>Calcolo barbatelle</h2><p>Stima senza disegnare il terreno.</p></div><button id="quick-calculator-close" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
       <div class="manual-calculator" aria-label="Calcolo rapido barbatelle da superficie">
         <div class="manual-calculator-heading"><div><strong>Calcolo rapido senza mappa</strong><span>Usa un sesto indipendente dal progetto.</span></div></div>
-        <label class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
+        <button id="manual-calculator-mode" class="calculator-mode-button" type="button" aria-pressed="false">Parti dal numero di viti</button>
+        <label id="manual-area-field" class="manual-area-field">Superficie <span>m²</span><input id="manual-area" inputmode="decimal" type="number" min="1" step="1" placeholder="es. 5000" /></label>
+        <label id="manual-vines-field" class="manual-area-field" hidden>Numero di viti <input id="manual-vines" inputmode="numeric" type="number" min="1" step="1" placeholder="es. 1025" /></label>
         <div class="field-grid manual-spacing-grid">
           <label>Distanza piante <span>m</span><input id="manual-plant-spacing" inputmode="decimal" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
           <label>Distanza filari <span>m</span><input id="manual-row-spacing" inputmode="decimal" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
         </div>
-        <div class="manual-calculator-results" aria-live="polite">
+        <div id="manual-calculator-results" class="manual-calculator-results" aria-live="polite">
           <div><span>Barbatelle teoriche</span><strong id="manual-theoretical">—</strong></div>
           <div class="manual-commercial"><span>Quantità commerciale ×25</span><strong id="manual-commercial">—</strong></div>
         </div>
+        <div id="manual-net-area-result" class="manual-calculator-results" aria-live="polite" hidden><div><span>Superficie netta teorica</span><strong id="manual-net-area">—</strong></div></div>
+        <p class="calculator-note">Stima teorica: capezzagne, passaggi e aree escluse non sono inclusi.</p>
       </div>
     </div>
   </dialog>
@@ -271,6 +276,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
-  <script type="module" src="./src/app.js?v=1.0.2"></script>
+  <script type="module" src="./src/app.js?v=1.0.3"></script>
 </body>
 </html>
