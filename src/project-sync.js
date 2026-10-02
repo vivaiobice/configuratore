@@ -29,6 +29,7 @@ export function createProjectSync({
   };
   let timer = null;
   let suspended = false;
+  let suspensionReason = null;
   let stateBeforeSuspend = syncState.state;
   let lastRevisionSnapshot = null;
   let operationTail = Promise.resolve();
@@ -205,17 +206,20 @@ export function createProjectSync({
 
   function suspend(reason='manual') {
     if (!suspended) stateBeforeSuspend=syncState.state;
-    suspended=true;syncState={...syncState,state:'suspended',lastError:reason};
+    suspended=true;suspensionReason=reason;syncState={...syncState,state:'suspended',lastError:reason};
     if(timer){cancelTimer(timer);timer=null;}publish();return syncState;
   }
 
-  function resume() {
-    suspended=false;syncState={...syncState,state:stateBeforeSuspend==='suspended'?'local':stateBeforeSuspend,lastError:null};publish();return syncState;
+  function resume(expectedReason=null) {
+    if(expectedReason&&(!suspended||suspensionReason!==expectedReason))return syncState;
+    suspended=false;suspensionReason=null;
+    if(syncState.state==='suspended')syncState={...syncState,state:stateBeforeSuspend==='suspended'?'local':stateBeforeSuspend,lastError:null};
+    publish();return syncState;
   }
 
   function adoptCloudState(cloud = {}) {
     if(timer){cancelTimer(timer);timer=null;}
-    suspended=false;
+    suspended=false;suspensionReason=null;
     syncState={
       state:cloud.syncState ?? (cloud.projectId ? 'synced' : 'local'),
       serverVersion:Number(cloud.version) || 0,
@@ -229,7 +233,17 @@ export function createProjectSync({
     return syncState;
   }
 
+  // The report saved the current frozen drawing through a separate scoped sync.
+  // Its successful revision covers earlier autosaves, but not manual history.
+  function acknowledgeReportAutosaves(projectClientId) { return serialize(async()=>{
+    if(!suspended)throw new Error('Report acknowledgement requires a paused editor sync.');
+    for(const item of await queue.pending()){
+      if(item.type==='autosave'&&item.projectClientId===projectClientId)await queue.acknowledge(item.id);
+    }
+  }); }
+
   return {
+    acknowledgeReportAutosaves,
     schedule,
     flush,
     enqueueForLater,

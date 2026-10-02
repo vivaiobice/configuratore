@@ -1,34 +1,34 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.2.3';
+import { createMobileUI } from './mobile-ui.js?v=1.2.4';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3&counts=1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.4';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=1.2.3';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.2.3';
+import { initMap } from './map.js?v=1.2.4';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.2.4';
 import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=counts1';
-import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.3';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.4';
 import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
-import {mountToolMenu} from './tool-menu.js?v=1.2.3';
+import {mountToolMenu} from './tool-menu.js?v=1.2.4';
 import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=counts2';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.3';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.4';
 import {rememberCountsOwner} from './counts-offline-owner.js';
-import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.3';
-import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.3';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.3';
+import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.4';
+import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.4';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.4';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=55.6.7&counts=1';
+import { createProjectSync } from './project-sync.js?v=1.2.4';
 import {ensureQuoteRevision} from './quote-sync.js?v=55.6.7';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
@@ -40,18 +40,19 @@ import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
 import {createViewMode} from './view-mode.js?v=55.4';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
-import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=55.2';
+import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.2.4';
+import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.2.4';
 import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
-import { createAuthService } from './auth-service.js?v=1.2.3';
-import { createAuthBridge } from './auth-bridge.js?v=1.2.3';
-import { createProfileUI } from './profile-ui.js?v=1.2.3';
+import { createAuthService } from './auth-service.js?v=1.2.4';
+import { createAuthBridge } from './auth-bridge.js?v=1.2.4';
+import { createProfileUI } from './profile-ui.js?v=1.2.4';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
-import { normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.3';
+import { normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.4';
 import {curveControlRange,nextCurveControlPoint} from './row-curve-control-state.js';
 import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=45';
 
@@ -1084,31 +1085,48 @@ async function runFinalAction(action) {
 
 function openReportPopup({projectItem=null,fieldId=null}={}) {
   if(promptForProfile('scaricare'))return;
+  const ownerId=authBridge.getState()?.user?.id;
   let snapshot;
-  try{
-    snapshot=prepareReportContext(state,{projectItem,fieldId});
-    if(projectItem&&state.project.localProjectId!==projectItem.id)loadMobileProject(projectItem);
-  }catch(error){setStatus(error.message);throw error;}
+  try{snapshot=prepareReportContext(state,{projectItem,fieldId,ownerId});}
+  catch(error){setStatus(error.message);throw error;}
   persist();
+  const initialProjectId=snapshot.cloud?.projectId??null;
   const requestId=globalThis.crypto.randomUUID();
   globalThis.localStorage.setItem(REPORT_CONTEXT_KEY(requestId),JSON.stringify(snapshot));
   globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'opened'}));
   const popup=globalThis.open(`./report.html?handoff=${requestId}${isMobileMap()?'&source=mobile':''}`, '_blank');
   if(!popup){globalThis.localStorage.removeItem(REPORT_CONTEXT_KEY(requestId));throw new Error('Il browser ha bloccato la finestra del documento. Consenti i popup per questo sito e riprova.');}
+  const currentOwner=()=>identityFrozen?null:authBridge.getState()?.user?.id;
+  const source=createReportProjectSource({getState:()=>state,getOwnerId:currentOwner,getBackend:()=>cloudBackend,getSync:()=>projectSync,
+    getArchive:()=>readLocalProjects(globalThis.localStorage),getMetrics:field=>calculateFieldProject(field),
+    checkpoint:()=>checkpointBeforeSwitch({storage:globalThis.localStorage,state,ownerId:currentOwner(),capture:captureWorkspace,pendingWorkspace:restoringWorkspace?pendingWorkspace:null}),
+    onSynced:async(reportState,kind)=>{
+      if(currentOwner()!==ownerId||state.project.localProjectId!==reportState.project.localProjectId)return;
+      // A cloud refresh can deliberately use a different online drawing. Keep
+      // the editor's local draft and its conflict base until it is reconciled.
+      if(kind!=='current'&&hasReportProjectChanges(state,reportState))return;
+      if(kind==='current')await projectSync?.acknowledgeReportAutosaves?.(reportState.project.localProjectId);
+      if(currentOwner()!==ownerId||state.project.localProjectId!==reportState.project.localProjectId)return;
+      state=mergeCloudSnapshot(state,reportState.cloud);cloudService?.selectProject(state.cloud);projectSync?.adoptCloudState(state.cloud);persist();
+      if(kind==='current'&&hasReportProjectChanges(state,reportState))projectSync?.schedule('after_report');
+    }
+  });
   const onReportRequest=async(event)=>{
     if(event.key!==REPORT_HANDOFF_KEY)return;
-    let request;
-    try{request=JSON.parse(event.newValue);}catch{return;}
-    if(request?.requestId!==requestId||request.status!=='requested')return;
-    globalThis.removeEventListener('storage',onReportRequest);
-    globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'syncing'}));
+    let request;try{request=JSON.parse(event.newValue);}catch{return;}
+    if(request?.requestId!==requestId||!['requested','refresh_requested'].includes(request.status))return;
+    const matchingOperation=()=>{
+      try{const active=JSON.parse(globalThis.localStorage.getItem(REPORT_HANDOFF_KEY)||'null');return active?.requestId===requestId&&active.operationId===request.operationId;}catch{return false;}
+    };
     try{
-      if(state.project.localProjectId!==snapshot.project.localProjectId)throw new Error('Hai cambiato progetto: riapri il generatore PDF dal progetto corretto.');
-      if(!projectSync)throw new Error('Sincronizzazione cloud non disponibile. Riprova quando il backend è collegato.');
-      const revision=await projectSync.saveRevision({reason:'report_issue'});
-      if(revision.state!=='synced'||!revision.projectId||!(Number(revision.latestRevisionNumber)>0))throw new Error(revision.state==='conflict'?'Conflitto di versione. Aggiorna il progetto e riprova.':'Sincronizzazione non riuscita. La bozza resta su questo dispositivo.');
-      globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'ready',projectId:revision.projectId,revisionNumber:revision.latestRevisionNumber}));
-    }catch(error){globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({requestId,status:'error',message:error.message}));}
+      if(!request.operationId||request.ownerId!==ownerId||request.localProjectId!==snapshot.project.localProjectId||(request.projectId!==(snapshot.cloud?.projectId??null)&&!(initialProjectId===null&&request.projectId===null)))throw new Error('Il progetto o il profilo del documento non corrisponde. Riapri il generatore PDF.');
+      globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({...request,status:'syncing'}));
+      const fresh=await source.synchronize(snapshot,{refresh:request.status==='refresh_requested'});
+      if(!matchingOperation())return;
+      snapshot=fresh;
+      globalThis.localStorage.setItem(REPORT_CONTEXT_KEY(requestId),JSON.stringify(fresh));
+      globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({...request,status:'ready',projectId:fresh.cloud.projectId,revisionNumber:fresh.cloud.latestRevisionNumber}));
+    }catch(error){if(matchingOperation())globalThis.localStorage.setItem(REPORT_HANDOFF_KEY,JSON.stringify({...request,status:'error',message:error.message}));}
   };
   globalThis.addEventListener('storage',onReportRequest);
 }

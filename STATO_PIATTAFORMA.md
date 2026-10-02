@@ -1,14 +1,35 @@
 # Piattaforma Vivai Obice — stato unico
 
-**Versione codice: 1.2.3 — 2 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione di questa consegna non eseguita. Progetta impianto resta alla radice del dominio esistente, Conteggi in `/conteggi/`. La consegna è un solo ZIP completo con sorgenti, test, asset, funzioni e migrazioni consolidate. Verifica rese è escluso.
+**Versione codice: 1.2.4 — 2 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione di questa consegna non eseguita. Progetta impianto resta alla radice del dominio esistente, Conteggi in `/conteggi/`. La consegna è un solo ZIP completo con sorgenti, test, asset, funzioni e migrazioni consolidate. Verifica rese è escluso.
+
+## Correzioni 1.2.4
+
+- **Filari indipendenti:** la direzione del corridoio è recuperata dai lati alla distanza salvata e verificata rispetto all’attraversamento del campo. La lunghezza del bordo ritagliato non viene più scambiata per la direzione del passaggio. Coperti anche i colli da 1,46–1,50 m con corridoi quasi quadrati e rotazioni del perimetro.
+- **Pali di testa:** clipping sulle intersezioni effettive delle polilinee con ogni bordo delle esclusioni, comprese aree sottili tra due campioni. Ogni pezzo fisico sopravvissuto ha due pali di testa. Le capezzagne restano sui bordi originali del campo.
+- **Pagina PDF:** icona Aggiorna progetto accanto al titolo; destinatario e selezione validi si conservano. Se cambia la geometria selezionata, l’avvertenza va accettata di nuovo. Ogni generazione usa un checkpoint e una revisione aggiornati. Errori e risposte tardive sono riprovabili dalla stessa pagina; verificati progetto, proprietario, operazione e revisione. Un progetto archiviato non prende il posto della bozza aperta nel configuratore. L’aggiornamento online conserva una bozza locale differente per la successiva riconciliazione.
+- **Immagini del documento:** quote a 13 px nell’immagine sorgente, all’esterno e senza box sovrapposti; nomi dei campi esterni con richiamo al proprio perimetro. Margini di cattura ampliati. Anteprima e PDF usano la stessa immagine annotata. Inserita la vista generale anche nell’esportatore PDF nativo già presente. Mappa principale, mappa di progettazione e schema tecnico conservano le loro etichette.
+- **Aspetto:** bordo leggero e hover per Stampa/PDF e Richiedi preventivo su riepilogo e archivi desktop/mobile, in entrambi i temi. Bordo chiaro del logo originale in dark mode aumentato da 0,45 a 0,75 px.
+
+## Verifiche eseguite sulla 1.2.4
+
+- `npm test`: **948 passati, 0 falliti, 0 saltati**, in processi isolati. Controllo sintattico e `git diff --check` superati; cache aggiornate, manifest offline con 35 risorse.
+- Curvatura: regressioni prima del fix, clipping sottile e obliquo, indipendenza e conteggi. Caso reale obliquo: 170 pezzi / 340 pali di testa; caso sottile: 14 pezzi / 28 pali. I colli quasi quadrati sono stati riprodotti e verificati anche dal revisore indipendente.
+- `scripts/row-interruption-browser.mjs`: app e MapLibre reali, passaggio salvato ritagliato, controllo inferiore 3→12 m, sette righe superiori e feature cartografiche byte-identiche; 24 pezzi / 48 teste → 28 pezzi / 56 teste. Ricarica conserva i controlli; zero errori. La stessa prova con il motore precedente fallisce.
+- `scripts/report-refresh-browser.mjs`: popup reale desktop/mobile, errore di sincronizzazione, aggiornamento dalla pagina, recupero del progetto scelto, conservazione destinatario/selezione e nuovo checkpoint prima della generazione. Bozza main conservata e cambio proprietario blocca azioni e scritture. SDK e acquisizione satellitare simulati; le funzioni applicative di sincronizzazione e generazione sono reali.
+- Annotazioni: MapLibre 4.7.1 reale, WebGL e canvas a densità 2×; 19 lati ravvicinati, sei campi adiacenti e nove campi con uno circondato dagli altri. Anteprime e PDF nativi renderizzati e ispezionati. Raster e catasto sono fixture locali.
+- Pulsanti/logo: 20 controlli di stile effettivo sui dieci punti di accesso, temi chiaro/scuro e desktop/mobile; hover cambia fondo e bordo senza spostare i tasti.
+- `scripts/report-fonts-browser.mjs`: 206 nodi, desktop/mobile × schermo/stampa, zero differenze dalla tipografia del documento precedente. Verifica di ripristino dell’app completa e delle interazioni desktop/mobile completata.
+- Due revisioni indipendenti, su curve/pali e PDF/sincronizzazione/layout, senza blocchi residui dopo le correzioni.
+
+**Limiti del collaudo:** Chromium emula il formato mobile; dispositivi iOS/Safari reali e backend/servizi cartografici LIVE non collaudati in questa consegna. Con un numero estremo di etichette che non entra nello spazio disponibile, la cattura segnala un errore esplicito senza omettere quote. Le linee di richiamo possono incrociarsi o attraversare campi vicini, ma i box restano esterni e separati. Il limite dei passaggi incrociati a X resta descritto sotto.
 
 ## Baseline e compatibilità
 
 - Configuratore stabile: `Configuratore-Vivai-Obice-1.0.5.zip`, commit locale `2edb335`; integrazione recuperata `c73fb83`. Conteggi era stato confrontato anche con il pacchetto originale.
 - Remoto inventariato: `vivaiobice/configuratore`, main `29eb69e6ba328de725c8604b2813d7c4940db08c`, messaggio 1.0.6. I 447 file condivisi con il checkout unificato erano identici byte per byte. Le copie storiche ulteriori non sono state cancellate.
-- Baseline di questa release: 1.2.2, implementazione `8a4b0fc` e inventario `d5a473a`, 870 test passati. Archivi e commit precedenti conservati. Nessuna modifica a remoto, database, account o checkout precedenti.
+- Baseline di questa release: 1.2.3, implementazione `f739e1f` e inventario `e4fa502`, 915 test passati. Archivi e commit precedenti conservati. Nessuna modifica a remoto, database, account o checkout precedenti.
 - Restano identici alla baseline stabile: geometria rettilinea, regole, catalogo varietà/cloni/portainnesti, template del documento, UI preventivi, `submit-quote`, logo originale e `CNAME`. Il calcolatore è stato esteso per la curvatura indipendente e i chiamanti report/condivisione passano i metadati dei passaggi. Quantità di mappa, riepiloghi e documenti usano lo stesso motore. La tipografia del documento è ripristinata.
-- Record Conteggi precedenti e punti curva senza `segmentId` restano validi. I nuovi dettagli dei materiali sono facoltativi. Non occorre una nuova migrazione SQL per la 1.2.3.
+- Record Conteggi precedenti e punti curva senza `segmentId` restano validi. I nuovi dettagli dei materiali sono facoltativi. Non occorre una nuova migrazione SQL per la 1.2.4.
 
 ## Comportamento corrente
 
@@ -18,7 +39,7 @@
 | Accessi | Logo con selettore strumenti e Profilo aprono direttamente Conteggi su desktop/mobile. Anche il contatore mostra logo e selettore in alto a sinistra; il contatore offre un pulsante diretto per tornare al configuratore. Rimosso il pulsante Conteggi aggiuntivo in alto a destra della mappa. Conservati gli accessi dai campi e il gateway dei dati. |
 | Nomi sulla mappa | I tag dei campi visibili restano presenti con quel campo, un altro campo o nessuno selezionato. Se il centro esce dall’inquadratura, il nome si ancora alla porzione visibile del campo; i tag sovrapposti vengono separati. Nessun tag per campi completamente fuori schermo. |
 | Filari curvi | Un passaggio lineare che attraversa il campo nella direzione trasversale divide la curva in tratti indipendenti, anche con passaggio da 1,50 m. Controlli e slider mostrano il tratto; aggiungere un secondo punto privilegia il tratto ancora vuoto. Modificare un tratto non cambia l’altro. Supportati passaggi obliqui e tratti corti vicino al bordo; offset impossibili vengono ridotti entro il tratto. Passaggi corti interni, longitudinali ed esclusioni areali mantengono il comportamento precedente. |
-| Limite dei passaggi incrociati | Quando due passaggi trasversali si intersecano dentro il campo, resta la curva globale con tutte le esclusioni effettive. Questa scelta conserva geometria e quantità senza filari duplicati o omessi; i tratti laterali di un incrocio non sono indipendenti nella 1.2.3. Passaggi paralleli sovrapposti sono trattati come una sola interruzione. |
+| Limite dei passaggi incrociati | Quando due passaggi trasversali si intersecano dentro il campo, resta la curva globale con tutte le esclusioni effettive. Questa scelta conserva geometria e quantità senza filari duplicati o omessi; i tratti laterali di un incrocio non sono indipendenti nella 1.2.4. Passaggi paralleli sovrapposti sono trattati come una sola interruzione. |
 | Contatore | Ingresso diretto, fondo scuro, logo originale in filigrana leggera inclinata, numero grande. Titolo Lettura modificabile, matita, bordo e suggerimento esplicito. Audio/vibrazione e categoria a icone. `+` verde a tutta larghezza, centrato; `−1` a sinistra sopra il `+`. Azzeramento con conferma; feedback sonoro/aptico e flash dopo commit locale riuscito, secondo il supporto del browser. |
 | Archivio | Una sola schermata con tutte le card degli elenchi e tre gruppi espandibili: Barbatelle / Viti, Pali e Altro, ciascuno con totale e letture modificabili in popup. Nuova lettura e nuovo elenco a icona; Riprendi il conteggio centrato quando esiste una lettura aperta. Intestazione centrata, nome profilo senza overflow, icona di salvataggio discreta in alto e avviso locale/ospite in fondo. |
 | Dettagli | Barbatelle / Viti: vitigno e portainnesto. Pali: tipo testa/filare/altro e materiale castagno/ferro/altro. Altri componenti: molle, tendifili, ancore, fili, tutori, legacci, distanziatori e altro. È ammesso testo personalizzato. Restano titolo, quantità, note, campo e selezione o creazione della destinazione; ID e quantità si conservano negli spostamenti. Dettagli conservati cambiando categoria e inclusi nei riepiloghi, snapshot e codice email. |
@@ -27,7 +48,7 @@
 | Identità e concorrenza | Archivi distinti per owner/ambiente. Logout invalida il recupero offline; cambio account sospende operazioni e conserva il lavoro nel precedente scope. Risposte tardive non aggiornano il nuovo account. I comandi sospesi di lettura, eliminazione, spostamento e associazione campo catturano il proprio contesto al click; riprova non dipende da modali rimossi. Doppio salvataggio del campo protetto. Revisioni e conflitti restano verificati. |
 | Cloud, admin e invio | Codice con verifica JWT/ruolo corrente e RLS. Appunti e richieste volontarie separati; autosalvataggio/sync non inviano richieste commerciali. Trasmetti a Vivai Obice richiede riepilogo e conferma, retry con stesso ID e payload. Riutilizzo Resend/mittente esistente. I servizi restano disattivati nel pacchetto consegnato. |
 
-## Verifiche eseguite sulla 1.2.3
+## Verifiche storiche della 1.2.3
 
 - Suite finale `node --test tests/*.test.mjs`: **915 passati, 0 falliti, 0 saltati**. Test precedenti conservati; aggiornate le aspettative statiche dei riferimenti cache. `npm run check` e `git diff --check` passati. Manifest offline rigenerato: 35 risorse.
 - Test DOM, IndexedDB emulato e PostgreSQL PGlite: archivio unico, paginazione oltre 100 elenchi, popup e metadati, categorie, testo libero e payload precedenti, spostamenti, snapshot immutabili, CAS, retry idempotenti, escaping email, permessi e isolamento. Regressioni riprodotte prima del fix per azioni sospese durante cambio account e doppio salvataggio campo.
@@ -54,4 +75,4 @@ Frontend statico; dipendenze cartografiche esistenti. Test con `npm ci`, `npm ci
 
 Le tre migrazioni additive e le funzioni `counts-api`, `counts-admin`, `submit-counts` sono consolidate in `supabase/`. `PUBBLICAZIONE.md` riporta installazione, flag, riuso dei secret, collaudo e rollback. Le note in `docs/conteggi/` e le altre release sono storiche; questo è il documento corrente.
 
-Pubblicare il pacchetto completo nel checkout esistente. Chiudere le vecchie schede e riaprire online per gli asset 1.2.3; mantenere origine HTTPS e archivi. Nessuna rimozione obbligatoria. Per il rollback disattivare i servizi nuovi e ripubblicare il pacchetto precedente, conservando tabelle, account, IndexedDB e localStorage. Non cancellare tutti i dati del sito.
+Pubblicare il pacchetto completo nel checkout esistente. Chiudere le vecchie schede e riaprire online per gli asset 1.2.4; mantenere origine HTTPS e archivi. Nessuna rimozione obbligatoria. Per il rollback disattivare i servizi nuovi e ripubblicare il pacchetto precedente, conservando tabelle, account, IndexedDB e localStorage. Non cancellare tutti i dati del sito.

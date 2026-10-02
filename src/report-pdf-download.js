@@ -111,7 +111,8 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
   const fonts={regular:await pdf.embedFont(pdfLib.StandardFonts.Helvetica),bold:await pdf.embedFont(pdfLib.StandardFonts.HelveticaBold)};
   const colors={green:pdfLib.rgb(.09,.24,.16),ink:pdfLib.rgb(.12,.18,.14),muted:pdfLib.rgb(.33,.39,.35),line:pdfLib.rgb(.79,.85,.8),soft:pdfLib.rgb(.93,.96,.93),gold:pdfLib.rgb(.53,.47,.27),rust:pdfLib.rgb(.56,.34,.28),white:pdfLib.rgb(1,1,1)};
   const images={logo:await embeddedAsset(pdf,'./assets/logo-vivai-obice-lineare.png',assetLoader),watermark:await embeddedAsset(pdf,'./assets/logo-filigrana.png',assetLoader),qr:await embeddedQr(pdf,model.qrSvg,{documentRef})};
-  const total=2+(model.fields.length>1?1:0)+model.fields.length*2;let current=0;
+  const hasOverview=/^data:image\/png;base64,/i.test(String(model.overview?.satelliteImage??''));
+  const total=2+(model.fields.length>1?1:0)+(hasOverview?1:0)+model.fields.length*2;let current=0;
   const add=()=>frame(pdf,model,++current,total,images,fonts,colors);
   let page=add();let y=title(page,model.title||'Progetto viticolo',fonts,colors)-20;
   y=wrapped(page,model.project?.name||'',{x:42,y,width:490,size:13,font:fonts.bold,color:colors.ink})-12;
@@ -155,6 +156,14 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
       const column=index%3,row=Math.floor(index/3);
       metricCard(page,label,value,{x:42+column*168,y:cardsTop-row*89,width:154,height:75},fonts,colors,{highlight:index===4});
     });
+  }
+
+  if(hasOverview){
+    page=add();title(page,'Visione aerea generale',fonts,colors);
+    page.drawText(`${model.fields.length} campi selezionati${model.overview.cadastre?' · Livello Catasto 60%':''}`,{x:42,y:692,size:10,font:fonts.regular,color:colors.muted});
+    const overview=await pdf.embedPng(model.overview.satelliteImage);
+    page.drawImage(overview,{x:42,y:340,width:511,height:332.15});
+    wrapped(page,model.overview.mapAttribution||'Imagery © Esri',{x:42,y:325,width:511,size:8,lineHeight:10,font:fonts.regular,color:colors.muted,maxLines:3});
   }
 
   for(const field of model.fields){

@@ -1,4 +1,4 @@
-import {projectSummaryText} from './project-summary.js?v=1.2.3';
+import {projectSummaryText} from './project-summary.js?v=1.2.4';
 import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE} from './soil.js?v=55.3';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
 import {calculateManualPlants,calculateManualArea} from './project-calculator.js?v=1.0.3';

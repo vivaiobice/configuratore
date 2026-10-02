@@ -15,11 +15,11 @@ test('opening privacy notice explicitly describes saved map geometry data',()=>{
 });
 
 test('V49 desktop-only dark theme fixes cover dialogs, menus, exclusions, map borders and thin logo edge',()=>{
-  assert.match(html,/v49-fixes\.css\?v=49/);
+  assert.match(html,/v49-fixes\.css\?v=1\.2\.4/);
   const css=fs.readFileSync(new URL('v49-fixes.css',root),'utf8');
   assert.match(css,/@media\s*\(min-width:801px\)\s*and\s*\(pointer:fine\)/);
   for(const selector of ['.public-project-dialog','.quick-calculator-card','.desktop-library-card','.exclusion-panel','.desktop-map-tools .map-tool-group','.topbar-actions>button']) assert.ok(css.includes(selector),selector);
-  assert.match(css,/\.topbar \.brand-logo[^}]*drop-shadow\(0 0 \.45px/i);
+  assert.match(css,/\.topbar \.brand-logo[^}]*drop-shadow\(0 0 \.75px/i);
   assert.doesNotMatch(css,/html\[data-theme="dark"\][^}]*#mobile-app/);
 });
 

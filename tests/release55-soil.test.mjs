@@ -85,7 +85,7 @@ test('mobile soil analysis reads four actual cartographic themes for the same fi
 test('V55 exposes soil tools on desktop and mobile entry paths',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const mobile=readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-  assert.equal(pkg.version,'1.2.3');assert.match(html,/1\.0\.2/);assert.match(html,/src\/app\.js\?v=1\.2\.3/);assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);assert.match(mobile,/layers:.*\.soil-section/);
+  assert.equal(pkg.version,'1.2.4');assert.match(html,/1\.0\.2/);assert.match(html,/src\/app\.js\?v=1\.2\.4/);assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);assert.match(mobile,/layers:.*\.soil-section/);
 });
 test('soil map loads only on activation and a failed query never invents a soil value',async()=>{
   const handlers=new Map(),sources=new Map(),layers=new Map();const map={loaded:()=>true,getZoom:()=>14,getBounds:()=>({getWest:()=>8,getSouth:()=>44,getEast:()=>8.1,getNorth:()=>44.1}),getCanvas:()=>({clientWidth:400,clientHeight:300}),on:(event,fn)=>handlers.set(event,fn),off:(event)=>handlers.delete(event),getLayer:id=>layers.get(id),getSource:id=>sources.get(id),addSource:(id,source)=>sources.set(id,{...source,updateImage(value){this.url=value.url;}}),addLayer:layer=>layers.set(layer.id,layer),setLayoutProperty(){},project:()=>({x:100,y:100})};

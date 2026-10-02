@@ -7,3 +7,11 @@
 .report-address-suggestions[hidden]{display:none}
 .report-address-suggestions button{width:100%;padding:9px 12px;text-align:left;background:transparent;border:0;border-radius:7px;color:#183f28;cursor:pointer}
 .report-address-suggestions button:hover,.report-address-suggestions button:focus{background:#eaf2ec}
+.report-project-context-row{display:flex;align-items:center;gap:8px}
+.report-project-context-row strong{min-width:0;flex:0 1 auto;overflow-wrap:anywhere}
+.report-project-refresh{flex:none;display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #d8e1d9;border-radius:50%;background:transparent;color:#47634e;cursor:pointer}
+.report-project-context-row .report-project-refresh span{font-size:22px;line-height:1;letter-spacing:0}
+.report-project-refresh:hover,.report-project-refresh:focus-visible{background:#eaf2ec;border-color:#8da594}
+.report-project-refresh:disabled{opacity:.5;cursor:default}
+.report-project-context .report-project-update-status{display:block;min-height:1em;font-size:11px;font-weight:500;letter-spacing:0;color:#607465}
+.report-project-update-status:empty{display:none}

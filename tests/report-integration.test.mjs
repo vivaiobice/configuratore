@@ -63,10 +63,13 @@ test('desktop and mobile open the report popup synchronously and use the Stampa 
   assert.match(mobile,/id="mobile-detail-pdf">Stampa \/ PDF</);
   const handler=app.match(/function openReportPopup\([^\n]*\)[\s\S]*?\n\}/)?.[0]??'';
   assert.match(handler,/globalThis\.open\(`\.\/report\.html\?handoff=/);
-  assert.ok(handler.indexOf('globalThis.open')<handler.indexOf('await projectSync'));
-  assert.match(handler,/reason:'report_issue'/);
+  assert.ok(handler.indexOf('globalThis.open')<handler.indexOf('await source.synchronize'));
+  assert.doesNotMatch(handler,/loadMobileProject\(/);
+  assert.match(handler,/createReportProjectSource/);
+  assert.match(fs.readFileSync(new URL('../src/report-project-source.js',import.meta.url),'utf8'),/reason:'report_issue'/);
   assert.match(handler,/REPORT_HANDOFF_KEY/);
-  assert.match(handler,/request\.status!=='requested'/);
+  assert.match(handler,/\['requested','refresh_requested'\]\.includes\(request\.status\)/);
+  assert.doesNotMatch(handler,/removeEventListener\('storage',onReportRequest/);
 });
 
 test('shared edit handoff loads only an authorized cloud project into the editor',()=>{

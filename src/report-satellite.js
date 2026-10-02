@@ -3,6 +3,118 @@ import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=51';
 
 const ATTRIBUTION = SATELLITE_ATTRIBUTION;
 
+function closedPolygon(points = []) {
+  const ring=points.filter(point=>Array.isArray(point)&&point.every(Number.isFinite));
+  return ring.length>1&&ring[0][0]===ring.at(-1)[0]&&ring[0][1]===ring.at(-1)[1]?ring.slice(0,-1):ring;
+}
+
+function insidePolygon([x,y],polygon){
+  let inside=false;
+  for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+    const [ax,ay]=polygon[i],[bx,by]=polygon[j];
+    if((ay>y)!==(by>y)&&x<(bx-ax)*(y-ay)/(by-ay)+ax)inside=!inside;
+  }
+  return inside;
+}
+
+function intersectsSegments(a,b,c,d){
+  const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  const on=(p,q,r)=>Math.abs(cross(p,q,r))<1e-7&&r[0]>=Math.min(p[0],q[0])-1e-7&&r[0]<=Math.max(p[0],q[0])+1e-7&&r[1]>=Math.min(p[1],q[1])-1e-7&&r[1]<=Math.max(p[1],q[1])+1e-7;
+  return (cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)||on(a,b,c)||on(a,b,d)||on(c,d,a)||on(c,d,b);
+}
+
+function boxCorners(box,gap=0){
+  const {x,y,width,height}=box;
+  return [[x-gap,y-gap],[x+width+gap,y-gap],[x+width+gap,y+height+gap],[x-gap,y+height+gap]];
+}
+
+function lineHitsBox(start,end,box,gap=0){
+  const corners=boxCorners(box,gap);
+  return insidePolygon(start,corners)||insidePolygon(end,corners)||corners.some((corner,index)=>intersectsSegments(start,end,corner,corners[(index+1)%4]));
+}
+
+function boxHitsPolygon(box,polygon){
+  const corners=boxCorners(box,3);
+  return corners.some(point=>insidePolygon(point,polygon))||polygon.some(point=>insidePolygon(point,corners))||polygon.some((point,index)=>lineHitsBox(point,polygon[(index+1)%polygon.length],box,3));
+}
+
+function boxesOverlap(a,b){
+  return a.x<b.x+b.width+3&&b.x<a.x+a.width+3&&a.y<b.y+b.height+3&&b.y<a.y+a.height+3;
+}
+
+function boundaryPoint(anchor,center,box){
+  const dx=anchor[0]-center[0],dy=anchor[1]-center[1];
+  const ratio=Math.min(dx?box.width/2/Math.abs(dx):Infinity,dy?box.height/2/Math.abs(dy):Infinity);
+  return [center[0]+dx*ratio,center[1]+dy*ratio];
+}
+
+function polygonEdges(polygon){
+  const area=polygon.reduce((sum,start,index)=>{const end=polygon[(index+1)%polygon.length];return sum+start[0]*end[1]-end[0]*start[1];},0);
+  return polygon.map((start,index)=>{
+    const end=polygon[(index+1)%polygon.length],dx=end[0]-start[0],dy=end[1]-start[1],length=Math.hypot(dx,dy)||1;
+    return {anchor:[(start[0]+end[0])/2,(start[1]+end[1])/2],normal:area>=0?[dy/length,-dx/length]:[-dy/length,dx/length],tangent:[dx/length,dy/length]};
+  });
+}
+
+function labelLines(label,measure,maxWidth){
+  const lines=[];
+  for(const word of String(label??'').split(/\s+/)){
+    const last=lines.at(-1),candidate=last?`${last} ${word}`:word;
+    if(last&&measure(candidate)>maxWidth)lines.push(word);else if(last)lines[lines.length-1]=candidate;else lines.push(word);
+  }
+  return lines.length?lines:[''];
+}
+
+// Layout uses the capture map's CSS-pixel projection. The same annotated PNG is
+// embedded in the generator preview and downloaded PDF, including Catasto.
+export function layoutSatelliteAnnotations({polygon=[],sideMeasurements=[],fields,width=1000,height=650,measureText}={}){
+  const overview=Array.isArray(fields),fontSize=overview?16:13;
+  const measure=(label)=>measureText?measureText(label,fontSize):String(label).length*fontSize*.62;
+  const polygons=(overview?fields.map(field=>field.polygon):[polygon]).map(closedPolygon);
+  const requests=overview?fields:sideMeasurements;
+  const placed=[];
+  for(let index=0;index<requests.length;index++){
+    const request=requests[index],own=polygons[overview?index:0],edges=polygonEdges(own);
+    if(!edges.length)continue;
+    const lines=labelLines(request.label,measure,overview?Math.min(240,width*.3):width-24);
+    const boxWidth=Math.max(32,...lines.map(measure))+12,boxHeight=lines.length*(fontSize+2)+6;
+    const relevant=overview?edges:[edges[index%edges.length]];
+    const preferred=request.labelPoint??request.point??relevant[0].anchor;
+    const candidates=[];
+    for(const edge of relevant){
+      const anchor=edge.anchor;
+      for(const distance of [0,12,28,48,76,112,160,224,320,-16]){
+        for(const tangentOffset of [0,-18,18,-36,36,-64,64,-100,100,-160,160]){
+          const offset=24+Math.abs(edge.normal[0])*boxWidth/2+Math.abs(edge.normal[1])*boxHeight/2+distance;
+          const center=[anchor[0]+edge.normal[0]*offset+edge.tangent[0]*tangentOffset,anchor[1]+edge.normal[1]*offset+edge.tangent[1]*tangentOffset];
+          candidates.push({center,anchor,score:Math.hypot(center[0]-preferred[0],center[1]-preferred[1])+Math.abs(tangentOffset)*.2+(distance<0?120:0)});
+        }
+      }
+    }
+    const acceptable=({center,anchor},{clearLeaders=true,clearFields=true}={})=>{
+      const box={x:center[0]-boxWidth/2,y:center[1]-boxHeight/2,width:boxWidth,height:boxHeight};
+      if(box.x<4||box.y<4||box.x+boxWidth>width-4||box.y+boxHeight>height-4||polygons.some(ring=>boxHitsPolygon(box,ring))||placed.some(item=>boxesOverlap(box,item.box)))return null;
+      const end=boundaryPoint(anchor,center,box),leader=[anchor,end];
+      // Start just outside the projected edge and prefer routes clear of fields.
+      const start=anchor.map((value,i)=>value+(end[i]-value)*.001);
+      const leaderPolygons=clearFields?polygons:[own];
+      if(Math.hypot(end[0]-anchor[0],end[1]-anchor[1])<4||leaderPolygons.some(ring=>insidePolygon(start,ring)||insidePolygon(end,ring)||ring.some((point,i)=>intersectsSegments(start,end,point,ring[(i+1)%ring.length]))))return null;
+      if(clearLeaders&&placed.some(item=>lineHitsBox(anchor,end,item.box,2)||lineHitsBox(...item.leader,box,2)))return null;
+      return {id:request.id??index,label:String(request.label??''),color:request.color,lines,fontSize,box,point:center,anchor,leader};
+    };
+    candidates.sort((a,b)=>a.score-b.score);
+    let selected;
+    for(const candidate of candidates){selected=acceptable(candidate);if(selected)break;}
+    if(!selected&&!overview)for(const candidate of candidates){selected=acceptable(candidate,{clearLeaders:false});if(selected)break;}
+    // A surrounded field can require a leader across neighboring fields. The tag
+    // still stays outside every polygon and the leader ends on its own perimeter.
+    if(!selected&&overview)for(const candidate of candidates){selected=acceptable(candidate,{clearFields:false});if(selected)break;}
+    if(!selected)throw new SatelliteCaptureError('annotations','Impossibile disporre tutte le quote e le etichette senza sovrapposizioni nella vista satellitare.');
+    placed.push(selected);
+  }
+  return placed;
+}
+
 export class SatelliteCaptureError extends Error {
   constructor(code, message, cause) {
     super(message, cause ? { cause } : undefined);
@@ -102,30 +214,39 @@ function labelledImage(map, model, width, height, documentRef) {
   const source=map.getCanvas();
   const canvas=documentRef?.createElement?.('canvas');
   const context=canvas?.getContext?.('2d');
-  if(!context || (!model.geo?.sideMeasurements?.length&&!model.geo?.fields?.length))return source.toDataURL('image/png');
+  if(!context || (!model.geo?.sideMeasurements?.length&&!model.geo?.fields?.length))return {dataUrl:source.toDataURL('image/png'),annotations:[]};
   canvas.width=source.width||width;
   canvas.height=source.height||height;
   context.drawImage(source,0,0,canvas.width,canvas.height);
   context.scale(canvas.width/width,canvas.height/height);
-  context.font='bold 16px Arial, sans-serif';
+  const pixel=point=>{const projected=map.project(point);return [projected.x,projected.y];};
+  const annotations=layoutSatelliteAnnotations({
+    width,height,
+    polygon:model.geo.polygon?.map(pixel),
+    sideMeasurements:model.geo.sideMeasurements?.map(side=>({...side,point:pixel(side.point)})),
+    fields:model.geo.fields?.map(field=>({...field,polygon:field.polygon.map(pixel),labelPoint:field.labelPoint?pixel(field.labelPoint):undefined})),
+    measureText(label,fontSize){context.font=`bold ${fontSize}px Arial, sans-serif`;return context.measureText(label).width;}
+  });
   context.textAlign='center';context.textBaseline='middle';
-  const placed=[];
-  const labels=model.geo.fields?.map(field=>({point:field.labelPoint,label:field.label,color:field.color}))??model.geo.sideMeasurements;
-  for(const side of labels){
-    const projected=map.project(side.point),label=String(side.label);
-    const boxWidth=context.measureText(label).width+26;
-    const x=Math.max(boxWidth/2+4,Math.min(width-boxWidth/2-4,projected.x));let y=projected.y;
-    while(placed.some(box=>Math.abs(box.x-x)<(box.width+boxWidth)/2+4&&Math.abs(box.y-y)<34))y+=35;
-    y=Math.max(18,Math.min(height-18,y));placed.push({x,y,width:boxWidth});
-    if(side.color){context.strokeStyle=side.color;context.lineWidth=2;context.beginPath();context.moveTo(projected.x,projected.y);context.lineTo(x,y);context.stroke();}
-    context.fillStyle='#fff';context.strokeStyle='#cbd5cc';context.lineWidth=1;
-    context.beginPath();
-    if(typeof context.roundRect==='function')context.roundRect(x-boxWidth/2,y-15,boxWidth,30,15);
-    else context.rect(x-boxWidth/2,y-15,boxWidth,30);
-    context.fill();context.stroke();
-    context.fillStyle='#183f28';context.fillText(label,x,y+1);
+  // All leaders are painted beneath opaque labels so dense dimensions never
+  // obscure another quote. Names retain a clear connection to their own field.
+  for(const annotation of annotations){
+    const [start,end]=annotation.leader;
+    context.beginPath();context.moveTo(...start);context.lineTo(...end);
+    context.strokeStyle='#fff';context.lineWidth=annotation.color?4:3;context.stroke();
+    context.strokeStyle=annotation.color??'#183f28';context.lineWidth=annotation.color?2:1;context.stroke();
   }
-  return canvas.toDataURL('image/png');
+  for(const annotation of annotations){
+    const {box,point:[x,y],lines,fontSize}=annotation;
+    context.fillStyle='#fff';context.strokeStyle=annotation.color??'#cbd5cc';context.lineWidth=1;
+    context.beginPath();
+    if(typeof context.roundRect==='function')context.roundRect(box.x,box.y,box.width,box.height,5);
+    else context.rect(box.x,box.y,box.width,box.height);
+    context.fill();context.stroke();
+    context.font=`bold ${fontSize}px Arial, sans-serif`;context.fillStyle='#183f28';
+    lines.forEach((line,index)=>context.fillText(line,x,y+(index-(lines.length-1)/2)*(fontSize+2)));
+  }
+  return {dataUrl:canvas.toDataURL('image/png'),annotations};
 }
 
 export async function captureSatelliteImage({ container, maplibregl, mapModel, cadastre=false, timeoutMs = 15000, documentRef = globalThis.document } = {}) {
@@ -148,24 +269,30 @@ export async function captureSatelliteImage({ container, maplibregl, mapModel, c
       fadeDuration: 0
     });
     map.resize?.();
-    map.fitBounds(mapModel.captureBounds, { padding: 0, duration: 0 });
+    // Reserve annotation space in this isolated PDF capture only. The editor and
+    // standalone technical diagram retain their existing viewport and labels.
+    const annotationPadding=mapModel.geo?Math.min(width/4,height/4,mapModel.geo.fields?92:64):0;
+    map.fitBounds(mapModel.captureBounds, { padding: annotationPadding, duration: 0 });
     await waitForIdle(map, timeoutMs);
     if(cadastre)cadastralObjectUrl=await addCadastralImage(map,mapModel,width,height,timeoutMs);
     if(mapModel.geo?.polygon?.length||mapModel.geo?.fields?.length){
       addGeoreferencedDesign(map,mapModel);
       await waitForIdle(map,timeoutMs);
     }
-    let dataUrl;
+    let dataUrl,annotations;
     try {
-      dataUrl = labelledImage(map,mapModel,width,height,documentRef);
+      ({dataUrl,annotations}=labelledImage(map,mapModel,width,height,documentRef));
     } catch (error) {
+      if(error instanceof SatelliteCaptureError)throw error;
       const isSecurityError = error?.name === 'SecurityError' || /insecure|tainted|cross-origin/i.test(String(error?.message ?? ''));
       throw new SatelliteCaptureError(isSecurityError ? 'cors' : 'unavailable', isSecurityError ? 'Le immagini satellitari non consentono la stampa da questo browser.' : 'Impossibile acquisire la mappa satellitare.', error);
     }
     if (!/^data:image\/png;base64,.+/i.test(String(dataUrl))) {
       throw new SatelliteCaptureError('empty', 'La mappa satellitare acquisita è vuota.');
     }
-    return { dataUrl, attribution: ATTRIBUTION+(cadastre?' · Catasto © Agenzia delle Entrate, CC BY 4.0':''), overlayModel:overlayForCapture(map,mapModel,width,height) };
+    const overlayModel=overlayForCapture(map,mapModel,width,height);
+    if(overlayModel)overlayModel.annotations=annotations;
+    return { dataUrl, attribution: ATTRIBUTION+(cadastre?' · Catasto © Agenzia delle Entrate, CC BY 4.0':''), overlayModel };
   } catch (error) {
     if (error instanceof SatelliteCaptureError) throw error;
     throw new SatelliteCaptureError('unavailable', 'Impossibile inizializzare la mappa satellitare.', error);

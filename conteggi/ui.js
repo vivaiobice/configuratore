@@ -1,8 +1,8 @@
-import {CATEGORY_LABELS,CountsError,summarizeCounts,patchCount,validateCountPatch,quantityAfter,countDetailLines} from './model.js?v=1.2.3';
+import {CATEGORY_LABELS,CountsError,summarizeCounts,patchCount,validateCountPatch,quantityAfter,countDetailLines} from './model.js?v=1.2.4';
 import {scopeKey} from './store.js';
 import {buildCountsUrl} from './navigation.js';
-import {buildSubmission} from './submission.js?v=1.2.3';
-import {counterView,icon} from './counter-view.js?v=1.2.3';
+import {buildSubmission} from './submission.js?v=1.2.4';
+import {counterView,icon} from './counter-view.js?v=1.2.4';
 import {listRootstocksForSelection} from '../src/plant-catalog.js';
 export const NOTICE_TEXT='I conteggi e le note sincronizzati sono conservati sui sistemi Vivai Obice e consultabili dagli amministratori autorizzati, anche senza una richiesta di fornitura. Il pulsante “Trasmetti a Vivai Obice” serve a sottoporci volontariamente un riepilogo come richiesta.';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -118,32 +118,48 @@ function pointInRing(point,raw){
 
 const interpolate=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
 
-function transitionPoint(a,b,aInside,predicate){
-  let low=0,high=1;
-  for(let i=0;i<24;i++){
-    const middle=(low+high)/2;
-    if(predicate(interpolate(a,b,middle))===aInside)low=middle;else high=middle;
+function crossingParameters(a,b,c,d){
+  if(Math.max(a[0],b[0])<Math.min(c[0],d[0])-1e-8||Math.max(c[0],d[0])<Math.min(a[0],b[0])-1e-8
+    ||Math.max(a[1],b[1])<Math.min(c[1],d[1])-1e-8||Math.max(c[1],d[1])<Math.min(a[1],b[1])-1e-8)return [];
+  const dx=b[0]-a[0],dy=b[1]-a[1],sx=d[0]-c[0],sy=d[1]-c[1],cx=c[0]-a[0],cy=c[1]-a[1];
+  const denominator=dx*sy-dy*sx;
+  if(Math.abs(denominator)>1e-10){
+    const t=(cx*sy-cy*sx)/denominator,u=(cx*dy-cy*dx)/denominator;
+    return t>=-1e-9&&t<=1+1e-9&&u>=-1e-9&&u<=1+1e-9?[clamp(t,0,1)]:[];
   }
-  return interpolate(a,b,(low+high)/2);
+  const length2=dx*dx+dy*dy;
+  if(length2<1e-12||Math.abs(cx*dy-cy*dx)>1e-8)return [];
+  return [((c[0]-a[0])*dx+(c[1]-a[1])*dy)/length2,((d[0]-a[0])*dx+(d[1]-a[1])*dy)/length2]
+    .filter(t=>t>=-1e-9&&t<=1+1e-9).map(t=>clamp(t,0,1));
 }
 
-function clipPolyline(points,predicate){
+function clipPolyline(points,predicate,{rings=[],cuts=[]}={}){
   if(points.length<2)return [];
   const segments=[];
   let current=[];
-  let previous=points[0],previousInside=predicate(previous);
-  if(previousInside)current.push(previous);
+  const finish=()=>{if(current.length>1)segments.push(current);current=[];};
   for(let i=1;i<points.length;i++){
-    const point=points[i],inside=predicate(point);
-    if(inside===previousInside){if(inside)current.push(point);}
-    else{
-      const boundary=transitionPoint(previous,point,previousInside,predicate);
-      if(previousInside){current.push(boundary);if(current.length>1)segments.push(current);current=[];}
-      else current=[boundary,point];
+    const a=points[i-1],b=points[i],parameters=[0,1];
+    for(const ring of rings)for(let edge=0;edge<ring.length;edge++)parameters.push(...crossingParameters(a,b,ring[edge],ring[(edge+1)%ring.length]));
+    for(const {normal,value} of cuts){
+      const av=projection(a,normal),bv=projection(b,normal);
+      if(Math.abs(bv-av)<1e-12)continue;
+      const t=(value-av)/(bv-av);
+      if(t>0&&t<1)parameters.push(t);
     }
-    previous=point;previousInside=inside;
+    const ordered=parameters.sort((x,y)=>x-y).filter((t,index,all)=>index===0||t-all[index-1]>1e-9);
+    for(let interval=1;interval<ordered.length;interval++){
+      const start=ordered[interval-1],end=ordered[interval];
+      // Evaluate every interval bounded by real edges, including interruptions
+      // whose two ends fall between the same pair of curve samples.
+      if(!predicate(interpolate(a,b,(start+end)/2))){finish();continue;}
+      const from=start===0?a:interpolate(a,b,start),to=end===1?b:interpolate(a,b,end);
+      if(!current.length)current.push(from);
+      else if(Math.hypot(current.at(-1)[0]-from[0],current.at(-1)[1]-from[1])>1e-7){finish();current.push(from);}
+      if(Math.hypot(current.at(-1)[0]-to[0],current.at(-1)[1]-to[1])>1e-9)current.push(to);
+    }
   }
-  if(current.length>1)segments.push(current);
+  finish();
   return segments;
 }
 
@@ -187,40 +203,63 @@ function passagesIntersectInside(a,b,field){
   return false;
 }
 
+function passageNormals(ring,widthM){
+  const edges=ring.map((a,index)=>{
+    const b=ring[(index+1)%ring.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
+    return {length,normal:length?[-dy/length,dx/length]:[0,0]};
+  }).filter(edge=>edge.length>=.05);
+  if(!edges.length)return [];
+  const width=Number(widthM),tolerance=Math.max(.05,width*.03);
+  const candidates=[];
+  if(Number.isFinite(width)&&width>0){
+    // Clipping can make a parcel cap longer than either corridor side. The saved
+    // passage width identifies the parallel sides that still bound the corridor.
+    for(const edge of edges){
+      const values=ring.map(point=>projection(point,edge.normal));
+      const widthError=Math.abs(Math.max(...values)-Math.min(...values)-width);
+      if(widthError>tolerance)continue;
+      const parallel=edges.filter(other=>Math.abs(edge.normal[0]*other.normal[0]+edge.normal[1]*other.normal[1])>1-1e-7);
+      if(parallel.length<2)continue;
+      const length=parallel.reduce((sum,other)=>sum+other.length,0);
+      if(!candidates.some(candidate=>Math.abs(candidate.normal[0]*edge.normal[0]+candidate.normal[1]*edge.normal[1])>1-1e-7))candidates.push({normal:edge.normal,length,widthError});
+    }
+  }
+  if(!candidates.length)candidates.push(edges.reduce((longest,edge)=>edge.length>longest.length?edge:longest,edges[0]));
+  candidates.sort((a,b)=>(a.widthError??Infinity)-(b.widthError??Infinity)||b.length-a.length);
+  return candidates.map(({normal})=>normal[1]<0?normal.map(value=>-value):normal);
+}
+
 function passageCuts(frame,exclusions){
   const cuts=[];
   for(const [index,item] of (Array.isArray(exclusions)?exclusions:[]).entries()){
     if(item?.type!=='linear')continue;
     const ring=openRing(item.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle));
     if(ring.length<3)continue;
-    let longest=null;
-    for(let i=0;i<ring.length;i++){
-      const a=ring[i],b=ring[(i+1)%ring.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
-      if(!longest||length>longest.length)longest={dx,dy,length};
-    }
-    if(!longest||longest.length<.05)continue;
-    let normal=[-longest.dy/longest.length,longest.dx/longest.length];
-    if(normal[1]<0)normal=normal.map(value=>-value);
-    // A passage along the rows, or ending inside the field, does not create independent tracts.
-    if(normal[1]<.1)continue;
-    const values=ring.map(point=>projection(point,normal));
-    const low=Math.min(...values),high=Math.max(...values),middle=(low+high)/2;
-    const tangent=[normal[1],-normal[0]],crossings=[];
-    for(let i=0;i<frame.points.length;i++){
-      const a=frame.points[i],b=frame.points[(i+1)%frame.points.length];
-      const av=projection(a,normal)-middle,bv=projection(b,normal)-middle;
-      if(av*bv<0||Math.abs(av)<1e-7){
-        const point=Math.abs(av)<1e-7?a:interpolate(a,b,av/(av-bv));
-        crossings.push(projection(point,tangent));
+    // Nearly square clipped rings can match the saved width on both axes. Check
+    // each candidate against the actual parcel before assigning a passage axis.
+    for(const normal of passageNormals(ring,item.widthM)){
+      // A passage along the rows, or ending inside the field, does not create independent tracts.
+      if(normal[1]<.1)continue;
+      const values=ring.map(point=>projection(point,normal));
+      const low=Math.min(...values),high=Math.max(...values),middle=(low+high)/2;
+      const tangent=[normal[1],-normal[0]],crossings=[];
+      for(let i=0;i<frame.points.length;i++){
+        const a=frame.points[i],b=frame.points[(i+1)%frame.points.length];
+        const av=projection(a,normal)-middle,bv=projection(b,normal)-middle;
+        if(av*bv<0||Math.abs(av)<1e-7){
+          const point=Math.abs(av)<1e-7?a:interpolate(a,b,av/(av-bv));
+          crossings.push(projection(point,tangent));
+        }
       }
+      if(crossings.length<2)continue;
+      const along=ring.map(point=>projection(point,tangent));
+      if(Math.min(...along)>Math.min(...crossings)+.05||Math.max(...along)<Math.max(...crossings)-.05)continue;
+      const startPosition=((low-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
+      const endPosition=((high-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
+      if(startPosition<=0||endPosition>=1)continue;
+      cuts.push({id:String(item.id||`passage-${index+1}`),normal,low,high,startPosition,endPosition,ring});
+      break;
     }
-    if(crossings.length<2)continue;
-    const along=ring.map(point=>projection(point,tangent));
-    if(Math.min(...along)>Math.min(...crossings)+.05||Math.max(...along)<Math.max(...crossings)-.05)continue;
-    const startPosition=((low-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
-    const endPosition=((high-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
-    if(startPosition<=0||endPosition>=1)continue;
-    cuts.push({id:String(item.id||`passage-${index+1}`),normal,low,high,startPosition,endPosition,ring});
   }
   // Intersecting passages need a topology with lateral wedges, beyond ordered guide intervals.
   // Keep the original whole-field curve and clip every actual exclusion ring in this case.
@@ -397,11 +436,12 @@ function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:
     }
   }
   for(const candidate of candidates){
-    const outerSegments=clipPolyline(candidate.coordinates,point=>pointInRing(point,frame.points));
+    const outerSegments=clipPolyline(candidate.coordinates,point=>pointInRing(point,frame.points),{rings:[frame.points]});
     for(const outer of outerSegments){
       const trimmed=trimPolyline(outer,headlandWidthM);
       if(trimmed.length<2)continue;
-      const usable=exclusionRings.length||segment?clipPolyline(trimmed,point=>(!segment||segmentContains(segment,point))&&!exclusionRings.some(ring=>pointInRing(point,ring))):[trimmed];
+      const cuts=[...(segment?.before?[{normal:segment.before.normal,value:segment.before.high}]:[]),...(segment?.after?[{normal:segment.after.normal,value:segment.after.low}]:[])];
+      const usable=exclusionRings.length||segment?clipPolyline(trimmed,point=>(!segment||segmentContains(segment,point))&&!exclusionRings.some(ring=>pointInRing(point,ring)),{rings:exclusionRings,cuts}):[trimmed];
       for(const segment of usable){
         const lengthM=polylineLength(segment);
         if(lengthM<.05)continue;

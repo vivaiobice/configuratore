@@ -1,4 +1,4 @@
-import {CountsError,id,keys,newList,newCount,patchCount,validateListPatch,quantityAfter,summarizeCounts} from '../conteggi/model.js?v=1.2.3';
+import {CountsError,id,keys,newList,newCount,patchCount,validateListPatch,quantityAfter,summarizeCounts} from '../conteggi/model.js?v=1.2.4';
 import {createCountsStore,scopeKey} from '../conteggi/store.js';
 const notFound=()=>{throw new CountsError('NOT_FOUND_OR_FORBIDDEN','Conteggio o lista non disponibile');};
 const alive=(map,key)=>{const value=map[key];if(!value||value.deleted)notFound();return value;};

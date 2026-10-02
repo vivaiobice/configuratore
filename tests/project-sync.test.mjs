@@ -247,3 +247,28 @@ test('adopting an archived cloud project preserves its id and server version on 
   const apply=harness.backend.calls.find(([type])=>type==='apply');
   assert.equal(apply[1].expectedVersion,8);
 });
+
+test('successful isolated report acknowledges only covered autosaves for its project',async()=>{
+ const h=createHarness(),id='00000000-0000-4000-8000-000000000010';
+ await h.service.enqueueForLater();
+ await h.queue.enqueue(createOperation('autosave','other',{fields:[]},0,()=> 'other-op'));
+ await h.queue.enqueue(createOperation('manual_revision',id,{snapshot:{}},0,()=> 'manual-op'));
+ h.service.suspend('report_sync');
+ await h.service.acknowledgeReportAutosaves(id);
+ assert.deepEqual((await h.queue.pending()).map(x=>x.id).sort(),['manual-op','other-op']);
+ assert.equal(h.backend.calls.length,0);assert.equal(h.service.status().state,'suspended');
+});
+
+test('report pause released after an in-flight autosave keeps the new sync state',async()=>{
+ let release,entered,calls=0;const started=new Promise(resolve=>entered=resolve);
+ const h=createHarness({applyHook:async args=>{if(!calls++){entered();await new Promise(resolve=>release=resolve);}return {status:'applied',projectId:'server-p1',version:args.expectedVersion+1};}});
+ const pending=h.service.flush();await started;h.service.suspend('report_sync');release();await pending;
+ h.service.resume('report_sync');assert.equal(h.service.status().state,'synced');
+ await h.service.flush();assert.equal(h.backend.calls.length,2,'editor can sync again after report cleanup');
+});
+
+test('report cleanup cannot release a newer identity or conflict pause',async()=>{
+ const h=createHarness();h.service.suspend('report_sync');h.service.suspend('identity_changed');
+ h.service.resume('report_sync');await h.service.flush();
+ assert.equal(h.service.status().state,'suspended');assert.equal(h.service.status().lastError,'identity_changed');assert.equal(h.backend.calls.length,0);
+});

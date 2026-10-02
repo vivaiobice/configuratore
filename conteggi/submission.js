@@ -1,4 +1,4 @@
-import {id,keys,text,newCount,CountsError} from './model.js?v=1.2.3';
+import {id,keys,text,newCount,CountsError} from './model.js?v=1.2.4';
 export function snapshotRecord(record){const {syncState,localRevision,conflict,deleted,...value}=record;return structuredClone(value);}
 export function buildSubmission({list,counts,contact,message='',noticeVersion,submissionId=crypto.randomUUID()}){
   if(!counts.length||counts.length>500)throw new CountsError('VALIDATION_ERROR','Seleziona da 1 a 500 conteggi');

@@ -1,10 +1,10 @@
 import { parseSharedReportUrl } from './report-share.js';
 import { parsePublicProjectCodeUrl } from './public-project-access.js';
-import { calculateProject } from './project-calculator.js?v=1.2.3';
+import { calculateProject } from './project-calculator.js?v=1.2.4';
 import { buildReportMapModel } from './report-map-model.js?v=45';
 import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
 import { buildProjectReportModel } from './pdf-model.js?v=55.7';
-import { captureSatelliteImage } from './report-satellite.js?v=55.7';
+import { captureSatelliteImage } from './report-satellite.js?v=1.2.4';
 import { renderProjectReportHtml } from './report-template.js?v=55.7';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { renderReportQrSvg } from './report-qr.js';

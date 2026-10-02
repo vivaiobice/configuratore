@@ -59,3 +59,16 @@ test('browser download sets the exact public filename on the anchor',async()=>{
   assert.deepEqual(log[0],['append','Progetto_VO1234567_MarioRossi.pdf']);
   assert.deepEqual(log[1],['click','Progetto_VO1234567_MarioRossi.pdf']);
 });
+
+test('download includes the annotated satellite overview as an image page',async()=>{
+  const pdfjs=await import(`${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/pdfjs-dist/legacy/build/pdf.mjs`);
+  const overview={satelliteImage:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1sAAAAASUVORK5CYII=',mapAttribution:'Imagery © Esri · Catasto © Agenzia delle Entrate, CC BY 4.0',cadastre:true};
+  const bytes=await buildProjectPdfBytes({...sample,overview,fields:[sample.fields[0],{...sample.fields[0],id:'field-2',label:'Campo B'}]},{pdfLib:PDFLib,assetLoader:async()=>null});
+  const document=await pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise;
+  assert.equal(document.numPages,8,'the overview gets its own page without squeezing existing content');
+  const page=await document.getPage(3);
+  const content=(await page.getTextContent()).items.map(item=>item.str).join(' ');
+  assert.match(content,/Visione aerea generale/);
+  assert.match(content,/Catasto/);
+  assert.ok((await page.getOperatorList()).fnArray.includes(pdfjs.OPS.paintImageXObject),'the PDF embeds the same labelled overview PNG as the preview');
+});

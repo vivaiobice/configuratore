@@ -1,4 +1,4 @@
-import {calculateProject} from './project-calculator.js?v=1.2.3';
+import {calculateProject} from './project-calculator.js?v=1.2.4';
 
 export function fieldSummaryMetrics(field={}) {
  if(!Array.isArray(field.geometry)||field.geometry.length<4)return {areaM2:0,simulatedPlants:0};

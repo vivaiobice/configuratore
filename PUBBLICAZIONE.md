@@ -1,4 +1,4 @@
-# Pubblicazione — piattaforma Vivai Obice 1.2.3
+# Pubblicazione — piattaforma Vivai Obice 1.2.4
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
@@ -7,6 +7,8 @@ Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni:
 Inventario e confronto del codice corrente, integrazione locale e prove automatiche. **Non** sono stati modificati GitHub remoto, database, Edge Functions, secret, DNS o account; nessuna email reale inviata. Il backend Supabase esistente è `lnclwslcjufwdbmsxljf`; la migrazione Conteggi non risultava installata al controllo del 2 ottobre 2026.
 
 Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consultazione admin, trasmissione e trasferimento verso un account già esistente hanno flag disattivati: caricare lo ZIP **non installa** questi servizi. I passaggi sotto sono da eseguire.
+
+La 1.2.4 aggiorna soltanto il codice: non richiede nuove migrazioni SQL. Prima di sostituire il pacchetto conservare la versione 1.2.3. Dopo il caricamento verificare la curvatura di un campo con passaggio trasversale da 1,50 m: un controllo per lato, indipendenza della modifica e due pali di testa per ciascun pezzo. Verificare Aggiorna progetto dalla pagina PDF e quote/nomi sulle sole immagini satellitari del documento.
 
 ## Pubblicare il codice unico
 
@@ -20,7 +22,7 @@ Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consu
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.3 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.4 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 
@@ -102,11 +104,11 @@ Pubblicare il pacchetto completo e verificare `1.2.2 · LIVE`. Correzione fronte
 Collaudo su hosting e Safari reale: aprire un progetto, modificare distanze/perimetro, tornare più volte da Campi alla mappa, ricaricare una bozza non conclusa e passare a Conteggi/ritornare al configuratore. Controllare che i punti siano conservati e che il messaggio di ripristino non blocchi i comandi dopo l’inizializzazione. Chiudere le vecchie schede e riaprire online; non cancellare IndexedDB/localStorage o tutti i dati del sito.
 
 
-## Aggiornamento grafico e curvatura 1.2.3
+## Aggiornamento grafico e curvatura 1.2.4
 
-Pubblicare l’intero pacchetto e verificare `1.2.3 · LIVE` nei due strumenti. Gli ingressi HTML, i moduli modificati e la cache statica Conteggi hanno riferimenti aggiornati; sono inclusi il font locale, il logo originale e tutti i test. Chiudere le vecchie schede e riaprire online. Non cancellare IndexedDB, localStorage o tutti i dati del sito.
+Pubblicare l’intero pacchetto e verificare `1.2.4 · LIVE` nei due strumenti. Gli ingressi HTML, i moduli modificati e la cache statica Conteggi hanno riferimenti aggiornati; sono inclusi il font locale, il logo originale e tutti i test. Chiudere le vecchie schede e riaprire online. Non cancellare IndexedDB, localStorage o tutti i dati del sito.
 
-Nessuna nuova migrazione SQL per la 1.2.3: tipo/materiale dei pali e componenti sono proprietà facoltative dei record JSON esistenti. Le righe precedenti restano valide. Se il backend è già attivato, aggiornare le tre funzioni Conteggi con i sorgenti inclusi, così validazione, snapshot ed email accettano i nuovi dettagli. Se resta disattivato, non servono operazioni backend per usare il contatore locale. Il pacchetto mantiene i flag cloud disattivati.
+Nessuna nuova migrazione SQL per la 1.2.4: tipo/materiale dei pali e componenti sono proprietà facoltative dei record JSON esistenti. Le righe precedenti restano valide. Se il backend è già attivato, aggiornare le tre funzioni Conteggi con i sorgenti inclusi, così validazione, snapshot ed email accettano i nuovi dettagli. Se resta disattivato, non servono operazioni backend per usare il contatore locale. Il pacchetto mantiene i flag cloud disattivati.
 
 Collaudo dopo il caricamento:
 

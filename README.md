@@ -1,7 +1,8 @@
-# Vivai Obice — piattaforma unica 1.2.3
+# Vivai Obice — piattaforma unica 1.2.4
 
-Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. L’interfaccia usa Comfortaa locale; il documento generato conserva il font precedente. I nomi dei campi restano visibili sulla porzione di mappa inquadrata, anche senza selezione. Un passaggio trasversale divide la curvatura in tratti indipendenti. Conteggi apre direttamente il contatore, con logo e ritorno al configuratore, titolo modificabile, pulsante `+` verde a tutta larghezza e `−1` sopra a sinistra. Le letture sono raccolte in una sola schermata con card e totali Barbatelle / Viti, Pali e Altro; dettagli e materiali si modificano in popup. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati. Le verifiche locali della 1.2.3 comprendono 915 test e i runner browser desktop/mobile.
+Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. Questa release corregge la curvatura indipendente con passaggi da 1,50 m ritagliati sul campo, incluse strozzature quasi quadrate, e il conteggio dei pali di testa sulle interruzioni effettive. La pagina PDF offre “Aggiorna progetto” vicino al nome e recupera errori senza uscire; quote e nomi delle sole immagini satellitari del documento sono esterni ai campi. Stampa/PDF e Preventivo hanno bordo leggero e hover; il logo scuro ha un contorno più visibile.
 
+L’interfaccia conserva Comfortaa e il documento il font precedente. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati. **948 test passati**, verifiche Chromium desktop/mobile e due revisioni indipendenti completate con fixture locali.
 - Stato corrente e verifiche: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
 - Pubblicazione del pacchetto unico e attivazione backend: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
 - Riproduzione locale: `npm ci`, `npm ci --prefix conteggi`, `npm test`, `npm run check`.
