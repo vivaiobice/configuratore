@@ -14,22 +14,25 @@ const paths={
  edit:'<path d="m14 5 5 5M4 20l4-1L20 7a2 2 0 0 0-3-3L5 16l-1 4Z"/>',
  plus:'<path d="M12 4v16M4 12h16"/>',
  share:'<path d="M12 16V3m-5 5 5-5 5 5M5 12v8h14v-8"/>',
- back:'<path d="m14 5-7 7 7 7"/>'
+ back:'<path d="m14 5-7 7 7 7"/>',
+ pagePlus:'<path d="M14 3H5v18h14V8l-5-5Zm0 0v5h5M12 11v7m-3-3.5h6"/>',
+ storage:'<path d="M5 3h12l3 3v15H4V3h1Zm2 0v6h10V3M8 21v-7h8v7"/>'
 };
 export const icon=name=>`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]??paths.other}</svg>`;
 export function counterView(count,feedback){
  const preferences=feedback?.getPreferences?.()??{sound:false,haptic:true},capabilities=feedback?.capabilities??{};
  const toggle=(name,label,on,off)=>`<button type="button" class="icon-button feedback-toggle" data-action="toggle-feedback" data-preference="${name}" aria-label="${label}${capabilities[name]?'':' non disponibile'}" title="${label}${capabilities[name]?'':' non disponibile in questo browser'}" aria-pressed="${Boolean(preferences[name]&&capabilities[name])}" ${capabilities[name]?'':'disabled'}>${icon(preferences[name]&&capabilities[name]?on:off)}</button>`;
  return `<section class="impulse-counter" aria-label="Contatore a impulsi">
+  <img class="counter-watermark" src="../assets/logo-filigrana.png" alt="" aria-hidden="true" width="726" height="670">
   <div class="counter-toolbar">
    <button type="button" class="icon-button reset-button" data-action="reset" aria-label="Azzera lettura" title="Azzera lettura">${icon('reset')}</button>
    <div class="feedback-icons">${toggle('sound','Audio','sound','mute')}${toggle('haptic','Vibrazione','haptic','hapticOff')}</div>
    <button type="button" class="icon-button" data-action="back" aria-label="Elenco letture" title="Elenco letture">${icon('archive')}</button>
-   <button type="button" class="icon-button" data-action="counter-menu" aria-label="Strumenti e profilo" title="Strumenti e profilo">${icon('menu')}</button>
+   <button type="button" class="icon-button" data-tool="configurator" aria-label="Torna al configuratore" title="Torna al configuratore">${icon('back')}</button>
   </div>
-  <label class="reading-title"><span class="sr-only">Nome lettura</span><input name="title" value="${esc(count.title)}" maxlength="200" required aria-label="Nome lettura">${icon('edit')}</label>
-  <div class="type-switch" role="group" aria-label="Cosa stai contando">${[['plants','Viti'],['posts','Pali'],['other','Altro']].map(([category,label])=>`<button type="button" data-action="category" data-category="${category}" aria-pressed="${count.category===category}" aria-label="${label}">${icon(category)}<span>${label}</span></button>`).join('')}</div>
-  <div class="number-stage"><output id="quantity-display" aria-label="Quantità" aria-live="off" style="--digits:${String(count.quantity).length}">${count.quantity}</output><span class="number-unit">${count.category==='plants'?'Viti':count.category==='posts'?'Pali':'Elementi'}</span>${count.field?`<span class="counter-field">${esc(count.field.fieldLabel)}${count.field.associationStatus==='pending'?' · bozza':''}</span>`:''}</div>
+  <label class="reading-title"><span class="sr-only">Nome lettura</span><input name="title" value="${esc(count.title)}" maxlength="200" required aria-label="Nome lettura" aria-describedby="reading-title-hint">${icon('edit')}</label><p id="reading-title-hint" class="reading-title-hint">Tocca il nome per modificarlo</p>
+  <div class="type-switch" role="group" aria-label="Cosa stai contando">${[['plants','Barbatelle / Viti'],['posts','Pali'],['other','Altro']].map(([category,label])=>`<button type="button" data-action="category" data-category="${category}" aria-pressed="${count.category===category}" aria-label="${label}">${icon(category)}<span>${label}</span></button>`).join('')}</div>
+  <div class="number-stage"><output id="quantity-display" aria-label="Quantità" aria-live="off" style="--digits:${String(count.quantity).length}">${count.quantity}</output><span class="number-unit">${count.category==='plants'?'Barbatelle / Viti':count.category==='posts'?'Pali':'Elementi'}</span>${count.field?`<span class="counter-field">${esc(count.field.fieldLabel)}${count.field.associationStatus==='pending'?' · bozza':''}</span>`:''}</div>
   <div class="impulse-controls"><button type="button" data-action="decrement" class="decrement" aria-label="Togli uno" ${count.quantity===0?'disabled':''}>−1</button><button type="button" data-action="increment" class="increment" aria-label="Aggiungi uno">${icon('plus')}<span class="sr-only">+1</span></button></div>
   <button type="button" data-action="confirm-count" class="save-reading">${icon('save')}<span>Salva lettura</span></button>
  </section>`;

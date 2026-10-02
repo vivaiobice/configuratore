@@ -1,11 +1,11 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import {createMapFieldLabelOverlay} from './map-field-label-overlay.js';
+import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.3';
 import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=53.2';
 import { createCadastralOverlay } from './cadastral-overlay.js?v=53.2';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints } from './row-curves.js?v=45';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.3';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
 
 const SATELLITE_ID = 'base-satellite';
@@ -113,21 +113,26 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
 
   function clearCurveControlMarkers(){for(const marker of curveControlMarkers)marker.remove?.();curveControlMarkers=[];}
 
-  function setRowCurveEditor({geometry=null,orientationDeg=0,points=[],active=false}={}){
+  function setRowCurveEditor({geometry=null,orientationDeg=0,exclusions=[],points=[],active=false}={}){
     clearCurveControlMarkers();
-    const normalized=normalizeRowCurvePoints(points);
-    rowCurveEditor={geometry,orientationDeg:Number(orientationDeg)||0,points:normalized,active:Boolean(active)};
+    const normalized=resolveRowCurvePoints({polygon:geometry,orientationDeg,exclusions,rowCurvePoints:points});
+    const segments=getRowCurveSegments({polygon:geometry,orientationDeg,exclusions});
+    rowCurveEditor={geometry,orientationDeg:Number(orientationDeg)||0,exclusions,points:normalized,active:Boolean(active)};
     if(!rowCurveEditor.active||!Array.isArray(geometry)||geometry.length<4)return false;
     normalized.forEach((point,index)=>{
-      const element=document.createElement('button');element.type='button';element.className='curve-control-marker';element.textContent=String(index+1);element.title=`Punto di curvatura ${index+1}`;element.setAttribute?.('aria-label',element.title);
+      const element=document.createElement('button');element.type='button';element.className='curve-control-marker';element.textContent=String(index+1);element.title=`Punto di curvatura ${index+1}${segments.length>1?' · '+segments.find(segment=>segment.id===point.segmentId)?.label:''}`;element.setAttribute?.('aria-label',element.title);
       element.addEventListener?.('pointerdown',event=>event.stopPropagation?.());
       element.addEventListener?.('touchstart',event=>event.stopPropagation?.(),{passive:true});
       const coordinate=curvePointToLonLat({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,point});
       const marker=new globalThis.maplibregl.Marker({element,draggable:true,anchor:'center'}).setLngLat(coordinate).addTo(map);
       marker.on?.('dragend',()=>{
         const position=marker.getLngLat();
-        const moved=lonLatToCurvePoint({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,coordinate:[position.lng,position.lat],id:point.id});
-        const updated=normalizeRowCurvePoints(rowCurveEditor.points.map(item=>item.id===point.id?moved:item));
+        const moved=lonLatToCurvePoint({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,coordinate:[position.lng,position.lat],id:point.id,segmentId:point.segmentId});
+        const updated=resolveRowCurvePoints({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,exclusions:rowCurveEditor.exclusions,
+          rowCurvePoints:rowCurveEditor.points.map(item=>item.id===point.id?{...moved,...(point.segmentId?{segmentId:point.segmentId}:{})}:item)});
+        const movedPoint=updated.find(item=>item.id===point.id);
+        if(movedPoint)marker.setLngLat(curvePointToLonLat({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,point:movedPoint}));
+        else marker.remove?.();
         rowCurveEditor={...rowCurveEditor,points:updated};
         onRowCurvePointsChange(updated);
       });

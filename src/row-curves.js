@@ -3,6 +3,7 @@ const DEG=Math.PI/180;
 const MAX_POINTS=8;
 const MIN_POSITION=.02;
 const MAX_POSITION=.98;
+const SEGMENT_POSITION_EPSILON=1e-8;
 const MAX_OFFSET_M=500;
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -37,19 +38,21 @@ function frameFor(polygon,orientationDeg=0){
 export function normalizeRowCurvePoints(points){
   const normalized=(Array.isArray(points)?points:[]).map((point,index)=>({
     id:String(point?.id||`curve-${index+1}`),
-    position:clamp(Number(point?.position),MIN_POSITION,MAX_POSITION),
-    offsetM:clamp(Number.isFinite(Number(point?.offsetM))?Number(point.offsetM):0,-MAX_OFFSET_M,MAX_OFFSET_M)
+    position:clamp(Number(point?.position),point?.segmentId&&point.segmentId!=='whole'?SEGMENT_POSITION_EPSILON:MIN_POSITION,point?.segmentId&&point.segmentId!=='whole'?1-SEGMENT_POSITION_EPSILON:MAX_POSITION),
+    offsetM:clamp(Number.isFinite(Number(point?.offsetM))?Number(point.offsetM):0,-MAX_OFFSET_M,MAX_OFFSET_M),
+    ...(point?.segmentId?{segmentId:String(point.segmentId)}:{})
   })).filter(point=>Number.isFinite(point.position));
   normalized.sort((a,b)=>a.position-b.position||a.id.localeCompare(b.id));
   const unique=[];
   for(const point of normalized){
-    if(unique.length&&Math.abs(unique.at(-1).position-point.position)<.001)unique[unique.length-1]=point;
+    const previous=unique.findIndex(item=>item.segmentId===point.segmentId&&Math.abs(item.position-point.position)<.001);
+    if(previous>=0)unique[previous]=point;
     else unique.push(point);
   }
   return unique.slice(0,MAX_POINTS);
 }
 
-function curveNodes(points){return [{position:0,offsetM:0},...normalizeRowCurvePoints(points),{position:1,offsetM:0}];}
+function curveNodes(points){return [{position:0,offsetM:0},...points,{position:1,offsetM:0}];}
 
 function offsetAt(nodes,t){
   const value=clamp(t,0,1);
@@ -69,11 +72,11 @@ function guideSample(nodes,frame,t){
   const value=clamp(t,0,1),epsilon=.001;
   const before=clamp(value-epsilon,0,1),after=clamp(value+epsilon,0,1);
   const divisor=Math.max(1e-6,after-before);
-  const dx=(offsetAt(nodes,after)-offsetAt(nodes,before))/divisor;
+  const dx=t<0||t>1?0:(offsetAt(nodes,after)-offsetAt(nodes,before))/divisor;
   const dy=frame.spanY;
   const length=Math.max(1e-9,Math.hypot(dx,dy));
   return {
-    point:[frame.centerX+offsetAt(nodes,value),frame.minY+value*frame.spanY],
+    point:[frame.centerX+offsetAt(nodes,value),frame.minY+t*frame.spanY],
     tangent:[dx/length,dy/length],
     normal:[dy/length,-dx/length]
   };
@@ -166,6 +169,135 @@ function trimPolyline(points,amount){
 
 function localToLonLat(point,frame){return toLonLat(rotate(point,-frame.angle),frame.ref);}
 
+const projection=(point,normal)=>point[0]*normal[0]+point[1]*normal[1];
+
+function passagesIntersectInside(a,b,field){
+  if(Math.abs(a.normal[0]*b.normal[1]-a.normal[1]*b.normal[0])<1e-6)return false;
+  if(a.ring.some(point=>pointInRing(point,b.ring)&&pointInRing(point,field))
+    ||b.ring.some(point=>pointInRing(point,a.ring)&&pointInRing(point,field))
+    ||field.some(point=>pointInRing(point,a.ring)&&pointInRing(point,b.ring)))return true;
+  for(let i=0;i<a.ring.length;i++)for(let j=0;j<b.ring.length;j++){
+    const p=a.ring[i],q=a.ring[(i+1)%a.ring.length],r=b.ring[j],s=b.ring[(j+1)%b.ring.length];
+    const dx=q[0]-p[0],dy=q[1]-p[1],sx=s[0]-r[0],sy=s[1]-r[1],denominator=dx*sy-dy*sx;
+    if(Math.abs(denominator)<1e-9)continue;
+    const t=((r[0]-p[0])*sy-(r[1]-p[1])*sx)/denominator;
+    const u=((r[0]-p[0])*dy-(r[1]-p[1])*dx)/denominator;
+    if(t>=0&&t<=1&&u>=0&&u<=1&&pointInRing(interpolate(p,q,t),field))return true;
+  }
+  return false;
+}
+
+function passageCuts(frame,exclusions){
+  const cuts=[];
+  for(const [index,item] of (Array.isArray(exclusions)?exclusions:[]).entries()){
+    if(item?.type!=='linear')continue;
+    const ring=openRing(item.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle));
+    if(ring.length<3)continue;
+    let longest=null;
+    for(let i=0;i<ring.length;i++){
+      const a=ring[i],b=ring[(i+1)%ring.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
+      if(!longest||length>longest.length)longest={dx,dy,length};
+    }
+    if(!longest||longest.length<.05)continue;
+    let normal=[-longest.dy/longest.length,longest.dx/longest.length];
+    if(normal[1]<0)normal=normal.map(value=>-value);
+    // A passage along the rows, or ending inside the field, does not create independent tracts.
+    if(normal[1]<.1)continue;
+    const values=ring.map(point=>projection(point,normal));
+    const low=Math.min(...values),high=Math.max(...values),middle=(low+high)/2;
+    const tangent=[normal[1],-normal[0]],crossings=[];
+    for(let i=0;i<frame.points.length;i++){
+      const a=frame.points[i],b=frame.points[(i+1)%frame.points.length];
+      const av=projection(a,normal)-middle,bv=projection(b,normal)-middle;
+      if(av*bv<0||Math.abs(av)<1e-7){
+        const point=Math.abs(av)<1e-7?a:interpolate(a,b,av/(av-bv));
+        crossings.push(projection(point,tangent));
+      }
+    }
+    if(crossings.length<2)continue;
+    const along=ring.map(point=>projection(point,tangent));
+    if(Math.min(...along)>Math.min(...crossings)+.05||Math.max(...along)<Math.max(...crossings)-.05)continue;
+    const startPosition=((low-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
+    const endPosition=((high-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
+    if(startPosition<=0||endPosition>=1)continue;
+    cuts.push({id:String(item.id||`passage-${index+1}`),normal,low,high,startPosition,endPosition,ring});
+  }
+  // Intersecting passages need a topology with lateral wedges, beyond ordered guide intervals.
+  // Keep the original whole-field curve and clip every actual exclusion ring in this case.
+  for(let i=0;i<cuts.length;i++)for(let j=i+1;j<cuts.length;j++)if(passagesIntersectInside(cuts[i],cuts[j],frame.points))return [];
+  cuts.sort((a,b)=>a.startPosition-b.startPosition||a.id.localeCompare(b.id));
+  // Overlapping passages form one interruption along the reference guide.
+  const separated=[];
+  for(const cut of cuts){
+    if(separated.length&&cut.startPosition<=separated.at(-1).endPosition){
+      const previous=separated.at(-1);
+      if(cut.endPosition>previous.endPosition){previous.endPosition=cut.endPosition;previous.afterCut=cut;}
+    }else separated.push({...cut,afterCut:cut});
+  }
+  return separated;
+}
+
+function segmentsFor(frame,exclusions){
+  const cuts=passageCuts(frame,exclusions);
+  if(!cuts.length)return [{id:'whole',index:0,label:'Tratto 1',startPosition:0,endPosition:1,before:null,after:null}];
+  return Array.from({length:cuts.length+1},(_,index)=>{
+    const before=cuts[index-1]?.afterCut??null,after=cuts[index]??null;
+    return {id:`segment:${before?.id??'start'}:${after?.id??'end'}`,index,label:`Tratto ${index+1}`,startPosition:before?.endPosition??0,endPosition:after?.startPosition??1,before,after};
+  }).filter(segment=>segment.endPosition-segment.startPosition>1e-6);
+}
+
+export function getRowCurveSegments({polygon,orientationDeg=0,exclusions=[]}={}){
+  const frame=frameFor(polygon,orientationDeg);
+  return frame?segmentsFor(frame,exclusions).map(({before,after,...segment})=>segment):[];
+}
+
+function segmentContains(segment,point){
+  return (!segment.before||projection(point,segment.before.normal)>=segment.before.high-1e-7)
+    &&(!segment.after||projection(point,segment.after.normal)<=segment.after.low+1e-7);
+}
+
+function resolvedPoints(frame,segments,points){
+  if(segments.length===1&&segments[0].id==='whole')return normalizeRowCurvePoints(points).map(({segmentId,...point})=>point);
+  return normalizeRowCurvePoints(points).map(point=>{
+    const local=[frame.centerX+point.offsetM,frame.minY+point.position*frame.spanY];
+    const segment=segments.find(item=>item.id===point.segmentId)
+      ??segments.find(item=>segmentContains(item,local))
+      ??segments.reduce((nearest,item)=>{
+        const distance=Math.max(item.startPosition-point.position,0,point.position-item.endPosition);
+        const previous=Math.max(nearest.startPosition-point.position,0,point.position-nearest.endPosition);
+        return distance<previous?item:nearest;
+      },segments[0]);
+    const margin=(segment.endPosition-segment.startPosition)*.02;
+    const referenceStart=Math.max(SEGMENT_POSITION_EPSILON,segment.startPosition+margin);
+    const referenceEnd=Math.min(1-SEGMENT_POSITION_EPSILON,segment.endPosition-margin);
+    const boundsAt=offsetM=>{
+      const x=frame.centerX+offsetM;
+      const start=segment.before?((segment.before.high-segment.before.normal[0]*x)/segment.before.normal[1]-frame.minY)/frame.spanY+margin:referenceStart;
+      const end=segment.after?((segment.after.low-segment.after.normal[0]*x)/segment.after.normal[1]-frame.minY)/frame.spanY-margin:referenceEnd;
+      return {start:Math.max(referenceStart,start),end:Math.min(referenceEnd,end)};
+    };
+    let offsetM=point.offsetM,bounds=boundsAt(offsetM);
+    const minimumSpan=Math.min(.0001,Math.max(0,referenceEnd-referenceStart)/10);
+    if(bounds.end-bounds.start<minimumSpan){
+      // A large lateral move can leave no point in both the tract's guide interval and its physical side.
+      // Reduce that move toward the valid central guide while keeping the assigned tract.
+      let low=0,high=1;
+      for(let index=0;index<48;index++){
+        const middle=(low+high)/2,candidate=boundsAt(point.offsetM*middle);
+        if(candidate.end-candidate.start>=minimumSpan)low=middle;else high=middle;
+      }
+      offsetM=point.offsetM*low*.999999;
+      bounds=boundsAt(offsetM);
+    }
+    return {...point,offsetM,segmentId:segment.id,position:clamp(point.position,bounds.start,bounds.end)};
+  });
+}
+
+export function resolveRowCurvePoints({polygon,orientationDeg=0,exclusions=[],rowCurvePoints=[]}={}){
+  const frame=frameFor(polygon,orientationDeg);
+  return frame?normalizeRowCurvePoints(resolvedPoints(frame,segmentsFor(frame,exclusions),rowCurvePoints)):normalizeRowCurvePoints(rowCurvePoints);
+}
+
 function segmentGapSquared(a,b,c,d){
   const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
   if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)return 0;
@@ -205,17 +337,33 @@ export function curvePointToLonLat({polygon,orientationDeg=0,point}={}){
   return localToLonLat([frame.centerX+normalized.offsetM,frame.minY+normalized.position*frame.spanY],frame);
 }
 
-export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curve'}={}){
+export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curve',segmentId}={}){
   const frame=frameFor(polygon,orientationDeg);
   if(!frame||!Array.isArray(coordinate))throw new TypeError('Coordinate di curvatura non valide');
   const local=rotate(toXY(coordinate,frame.ref),frame.angle);
-  return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX}])[0];
+  return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX,...(segmentId?{segmentId}:{})}])[0];
 }
 
 export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0}={}){
   const frame=frameFor(polygon,orientationDeg);
   const spacing=Number(rowSpacingM),points=normalizeRowCurvePoints(rowCurvePoints);
   if(!frame||!Number.isFinite(spacing)||spacing<=0||!points.length)return [];
+  const segments=segmentsFor(frame,exclusions);
+  if(segments.length>1){
+    const resolved=resolvedPoints(frame,segments,points);
+    return segments.flatMap(segment=>{
+      const span=segment.endPosition-segment.startPosition;
+      const localPoints=resolved.filter(point=>point.segmentId===segment.id).map(point=>({...point,position:clamp((point.position-segment.startPosition)/span,.0001,.9999)}));
+      const curveFrame={...frame,minY:frame.minY+segment.startPosition*frame.spanY,spanY:span*frame.spanY};
+      return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:localPoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,curveFrame,segment).map(row=>({...row,segmentId:segment.id}));
+    });
+  }
+  const wholePoints=normalizeRowCurvePoints(resolvedPoints(frame,segments,points));
+  return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:wholePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,frame,null);
+}
+
+function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,curveFrame,segment){
+  const spacing=Number(rowSpacingM);
   const nodes=curveNodes(points);
   const exclusionRings=(Array.isArray(exclusions)?exclusions:[]).map(item=>openRing(Array.isArray(item)?item:item?.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle))).filter(ring=>ring.length>=3);
   const step=clamp(Number(sampleStepM)||Math.min(1,spacing/3),.25,2);
@@ -226,7 +374,7 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
   const output=[];
   const candidates=[];
   if(maintainEquidistance!==false){
-    const guide=Array.from({length:sampleCount+1},(_,index)=>guideSample(nodes,frame,index/sampleCount));
+    const guide=Array.from({length:sampleCount+1},(_,index)=>guideSample(nodes,curveFrame,(frame.minY+index/sampleCount*frame.spanY-curveFrame.minY)/curveFrame.spanY));
     const reach=Math.hypot(frame.maxX-frame.minX,frame.maxY-frame.minY)+maxOffset+spacing*2;
     const firstDistance=-Math.ceil(reach/spacing)*spacing;
     for(let distance=firstDistance;distance<=reach;distance+=spacing){
@@ -242,7 +390,8 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
       const candidate=[];
       for(let index=0;index<=sampleCount;index++){
         const t=index/sampleCount;
-        candidate.push([baseX+offsetAt(nodes,t),frame.minY+t*frame.spanY]);
+        const localT=(frame.minY+t*frame.spanY-curveFrame.minY)/curveFrame.spanY;
+        candidate.push([baseX+offsetAt(nodes,localT),frame.minY+t*frame.spanY]);
       }
       candidates.push({coordinates:candidate,sourceDistance:baseX});
     }
@@ -252,7 +401,7 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
     for(const outer of outerSegments){
       const trimmed=trimPolyline(outer,headlandWidthM);
       if(trimmed.length<2)continue;
-      const usable=exclusionRings.length?clipPolyline(trimmed,point=>!exclusionRings.some(ring=>pointInRing(point,ring))):[trimmed];
+      const usable=exclusionRings.length||segment?clipPolyline(trimmed,point=>(!segment||segmentContains(segment,point))&&!exclusionRings.some(ring=>pointInRing(point,ring))):[trimmed];
       for(const segment of usable){
         const lengthM=polylineLength(segment);
         if(lengthM<.05)continue;
@@ -263,7 +412,7 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
     }
   }
   if(maintainEquidistance!==false&&unsafeRowSpacing(output.map(row=>({coordinates:row.localCoordinates,sourceDistance:row.sourceDistance})),spacing*.45)){
-    return generateCurvedRows({polygon,rowSpacingM,orientationDeg,rowCurvePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25)});
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25)},frame,curveFrame,segment);
   }
   return output.map(({localCoordinates,sourceDistance,...row})=>row);
 }

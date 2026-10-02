@@ -36,3 +36,21 @@ test('immutable request and delivery lease deduplicate retries and stop expired 
  await db.query("update counts_deliveries set first_attempt_at=now()-interval '25 hours',lease_until=now()-interval '1 second' where submission_id=$1",[key]);assert.equal((await claim()).state,'uncertain');
  }finally{await db.close();}});
 test('private guest hook preserves one archive and cannot be called by authenticated clients',async()=>{const db=await database();try{await apply(db,'list',list);await apply(db,'count',count);await assert.rejects(db.query('select private.counts_transfer_after_verified_grant($1,$2,$3)',[owner,other,'TEST']),/AUTH_REQUIRED/);await db.exec(`SET request.jwt.claim.sub='${other}';`);await db.query('select private.counts_transfer_after_verified_grant($1,$2,$3)',[owner,other,'TEST']);assert.equal((await db.query('select owner_user_id from counts_lists')).rows[0].owner_user_id,other);assert.equal((await db.query('select owner_user_id from counts_entries')).rows[0].owner_user_id,other);assert.equal((await db.query('select count(*)::int as n from counts_lists')).rows[0].n,1);await db.exec('SET ROLE authenticated');await assert.rejects(db.query('select private.counts_transfer_after_verified_grant($1,$2,$3)',[owner,other,'TEST']),/permission denied/);}finally{await db.close();}});
+test('SQL preserves category details through CAS and rejects changed material in frozen submissions',async()=>{const db=await database();try{
+ const migrations=(await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('_counts_reading_moves.sql'));
+ for(const file of migrations)await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ await apply(db,'list',list);
+ const material={...count,category:'posts',postType:'testa',postMaterial:'castagno',componentType:'tendifili',rootstockLabel:'Kober 5 BB'},operationId=crypto.randomUUID();
+ const first=await apply(db,'count',material,0,operationId);assert.equal(first.value.postMaterial,'castagno');assert.deepEqual(await apply(db,'count',material,0,operationId),first);
+ await assert.rejects(apply(db,'count',{...material,postMaterial:'ferro'},0,operationId),/VALIDATION_ERROR/);
+ await assert.rejects(apply(db,'count',{...material,postMaterial:'ferro'},0),error=>{assert.match(error.message,/VERSION_CONFLICT/);assert.equal(JSON.parse(error.detail).current.postMaterial,'castagno');return true;});
+ const {deleted,...record}=first.value,snapshot={listId,listTitle:list.title,entries:[record]},contact={firstName:'Mario',lastName:'Rossi',phone:'12345',email:'test@example.com',companyName:''};
+ const accept=(key,value)=>db.query('select counts_accept_submission($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7) as value',[owner,'TEST',key,JSON.stringify(value),JSON.stringify(contact),'','v1']);
+ await assert.rejects(accept(crypto.randomUUID(),{...snapshot,entries:[{...record,postMaterial:'ferro'}]}),/VERSION_CONFLICT/);
+ await assert.rejects(accept(crypto.randomUUID(),{...snapshot,entries:[{...record,owner_user_id:other}]}),/VERSION_CONFLICT/);
+ const key=crypto.randomUUID(),accepted=(await accept(key,snapshot)).rows[0].value;
+ assert.equal(accepted.snapshot.entries[0].postType,'testa');assert.equal(accepted.snapshot.entries[0].componentType,'tendifili');
+ await apply(db,'count',{...material,category:'other',postMaterial:'ferro'},1);
+ assert.deepEqual((await accept(key,snapshot)).rows[0].value,accepted);assert.equal(accepted.snapshot.entries[0].postMaterial,'castagno');
+ const stored=(await db.query('select data from counts_entries where id=$1',[countId])).rows[0].data;assert.equal(stored.postType,'testa');assert.equal(stored.rootstockLabel,'Kober 5 BB');
+ }finally{await db.close();}});

@@ -1,4 +1,4 @@
-# Pubblicazione — piattaforma Vivai Obice 1.2.2
+# Pubblicazione — piattaforma Vivai Obice 1.2.3
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
@@ -20,7 +20,7 @@ Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consu
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.2 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.3 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 
@@ -100,3 +100,19 @@ Dopo la pubblicazione, chiudere le vecchie schede, riaprire online e controllare
 Pubblicare il pacchetto completo e verificare `1.2.2 · LIVE`. Correzione frontend in `src/app.js` e `src/map.js`, più disposizione dell’intestazione editor mobile in `counts-integration.css`: il ripristino della bozza e il cambio campo usano la disponibilità persistente dell’editor, senza attendere un nuovo evento `load` quando arrivano immagini satellitari. Nessuna modifica a migrazioni, database, account, archivio o associazioni tra campi.
 
 Collaudo su hosting e Safari reale: aprire un progetto, modificare distanze/perimetro, tornare più volte da Campi alla mappa, ricaricare una bozza non conclusa e passare a Conteggi/ritornare al configuratore. Controllare che i punti siano conservati e che il messaggio di ripristino non blocchi i comandi dopo l’inizializzazione. Chiudere le vecchie schede e riaprire online; non cancellare IndexedDB/localStorage o tutti i dati del sito.
+
+
+## Aggiornamento grafico e curvatura 1.2.3
+
+Pubblicare l’intero pacchetto e verificare `1.2.3 · LIVE` nei due strumenti. Gli ingressi HTML, i moduli modificati e la cache statica Conteggi hanno riferimenti aggiornati; sono inclusi il font locale, il logo originale e tutti i test. Chiudere le vecchie schede e riaprire online. Non cancellare IndexedDB, localStorage o tutti i dati del sito.
+
+Nessuna nuova migrazione SQL per la 1.2.3: tipo/materiale dei pali e componenti sono proprietà facoltative dei record JSON esistenti. Le righe precedenti restano valide. Se il backend è già attivato, aggiornare le tre funzioni Conteggi con i sorgenti inclusi, così validazione, snapshot ed email accettano i nuovi dettagli. Se resta disattivato, non servono operazioni backend per usare il contatore locale. Il pacchetto mantiene i flag cloud disattivati.
+
+Collaudo dopo il caricamento:
+
+- Documento generato e stampa: font precedente; controlli dell’app in Comfortaa.
+- Nomi campo: visibili selezionando quel campo, un altro campo o nessuno; controllare anche campi parzialmente inquadrati. Il pulsante Conteggi aggiuntivo in alto a destra è rimosso; logo e Profilo aprono ancora lo strumento.
+- Curvatura: creare un passaggio trasversale di 1,50 m, aggiungere un punto per lato, modificare il primo e verificare che il secondo tratto resti invariato. Provare anche un passaggio obliquo e uno vicino al bordo, trascinare due controlli sovrapposti, rimuovere il passaggio e ricaricare la bozza. Per passaggi che si incrociano dentro il campo resta una curva globale con esclusioni complete: i tratti laterali non hanno controlli indipendenti in questa release.
+- Conteggi: logo/selettore in alto a sinistra e ritorno al configuratore, nome modificabile, `−1` sopra il `+` a tutta larghezza, watermark leggero, salvataggio e ripresa dopo ricarica. Archivio su una sola schermata con card e tre gruppi espandibili; popup per quantità, vitigno/portainnesto, tipo/materiale pali o componente personalizzato. Provare più elenchi, spostamento della lettura, nomi profilo lunghi e schermo 320 px.
+
+Le prove automatiche e Chromium locali sono passate. Hosting, Safari su dispositivi reali, audio/vibrazione fisici e backend di produzione restano da collaudare prima di dichiarare attivi quei servizi.

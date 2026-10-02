@@ -21,7 +21,7 @@ if(!base){
 const fixture=`import {createCountsGateway} from '/src/counts-client.js';
 import {mountCountsUI} from '/conteggi/ui.js';import {parseCountsUrl} from '/conteggi/navigation.js';import {createCountsFeedback} from '/conteggi/feedback.js';
 const gateway=createCountsGateway({scope:{backend:'https://fixture.example',environment:'TEST',owner:'00000000-0000-4000-8000-000000000010'},channel:false});
-const ui=mountCountsUI({gateway,route:parseCountsUrl(location.href),config:{countsBaseUrl:location.origin+'/conteggi/',configuratorBaseUrl:location.origin+'/index.html',syncEnabled:false},feedback:createCountsFeedback()});await ui.ready;globalThis.fixture={gateway,ui};`;
+const ui=mountCountsUI({gateway,route:parseCountsUrl(location.href),config:{countsBaseUrl:location.origin+'/conteggi/',configuratorBaseUrl:location.origin+'/index.html',syncEnabled:false},feedback:createCountsFeedback()});await ui.ready;document.querySelector('#sync-banner').textContent='Salvataggio su questo dispositivo. Per un guest, gli appunti restano legati alla sessione di questo browser.';globalThis.fixture={gateway,ui};`;
 try{
  browser=await chromium.launch({headless:true,...(process.env.COUNTS_CHROMIUM_PATH?{executablePath:process.env.COUNTS_CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage']}:{})});
  for(const [name,options] of [['desktop',{viewport:{width:1365,height:960}}],['mobile',{...devices['iPhone 13'],defaultBrowserType:undefined}],['mobile-small',{viewport:{width:320,height:568},isMobile:true,hasTouch:true,deviceScaleFactor:2}]]){
@@ -33,12 +33,22 @@ try{
    if(url.pathname==='/conteggi/boot.js')return route.fulfill({contentType:'application/javascript',body:fixture});return route.continue();
   });
   const idle=()=>page.evaluate(()=>fixture.ui.whenIdle());
-  const click=async action=>{const button=page.locator(`[data-action="${action}"]`).first();await button[options.hasTouch?'tap':'click']();await idle();};
+  const click=async action=>{const button=page.locator(`[data-action="${action}"]`).first();if(!await button.isVisible()){const group=button.locator('xpath=ancestor::details[1]');if(await group.count())await group.locator('summary').first()[options.hasTouch?'tap':'click']();}await button[options.hasTouch?'tap':'click']();await idle();};
   await page.goto(base+'/conteggi/');await page.waitForFunction(()=>globalThis.fixture).catch(error=>{throw new Error(error.message+'; page errors: '+errors.join('; '));});
   await page.evaluate(()=>document.fonts.ready);
   assert.equal(await page.evaluate(()=>document.fonts.check('16px Comfortaa')),true);
   assert.equal(await page.locator('#quantity-display').evaluate(node=>getComputedStyle(node).fontFamily.startsWith('Comfortaa')),true);
   assert.equal(await page.locator('#quantity-display').textContent(),'0');assert.equal(await page.locator('select').count(),0);
+  assert.equal(await page.locator('.counts-header').isVisible(),true,'brand tool selector stays available while counting');
+  assert.equal(await page.locator('.reading-title-hint').isVisible(),true,'reading title advertises editing');
+  assert.equal(await page.locator('#sync-banner').isVisible(),true,'storage explanation is available at the bottom');const banner=await page.locator('#sync-banner').boundingBox(),counter=await page.locator('.impulse-counter').boundingBox();assert.ok(banner.y>=counter.y+counter.height,'storage explanation stays below the counter');
+  await click('storage-info');assert.match(await page.locator('.dialog-card').textContent(),/guest/);await click('close-modal');assert.equal(await page.locator('#quantity-display').textContent(),'0');
+  const increase=await page.locator('[data-action="increment"]').boundingBox(),decrease=await page.locator('[data-action="decrement"]').boundingBox(),controls=await page.locator('.impulse-controls').boundingBox();
+  assert.ok(Math.abs(increase.width-controls.width)<2,'increment spans the counter width');assert.ok(decrease.y+decrease.height<=increase.y,'decrement sits above increment');assert.ok(Math.abs(decrease.x-increase.x)<2,'decrement aligns with the left edge');
+  await page.locator('#profile-trigger').evaluate(node=>node.textContent='nomeutente_molto_lungo_per_la_verifica');
+  const profile=await page.locator('#profile-trigger').boundingBox();assert.ok(Math.abs(profile.x+profile.width/2-page.viewportSize().width/2)<2,'username remains centered');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.locator('#profile-trigger').evaluate(node=>node.textContent='Login');
   await page.locator('[name="title"]').fill('Lettura filare 2');await idle();
   await page.evaluate(()=>{for(let i=0;i<27;i++)document.querySelector('[data-action="increment"]').click();});await idle();
   assert.equal(await page.locator('#quantity-display').textContent(),'27');await page.screenshot({path:output+'/'+name+'-counter.png',fullPage:true});
@@ -50,14 +60,18 @@ try{
   await page.locator('[data-action="category"][data-category="posts"]').click();await idle();
   await page.locator('[data-action="increment"]').focus();await page.keyboard.press('Space');await idle();assert.equal(await page.locator('#quantity-display').textContent(),'1');
   await page.keyboard.down('Enter');for(let i=0;i<5;i++)await page.keyboard.down('Enter');await page.keyboard.up('Enter');await idle();assert.equal(await page.locator('#quantity-display').textContent(),'2');
-  await click('confirm-count');await page.locator('[data-action="open-count"]').waitFor();await page.screenshot({path:output+'/'+name+'-list.png',fullPage:true});
-  await click('open-count');await page.locator('[name="rootstockLabel"]').fill('Kober 5 BB');await idle();await page.locator('[name="quantity"]').fill('100');await idle();await click('save-details');
-  assert.equal(await page.locator('.count-row strong').textContent(),'100');assert.match(await page.locator('.reading-material').textContent(),/Kober 5 BB/);
+  await click('confirm-count');await page.locator('[data-action="open-count"]').waitFor({state:'attached'});await page.screenshot({path:output+'/'+name+'-list.png',fullPage:true});
+  await click('open-count');await page.locator('[name="postType"]').fill('testa');await page.locator('[name="postMaterial"]').fill('castagno');await idle();await page.locator('[name="quantity"]').fill('100');await idle();await click('save-details');
+  assert.equal(await page.locator('.count-row strong').textContent(),'100');assert.match(await page.locator('.reading-material').textContent(),/castagno/);
   await click('add-count');await click('increment');await click('confirm-count');assert.equal(await page.locator('.count-row').count(),2);assert.equal((await page.evaluate(()=>fixture.gateway.listRecentLists())).length,1);
-  await click('open-count');await click('details-new-list');await page.locator('[name="listTitle"]').fill('Rimesse collina');await click('move-new-list');assert.equal(await page.locator('.list-heading h2').textContent(),'Rimesse collina');
-  await click('add-count');await click('increment');await click('counter-menu');await page.locator('[data-tool="configurator"]:visible').click();await page.waitForURL(base+'/index.html');
+  await click('open-count');await page.locator('[name="rootstockLabel"]').fill('Kober 5 BB');await idle();await click('save-details');assert.match(await page.locator('.reading-material').filter({hasText:'Kober 5 BB'}).textContent(),/Kober 5 BB/);await click('open-count');await click('details-new-list');await page.locator('[name="listTitle"]').fill('Rimesse collina');await click('move-new-list');assert.equal(await page.locator('.list-heading h2').first().textContent(),'Rimesse collina');assert.equal(await page.locator('.archive-list').count(),2);
+  await click('add-count');await click('increment');await page.getByRole('button',{name:'Torna al configuratore',exact:true})[options.hasTouch?'tap':'click']();await page.waitForURL(base+'/index.html');
   await page.goto(base+'/conteggi/');await page.waitForFunction(()=>globalThis.fixture);assert.equal(await page.locator('#quantity-display').textContent(),'1');
   await page.evaluate(()=>fixture.gateway.setScope({backend:'https://fixture.example',environment:'TEST',owner:'00000000-0000-4000-8000-000000000011'}));await idle();assert.equal(await page.locator('#quantity-display').textContent(),'0');
+  await page.evaluate(async()=>{const list=(await fixture.gateway.createList({title:'Totali grandi'})).value;for(let i=0;i<3;i++)await fixture.gateway.createCount({listId:list.listId,category:'plants',title:'Quantità grande '+i,quantity:Number.MAX_SAFE_INTEGER});});await click('back');
+  const largeTotal=page.locator('.archive-list').filter({has:page.locator('h2',{hasText:'Totali grandi'})}).locator('[data-category="plants"] summary');assert.equal(await largeTotal.locator('strong').textContent(),'27021597764222973');
+  const overlap=await largeTotal.evaluate(summary=>{const label=summary.querySelector('span'),value=summary.querySelector('strong').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(label);return [...range.getClientRects()].some(r=>r.width>0&&r.height>0&&r.left<value.right&&r.right>value.left&&r.top<value.bottom&&r.bottom>value.top);});assert.equal(overlap,false,'large valid totals remain separate from category label');
+  await page.screenshot({path:output+'/'+name+'-large-totals.png',fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
   assert.equal(requests.some(u=>/maplibre|leaflet|soil|catasto|src\/app\.js/.test(u)),false);
   console.log(name+': impulses, restore, offline mutations, reset, keyboard, save, material, moves, scope and viewport passed');await context.close();

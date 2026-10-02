@@ -1,4 +1,4 @@
-import {CATEGORY_LABELS} from '../conteggi/model.js';
+import {CATEGORY_LABELS} from '../conteggi/model.js?v=1.2.3';
 const syncLabels={local:'Sul dispositivo',pending:'Da sincronizzare',synced:'Sincronizzato',error:'Da riprovare',conflict:'Conflitto da risolvere'};
 
 export function mountCountsDesktopSummary({document=globalThis.document,gateway,onOpen}){

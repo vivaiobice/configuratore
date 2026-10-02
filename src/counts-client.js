@@ -1,4 +1,4 @@
-import {CountsError,id,keys,newList,newCount,patchCount,validateListPatch,quantityAfter,summarizeCounts} from '../conteggi/model.js';
+import {CountsError,id,keys,newList,newCount,patchCount,validateListPatch,quantityAfter,summarizeCounts} from '../conteggi/model.js?v=1.2.3';
 import {createCountsStore,scopeKey} from '../conteggi/store.js';
 const notFound=()=>{throw new CountsError('NOT_FOUND_OR_FORBIDDEN','Conteggio o lista non disponibile');};
 const alive=(map,key)=>{const value=map[key];if(!value||value.deleted)notFound();return value;};
@@ -39,7 +39,7 @@ export function createCountsGateway({store=createCountsStore(),scope,transport=n
       state.reading={...value,day,listTitle:`Letture del ${date.toLocaleDateString('it-IT')}`,destinationListId:listId};return state.reading;
     },'reading');},
     async updateReading({countId,expectedLocalRevision,operationId=crypto.randomUUID(),patch}){return mutate(state=>command(state,{countId,expectedLocalRevision,operationId,patch},()=>{
-      keys(patch,['title','varietyLabel','rootstockLabel','category','quantity','notes','field']);const previous=state.reading;if(!previous||previous.countId!==id(countId))notFound();
+      keys(patch,['title','varietyLabel','rootstockLabel','postType','postMaterial','componentType','category','quantity','notes','field']);const previous=state.reading;if(!previous||previous.countId!==id(countId))notFound();
       if(previous.localRevision!==expectedLocalRevision)throw new CountsError('VERSION_CONFLICT','La lettura è stata modificata in un’altra scheda');
       state.reading=patchCount(previous,patch);return state.reading;
     }),'reading');},

@@ -1,5 +1,5 @@
 import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=45';
-import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=45';
+import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=1.2.3';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);
@@ -47,12 +47,16 @@ export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantS
   if (!Number.isFinite(rowSpacing) || rowSpacing <= 0 || !Number.isFinite(plantSpacing) || plantSpacing <= 0) return emptyResult();
 
   const metrics = polygonMetrics(polygon);
-  const validExclusions = (Array.isArray(exclusions) ? exclusions : []).filter((item) => Array.isArray(item) && item.length >= 4);
-  const excludedAreaM2 = Math.min(metrics.areaM2, validExclusions.reduce((sum, item) => sum + polygonMetrics(item).areaM2, 0));
+  const validExclusions = (Array.isArray(exclusions) ? exclusions : []).filter((item) => {
+    const ring=Array.isArray(item)?item:item?.geometry;
+    return Array.isArray(ring)&&ring.length>=4;
+  });
+  const exclusionRings=validExclusions.map(item=>Array.isArray(item)?item:item.geometry);
+  const excludedAreaM2 = Math.min(metrics.areaM2, exclusionRings.reduce((sum, item) => sum + polygonMetrics(item).areaM2, 0));
   const curvePoints=normalizeRowCurvePoints(rowCurvePoints);
   const rowGenerator=(headland)=>curvePoints.length
     ? generateCurvedRows({polygon,rowSpacingM:rowSpacing,orientationDeg:Number(orientationDeg)||0,rowCurvePoints:curvePoints,maintainEquidistance:maintainRowEquidistance!==false,exclusions:validExclusions,headlandWidthM:headland})
-    : generateRows(polygon,rowSpacing,Number(orientationDeg)||0,{exclusions:validExclusions,headlandWidthM:headland});
+    : generateRows(polygon,rowSpacing,Number(orientationDeg)||0,{exclusions:exclusionRings,headlandWidthM:headland});
   const rawRows = rowGenerator(0);
   const headlandWidth = Number(headlandWidthM);
   const effectiveHeadland = Number.isFinite(headlandWidth) && headlandWidth > 0 ? headlandWidth : 0;

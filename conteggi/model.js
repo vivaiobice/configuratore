@@ -1,7 +1,7 @@
 export class CountsError extends Error {
   constructor(code, message=code, details=null) { super(message); this.name='CountsError'; this.code=code; this.details=details; }
 }
-export const CATEGORY_LABELS=Object.freeze({plants:'Piante',posts:'Pali',other:'Altro'});
+export const CATEGORY_LABELS=Object.freeze({plants:'Barbatelle / Viti',posts:'Pali',other:'Altro'});
 export const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const fail=(message)=>{throw new CountsError('VALIDATION_ERROR',`VALIDATION_ERROR: ${message}`);};
 export function keys(value,allowed) { if(!value||typeof value!=='object'||Array.isArray(value))fail('Oggetto richiesto'); for(const key of Object.keys(value))if(!allowed.includes(key))fail(`Proprietà non ammessa: ${key}`); }
@@ -22,12 +22,13 @@ export function fieldAssociation(value) {
   return result;
 }
 export function validateCountPatch(patch) {
-  keys(patch,['title','varietyLabel','rootstockLabel','category','listId','quantity','notes','field']);const next={};
+  keys(patch,['title','varietyLabel','rootstockLabel','postType','postMaterial','componentType','category','listId','quantity','notes','field']);const next={};
   if('category'in patch){if(!Object.hasOwn(CATEGORY_LABELS,patch.category))fail('Categoria non valida');next.category=patch.category;}
   if('listId'in patch)next.listId=id(patch.listId);
   if('title'in patch)next.title=text(patch.title,200,{required:true,trim:true});
   if('varietyLabel'in patch)next.varietyLabel=patch.varietyLabel===null?null:text(patch.varietyLabel,200,{required:true,trim:true});
   if('rootstockLabel'in patch)next.rootstockLabel=patch.rootstockLabel===null?null:text(patch.rootstockLabel,200,{required:true,trim:true});
+  for(const key of ['postType','postMaterial','componentType'])if(key in patch)next[key]=patch[key]===null?null:text(patch[key],80,{required:true,trim:true});
   if('quantity'in patch)next.quantity=quantity(patch.quantity);
   if('notes'in patch)next.notes=text(patch.notes,10000);
   if('field'in patch)next.field=fieldAssociation(patch.field);
@@ -36,10 +37,14 @@ export function validateCountPatch(patch) {
 export function validateListPatch(patch){keys(patch,['title','status']);const next={};if('title'in patch)next.title=text(patch.title,200,{required:true,trim:true});if('status'in patch){if(!['open','closed'].includes(patch.status))fail('Stato lista non valido');next.status=patch.status;}return next;}
 export function patchCount(record,patch,now=new Date().toISOString()){return {...record,...validateCountPatch(patch),localRevision:record.localRevision+1,updatedAt:now};}
 export function newCount(input,now=new Date().toISOString()){
-  keys(input,['countId','listId','category','title','varietyLabel','rootstockLabel','quantity','notes','field']);id(input.countId);id(input.listId);
+  keys(input,['countId','listId','category','title','varietyLabel','rootstockLabel','postType','postMaterial','componentType','quantity','notes','field']);id(input.countId);id(input.listId);
   if(!Object.hasOwn(CATEGORY_LABELS,input.category))fail('Categoria non valida');
   const {countId,listId,category,...patch}=input;
   return {countId,listId,category,title:CATEGORY_LABELS[category],varietyLabel:null,quantity:0,notes:'',field:null,...validateCountPatch(patch),revision:0,localRevision:0,syncState:'local',updatedAt:now,deleted:false};
 }
 export function newList({listId,title},now=new Date().toISOString()){return {listId:id(listId),title:text(title,200,{required:true,trim:true}),status:'open',revision:0,localRevision:0,syncState:'local',updatedAt:now,deleted:false};}
+export function countDetailLines(record){
+  const details={plants:[['varietyLabel','Vitigno'],['rootstockLabel','Portainnesto']],posts:[['postType','Tipo palo'],['postMaterial','Materiale']],other:[['componentType','Componente']]};
+  return (details[record.category]??[]).filter(([key])=>record[key]).map(([key,label])=>`${label}: ${record[key]}`);
+}
 export function summarizeCounts(rows){return Object.keys(CATEGORY_LABELS).map(category=>{const items=rows.filter(r=>!r.deleted&&r.category===category);return {category,items,totalQuantity:items.reduce((sum,r)=>sum+BigInt(quantity(r.quantity)),0n).toString()};});}

@@ -40,6 +40,11 @@ try{
  ]){
   const context=await browser.newContext(options),page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
   const state=createInitialState();state.project.localProjectId='fixture-project';state.project.geometry=partial?null:ring;state.project.fields[0].geometry=state.project.geometry;
+  if(name==='desktop-user'){
+   state.project.rowCurvePoints=[{id:'before',position:.25,offsetM:5},{id:'after',position:.75,offsetM:-5}];
+   state.project.exclusions=[{id:'passage',type:'linear',widthM:1.5,geometry:[[7.9999,44.00049325],[8.0011,44.00049325],[8.0011,44.00050675],[7.9999,44.00050675],[7.9999,44.00049325]]}];
+   Object.assign(state.project.fields[0],{rowCurvePoints:state.project.rowCurvePoints,exclusions:state.project.exclusions});
+  }
   const workspace={version:1,ownerId:owner,projectId:state.project.localProjectId,fieldId:state.project.activeFieldId,
    map:{drawing:partial,mode:'perimeter',vertices:partial?[[8,44],[8.001,44]]:[],previousPerimeter:null,editRing:null,camera:{center:[8.0005,44.0005],zoom:16,bearing:0}},
    navigation:{mobile:{screen:partial?'editor':'map',transaction:partial},fullscreen:partial,transactionSnapshot:partial?state:null}};
@@ -72,6 +77,17 @@ try{
    await page.locator('#mobile-add-field').tap();await page.waitForFunction(()=>document.body.dataset.mobileScreen==='editor');
   }else{
    await page.locator('#row-spacing').fill('3.10');assert.equal((await readDraft()).state.project.rowSpacingM,3.1,'restored project accepts parameter edits');
+   assert.match(await page.locator('.curve-point-card').nth(0).textContent(),/Tratto 1/);
+   assert.match(await page.locator('.curve-point-card').nth(1).textContent(),/Tratto 2/);
+   const signature=()=>page.evaluate(async key=>{const project=JSON.parse(localStorage.getItem(key)).state.project;
+    const {calculateProject}=await import('/src/project-calculator.js');const result=calculateProject({polygon:project.geometry,...project});
+    const ids=[...new Set(result.rows.map(row=>row.segmentId))];return {ids,rows:ids.map(id=>result.rows.filter(row=>row.segmentId===id)),map:__map.getSource('vineyard-rows')._data.features.map(feature=>feature.geometry.coordinates)};
+   },draftKey);
+   const before=await signature();assert.equal(before.ids.length,2);assert.ok(before.ids.every(Boolean));
+   await page.locator('.curve-point-card').nth(0).locator('input[type="range"]').nth(1).evaluate(node=>{node.value='12';node.dispatchEvent(new Event('input',{bubbles:true}));node.dispatchEvent(new Event('change',{bubbles:true}));});
+   const after=await signature();assert.deepEqual(after.rows[1],before.rows[1],'changing the first curve keeps the second section unchanged');
+   assert.notDeepEqual(after.rows[0],before.rows[0]);assert.notDeepEqual(after.map,before.map,'the actual map redraws the independently modified curves');
+   assert.equal((await readDraft()).state.project.rowCurvePoints.find(point=>point.id==='before').offsetM,12);
   }
   if(options.hasTouch){
    assert.equal(await page.locator('.mobile-brand').isVisible(),false,'home header stays hidden in the restored editor');

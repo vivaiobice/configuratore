@@ -1,28 +1,27 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.2.2';
+import { createMobileUI } from './mobile-ui.js?v=1.2.3';
 import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3&counts=1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.4';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=1.2.2';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
+import { initMap } from './map.js?v=1.2.3';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.2.3';
 import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=counts1';
-import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.2';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.3';
 import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
-import {mountToolMenu} from './tool-menu.js?v=1.2.2';
-import {mountCountsDesktopSummary} from './counts-desktop-summary.js?v=1.2.2';
+import {mountToolMenu} from './tool-menu.js?v=1.2.3';
 import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=counts2';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.2';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.3';
 import {rememberCountsOwner} from './counts-offline-owner.js';
-import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.2';
-import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.2';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.2';
+import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.3';
+import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.3';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.3';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
 import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
@@ -46,13 +45,14 @@ import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
-import { createAuthService } from './auth-service.js?v=1.2.2';
-import { createAuthBridge } from './auth-bridge.js?v=1.2.2';
-import { createProfileUI } from './profile-ui.js?v=1.2.2';
+import { createAuthService } from './auth-service.js?v=1.2.3';
+import { createAuthBridge } from './auth-bridge.js?v=1.2.3';
+import { createProfileUI } from './profile-ui.js?v=1.2.3';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
-import { normalizeRowCurvePoints } from './row-curves.js?v=45';
+import { normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.3';
+import {curveControlRange,nextCurveControlPoint} from './row-curve-control-state.js';
 import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=45';
 
 const $ = (selector) => document.querySelector(selector);
@@ -253,7 +253,7 @@ function renderProjectAdvice(project) {
 function calculateFieldProject(project) {
   return calculateProject({
     polygon:project?.geometry,
-    exclusions:(project?.exclusions ?? []).map((item) => item?.geometry ?? item),
+    exclusions:project?.exclusions ?? [],
     rowSpacingM:project?.rowSpacingM,
     plantSpacingM:project?.plantSpacingM,
     orientationDeg:project?.orientationDeg,
@@ -311,16 +311,12 @@ function syncOrientationControl() {
 }
 
 function curveId(){return globalThis.crypto?.randomUUID?.()??`curve-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;}
-function nextCurvePosition(points){
-  const positions=[0,...points.map(point=>point.position),1].sort((a,b)=>a-b);let best=[0,1];
-  for(let index=1;index<positions.length;index++)if(positions[index]-positions[index-1]>best[1]-best[0])best=[positions[index-1],positions[index]];
-  return Math.round(((best[0]+best[1])/2)*100)/100;
-}
-function syncCurveEditor(){mapApi?.setRowCurveEditor?.({geometry:state.project.geometry,orientationDeg:state.project.orientationDeg,points:state.project.rowCurvePoints??[],active:curveEditingActive});}
-function patchCurvePoints(points,{preserveControls=false}={}){curveControlInteracting=preserveControls;try{patchProject({rowCurvePoints:normalizeRowCurvePoints(points)});}finally{curveControlInteracting=false;}}
+function curveContext(){return {polygon:state.project.geometry,orientationDeg:state.project.orientationDeg,exclusions:state.project.exclusions??[]};}
+function syncCurveEditor(){mapApi?.setRowCurveEditor?.({geometry:state.project.geometry,orientationDeg:state.project.orientationDeg,exclusions:state.project.exclusions??[],points:state.project.rowCurvePoints??[],active:curveEditingActive});}
+function patchCurvePoints(points,{preserveControls=false}={}){curveControlInteracting=preserveControls;try{patchProject({rowCurvePoints:resolveRowCurvePoints({...curveContext(),rowCurvePoints:points})});}finally{curveControlInteracting=false;}}
 function renderCurveControls(){
   const list=$('#curve-points-list');if(!list)return;
-  const points=normalizeRowCurvePoints(state.project.rowCurvePoints);
+  const segments=getRowCurveSegments(curveContext()),points=resolveRowCurvePoints({...curveContext(),rowCurvePoints:state.project.rowCurvePoints});
   const equidistance=$('#curve-equidistance');if(equidistance)equidistance.checked=state.project.maintainRowEquidistance!==false;
   list.replaceChildren();
   const add=$('#curve-add-button'),edit=$('#curve-edit-button'),reset=$('#curve-reset-button');
@@ -331,10 +327,11 @@ function renderCurveControls(){
   points.forEach((point,index)=>{
     const card=document.createElement('div');card.className='curve-point-card';
     const heading=document.createElement('div');heading.className='curve-point-heading';
-    const title=document.createElement('strong');title.textContent=`Punto ${index+1}`;
+    const range=curveControlRange(point,segments);
+    const title=document.createElement('strong');title.textContent=`Punto ${index+1}${segments.length>1?' · '+range.segment.label:''}`;
     const remove=document.createElement('button');remove.type='button';remove.className='curve-point-remove';remove.textContent='Elimina';remove.addEventListener('click',()=>patchCurvePoints(points.filter(item=>item.id!==point.id)));
     heading.append(title,remove);
-    const position=document.createElement('label');position.textContent='Posizione lungo il filare';const positionValue=document.createElement('output');positionValue.textContent=`${Math.round(point.position*100)}%`;const positionInput=document.createElement('input');positionInput.type='range';positionInput.min='.02';positionInput.max='.98';positionInput.step='.01';positionInput.value=String(point.position);positionInput.addEventListener('input',()=>{positionValue.textContent=`${Math.round(Number(positionInput.value)*100)}%`;patchCurvePoints(points.map(item=>item.id===point.id?{...item,position:Number(positionInput.value)}:item),{preserveControls:true});});positionInput.addEventListener('change',renderCurveControls);position.append(positionValue,positionInput);
+    const position=document.createElement('label');position.textContent=segments.length>1?'Posizione nel tratto':'Posizione lungo il filare';const positionValue=document.createElement('output');positionValue.textContent=`${range.percent}%`;const positionInput=document.createElement('input');positionInput.type='range';positionInput.min=String(range.min);positionInput.max=String(range.max);positionInput.step='.001';positionInput.value=String(point.position);positionInput.addEventListener('input',()=>{positionValue.textContent=`${curveControlRange({...point,position:Number(positionInput.value)},segments).percent}%`;patchCurvePoints(points.map(item=>item.id===point.id?{...item,position:Number(positionInput.value)}:item),{preserveControls:true});});positionInput.addEventListener('change',renderCurveControls);position.append(positionValue,positionInput);
     const offset=document.createElement('label');offset.textContent='Spostamento laterale';const offsetValue=document.createElement('output');offsetValue.textContent=`${point.offsetM.toLocaleString('it-IT',{maximumFractionDigits:1})} m`;const offsetInput=document.createElement('input');offsetInput.type='range';offsetInput.min='-100';offsetInput.max='100';offsetInput.step='.5';offsetInput.value=String(point.offsetM);offsetInput.addEventListener('input',()=>{offsetValue.textContent=`${Number(offsetInput.value).toLocaleString('it-IT',{maximumFractionDigits:1})} m`;patchCurvePoints(points.map(item=>item.id===point.id?{...item,offsetM:Number(offsetInput.value)}:item),{preserveControls:true});});offsetInput.addEventListener('change',renderCurveControls);offset.append(offsetValue,offsetInput);
     card.append(heading,position,offset);list.append(card);
   });
@@ -1001,7 +998,7 @@ for (const button of document.querySelectorAll('[data-angle]')) button.addEventL
 $('#curve-add-button')?.addEventListener('click',()=>{
   if(!state.project.geometry)return;
   const points=normalizeRowCurvePoints(state.project.rowCurvePoints);if(points.length>=8)return;
-  curveEditingActive=true;patchCurvePoints([...points,{id:curveId(),position:nextCurvePosition(points),offsetM:0}]);
+  curveEditingActive=true;patchCurvePoints([...points,nextCurveControlPoint(points,getRowCurveSegments(curveContext()),curveId())]);
 });
 $('#curve-edit-button')?.addEventListener('click',()=>{if(!state.project.geometry||!state.project.rowCurvePoints?.length)return;curveEditingActive=!curveEditingActive;renderCurveControls();syncCurveEditor();});
 $('#curve-reset-button')?.addEventListener('click',()=>{curveEditingActive=false;mapApi?.finishRowCurveEditing?.();patchCurvePoints([]);});
@@ -1241,7 +1238,6 @@ async function initializeCloud() {
       try{
         countsGateway=createDesktopCountsGateway({client,ownerId:authState.user?.id,environment:APP_CONFIG.environment,
           backendUrl:APP_CONFIG.supabaseUrl,syncEnabled:COUNTS_CONFIG.syncEnabled});
-        if(countsGateway)mountCountsDesktopSummary({document,gateway:countsGateway,onOpen:switchToCounts});
       }catch(error){console.warn('Gateway Conteggi non disponibile nell’ambiente corrente',error);}
     }
     loadActiveFieldOnMap();renderFieldManager();renderExclusions();syncProjectControls();calculateAndRender();

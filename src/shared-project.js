@@ -1,6 +1,6 @@
 import { parseSharedReportUrl } from './report-share.js';
 import { parsePublicProjectCodeUrl } from './public-project-access.js';
-import { calculateProject } from './project-calculator.js?v=45';
+import { calculateProject } from './project-calculator.js?v=1.2.3';
 import { buildReportMapModel } from './report-map-model.js?v=45';
 import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
 import { buildProjectReportModel } from './pdf-model.js?v=55.7';
@@ -26,7 +26,7 @@ function formatted(value,decimals=0){
 }
 function detailRow(label,value){return `<div class="shared-detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value??'Da definire')}</strong></div>`;}
 function exclusionRings(field) {
-  return (Array.isArray(field?.exclusions) ? field.exclusions : []).map((item) => Array.isArray(item) ? item : item?.geometry).filter(Array.isArray);
+  return Array.isArray(field?.exclusions) ? field.exclusions : [];
 }
 
 function fieldPresentation(field, index) {

@@ -1,6 +1,6 @@
-# Vivai Obice — piattaforma unica 1.2.2
+# Vivai Obice — piattaforma unica 1.2.3
 
-Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. Comfortaa in tutta l’interfaccia, caricato da un asset locale. Il menu strumenti e il Profilo aprono direttamente il contatore anche su mobile. Il ripristino delle bozze e il cambio campo attendono solo l’inizializzazione dell’editor, senza bloccarsi durante il caricamento delle immagini satellitari. Conteggi apre subito il contatore a impulsi; dettagli e destinazione si gestiscono dopo il salvataggio. Ambiente configurato: LIVE; i servizi cloud Conteggi restano disattivati finché non installati.
+Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. L’interfaccia usa Comfortaa locale; il documento generato conserva il font precedente. I nomi dei campi restano visibili sulla porzione di mappa inquadrata, anche senza selezione. Un passaggio trasversale divide la curvatura in tratti indipendenti. Conteggi apre direttamente il contatore, con logo e ritorno al configuratore, titolo modificabile, pulsante `+` verde a tutta larghezza e `−1` sopra a sinistra. Le letture sono raccolte in una sola schermata con card e totali Barbatelle / Viti, Pali e Altro; dettagli e materiali si modificano in popup. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati. Le verifiche locali della 1.2.3 comprendono 915 test e i runner browser desktop/mobile.
 
 - Stato corrente e verifiche: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
 - Pubblicazione del pacchetto unico e attivazione backend: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).

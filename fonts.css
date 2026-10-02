@@ -6,9 +6,12 @@
   font-display: swap;
 }
 
-/* One locally hosted family for the complete platform, including form controls,
-   map labels and dialogs whose legacy styles specify their own font. */
+/* Keep the interface consistent, including form controls, map labels and
+   dialogs. Generated documents retain their own typography. */
 :root { --font-ui: 'Comfortaa', Arial, sans-serif; }
-html, body, body *, body *::before, body *::after {
+html, body,
+body :not(.report-document, .report-document *),
+body :not(.report-document, .report-document *)::before,
+body :not(.report-document, .report-document *)::after {
   font-family: var(--font-ui) !important;
 }

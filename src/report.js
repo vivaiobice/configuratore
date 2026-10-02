@@ -2,7 +2,7 @@ import {buildOverviewMapModel} from './report-overview.js';
 import {refreshFieldSoilForReport} from './soil-report.js';
 import { loadDraft } from './storage.js';
 import { ensureProjectFields } from './fields.js?v=55.1';
-import { calculateProject } from './project-calculator.js?v=45';
+import { calculateProject } from './project-calculator.js?v=1.2.3';
 import { buildProjectReportModel } from './pdf-model.js?v=55.7';
 import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=55.7';
 import { buildReportMapModel } from './report-map-model.js?v=45';
@@ -20,7 +20,7 @@ import { mountReportAddressAutocomplete } from './report-address.js?v=45';
 export { REPORT_HANDOFF_KEY };
 
 function metricsForField(field){
-  const exclusions=(Array.isArray(field.exclusions)?field.exclusions:[]).map(item=>Array.isArray(item)?item:item?.geometry).filter(Array.isArray);
+  const exclusions=Array.isArray(field.exclusions)?field.exclusions:[];
   return calculateProject({polygon:field.geometry,exclusions,rowSpacingM:field.rowSpacingM,plantSpacingM:field.plantSpacingM,orientationDeg:field.orientationDeg,rowCurvePoints:field.rowCurvePoints,maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:field.postSpacingM,headlandWidthM:field.headlandWidthM});
 }
 
