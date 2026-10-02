@@ -1,30 +1,32 @@
 const DRAFT_KEY = 'vivai-obice:configuratore:draft';
 const CONSENT_KEY = 'vivai-obice:configuratore:consent';
-const DRAFT_VERSION = 2;
-import { migrateDraftEnvelope } from './local-migrations.js?v=55.6.1';
+const DRAFT_VERSION = 3;
+import { migrateDraftEnvelope } from './local-migrations.js?v=55.6.1&counts=1';
 import {ownerStorageKey} from './local-owner-scope.js';
 import {APP_CONFIG} from './config.js';
 import {secureUuid} from './secure-id.js';
 const draftKey=()=>ownerStorageKey(DRAFT_KEY,APP_CONFIG.environment);
 
-export function saveDraft(storage, state) {
+export function saveDraft(storage, state, workspace = null) {
   if (!storage?.setItem) return false;
-  const envelope = migrateDraftEnvelope({ version: DRAFT_VERSION, savedAt: new Date().toISOString(), state });
+  const envelope = migrateDraftEnvelope({ version: DRAFT_VERSION, savedAt: new Date().toISOString(), state, workspace });
   storage.setItem(draftKey(), JSON.stringify(envelope));
   return envelope.state;
 }
 
-export function loadDraft(storage) {
+export function loadDraftRecord(storage) {
   if (!storage?.getItem) return null;
   try {
     const raw = storage.getItem(draftKey());
     if (!raw) return null;
     const envelope = JSON.parse(raw);
-    return migrateDraftEnvelope(envelope).state;
+    return migrateDraftEnvelope(envelope);
   } catch {
     return null;
   }
 }
+
+export function loadDraft(storage) { return loadDraftRecord(storage)?.state??null; }
 
 export function newSessionId() {
   return secureUuid();

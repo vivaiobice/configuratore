@@ -196,6 +196,7 @@ export function createMobileUI(api){
   $('#mobile-field-detail').innerHTML=`${metricsHtml(field)}<dl class="mobile-materials">${[
    ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
   ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}${soilValues.map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value||'Non disponibile')}</dd></div>`).join('')}</dl><div class="mobile-soil-footer"><small>Fonte: ${escape(SOIL_SOURCE)} · CC BY 4.0${soil?.retrievedAt?` · ${escape(new Date(soil.retrievedAt).toLocaleDateString('it-IT'))}`:''}${soil&&!soilProfileIsCurrent(field.soil,field.geometry)?' · Perimetro modificato: aggiorna i dati.':''}</small><small>${escape(SOIL_DISCLAIMER)}</small><button type="button" data-mobile-refresh-soil>Aggiorna dati suolo</button><p data-mobile-soil-status role="status"></p></div><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
+  if(api.countsEnabled){const count=document.createElement('button');count.type='button';count.className='mobile-counts-link';count.textContent='＋ Nuovo conteggio per questo campo';count.addEventListener('click',()=>Promise.resolve().then(()=>api.openCountsForField?.(field.id)).catch(error=>showNotice(error.message||'Conteggi non disponibile.')));$('#mobile-field-detail').append(count);}
   const refresh=$('[data-mobile-refresh-soil]');refresh.disabled=!field.geometry;refresh.addEventListener('click',async()=>{refresh.disabled=true;const status=$('[data-mobile-soil-status]');status.textContent='Consultazione della cartografia in corso…';try{const result=await api.analyzeSoil?.();if(result)renderDetail();else status.textContent='Dati del suolo temporaneamente non disponibili';}finally{if(refresh.isConnected)refresh.disabled=false;}});
  }
  function renderProjects(){
@@ -233,6 +234,7 @@ export function createMobileUI(api){
   const content=$('#mobile-profile-content');if(!content)return;
   if(authState.kind==='user'){
    content.innerHTML=mobileUserProfileHtml(authState);
+   addCountsProfileAccess(content);
    mountThemeChoice(content);
    choices.sync();
    $('#mobile-public-project')?.addEventListener('click',()=>api.openPublicProject?.());
@@ -242,6 +244,7 @@ export function createMobileUI(api){
    return;
   }
   content.innerHTML=`<div class="mobile-auth-card"><p class="mobile-storage-note">Continua come Guest oppure accedi per ritrovare i progetti su altri dispositivi.</p><button id="mobile-public-project">Carica progetto con ID</button><div id="mobile-login-form"><label>E-mail o username<input id="mobile-auth-identifier" autocomplete="username"/></label><label>Password<input id="mobile-auth-password" type="password" autocomplete="current-password"/></label><button id="mobile-auth-login" class="mobile-primary">Accedi</button><button id="mobile-show-register">Crea account</button><button id="mobile-auth-reset">Password dimenticata?</button></div><div id="mobile-register-form" hidden><label>Nome profilo<input id="mobile-register-name" autocomplete="name"/></label><label>E-mail<input id="mobile-register-email" type="email" autocomplete="email"/></label><label>Username<input id="mobile-register-username" autocomplete="username" placeholder="anche solo numeri"/></label><label>Password<input id="mobile-register-password" type="password" autocomplete="new-password"/></label><button id="mobile-auth-register" class="mobile-primary">Crea account</button><button id="mobile-show-login">Ho già un account</button></div></div>`;
+  addCountsProfileAccess(content);
   mountThemeChoice(content);
   choices.sync();
   const run=async action=>{authFeedback('Attendi…');try{await action();authFeedback('Operazione completata.');}catch(error){authFeedback(error.message||'Operazione non riuscita',true);}};
@@ -251,6 +254,12 @@ export function createMobileUI(api){
   $('#mobile-public-project')?.addEventListener('click',()=>api.openPublicProject?.());
   $('#mobile-show-register').addEventListener('click',()=>{$('#mobile-login-form').hidden=true;$('#mobile-register-form').hidden=false;});
   $('#mobile-show-login').addEventListener('click',()=>{$('#mobile-register-form').hidden=true;$('#mobile-login-form').hidden=false;});
+ }
+ function addCountsProfileAccess(content){
+  if(!api.countsEnabled)return;
+  const button=document.createElement('button');button.type='button';button.className='mobile-counts-link';button.textContent='Conteggi · Rimesse, pali e appunti di campo';
+  button.addEventListener('click',()=>Promise.resolve().then(()=>api.openCounts?.('lists')).catch(error=>showNotice(error.message||'Conteggi non disponibile.')));
+  content.append(button);
  }
  function renderField(){
   if(!enabled)return;choices.sync();const field=api.getField();if(!field)return;
@@ -350,7 +359,16 @@ export function createMobileUI(api){
   instance.fire('click',{point,lngLat:instance.unproject(point),originalEvent:event});
  }});
  api.auth?.subscribe?.(next=>{authState=next;if(screen==='profile')renderProfile();if(screen==='projects')renderProjects();});
- const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
+ function captureSession(){return {screen,transaction,awaitingPerimeter,drawing,editing,scrollTop:$('#mobile-pages')?.scrollTop??0};}
+ function restoreSession(saved){
+  if(!enabled||!saved||!['map','fields','detail','parameters','projects','profile','editor'].includes(saved.screen))return false;
+  transaction=false;navigate(saved.screen);
+  transaction=Boolean(saved.transaction);awaitingPerimeter=Boolean(saved.awaitingPerimeter);
+  drawing=Boolean(saved.drawing);editing=Boolean(saved.editing);updateDrawingActions();
+  if(Number.isFinite(saved.scrollTop))$('#mobile-pages').scrollTop=Math.max(0,saved.scrollTop);
+  return true;
+ }
+ const controller={sync,navigate,renderField,drawingState,editingState,geometryCommitted,openField,captureSession,restoreSession,isHome:()=>enabled&&screen==='map',isActive:()=>enabled};
  sync();
  return controller;
 }

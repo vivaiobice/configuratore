@@ -1,15 +1,20 @@
 import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
 import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
 import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.0.4';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3';
+import { createMobileUI } from './mobile-ui.js?v=1.0.4&counts=1';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3&counts=1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
 import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.4';
 import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
 import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=1.0.2';
+import { initMap } from './map.js?v=1.0.2&counts=1';
 import { calculateProject, calculateManualPlants } from './project-calculator.js?v=45';
-import { loadDraft, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=55.6.4';
+import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=counts1';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=counts1';
+import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
+import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
+import {mountToolMenu} from './tool-menu.js?v=counts1';
+import {mountCountsDesktopSummary} from './counts-desktop-summary.js?v=counts1';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
 import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6.2';
@@ -19,7 +24,7 @@ import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=55.6.7';
+import { createProjectSync } from './project-sync.js?v=55.6.7&counts=1';
 import {ensureQuoteRevision} from './quote-sync.js?v=55.6.7';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
@@ -38,7 +43,7 @@ import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
 import { createAuthService } from './auth-service.js?v=49';
 import { createAuthBridge } from './auth-bridge.js';
-import { createProfileUI } from './profile-ui.js?v=55.6.3';
+import { createProfileUI } from './profile-ui.js?v=55.6.3&counts=1';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
@@ -46,7 +51,8 @@ import { normalizeRowCurvePoints } from './row-curves.js?v=45';
 import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=45';
 
 const $ = (selector) => document.querySelector(selector);
-const stored = loadDraft(globalThis.localStorage);
+const storedRecord = loadDraftRecord(globalThis.localStorage);
+const stored = storedRecord?.state;
 let state = stored?.project ? { ...createInitialState(), ...stored, project: ensureProjectFields({ ...createInitialState().project, ...stored.project }) } : createInitialState();
 state = { ...state, map:normalizeMapState(state.map) };
 if (!state.project.projectContextType) state = { ...state, project:{ ...state.project, projectContextType:'new_planting' } };
@@ -68,6 +74,11 @@ let accountAuthService = null;
 let latestMetrics = null;
 let pendingFinalAction = null;
 let mobileTransactionSnapshot = null;
+let pendingWorkspace=storedRecord?.workspace??null;
+let restoringWorkspace=false;
+let switchingTool=false;
+let fieldDirectory=null,countsGateway=null;
+const countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:APP_CONFIG.countsEnabled});
 let perimeterEventSent = Boolean(state.project.geometry);
 let curveEditingActive=false;
 let curveControlInteracting=false;
@@ -77,7 +88,7 @@ let adminReadClient=null;
 const userProjectsView=createUserProjectsView({document,auth:authBridge,loadData:()=>loadUserProjectsData(adminReadClient)});
 authBridge.subscribe(()=>desktopLibraryUi?.render());
 initializeTheme();
-const profileUi=createProfileUI({authService:authBridge,document});
+const profileUi=createProfileUI({authService:authBridge,document,countsEnabled:countsConfig.enabled,onCounts:()=>switchToCounts('lists')});
 profileUi.mount();
 const publicProjectDialog=$('#public-project-dialog');
 function openPublicProjectDialog(){
@@ -131,7 +142,72 @@ function renderCadastralState(next = {}) {
   else if(next.loading)setStatus('Caricamento della cartografia catastale…');
   else setStatus('Catasto attivo. Riferimento cartografico informativo.');
 }
-function persist() { state=saveDraft(globalThis.localStorage, state)||state; }
+function captureWorkspace(){
+  const ownerId=authBridge.getState()?.user?.id;
+  if(!ownerId||!state.project.localProjectId)return null;
+  return {version:1,ownerId,projectId:state.project.localProjectId,fieldId:state.project.activeFieldId,
+    cloudVersion:Number(state.cloud?.version)||0,map:mapApi?.capturePendingEdit?.()??null,
+    navigation:{mobile:mobileUi?.captureSession?.()??null,fullscreen:Boolean($('.map-wrap')?.classList.contains('fullscreen-map')),
+      advancedOpen:Boolean($('.advanced')?.open),panelScroll:$('.panel-scroll')?.scrollTop??0,
+      transactionSnapshot:mobileTransactionSnapshot},savedAt:new Date().toISOString()};
+}
+function persist() {
+  if(!state.project.localProjectId)state={...state,project:{...state.project,localProjectId:newSessionId()}};
+  const workspace=restoringWorkspace||!authBridge.getState()?.user?.id?pendingWorkspace:captureWorkspace();
+  state=saveDraft(globalThis.localStorage,state,workspace)||state;
+}
+async function switchToCounts(view,params={}){
+  if(switchingTool)return;
+  switchingTool=true;
+  try{
+    const url=buildCountsUrl(countsConfig,view,params);
+    if(view!=='new'||params.fieldId)clearPendingFieldContext(globalThis.sessionStorage);
+    const ownerId=authBridge.getState()?.user?.id;
+    if(!state.project.localProjectId)state={...state,project:{...state.project,localProjectId:newSessionId()}};
+    await checkpointBeforeSwitch({storage:globalThis.localStorage,state,ownerId,capture:captureWorkspace,
+      enqueue:()=>projectSync?.enqueueForLater?.(),navigate:()=>globalThis.location.assign(url)});
+  }catch(error){setStatus(error.message||'Salvataggio non riuscito. Resta nel configuratore e riprova.');throw error;}
+  finally{switchingTool=false;}
+}
+async function openCountsForField(fieldId){
+  const field=state.project.fields?.find(item=>item.id===fieldId);
+  if(!field)throw new Error('Campo non disponibile nel progetto corrente.');
+  const sameProject=state.cloud?.clientProjectId===state.project.localProjectId;
+  const params=fieldRouteParams({projectId:sameProject?state.cloud?.projectId:null,fieldId});
+  const verified=params.projectId?await fieldDirectory?.resolveField(params.projectId,params.fieldId):null;
+  if(verified)clearPendingFieldContext(globalThis.sessionStorage);
+  if(!verified){
+    try{writePendingFieldContext(globalThis.sessionStorage,{ownerId:authBridge.getState()?.user?.id,environment:APP_CONFIG.environment,
+      localProjectId:state.project.localProjectId,localFieldId:fieldId,projectLabel:state.project.localProjectName,
+      fieldLabel:field.label,varietyLabel:field.grapeVariety});}
+    catch{setStatus('Il conteggio si aprirà senza associazione al campo; potrai collegarlo in seguito.');}
+  }
+  await switchToCounts('new',verified?params:{});
+}
+async function loadCountsForField(fieldId){
+  const ownerId=authBridge.getState()?.user?.id;
+  const sameProject=state.cloud?.clientProjectId===state.project.localProjectId;
+  const params=fieldRouteParams({projectId:sameProject?state.cloud?.projectId:null,fieldId});
+  if(!countsGateway||!fieldDirectory||!params.projectId||!await fieldDirectory.resolveField(params.projectId,fieldId))return null;
+  const result=await countsGateway.getFieldSummary(params.projectId,fieldId);
+  return ownerId===authBridge.getState()?.user?.id?result:null;
+}
+function restorePendingWorkspace(ownerId){
+  const workspace=restoreWorkspaceForOwner({workspace:pendingWorkspace,state},ownerId,state.project.localProjectId);
+  pendingWorkspace=null;
+  if(!workspace){restoringWorkspace=false;return false;}
+  restoringWorkspace=true;
+  try{
+    mobileTransactionSnapshot=workspace.navigation?.transactionSnapshot??null;
+    if($('.advanced'))$('.advanced').open=Boolean(workspace.navigation?.advancedOpen);
+    mobileUi?.restoreSession?.(workspace.navigation?.mobile);
+    if(mapWrap&&Boolean(workspace.navigation?.fullscreen)!==mapWrap.classList.contains('fullscreen-map'))setMapFullscreen(Boolean(workspace.navigation?.fullscreen));
+    if(mapApi?.map?.loaded?.())mapApi.restorePendingEdit(workspace.map);
+    else mapApi?.map?.once?.('load',()=>mapApi?.restorePendingEdit(workspace.map));
+    if(Number.isFinite(workspace.navigation?.panelScroll))$('.panel-scroll').scrollTop=workspace.navigation.panelScroll;
+    return true;
+  }finally{restoringWorkspace=false;}
+}
 function track(type, payload = {}) { cloudService?.trackEvent(type, payload).catch((error) => console.warn('Analytics event not recorded', type, error)); }
 function numberOrNull(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed > 0 ? parsed : null; }
 function formatArea(value) { if (!value) return '—'; if (value >= 10000) return `${(value / 10000).toLocaleString('it-IT', { maximumFractionDigits: 2 })} ha`; return `${Math.round(value).toLocaleString('it-IT')} m²`; }
@@ -341,6 +417,7 @@ try {
       vertexRemovalActive = Boolean(active);
       syncVertexRemovalButton($('#remove-vertex-button'),vertexRemovalActive);
     },
+    onDraftChange:()=>{if(!restoringWorkspace)persist();},
     onReady: calculateAndRender
   });
   if (state.project.geometry) mapApi.setGeometry(state.project.geometry);
@@ -824,6 +901,7 @@ async function moveArchivedField(sourceItem,targetItem,field){
 }
 
 mobileUi = createMobileUI({
+  countsEnabled:countsConfig.enabled,openCounts:switchToCounts,openCountsForField,
   auth:authBridge,
   getMap:()=>mapApi?.map,
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
@@ -848,8 +926,10 @@ mobileUi = createMobileUI({
   openQuoteForField:(id)=>openQuote({fieldId:id}),
   finalAction:requestFinalAction
 });
+if(countsConfig.enabled)mountToolMenu({document,onCounts:()=>switchToCounts('resume'),onError:error=>setStatus(error.message||'Conteggi non disponibile.')});
 
 desktopLibraryUi=createDesktopLibraryUI({
+  countsEnabled:countsConfig.enabled,openCountsForField,loadCountsForField,
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),getActiveProjectId:()=>state.project.localProjectId,
   getFieldMetrics:(field)=>calculateFieldProject(field),
   isAdmin:()=>authBridge.getState().isAdmin,openUserProjects:()=>userProjectsView.open(),openReport:(item)=>openReportPopup({projectItem:item}),
@@ -1086,6 +1166,7 @@ $('#contact-form')?.addEventListener('submit', async (event) => {
 
 async function initializeCloud() {
   try {
+    let startupConflict=false;
     const client = await connectSupabase({ url:APP_CONFIG.supabaseUrl, publishableKey:APP_CONFIG.supabasePublishableKey });
     adminReadClient=client;
     if (!client) return;
@@ -1105,7 +1186,18 @@ async function initializeCloud() {
     const authState=await authService.refresh();
     await authService.resumePendingTransfer().catch(()=>{});
     setLocalOwnerScope(authState.user?.id);
-    const ownedDraft=loadDraft(globalThis.localStorage);
+    if(countsConfig.enabled){
+      fieldDirectory=createFieldDirectory({client,auth:authBridge,environment:APP_CONFIG.environment});
+      try{
+        const module=await import('./counts-client.js');
+        countsGateway=await module.createCountsGateway?.({client,auth:authBridge,fieldDirectory,environment:APP_CONFIG.environment});
+        if(countsGateway)mountCountsDesktopSummary({document,gateway:countsGateway,onOpen:switchToCounts});
+      }catch(error){console.warn('Gateway Conteggi non disponibile nell’ambiente corrente',error);}
+    }
+    const ownedRecord=loadDraftRecord(globalThis.localStorage);
+    const ownedDraft=ownedRecord?.state;
+    pendingWorkspace=ownedRecord?.workspace??null;
+    restoringWorkspace=Boolean(pendingWorkspace);
     state=ownedDraft?.project
       ? {...createInitialState(),...ownedDraft,environment:'LIVE',project:ensureProjectFields(ownedDraft.project)}
       : createInitialState();
@@ -1120,9 +1212,11 @@ async function initializeCloud() {
         currentProject:state.project,
         environment:state.environment ?? APP_CONFIG.environment
       });
-      if (hydrated.activeProject) loadMobileProject(hydrated.activeProject);
+      startupConflict=restoreVersionConflict({workspace:pendingWorkspace,state},hydrated.projects);
+      if (hydrated.activeProject&&!restoreWorkspaceForOwner({workspace:pendingWorkspace,state},authState.user.id,state.project.localProjectId))loadMobileProject(hydrated.activeProject);
       mobileUi?.sync();
     }
+    restorePendingWorkspace(authState.user?.id);
     const requestedProjectId=new URL(globalThis.location.href).searchParams.get('openProject');
     if(requestedProjectId && authState.kind === 'user') {
       try {
@@ -1167,13 +1261,16 @@ async function initializeCloud() {
         getMetrics:(field) => calculateFieldProject(field ?? state.project),
         onSnapshot:(cloud) => { state=mergeCloudSnapshot(state,cloud); persist(); }
       });
-      await projectSync.retryPending();
-      if (state.project.geometry) projectSync.schedule('startup_reconcile');
+      if(startupConflict)projectSync.suspend('version_conflict');
+      else{
+        await projectSync.retryPending();
+        if (state.project.geometry) projectSync.schedule('startup_reconcile');
+      }
     } catch (syncError) {
       console.warn('Cloud archive queue unavailable; local persistence remains active',syncError);
     }
     await cloudService.trackEvent('configurator_opened', { device:matchMedia('(max-width: 760px)').matches ? 'mobile' : 'desktop' });
-    setStatus('Archivio collegato. La bozza resta disponibile su questo dispositivo.');
+    setStatus(startupConflict?'Il progetto online è cambiato: la bozza locale è conservata. Verifica il conflitto prima di sincronizzare.':'Archivio collegato. La bozza resta disponibile su questo dispositivo.');
   } catch (error) {
     console.error(error);
     setStatus('Backend temporaneamente non disponibile. La bozza locale resta attiva.');

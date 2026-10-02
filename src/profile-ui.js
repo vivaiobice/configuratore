@@ -1,7 +1,7 @@
 import {getTheme,setTheme} from './theme.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
-export function createProfileUI({authService,document=globalThis.document}){
+export function createProfileUI({authService,document=globalThis.document,countsEnabled=false,onCounts=()=>{}}){
   if(!authService||!document)throw new TypeError('Auth service e document richiesti');
   const trigger=document.querySelector('#profile-trigger'),menu=document.querySelector('#profile-menu');
   let state=authService.getState?.()??{kind:'guest'},unsubscribe=null,dialog=null;
@@ -48,11 +48,14 @@ export function createProfileUI({authService,document=globalThis.document}){
     closeMenu();const node=ensureDialog(),body=node.querySelector('.profile-dialog-body');
     node.querySelector('#profile-dialog-title').textContent=state.kind==='user'?'Il tuo profilo':'Accedi';
     if(state.kind==='user')renderUserBody(body);else renderGuestBody(body);
+    if(countsEnabled)body.append(countsButton());
     body.append(themeSelector());feedback(message);node.hidden=false;
   }
+  function countsButton(){const button=document.createElement('button');button.type='button';button.dataset.profileCounts='true';button.textContent='Conteggi · Rimesse, pali e appunti di campo';button.addEventListener('click',()=>{closeMenu();if(dialog)dialog.hidden=true;Promise.resolve().then(onCounts).catch(error=>{openProfile(error.message||'Conteggi non disponibile.');});});return button;}
   function render(next){state=next??{kind:'guest'};trigger.textContent=state.kind==='user'?(String(state.username??'').trim()||String(state.email??'').split('@')[0]||'Profilo'):'Login';menu.replaceChildren();
     if(state.kind==='user'){
       const profile=document.createElement('button');profile.type='button';profile.textContent='Profilo';profile.addEventListener('click',()=>openProfile());menu.append(profile);
+      if(countsEnabled)menu.append(countsButton());
       if(state.isAdmin){const admin=document.createElement('a');admin.href='./admin/';admin.textContent='Amministrazione';admin.setAttribute('role','menuitem');menu.append(admin);}
       const logout=document.createElement('button');logout.type='button';logout.textContent='Esci';logout.addEventListener('click',async()=>{closeMenu();await authService.logout();});menu.append(logout);
     }else closeMenu();

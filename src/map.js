@@ -49,7 +49,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, onDraftChange = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -151,6 +151,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.doubleClickZoom?.enable?.();
     }
     emitDrawingState();
+    onDraftChange();
   };
 
   function emptyCollection() { return { type:'FeatureCollection', features:[] }; }
@@ -281,6 +282,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices = [];
     manualHover = null;
     renderManualDraft();
+    onDraftChange();
     setDrawingActive(false);
     resumeDrawEditing();
   }
@@ -396,6 +398,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     else manualVertices.push([lon, lat]);
     manualHover = null;
     renderManualDraft();
+    onDraftChange();
     if (manualMode === 'linear-exclusion') {
       if (manualVertices.length === 1) onStatus('Primo punto del passaggio inserito. Tocca/clicca il punto finale.');
       if (manualVertices.length >= 2) {
@@ -999,7 +1002,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   });
   map.on('movestart', () => cadastralIdentifier.cancel());
   map.getCanvas()?.addEventListener?.('pointerleave', () => cadastralIdentifier.cancel());
-  map.on('moveend', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals(); });
+  map.on('moveend', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals();onDraftChange(); });
   map.on('resize', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals(); });
   map.on('styledata', ensureCommittedVisuals);
   map.on('idle', ensureCommittedVisuals);
@@ -1046,8 +1049,31 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
   function undoDrawPoint() {
     if (!manualDrawing || !manualVertices.length || linearFinishPending) return;
-    manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();
+    manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();onDraftChange();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity };
+  function capturePendingEdit(){
+    const center=map.getCenter?.();
+    return {drawing:manualDrawing,mode:manualMode,vertices:manualVertices.map(point=>[...point]),previousPerimeter:previousPerimeter?.map(point=>[...point])??null,
+      vertexEditing,editingExclusionId,editRing:editRing?.map(point=>[...point])??null,vertexRemovalActive,curveEditing:rowCurveEditor.active,
+      camera:center&&Number.isFinite(map.getZoom?.())?{center:[center.lng,center.lat],zoom:map.getZoom(),bearing:map.getBearing?.()??0}:null};
+  }
+  function restorePendingEdit(snapshot){
+    if(!snapshot||typeof snapshot!=='object')return false;
+    const validPoint=point=>Array.isArray(point)&&point.length===2&&Number.isFinite(point[0])&&Number.isFinite(point[1])&&Math.abs(point[0])<=180&&Math.abs(point[1])<=90;
+    const validRing=ring=>ring==null||Array.isArray(ring)&&ring.length<=5000&&ring.every(validPoint);
+    if(!validRing(snapshot.vertices)||!validRing(snapshot.previousPerimeter)||!validRing(snapshot.editRing)||!['perimeter','exclusion','linear-exclusion'].includes(snapshot.mode))return false;
+    if(snapshot.drawing){
+      manualMode=snapshot.mode;previousPerimeter=snapshot.previousPerimeter??null;
+      if(manualMode==='perimeter'){committedGeometry=null;updateProjectGeometrySource(null);updateSideMeasurements(null);}
+      manualVertices=snapshot.vertices.map(point=>[...point]);manualHover=null;suspendDrawEditing();renderManualDraft();setDrawingActive(true);
+    }else if(snapshot.vertexEditing&&Array.isArray(snapshot.editRing)&&snapshot.editRing.length>=4){
+      const started=snapshot.editingExclusionId?beginExclusionEditing(snapshot.editingExclusionId):beginVertexEditing();
+      if(started){editRing=snapshot.editRing.map(point=>[...point]);renderEditHandles();}
+    }else if(snapshot.vertexRemovalActive)beginVertexRemoval();
+    if(snapshot.camera&&validPoint(snapshot.camera.center)&&Number.isFinite(snapshot.camera.zoom)&&Number.isFinite(snapshot.camera.bearing))
+      map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
+    return true;
+  }
+  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
 }

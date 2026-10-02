@@ -131,6 +131,19 @@ export function createProjectSync({
 
   function flush() { return serialize(flushInternal); }
 
+  function enqueueForLater(){return serialize(async()=>{
+    if(suspended)return syncState;
+    if(timer){cancelTimer(timer);timer=null;}
+    const snapshot=currentSnapshot();
+    if(!snapshot.fields.some(field=>field.cloudReady))return syncState;
+    const pending=(await queue.pending()).filter(item=>item.type==='autosave'&&item.projectClientId===snapshot.clientProjectId);
+    if(pending.length){
+      const newest=pending.at(-1);
+      if(!newest.attempts)await queue.enqueue({...newest,payload:snapshot});
+    }else await queue.enqueue(operationFactory('autosave',snapshot.clientProjectId,snapshot,syncState.serverVersion,idFactory));
+    syncState={...syncState,state:'pending'};publish();return syncState;
+  });}
+
   function schedule() {
     if (suspended) return;
     if (timer) cancelTimer(timer);
@@ -219,6 +232,7 @@ export function createProjectSync({
   return {
     schedule,
     flush,
+    enqueueForLater,
     retryPending,
     saveRevision,
     suspend,

@@ -10,7 +10,7 @@ test('V29 draft gains cloud identity and campaign without losing project fields'
     environment:'TEST', project:{ localProjectId:'old-p', fields:[{ id:'f1', label:'Moscato', geometry:null }] }
   }};
   const next = migrateDraftEnvelope(old, fixedId, fixedNow);
-  assert.equal(next.version, 2);
+  assert.equal(next.version, 3);
   assert.equal(next.state.cloud.clientProjectId, 'old-p');
   assert.equal(next.state.project.fields[0].label, 'Moscato');
   assert.equal(next.state.project.campaignYear, 2026);

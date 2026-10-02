@@ -45,11 +45,11 @@ function migrateState(state, savedAt, idFactory, now) {
 }
 
 export function migrateDraftEnvelope(envelope, idFactory = defaultId, now = () => new Date().toISOString()) {
-  if (!envelope || ![1,2].includes(envelope.version)) throw new TypeError('Unsupported draft envelope version');
+  if (!envelope || ![1,2,3].includes(envelope.version)) throw new TypeError('Unsupported draft envelope version');
   const savedAt = envelope.savedAt || nowIso(now);
   return {
     ...clone(envelope),
-    version:2,
+    version:3,
     savedAt,
     state:migrateState(envelope.state,savedAt,idFactory,now)
   };

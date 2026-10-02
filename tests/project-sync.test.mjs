@@ -63,6 +63,14 @@ test('no cloud project is created before a valid perimeter exists', async () => 
   assert.equal(sync.backend.calls.length, 0);
 });
 
+test('tool switch queues an existing cloud-ready project durably without waiting for network',async()=>{
+  const sync=createHarness();
+  await sync.service.enqueueForLater();
+  assert.equal(sync.backend.calls.length,0);
+  const pending=await sync.queue.pending();
+  assert.equal(pending.length,1);assert.equal(pending[0].type,'autosave');
+});
+
 test('manual revision waits for an in-flight autosave before applying its snapshot', async () => {
   let release;
   const first=new Promise(resolve=>{release=resolve;});

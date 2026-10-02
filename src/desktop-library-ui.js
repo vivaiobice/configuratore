@@ -22,6 +22,27 @@ export function createDesktopLibraryUI(api){
     const metrics=fieldMetrics(field),detail=document.createElement('span');
     detail.textContent=`${(Number(metrics.commercialPlants25)||0).toLocaleString('it-IT')} barbatelle comm. · ${(Number(metrics.rowCount)||0).toLocaleString('it-IT')} filari · ${field.grapeVariety||'Vitigno da definire'}`;
     content.append(title,detail);main.append(thumbnail,content);main.addEventListener('click',()=>{api.selectField?.(field.id);close();});
+    let countControls=null;
+    if(api.countsEnabled){
+      countControls=document.createElement('div');countControls.className='desktop-field-count-controls';
+      const count=document.createElement('button');count.type='button';count.className='desktop-field-count-action';count.dataset.fieldAction='new-count';
+      count.textContent='＋ Conteggio';count.title=`Nuovo conteggio per ${field.label||'Campo'}`;
+      count.addEventListener('click',()=>Promise.resolve().then(()=>api.openCountsForField?.(field.id)).catch(error=>notice(error.message||'Conteggi non disponibile.')));
+      countControls.append(count);
+      if(api.loadCountsForField){
+        const summary=document.createElement('div');summary.className='desktop-field-count-summary';summary.setAttribute('aria-label',`Conteggi di ${field.label||'Campo'}`);countControls.append(summary);
+        Promise.resolve().then(()=>api.loadCountsForField(field.id)).then(result=>{
+          if(!row.isConnected||!result)return;
+          summary.replaceChildren();
+          for(const category of result.categories??[]){
+            if(!category.items?.length)continue;
+            const heading=document.createElement('strong');heading.textContent=category.category==='plants'?'Barbatelle':category.category==='posts'?'Pali':'Altro';summary.append(heading);
+            for(const item of category.items){const line=document.createElement('span');line.dataset.countLine=item.countId;line.textContent=`${item.title} · ${item.quantity}`;summary.append(line);}
+            const total=document.createElement('small');total.textContent=`Totale: ${category.totalQuantity}`;summary.append(total);
+          }
+        }).catch(()=>{if(row.isConnected)summary.textContent='Riepilogo Conteggi temporaneamente non disponibile.';});
+      }
+    }
     const actions=document.createElement('div');actions.className='desktop-library-item-actions';
     const edit=setIcon(document.createElement('button'),'edit',`Modifica ${field.label||'Campo'}`);edit.type='button';edit.dataset.fieldAction='edit';edit.setAttribute('aria-expanded','false');
     const options=document.createElement('div');options.className='desktop-library-edit-options';options.hidden=true;
@@ -42,7 +63,7 @@ export function createDesktopLibraryUI(api){
       const ask=api.confirm??globalThis.confirm;if(ask&&!ask(`Eliminare il campo “${field.label||'Campo'}”?`))return;
       try{await api.deleteField?.(field);render();notice('Campo eliminato.');}catch(error){notice(`Eliminazione non riuscita: ${text(error.message)}`);}
     });
-    options.append(rename,duplicate,remove);actions.append(edit,options);row.append(main,actions);return row;
+    options.append(rename,duplicate,remove);actions.append(edit,options);row.append(main,actions);if(countControls)row.append(countControls);return row;
   }
   function projectButton(item){
     const row=document.createElement('article');row.className='desktop-library-item desktop-project-card';row.dataset.desktopProject=item.id;

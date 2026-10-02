@@ -10,6 +10,15 @@ test('mobile release label follows the version displayed in the main header',()=
  const c=setup();
  assert.equal(c.$('.mobile-brand span').textContent,c.$('.test-badge').textContent);
 });
+test('mobile editor context can be restored without confirming or cancelling its transaction',()=>{
+ const first=setup(),{$}=first;$('#mobile-add-field').click();
+ const snapshot=first.ui.captureSession();
+ assert.equal(snapshot.screen,'editor');assert.equal(snapshot.transaction,true);
+ const second=setup();second.ui.restoreSession(snapshot);
+ assert.equal(second.ui.captureSession().screen,'editor');
+ assert.equal(second.ui.captureSession().transaction,true);
+ assert.equal(second.cancelled,0);assert.equal(second.saved,0);
+});
 function setup(mobile=true,mapInstance=null,withCompass=false){
  const {document}=parseHTML(html);globalThis.document=document;globalThis.window={};
  const $=s=>document.querySelector(s);let begun=0,saved=0,lastSaveOptions=null,cancelled=0,refreshed=0,removed=[],renamedProject=null,deletedProject=null,originalCompassGroup=null,loadedCode=0,reportProject=null,quoteProject=null,reportField=null,viewToggles=0;
