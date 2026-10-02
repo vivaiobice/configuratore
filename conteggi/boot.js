@@ -1,9 +1,9 @@
-import {COUNTS_CONFIG} from './config.js?v=1.2.1';
-import {createCountsRuntime} from './runtime.js?v=1.2.1';
-import {mountCountsUI} from './ui.js?v=1.2.1';
+import {COUNTS_CONFIG} from './config.js?v=1.2.2';
+import {createCountsRuntime} from './runtime.js?v=1.2.2';
+import {mountCountsUI} from './ui.js?v=1.2.2';
 import {parseCountsUrl,buildCountsUrl} from './navigation.js';
-import {createCountsFeedback} from './feedback.js?v=1.2.1';
-import {createProfileUI} from '../src/profile-ui.js?v=1.2.1';
+import {createCountsFeedback} from './feedback.js?v=1.2.2';
+import {createProfileUI} from '../src/profile-ui.js?v=1.2.2';
 import {listVarieties} from '../src/plant-catalog.js';
 import {readPendingFieldContext,clearPendingFieldContext} from '../src/field-directory.js';
 let ui,runtime,profile;

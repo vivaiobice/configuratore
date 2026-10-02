@@ -1,4 +1,4 @@
-# Pubblicazione — piattaforma Vivai Obice 1.2.1
+# Pubblicazione — piattaforma Vivai Obice 1.2.2
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
@@ -20,7 +20,7 @@ Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consu
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.1 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.2 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 
@@ -94,3 +94,9 @@ Collaudo aggiuntivo: ingresso senza form, tocchi rapidi, suono/vibrazione dove s
 Pubblicare il pacchetto completo, incluso `fonts.css`, `assets/fonts/Comfortaa-Variable.ttf` e relativa licenza. Il font non richiede Google Fonts né una connessione esterna. Il worker usa una nuova cache `vivai-obice-counts-static-1.2.1`; il manifest offline include anche font e foglio condiviso. Nessuna nuova migrazione o funzione backend per questa correzione.
 
 Dopo la pubblicazione, chiudere le vecchie schede, riaprire online e controllare `1.2.1 · LIVE`. Su iPhone/iPad provare logo in alto → Conteggi, logo dell’editor → Conteggi e Profilo → Conteggi, da ospite e da utente: deve comparire subito il contatore. Non cancellare i dati del sito. Le prove locali in Chromium sono riuscite; il test Safari su dispositivo resta da eseguire.
+
+## Correzione ripristino del configuratore 1.2.2
+
+Pubblicare il pacchetto completo e verificare `1.2.2 · LIVE`. Correzione frontend in `src/app.js` e `src/map.js`, più disposizione dell’intestazione editor mobile in `counts-integration.css`: il ripristino della bozza e il cambio campo usano la disponibilità persistente dell’editor, senza attendere un nuovo evento `load` quando arrivano immagini satellitari. Nessuna modifica a migrazioni, database, account, archivio o associazioni tra campi.
+
+Collaudo su hosting e Safari reale: aprire un progetto, modificare distanze/perimetro, tornare più volte da Campi alla mappa, ricaricare una bozza non conclusa e passare a Conteggi/ritornare al configuratore. Controllare che i punti siano conservati e che il messaggio di ripristino non blocchi i comandi dopo l’inizializzazione. Chiudere le vecchie schede e riaprire online; non cancellare IndexedDB/localStorage o tutti i dati del sito.

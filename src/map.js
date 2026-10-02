@@ -61,6 +61,14 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     dragRotate: false,
     attributionControl: true
   });
+  // Editor sources become usable once. MapLibre.loaded() also becomes false
+  // during later tile requests and source updates, after `load` has already fired.
+  let editorReady=false;
+  const editorReadyTasks=new Set();
+  function whenEditorReady(callback){
+    if(editorReady)callback();else editorReadyTasks.add(callback);
+    return ()=>editorReadyTasks.delete(callback);
+  }
 
   map.addControl(new globalThis.maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
   map.addControl(new globalThis.maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
@@ -481,6 +489,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.addLayer({ id:MANUAL_DRAW_FILL_ID, type:'fill', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'fill'], paint:{ 'fill-color':'#d5e5c5', 'fill-opacity':0.22 } });
     map.addLayer({ id:MANUAL_DRAW_LINE_ID, type:'line', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'line'], layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':3, 'line-dasharray':[1,1] } });
     map.addLayer({ id:MANUAL_DRAW_POINTS_ID, type:'circle', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'point'], paint:{ 'circle-radius':['case',['==',['get','first'],1],9,6], 'circle-color':['case',['==',['get','first'],1],'#4fa76c','#183f28'], 'circle-stroke-color':'#ffffff', 'circle-stroke-width':2 } });
+    editorReady=true;
+    for(const callback of [...editorReadyTasks]){editorReadyTasks.delete(callback);callback();}
     renderOtherFieldLabels();
     cadastralOverlay.refresh();
     onReady();
@@ -578,14 +588,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     currentOtherFields = Array.isArray(fields) ? fields : [];
     map.getSource(OTHER_FIELDS_SOURCE_ID)?.setData(otherFieldsFeatureCollection());
     map.getSource(OTHER_ROWS_SOURCE_ID)?.setData(otherRowsFeatureCollection());
-    if (map.loaded()) renderOtherFieldLabels();
-    else map.once('load', renderOtherFieldLabels);
+    whenEditorReady(renderOtherFieldLabels);
   }
 
   function setActiveFieldLabel(label) {
     currentActiveFieldLabel = String(label ?? '').trim() || 'Campo';
-    if (map.loaded()) renderActiveFieldLabel();
-    else map.once('load', renderActiveFieldLabel);
+    whenEditorReady(renderActiveFieldLabel);
   }
 
   function ensureCommittedVisuals() {
@@ -699,8 +707,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.fitBounds(bounds, { padding: 55, maxZoom: 18, duration: 0 });
       return true;
     };
-    if (map.loaded()) return apply();
-    map.once('load', apply);
+    whenEditorReady(apply);
     return true;
   }
 
@@ -1076,5 +1083,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
     return true;
   }
-  return { map, draw, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
+  return { map, draw, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
 }

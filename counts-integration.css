@@ -31,6 +31,8 @@
   .mobile-editor-tool-trigger{display:flex;align-items:center;padding:5px;border:0;border-radius:10px;background:#fff;cursor:pointer}
   .mobile-editor-tool-trigger img{width:66px;height:24px;object-fit:contain}
   .mobile-editor-top strong{min-width:0}
+  body.mobile-app-active[data-mobile-screen="editor"] #mobile-app .mobile-brand{display:none}
+  body.mobile-app-active[data-mobile-screen="editor"] #mobile-app .mobile-editor-top{grid-template-columns:auto auto minmax(0,1fr) auto}
   .vo-service-footer{bottom:calc(75px + env(safe-area-inset-bottom));right:10px;flex-direction:column;gap:0;max-width:45%;font-size:8px}
   body[data-mobile-screen="editor"] .vo-service-footer,body[data-mobile-screen="parameters"] .vo-service-footer{display:none}
 }
