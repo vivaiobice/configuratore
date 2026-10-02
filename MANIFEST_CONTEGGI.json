@@ -1,0 +1,191 @@
+{
+  "project": "Conteggi | Vivai Obice",
+  "packageType": "additive-module-upload",
+  "targetRepository": "vivaiobice/configuratore",
+  "entrypoint": "conteggi/index.html",
+  "baseCommit": "ab25ab7d16bfc9ec35a3ffa7ec8a16ef90a0cbc3",
+  "sourceCommit": "38f461ef4150fac784a4f75ec7627426d2cf6f2a",
+  "files": [
+    {
+      "path": "conteggi/boot.js",
+      "sha256": "f1e4537b55ed213b164622e7c633141e9891520423976b50172e835f191073ae"
+    },
+    {
+      "path": "conteggi/config.js",
+      "sha256": "65fdb2b95fc4c8bec6638f16756968410221306d8ee739438d8ca4db4596f9db"
+    },
+    {
+      "path": "conteggi/feedback.js",
+      "sha256": "0132b6d2ebbffd5e23b1a6817c650d90d9359c30b4288fee7fe0995bad491fc3"
+    },
+    {
+      "path": "conteggi/index.html",
+      "sha256": "a0bbb2a7d0eb92af24c38e6289513716b8118fbbe46b5728eaab5cb878bbd359"
+    },
+    {
+      "path": "conteggi/model.js",
+      "sha256": "26ee769aba90a7bdd1d83ea0c68a93d38a0101b11ffca0f8ef284e0ea193f6d9"
+    },
+    {
+      "path": "conteggi/navigation.js",
+      "sha256": "f6d309e61ab65c26d310b23788c059241954a6a825c3b27382bc2470d8efe8dd"
+    },
+    {
+      "path": "conteggi/package-lock.json",
+      "sha256": "059179d115221635e123876c336b22f26cf52ef61ea19e75f143585882d4ef8f"
+    },
+    {
+      "path": "conteggi/package.json",
+      "sha256": "9edf8ec53c719124c4e96ee6f0c6b0b997201aaae154eea010e02ccbc8aafcb6"
+    },
+    {
+      "path": "conteggi/runtime.js",
+      "sha256": "965c813dba417d693086903581fd8ab8a8ceb3b3ed9e12b2ba560c41eea32e33"
+    },
+    {
+      "path": "conteggi/store.js",
+      "sha256": "3a01fb772955bfb1e253f6af3205f51ec1933365a4d8a08c724f4808ba9bdbf5"
+    },
+    {
+      "path": "conteggi/style.css",
+      "sha256": "b7508c7f2996aeabc3e8abe10f71faf96112fb58d2f479a976455035653ef06f"
+    },
+    {
+      "path": "conteggi/submission.js",
+      "sha256": "228d1b30855480e4f89213a06df7f6493a0e5a92f9a8706d39673713d4ec9114"
+    },
+    {
+      "path": "conteggi/ui.js",
+      "sha256": "9b863dffff59a749970c191c877b4001aafa6ccae704381fc8a73c88a0d5979c"
+    },
+    {
+      "path": "docs/conteggi/Rilascio_e_integrazione.md",
+      "sha256": "5eefd14b4138d45fdde106fee4182ab8d393bf695eedeffae441db5813e1ff8e"
+    },
+    {
+      "path": "docs/conteggi/contratto-configuratore-v1.md",
+      "sha256": "dc8f0f1d6f3d4ec737f974e4b4f1388ed9dabd6f02c7c7cdb6e86c6c6bc3a5f7"
+    },
+    {
+      "path": "docs/conteggi/contratto-conteggi-v1.md",
+      "sha256": "88ea0706e878760ab2f4ca2442a80b755bade679ec4bd2d49cd6f5d623a9542b"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-02-conteggi.md",
+      "sha256": "955e2914677d9f886ca1d2901933eb876c41c678421175038581e72bd16412bc"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-02-conteggi-v2.txt",
+      "sha256": "bcfc9aaae5d16a8f8c6f6efbcba7d35e94994adb6d3910f9dfdc871354a7b2ac"
+    },
+    {
+      "path": "scripts/counts-browser.mjs",
+      "sha256": "23ac5772cdaa5da31953e44e9825ad256071b51870a846cf28022a33b7babf22"
+    },
+    {
+      "path": "src/counts-client.js",
+      "sha256": "ec67b92608a44d8f7763f596a956a532a045297d6c00b318f30795ee8ee81566"
+    },
+    {
+      "path": "supabase/functions/_shared/counts-email.js",
+      "sha256": "1549471a9ff1083edb1aff35e8b84440e21d375f75cedf4de9a90036407c0295"
+    },
+    {
+      "path": "supabase/functions/_shared/counts-handler.js",
+      "sha256": "4a304294b19e367462258a892608fd4e38aafa53bfdc13ff2123ee1206eecd34"
+    },
+    {
+      "path": "supabase/functions/_shared/counts-repository.js",
+      "sha256": "f926da1e94ac156e06c079566359f4ea8a6f4bf5be3454ece22404f023893e12"
+    },
+    {
+      "path": "supabase/functions/_shared/counts-runtime.ts",
+      "sha256": "aba56e024fed405b1905cfb6a1c7d7622fa2556a8a0376c99f3ba6aadcdcc6e2"
+    },
+    {
+      "path": "supabase/functions/counts-admin/index.ts",
+      "sha256": "354118a38fab6e1f7c1782a350e82b17fe5abf274b3fbfe31e3a5af3bde1dd6f"
+    },
+    {
+      "path": "supabase/functions/counts-api/index.ts",
+      "sha256": "6f57f75583193cfd4de900b2de49d38529e12f19343c05d9c2f635bc8b06dcd7"
+    },
+    {
+      "path": "supabase/functions/submit-counts/index.ts",
+      "sha256": "3deddf81128227fd6d9dbdf51185a6236e43db22396fcceaa8b5f3988068ca4b"
+    },
+    {
+      "path": "supabase/migrations/20261002025102_counts_v1.sql",
+      "sha256": "49d926fa174a06e4f7ae78d1e7284fcc50dd7fc0bc6e96987290cda2195e985d"
+    },
+    {
+      "path": "tests/counts-database.test.mjs",
+      "sha256": "833b3057749313b75aab8f22e69cc435b88b32e5a1bc8ee11ff1133d401cc304"
+    },
+    {
+      "path": "tests/counts-email.test.mjs",
+      "sha256": "b9677583a8838e63edd6b5d9776514051440dbf847c9f7378bc858e2c241bd67"
+    },
+    {
+      "path": "tests/counts-gateway.test.mjs",
+      "sha256": "ef418120b9335bd30c653a550f7061e393d31ba0c2a93018c1d779529a0034cf"
+    },
+    {
+      "path": "tests/counts-model.test.mjs",
+      "sha256": "eb8428eaefd06c874f2f889a2f64fc78bbb60c06b3b44755150f549b315b761f"
+    },
+    {
+      "path": "tests/counts-navigation.test.mjs",
+      "sha256": "fe410fb824f7230ab11bd8f685a15eb167286f88f18164dfe9cf1eb926dda894"
+    },
+    {
+      "path": "tests/counts-review-regressions.test.mjs",
+      "sha256": "697068af80fc4516864e07099012eb92068539cb844f6c642cd209b41bc6b6e9"
+    },
+    {
+      "path": "tests/counts-runtime.test.mjs",
+      "sha256": "91a997b3d2a626a7724404d9cfe674298ce3697c252b6d5c497b817c4e5c5e8a"
+    },
+    {
+      "path": "tests/counts-service.test.mjs",
+      "sha256": "242cf6f35c7ea6ec6675f2e0683a0f789fe996b5e28294a2a081bd17ded161b8"
+    },
+    {
+      "path": "tests/counts-store.test.mjs",
+      "sha256": "852b998578dbcbde46c0f4cf0e58dd705ceac7c58b24b5cdd2340b2e5cdcf377"
+    },
+    {
+      "path": "tests/counts-support.mjs",
+      "sha256": "527099da20e91af25bac53d5fa2327ac4a4167a26330b1e80b9d5ec29b30fc85"
+    },
+    {
+      "path": "tests/counts-ui-submission.test.mjs",
+      "sha256": "93c1660c992c1e75d4d847332603a58127c4f9175e112484299f5bfae84c323b"
+    },
+    {
+      "path": "tests/counts-ui.test.mjs",
+      "sha256": "17619f89cbec50f6a229dc6ef24755e88620877a9b050d56f21d8b3012f64211"
+    }
+  ],
+  "existingDependencies": [
+    "src/auth-service.js",
+    "src/backend.js",
+    "src/config.js",
+    "src/plant-catalog.js",
+    "src/profile-ui.js",
+    "supabase/functions/_shared/quote-request.js"
+  ],
+  "approvedAssets": {
+    "assets/logo-vivai-obice-v14.png": "940fcaae10b85c6b3c04f800269be37c8f31c72340b2034ba94dbe5b692d2f85",
+    "assets/favicon-v26.png": "fc36519c32dfa23754a0c01551af50843b7625dbd6827bbc6af9f4e0dfe59f59",
+    "assets/apple-touch-icon-v26.png": "2c9a650cfe6c8370f805e510be20d688df8e7ed213039782b72d28bdb31c78e8"
+  },
+  "otherWork": "Progetta impianto: configurator links, summaries and editor session recovery only; consume the single CountsGateway supplied here",
+  "publicFlags": "OFF",
+  "verification": {
+    "archiveCRC": "checked",
+    "allDeliveredBytes": "matchGitCommit",
+    "relativeImports": "present in package or existing repository"
+  },
+  "notStandaloneInEmptyRepository": true
+}

@@ -1,6 +1,6 @@
 # Configuratore ↔ Conteggi: interscambio V1
 
-Ramo `feature/counts-configurator-integration-v1`, base Configuratore 1.0.5. Questo ramo prepara esclusivamente il lato Configuratore. `APP_CONFIG.countsEnabled` resta `false`; `/conteggi/` e `src/counts-client.js` vanno forniti dal Work Conteggi prima dell'attivazione. Nessuna migrazione, secret, modifica DNS o pubblicazione è inclusa.
+Pacchetto integrato per il Configuratore 1.0.5 e Conteggi V1. `APP_CONFIG.countsEnabled` è `true` e questo archivio contiene sia `/conteggi/` sia `src/counts-client.js`. La sola modalità locale di Conteggi è attiva; sincronizzazione, invio e consultazione amministrativa restano disattivati. Nessuna migrazione, secret, modifica DNS o pubblicazione è stata eseguita.
 
 ## Interfacce già predisposte
 
@@ -14,16 +14,16 @@ Ramo `feature/counts-configurator-integration-v1`, base Configuratore 1.0.5. Que
 | Auth leggera | `src/counts-auth-bootstrap.js` | `createCountsAuthBootstrap()` con stesso client/sessione Supabase e `createAuthService`; restituisce `auth`, `fieldDirectory`, `getIdentityEpoch`. Non avvia mappa, cloud hydration o analytics. Il Work Conteggi fornisce i callback di checkpoint prima/dopo i cambi d'identità. |
 | Riepilogo desktop | `src/counts-desktop-summary.js`, `src/desktop-library-ui.js` | `listRecentLists(5)`, apertura lista e `getFieldSummary` per categorie e righe distinte; nessuna mutation o duplicazione dell'archivio. |
 
-Il Work Conteggi consegna `conteggi/index.html` e `src/counts-client.js` con export `createCountsGateway({client,auth,fieldDirectory,environment})`, che restituisce le firme del suo contratto V1: `listRecentLists`, `getFieldSummary`, `getList`, `updateCount`, `updateList`, `refresh`, `subscribe`. Il Configuratore importa il gateway solo quando `countsEnabled` è attivo. Il suo pannello non crea liste, tabelle o conteggi.
+Conteggi fornisce `conteggi/index.html` e `src/counts-client.js` con export `createCountsGateway({scope,store?,transport?,channel?})`. Il Configuratore usa `src/counts-desktop-gateway.js` per leggere lo stesso archivio locale, con scope separato per backend, ambiente e proprietario. Il suo pannello non crea liste, tabelle o conteggi.
 
 Il catalogo varietà esistente si consulta con `listVarieties()` da `src/plant-catalog.js`; non serve importare clone o portainnesto nelle righe Conteggi. Validatore recapiti già presente: `validateContact()` in `src/backend.js`; l'eventuale adapter email condiviso richiede un accordo sul servizio nuovo, e `submit-quote` non va usato per Conteggi.
 
 ## Identità, dati e gate mancanti
 
 - Il grant guest esistente trasferisce i progetti. La routine idempotente per trasferire *i conteggi* deve essere fornita dal Work Conteggi e coordinata prima di attivare login/trasferimento Conteggi. Un semplice login non autorizza il trasferimento dei conteggi.
-- `src/counts-client.js`, la pagina reale `/conteggi/`, le autorizzazioni RLS/API/server, gli avvisi e la validazione privacy del servizio non sono presenti in questo ramo.
+- `src/counts-client.js`, la pagina `/conteggi/`, le funzioni e la migrazione per il futuro backend sono inclusi nell'archivio, ma non sono stati distribuiti né attivati. La modalità locale usa IndexedDB sul dispositivo e richiede una sessione Auth per distinguere i profili.
 - La guardia UI admin non sostituisce una verifica ruolo e identità permanente lato server. I dati Conteggi non devono essere letti tramite un codice pubblico di progetto.
-- Testare `/conteggi` e `/conteggi/` con query/refresh sull'hosting reale, la stessa sessione guest/user, andata e ritorno con disegno parziale e offline, storage pieno, conflitti e separazione A→B. Solo dopo tali prove attivare il flag in un ambiente isolato. I gate sync/admin/invio del Work Conteggi rimangono distinti.
+- Verificare `/conteggi/` sull'hosting reale, la stessa sessione guest/user, andata e ritorno con disegno parziale e separazione A→B. I gate sync/admin/invio del Work Conteggi rimangono distinti e spenti fino alla predisposizione del backend e delle verifiche privacy.
 
 ## Marchio da condividere
 
@@ -36,4 +36,4 @@ Il catalogo varietà esistente si consulta con `listVarieties()` da `src/plant-c
 
 Palette `#183f28`, `#275f3e`, `#142019`, `#eef1ed`, `#ffffff`, bordo `#dce2dd`; font Inter/system. Il logo non va ridisegnato o deformato. Nel Configuratore il footer discreto riporta “Uno strumento Vivai Obice” e il copyright 2026. Il modulo Conteggi applica la stessa firma nel proprio layout.
 
-Verifica locale: `npm test` e `npm run check`. Il test E2E dei due strumenti richiede il modulo e un ambiente predisposto; il flag di produzione rimane spento.
+Verifica locale: `npm test`, `npm run check` e `node --test tests/counts-*.test.mjs`. Il test con sessione reale e hosting è successivo alla pubblicazione del pacchetto unico.

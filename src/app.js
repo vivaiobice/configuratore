@@ -15,8 +15,10 @@ import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=coun
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
 import {mountToolMenu} from './tool-menu.js?v=counts1';
 import {mountCountsDesktopSummary} from './counts-desktop-summary.js?v=counts1';
+import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=counts2';
 import {setLocalOwnerScope} from './local-owner-scope.js';
 import { APP_CONFIG } from './config.js';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=counts2';
 import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=55.6.2';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
@@ -78,7 +80,9 @@ let pendingWorkspace=storedRecord?.workspace??null;
 let restoringWorkspace=false;
 let switchingTool=false;
 let fieldDirectory=null,countsGateway=null;
-const countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:APP_CONFIG.countsEnabled});
+let countsConfig;
+try{countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:APP_CONFIG.countsEnabled});}
+catch{console.warn('Conteggi non configurato su questa origine');countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:false});}
 let perimeterEventSent = Boolean(state.project.geometry);
 let curveEditingActive=false;
 let curveControlInteracting=false;
@@ -1189,8 +1193,8 @@ async function initializeCloud() {
     if(countsConfig.enabled){
       fieldDirectory=createFieldDirectory({client,auth:authBridge,environment:APP_CONFIG.environment});
       try{
-        const module=await import('./counts-client.js');
-        countsGateway=await module.createCountsGateway?.({client,auth:authBridge,fieldDirectory,environment:APP_CONFIG.environment});
+        countsGateway=createDesktopCountsGateway({client,ownerId:authState.user?.id,environment:APP_CONFIG.environment,
+          backendUrl:APP_CONFIG.supabaseUrl,syncEnabled:COUNTS_CONFIG.syncEnabled});
         if(countsGateway)mountCountsDesktopSummary({document,gateway:countsGateway,onOpen:switchToCounts});
       }catch(error){console.warn('Gateway Conteggi non disponibile nell’ambiente corrente',error);}
     }

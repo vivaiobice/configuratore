@@ -1,0 +1,38 @@
+// Local UI integration checks. Auth and mail are fixture adapters; no production request is allowed.
+import {createRequire} from 'node:module';import assert from 'node:assert/strict';import {mkdir,readFile} from 'node:fs/promises';import {createServer} from 'node:http';import {resolve,extname} from 'node:path';import {fileURLToPath} from 'node:url';
+const require=createRequire(import.meta.url);const {chromium,devices}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright');
+let base=process.env.COUNTS_BROWSER_BASE,server;const output=process.env.COUNTS_BROWSER_OUTPUT??'.counts-work/browser';await mkdir(output,{recursive:true});
+if(!base){const root=fileURLToPath(new URL('../',import.meta.url));server=createServer(async(req,res)=>{try{let pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);if(pathname.endsWith('/'))pathname+='index.html';const path=resolve(root,'.'+pathname);if(!path.startsWith(root))throw new Error('Forbidden');const bytes=await readFile(path);res.setHeader('Content-Type',({'.js':'application/javascript','.html':'text/html','.css':'text/css','.png':'image/png'})[extname(path)]??'application/octet-stream');res.end(bytes);}catch{res.writeHead(404);res.end('Not found');}});await new Promise(r=>server.listen(0,'127.0.0.1',r));base='http://127.0.0.1:'+server.address().port;}
+const fixture=`import {createCountsGateway} from '/src/counts-client.js';import {mountCountsUI} from '/conteggi/ui.js';import {parseCountsUrl} from '/conteggi/navigation.js';import {createCountsFeedback} from '/conteggi/feedback.js';
+document.querySelector('#copyright').textContent='© '+new Date().getFullYear()+' Vivai Obice. Tutti i diritti riservati.';
+const gateway=createCountsGateway({scope:{backend:'https://fixture.example',environment:'TEST',owner:'00000000-0000-4000-8000-000000000010'}});
+const ui=mountCountsUI({gateway,route:parseCountsUrl(location.href),config:{countsBaseUrl:location.origin+'/conteggi/',configuratorBaseUrl:location.origin+'/index.html',syncEnabled:false},feedback:createCountsFeedback()});await ui.ready;globalThis.fixture={gateway,ui};document.querySelector('#sync-banner').textContent='Verifica locale · dati di prova';`;
+const launchOptions={headless:true,...(process.env.COUNTS_CHROMIUM_PATH?{executablePath:process.env.COUNTS_CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--single-process']}:{channel:'chromium'})};let browser;try{
+ for(const [name,options]of [['desktop',{viewport:{width:1365,height:960}}],['mobile',{...devices['iPhone 13'],defaultBrowserType:undefined}]]){
+  browser=await chromium.launch(launchOptions);
+  const context=await browser.newContext(options);const page=await context.newPage();const errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
+  await page.route('**/*',async route=>{if(!route.request().url().startsWith(base)){return route.abort();}if(route.request().url()===base+'/index.html')return route.fulfill({contentType:'text/html',body:'<html lang="it"><title>Destinazione di prova</title><body>Destinazione del collegamento</body></html>'});if(route.request().url().endsWith('/conteggi/boot.js'))return route.fulfill({contentType:'application/javascript',body:fixture});return route.continue();});
+  await page.goto(base+'/conteggi/');await page.waitForFunction(()=>globalThis.fixture);assert.equal(await page.title(),'Conteggi | Vivai Obice');
+  await page.locator('[data-action="start"]').click();await page.locator('[name="title"]').fill('Barbera · rimesse');await page.locator('[name="notes"]').fill('Filare 2\nLato nord');await page.locator('[data-action="create-count"]').click();await page.locator('#quantity-display').waitFor();
+  // Deliberate clicks, never a hold/autorepeat shortcut.
+  await page.locator('[data-action="increment"]').evaluate(button=>{for(let i=0;i<30;i++)button.click();});await page.evaluate(()=>fixture.ui.whenIdle());
+  await page.locator('[data-action="decrement"]').evaluate(button=>{for(let i=0;i<3;i++)button.click();});await page.evaluate(()=>fixture.ui.whenIdle());assert.equal(await page.locator('#quantity-display').textContent(),'27');
+  await page.locator('[name="notes"]').fill('Filare 2\nDa rimpiazzare <b>27</b>');await page.evaluate(()=>fixture.ui.whenIdle());
+  assert.equal(await page.locator('.counter-card b').count(),0);const route=page.url();await page.screenshot({path:output+'/'+name+'-counter.png',fullPage:true});
+  await page.reload();await page.waitForFunction(()=>globalThis.fixture);assert.equal(await page.locator('#quantity-display').textContent(),'27');assert.equal(await page.locator('[name="notes"]').inputValue(),'Filare 2\nDa rimpiazzare <b>27</b>');
+  await context.setOffline(true);await page.locator('[data-action="increment"]').click();await page.evaluate(()=>fixture.ui.whenIdle());assert.equal(await page.locator('#quantity-display').textContent(),'28');await context.setOffline(false);
+  await page.locator('#tools-trigger').click();await page.locator('[data-tool="counts"]').click();assert.equal(page.url(),route);assert.equal(await page.locator('#quantity-display').textContent(),'28');
+  await page.locator('[data-action="confirm-count"]').click();await page.locator('[data-action="open-count"]').waitFor();await page.screenshot({path:output+'/'+name+'-summary.png',fullPage:true});
+  assert.equal(await page.locator('.count-row strong').textContent(),'28');await page.locator('[data-action="open-count"]').click();
+  await page.locator('[name="quantity"]').fill('0');await page.locator('[name="quantity"]').press('Tab');await page.evaluate(()=>fixture.ui.whenIdle());assert.equal(await page.locator('#quantity-display').textContent(),'0');assert.equal(await page.locator('[data-action="decrement"]').isDisabled(),true);
+  await page.locator('[data-action="increment"]').focus();await page.keyboard.press('Space');await page.evaluate(()=>fixture.ui.whenIdle());assert.equal(await page.locator('#quantity-display').textContent(),'1');
+  await page.keyboard.down('Enter');for(let i=0;i<5;i++)await page.keyboard.down('Enter');await page.keyboard.up('Enter');await page.evaluate(()=>fixture.ui.whenIdle());assert.equal(await page.locator('#quantity-display').textContent(),'2','holding Enter counts once');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  const checkpoint=await page.evaluate(()=>fixture.gateway.resume());await page.locator('#tools-trigger').click();await page.locator('[data-tool="configurator"]').click();await page.waitForURL(base+'/index.html');
+  // Stop the Configuratore bootstrap during this local check; only Conteggi checkpoint is inspected.
+  await page.goto(base+'/conteggi/?integrationVersion=1&view=resume');await page.waitForFunction(()=>globalThis.fixture);assert.equal(await page.locator('#quantity-display').textContent(),'2');assert.equal((await page.evaluate(()=>fixture.gateway.resume())).countId,checkpoint.countId);
+  await page.evaluate(()=>fixture.gateway.setScope({backend:'https://fixture.example',environment:'TEST',owner:'00000000-0000-4000-8000-000000000011'}));await page.evaluate(()=>fixture.ui.whenIdle());assert.equal(await page.locator('.list-card').count(),0);
+  assert.equal(errors.length,0,errors.join('\n'));assert.equal(requests.some(u=>/maplibre|leaflet|soil|catasto|src\/app\.js/.test(u)&&!u.endsWith('/index.html')),false,'Conteggi must not load configurator engines');
+  console.log(name+': counting, offline, restore, keyboard, navigation, account scope and layout passed');await context.close();await browser.close();browser=null;
+ }
+}finally{await browser?.close();await new Promise(r=>server?server.close(r):r());}

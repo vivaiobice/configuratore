@@ -1,0 +1,13 @@
+{
+  "name": "vivai-obice-conteggi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test ../tests/counts-*.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "fake-indexeddb": "6.2.5"
+  }
+}

@@ -1,4 +1,5 @@
-import { APP_CONFIG } from '../src/config.js';
+import { APP_CONFIG } from '../src/config.js?v=counts2';
+import { COUNTS_CONFIG } from '../conteggi/config.js?v=counts2';
 import {resolveIntegrationConfig,buildCountsUrl} from '../src/counts-routes.js?v=counts1';
 import { connectSupabase } from '../src/backend.js?v=51';
 import { resolveFieldLocation } from '../src/field-location.js?v=51';
@@ -128,7 +129,7 @@ async function loadProjects(){
 async function showDashboard(user){
   if(!isAdminUser(user)){ $('#admin-login-feedback').textContent='Questo account non è autorizzato all’area amministrativa.';await client.auth.signOut();return; }
   currentUser=user;$('#admin-login').hidden=true;$('#admin-dashboard').hidden=false;
-  if(APP_CONFIG.countsEnabled){const link=$('#admin-counts-link');link.href=buildCountsUrl(resolveIntegrationConfig(globalThis.location.href,{enabled:true}), 'admin');link.hidden=false;}
+  if(APP_CONFIG.countsEnabled&&COUNTS_CONFIG.adminEnabled){const link=$('#admin-counts-link');link.href=buildCountsUrl(resolveIntegrationConfig(globalThis.location.href,{enabled:true}), 'admin');link.hidden=false;}
   if(!adminMap)adminMap=initAdminMap({container:'admin-map',onProjectClick:selectMapField});
   try{await loadProjects();}catch(error){$('#admin-feedback').textContent=`Errore caricamento: ${error.message}`;}
 }
