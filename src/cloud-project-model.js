@@ -1,3 +1,4 @@
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.0';
 export const CLOUD_SNAPSHOT_VERSION = 2;
 
 function clone(value) {
@@ -28,6 +29,16 @@ function polygonToWkt(ring) {
   return `POLYGON((${ring.map(([lon, lat]) => `${Number(lon)} ${Number(lat)}`).join(',')}))`;
 }
 
+// Only these scalar KPIs are consumed by normalized cloud rows and SQL.
+// Frozen terrain already carries the authoritative geometry and replay result.
+const TERRAIN_CLOUD_METRIC_KEYS = ['grossAreaM2','areaM2','netAreaM2','simulatedPlants','commercialPlants25','rowCount','rowLinearM','headPosts','intermediatePosts','totalPosts'];
+function cloudMetrics(field, metrics) {
+  if (!field.terrain) return { ...(metrics ?? {}) };
+  return Object.fromEntries(TERRAIN_CLOUD_METRIC_KEYS
+    .filter(key => Object.hasOwn(metrics ?? {}, key) && (metrics[key] === null || Number.isFinite(metrics[key])))
+    .map(key => [key, metrics[key]]));
+}
+
 export function ensureCloudIdentity(state = {}, idFactory = () => globalThis.crypto.randomUUID()) {
   const project = state.project ?? {};
   const existing = state.cloud?.clientProjectId || project.localProjectId;
@@ -46,9 +57,9 @@ export function buildCloudSnapshot(state, getMetrics = () => ({}), { now = () =>
     ...clone(field),
     clientFieldId:String(field.clientFieldId || field.id || `field-${index + 1}`),
     cloudReady:isClosedRing(field.geometry),
-    metrics:{ ...(getMetrics(field) ?? {}) }
+    metrics:cloudMetrics(field, getMetrics(field))
   }));
-  return {
+  return assertTerrainSerializationBudget({
     schemaVersion:CLOUD_SNAPSHOT_VERSION,
     clientProjectId:normalized.cloud.clientProjectId,
     projectId:normalized.cloud.projectId ?? null,
@@ -57,7 +68,7 @@ export function buildCloudSnapshot(state, getMetrics = () => ({}), { now = () =>
     campaignYear:validCampaignYear(project.campaignYear, now),
     origin:project.origin === 'fieldarea' ? 'fieldarea' : 'native',
     fields
-  };
+  });
 }
 
 export function snapshotToProjectRow(snapshot, ownerUserId, sessionId, ownerKind = 'guest') {

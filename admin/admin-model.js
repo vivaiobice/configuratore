@@ -1,4 +1,6 @@
+import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.0';
 import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=55.7';
+function sumFields(fields,key){return fields.some(field=>field.terrainStatus==='invalid')?null:fields.reduce((sum,field)=>sum+field[key],0);}
 function text(value) { return String(value ?? '').trim().toLowerCase(); }
 
 function finite(...values) {
@@ -27,6 +29,7 @@ function contactLabel(project) {
 }
 
 function fieldMetric(field, project, ...names) {
+  if(field?.metrics?.terrainStatus==='invalid')return null;
   const snake = {
     areaM2:'gross_area_m2', netAreaM2:'net_area_m2', simulatedPlants:'simulated_plants',
     commercialPlants25:'commercial_plants_25', perimeterM:'perimeter_m', rowCount:'row_count',
@@ -93,6 +96,7 @@ export function expandProjectFields(projects = [],profiles = []) {
     let fields = Array.isArray(project?.field_plans) ? project.field_plans : [];
     if (!fields.length && validRing(project?.geometry)) fields = [legacyField(project)];
     fields.forEach((field, index) => {
+      if(field?.terrain)field={...field,metrics:fieldSummaryMetrics({...field,geometry:ringFrom(field.geometry)})};
       const id = String(field?.id ?? field?.clientFieldId ?? `field-${index + 1}`);
       const plantingStatus = field?.plantingStatus === 'planted' ? 'planted' : 'planned';
       const year = finite(field?.campaignYear, field?.plantingYear, project?.campaign_year) || null;
@@ -102,6 +106,7 @@ export function expandProjectFields(projects = [],profiles = []) {
       const client = contactLabel(project);
       const userLabel=ownerLabel(project,byOwner.get(String(project.owner_user_id)));
       const row = {
+        ...(field?.metrics?.terrainStatus?{terrainStatus:field.metrics.terrainStatus,terrainSource:field.metrics.terrainSource,quantityBasis:field.metrics.quantityBasis,surfaceRowLinearM:field.metrics.surfaceRowLinearM,horizontalRowLinearM:field.metrics.horizontalRowLinearM,surfaceAreaM2:field.metrics.surfaceAreaM2,surfaceNetAreaM2:field.metrics.surfaceNetAreaM2}:{}),
         rowId:`${project.id}:${id}`, projectId:String(project.id), fieldId:id, index, project, field,
         projectDate:project.created_at ?? null, projectName:project.name ?? 'Progetto', projectCode:project.public_code ?? '',
         client, userLabel, location, municipality, province:field?.province ?? project?.province ?? '', year, plantingStatus,
@@ -130,8 +135,8 @@ export function buildAdminProjects(projects = []) {
     const row = {
       rowId:String(project.id), projectId:String(project.id), project, fields,
       date:project.created_at ?? null, code:project.public_code ?? '', name:project.name ?? 'Progetto', client:contactLabel(project),
-      status:project.status ?? 'draft', fieldCount:fields.length, areaM2:fields.reduce((sum,field)=>sum+field.areaM2,0),
-      commercialPlants:fields.reduce((sum,field)=>sum+field.commercialPlants,0), quoteRequested:quotes.length>0 || Boolean(project.quote_requested),
+      status:project.status ?? 'draft', fieldCount:fields.length, areaM2:sumFields(fields,'areaM2'),
+      commercialPlants:sumFields(fields,'commercialPlants'), quoteRequested:quotes.length>0 || Boolean(project.quote_requested),
       quoteNumber:quote?.quote_number ?? '', environment:project.environment ?? '', ownerKind:project.owner_kind ?? '', origin:project.origin ?? '',
       year:finite(project.campaign_year) || null
     };
@@ -159,9 +164,9 @@ export function buildAdminClients(projects = [], profiles = []) {
     const row = {
       rowId:group.key, key:group.key, profile, contact, projects:group.projects, fields, displayName,
       email:profile.email ?? contact.email ?? '', phone:profile.phone ?? contact.phone ?? '', city:profile.city ?? '', province:profile.province ?? '',
-      projectCount:group.projects.length, fieldCount:fields.length, areaM2:fields.reduce((sum,field)=>sum+field.areaM2,0),
-      commercialPlants:fields.reduce((sum,field)=>sum+field.commercialPlants,0),
-      plantsToPlant:fields.filter((field)=>field.plantingStatus==='planned').reduce((sum,field)=>sum+field.commercialPlants,0)
+      projectCount:group.projects.length, fieldCount:fields.length, areaM2:sumFields(fields,'areaM2'),
+      commercialPlants:sumFields(fields,'commercialPlants'),
+      plantsToPlant:sumFields(fields.filter(field=>field.plantingStatus==='planned'),'commercialPlants')
     };
     row.searchText=[row.displayName,row.email,row.phone,row.city,row.province].map(text).join(' ');
     return row;
@@ -174,8 +179,8 @@ export function summarizeAdministration(projects = [], profiles = []) {
   const clients = buildAdminClients(projects,profiles);
   return {
     totalProjects:projectRows.length, totalFields:fields.length, quoteRequests:projectRows.filter((row)=>row.quoteRequested).length,
-    totalClients:clients.length, plantsToPlant:fields.filter((field)=>field.plantingStatus==='planned').reduce((sum,field)=>sum+field.commercialPlants,0),
-    archiveAreaM2:fields.reduce((sum,field)=>sum+field.areaM2,0)
+    totalClients:clients.length, plantsToPlant:sumFields(fields.filter(field=>field.plantingStatus==='planned'),'commercialPlants'),
+    archiveAreaM2:sumFields(fields,'areaM2')
   };
 }
 

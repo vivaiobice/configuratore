@@ -1,7 +1,8 @@
+import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.0';
 const KEY='vivai-obice:configuratore:projects:v1';
 import {migrateProjectArchive} from './local-migrations.js?v=55.6.1';
 import {ownerStorageKey} from './local-owner-scope.js';
-import {APP_CONFIG} from './config.js?v=1.2.6';
+import {APP_CONFIG} from './config.js?v=1.3.0';
 const archiveKey=()=>ownerStorageKey(KEY,APP_CONFIG.environment);
 export function readLocalProjects(storage){
  const raw=storage?.getItem?.(archiveKey());
@@ -15,7 +16,9 @@ export function readLocalProjects(storage){
 }
 function clone(value){return globalThis.structuredClone?globalThis.structuredClone(value):JSON.parse(JSON.stringify(value));}
 function writeArchive(storage,projects){
- storage.setItem(archiveKey(),JSON.stringify(migrateProjectArchive({version:2,projects})));
+ const envelope=migrateProjectArchive({version:2,projects});
+ const compact=envelope.projects.map(item=>JSON.parse(serializeTerrainSnapshot(item)));
+ storage.setItem(archiveKey(),JSON.stringify({...envelope,projects:compact}));
 }
 export function writeLocalProject(storage,project,name,cloud={}){
  if(!storage?.setItem)throw new Error('Salvataggio sul dispositivo non disponibile.');

@@ -1,4 +1,4 @@
-import {calculateProject} from '../src/project-calculator.js?v=1.2.6';
+import {calculateProject} from '../src/project-calculator.js?v=1.3.0';
 
 const collection=features=>({type:'FeatureCollection',features});
 const valid=ring=>Array.isArray(ring)&&ring.length>=4&&ring.every(point=>Array.isArray(point)&&Number.isFinite(Number(point[0]))&&Number.isFinite(Number(point[1])));
@@ -10,7 +10,7 @@ export function buildAdminFieldPreviewData(row={}) {
   const exclusionRecords=Array.isArray(field.exclusions)?field.exclusions:[];
   const exclusions=exclusionRecords.map(item=>Array.isArray(item)?item:item?.geometry).filter(valid);
   try {
-    const metrics=calculateProject({polygon:ring,exclusions:exclusionRecords,rowPortions:field.rowPortions,rowSpacingM:Number(field.rowSpacingM)||2.5,plantSpacingM:Number(field.plantSpacingM)||.9,orientationDeg:Number(field.orientationDeg)||0,rowCurvePoints:Array.isArray(field.rowCurvePoints)?field.rowCurvePoints:[],maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:Number(field.postSpacingM)||4.5,headlandWidthM:field.headlandWidthM});
+    const metrics=calculateProject(field.terrain?{...field,polygon:ring}:{polygon:ring,exclusions:exclusionRecords,rowPortions:field.rowPortions,terrain:field.terrain,rowSpacingM:Number(field.rowSpacingM)||2.5,plantSpacingM:Number(field.plantSpacingM)||.9,orientationDeg:Number(field.orientationDeg)||0,rowCurvePoints:Array.isArray(field.rowCurvePoints)?field.rowCurvePoints:[],maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:Number(field.postSpacingM)||4.5,headlandWidthM:field.headlandWidthM});
     return {valid:true,polygon:ring,rows:metrics.rows.map(row=>row.coordinates??(row.start&&row.end?[row.start,row.end]:[])).filter(line=>line.length>=2),exclusions,exclusionRecords,metrics};
   }catch{return {valid:false,polygon:[],rows:[],exclusions:[],metrics:null};}
 }

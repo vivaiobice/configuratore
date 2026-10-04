@@ -96,3 +96,45 @@ test('nested field panel exposes editable locality and saves without leaving the
  assert.equal(saved[0][0],'p1:f1');assert.equal(saved[0][1].municipality,'Comune corretto');
  assert.ok(document.querySelector('tr[data-project-detail="p1"]'));
 });
+
+async function certifiedAdminFields(){
+ const {appliedTerrainField}=await import('./fixtures/terrain-field.mjs');const {fromUTM}=await import('../src/coordinate-system.js');
+ const cut={id:'split',type:'linear',widthM:1.5,geometry:[[18.25,0],[19.75,0],[19.75,40],[18.25,40],[18.25,0]].map(([x,y])=>fromUTM([500000+x,5000000+y],32632))};
+ return [
+  {...appliedTerrainField(()=>0,{rowSpacingM:1}),basis:'certified-flat-legacy',quantityMetres:'1.601,509 m'},
+  {...appliedTerrainField(x=>x<=20?0:(x-20)/2,{rowSpacingM:1,exclusions:[cut]}),basis:'mixed-certified-bases',quantityMetres:'1.600,679 m'}
+ ];
+}
+function fieldDetailValue(grid,label){return [...grid.children].find(node=>node.querySelector('span')?.textContent===label)?.querySelector('strong')?.textContent;}
+
+test('real certified and mixed Admin field details separate retained quantity metres from measured ground',async()=>{
+ const {expandProjectFields,buildAdminProjects}=await import('../admin/admin-model.js');
+ for(const {field,result,basis,quantityMetres} of await certifiedAdminFields()){
+  const project={id:'p1',name:'Terreno',field_plans:[{...field,metrics:{rowLinearM:42,surfaceRowLinearM:41,quantityBasis:'model-surface'}}]};
+  const row=expandProjectFields([project])[0];
+  assert.equal(row.terrainStatus,'applied');assert.equal(row.quantityBasis,basis);assert.equal(row.surfaceRowLinearM,result.surfaceRowLinearM);assert.equal(row.rowLinearM,result.rowLinearM);
+  const {document,views}=fixture();views.renderDetail('fields',row);
+  const standalone=document.querySelector('#detail-grid');
+  assert.equal(fieldDetailValue(standalone,'Metri lineari per quantità'),quantityMetres);
+  assert.equal(fieldDetailValue(standalone,'Metri lineari sul terreno'),'1.600 m');
+  assert.match(fieldDetailValue(standalone,'Misure'),/Quantità .*conservate.*Lunghezze sul terreno misurate/);
+  views.renderSection('projects',buildAdminProjects([project]));document.querySelector('tr[data-row-id="p1"]').click();document.querySelector('[data-field-toggle]').click();
+  const nested=document.querySelector('[data-field-panel] > .admin-detail-grid');
+  assert.equal(fieldDetailValue(nested,'Metri lineari per quantità'),quantityMetres);
+  assert.equal(fieldDetailValue(nested,'Metri lineari sul terreno'),'1.600 m');
+  assert.equal(fieldDetailValue(nested,'Misure'),fieldDetailValue(standalone,'Misure'));
+  views.destroy();
+ }
+});
+
+test('invalid certified or mixed replay cannot display cached quantity or physical metres in Admin',async()=>{
+ const {expandProjectFields}=await import('../admin/admin-model.js');
+ for(const {field} of await certifiedAdminFields()){
+  const row=expandProjectFields([{id:'p1',field_plans:[{...field,plantSpacingM:2,metrics:{rowLinearM:42,surfaceRowLinearM:41,quantityBasis:'certified-flat-legacy'}}]}])[0];
+  assert.equal(row.terrainStatus,'invalid');assert.equal(row.quantityBasis,'invalid');assert.equal(row.surfaceRowLinearM,null);assert.equal(row.rowLinearM,null);
+  const {document,views}=fixture();views.renderDetail('fields',row);const grid=document.querySelector('#detail-grid');
+  assert.equal(fieldDetailValue(grid,'Metri lineari'),'Non disponibile m');assert.equal(fieldDetailValue(grid,'Metri lineari per quantità'),undefined);assert.equal(fieldDetailValue(grid,'Metri lineari sul terreno'),undefined);
+  assert.match(fieldDetailValue(grid,'Misure'),/Terreno non disponibile/);assert.doesNotMatch(grid.textContent,/Quantità .*conservate/);
+  views.destroy();
+ }
+});

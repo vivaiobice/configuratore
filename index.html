@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=1.2.6" />
+  <link rel="stylesheet" href="./mobile.css?v=1.3.0" />
   <link rel="stylesheet" href="./counts-integration.css?v=1.2.4" />
   <link rel="stylesheet" href="./profile.css?v=1.2.4" />
   <link rel="stylesheet" href="./desktop-library.css?v=51" />
@@ -42,8 +42,10 @@
   <link rel="stylesheet" href="./v1.0.3.css?v=1.0.3" />
   <link rel="stylesheet" href="./v1.0.4.css?v=1.0.4" />
   <link rel="stylesheet" href="./v1.0.5.css?v=1.2.4" />
-  <link rel="stylesheet" href="./row-portions.css?v=1.2.6" />
-  <link rel="stylesheet" href="./map-visibility.css?v=1.2.6" />
+  <link rel="stylesheet" href="./row-portions.css?v=1.3.0" />
+  <link rel="stylesheet" href="./map-visibility.css?v=1.3.0" />
+  <link rel="stylesheet" href="./coordinates.css?v=1.3.0" />
+  <link rel="stylesheet" href="./terrain.css?v=1.3.0" />
   <link rel="preload" href="./assets/fonts/Comfortaa-Variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="./fonts.css?v=1.2.4">
 </head>
@@ -53,7 +55,7 @@
       <img class="brand-logo" src="./assets/logo-vivai-obice-v14.png?v=14" alt="Vivai Obice · Barbatelle di vite innestate" />
       <span class="brand-caption">Configuratore</span>
     </a>
-    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">1.2.6 · LIVE</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
+    <div class="topbar-actions"><div class="map-command-bar"><button id="public-project-trigger" class="map-load-project" type="button">Carica progetto</button></div><button id="quick-calculator-trigger" type="button">Calcolo rapido</button><span class="test-badge">1.3.0 · LIVE</span><button id="theme-toggle" type="button" aria-label="Attiva tema scuro" title="Attiva tema scuro"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.3A8.8 8.8 0 0 1 8.7 3.8 8.8 8.8 0 1 0 20.2 15.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></button><button id="profile-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Login</button><div id="profile-menu" role="menu" hidden></div></div>
   </header>
 
   <main class="app-shell">
@@ -115,6 +117,7 @@
       <details class="advanced">
         <summary>Affina il progetto <span class="advanced-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></svg></span></summary>
         <div class="advanced-body">
+          <section id="terrain-card" class="terrain-card" data-refinement="terrain" aria-label="Terreno" aria-live="polite"></section>
           <section class="advanced-card advanced-plant" data-refinement="plant">
             <h3>Caratteristiche dell’impianto</h3>
             <div class="field-grid advanced-spacing">
@@ -176,7 +179,9 @@
           <div class="summary-secondary"><span>Superficie netta vigneto</span><strong id="summary-net-area">—</strong></div>
           <div class="summary-secondary"><span>Perimetro</span><strong id="summary-perimeter">—</strong></div>
           <div class="summary-secondary"><span>Filari</span><strong id="summary-rows">—</strong></div>
-          <div class="summary-secondary"><span>Metri lineari</span><strong id="summary-linear">—</strong></div>
+          <div class="summary-secondary"><span id="summary-linear-label">Metri lineari</span><strong id="summary-linear">—</strong></div>
+          <div id="summary-terrain-surface-wrap" class="summary-secondary" hidden><span>Superficie sul terreno</span><strong id="summary-terrain-surface">—</strong></div>
+          <div id="summary-horizontal-linear-wrap" class="summary-secondary" hidden><span>Metri orizzontali</span><strong id="summary-horizontal-linear">—</strong></div>
           <div class="summary-secondary"><span>Pali totali</span><strong id="summary-posts">0</strong></div>
           <div class="summary-secondary"><span>Di cui pali di testa</span><strong id="summary-head-posts">0</strong></div>
           <div class="summary-primary"><span>Quantità commerciale</span><strong id="summary-commercial">—</strong><small>Barbatelle calcolate: <b id="summary-plants">—</b></small></div>
@@ -284,6 +289,6 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
   <footer class="vo-service-footer"><span>Uno strumento Vivai Obice</span><span>© 2026 Vivai Obice. Tutti i diritti riservati.</span></footer>
-  <script type="module" src="./src/app.js?v=1.2.6"></script>
+  <script type="module" src="./src/app.js?v=1.3.0"></script>
 </body>
 </html>

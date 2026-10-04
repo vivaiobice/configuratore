@@ -1,5 +1,5 @@
-import {resolveRowPortions} from './row-portions.js?v=1.2.6';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.2.6';
+import {resolveRowPortions} from './row-portions.js?v=1.3.0';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.0';
 
 // Report only effective designs: saved controls may still use the inherited base.
 export function rowPortionDescriptors(field={},metrics={}){
@@ -8,17 +8,33 @@ export function rowPortionDescriptors(field={},metrics={}){
     orientationDeg:field.orientationDeg,rowCurvePoints:field.rowCurvePoints,
     maintainRowEquidistance:field.maintainRowEquidistance!==false
   });
-  return portions.map((portion,index)=>({id:portion.id,label:portion.label||`Porzione ${index+1}`,
-    mode:portion.mode,orientationDeg:Number(portion.orientationDeg)||0,
-    curved:normalizeRowCurvePoints(portion.rowCurvePoints).some(point=>Math.abs(point.offsetM)>0),
-    maintainRowEquidistance:portion.maintainRowEquidistance!==false}));
+  // Applied rows may follow a terrain guide while their reference controls and
+  // metrics.portions still hold the manual angle/curve used before application.
+  const applied=metrics.terrainStatus==='applied';
+  const designs=new Map((applied?field.terrain?.applied?.portionResults??[]:[]).map(portion=>[portion.id,portion.design]));
+  const saved=new Map((applied?field.rowPortions??[]:[]).map(portion=>[portion.id,portion.terrainDesign]));
+  return portions.map((portion,index)=>{
+    const design=designs.get(portion.id)??saved.get(portion.id)??portion.terrainDesign;
+    // followTerrain records the latest action; a retained automatic guide can
+    // have followTerrain:false after another portion is recalculated.
+    const terrainGuide=applied&&(design?.guide==='native-contour-distance-family'||Array.isArray(design?.guideCoordinates)&&design.guideCoordinates.length>=2);
+    return {id:portion.id,label:portion.label||`Porzione ${index+1}`,
+      mode:portion.mode,orientationDeg:terrainGuide?null:Number(portion.orientationDeg)||0,
+      curved:terrainGuide?null:normalizeRowCurvePoints(portion.rowCurvePoints).some(point=>Math.abs(point.offsetM)>0),
+      maintainRowEquidistance:portion.maintainRowEquidistance!==false,...(terrainGuide?{terrainGuide:true}:{})};
+  });
+}
+
+export function hasTerrainGuide(layout={}){
+  return layout.portions?.some(portion=>portion.terrainGuide===true)||false;
 }
 
 export function hasPortionDesign(layout={}){
-  return layout.portions?.length>1||layout.portions?.some(portion=>portion.mode==='local')||false;
+  return layout.portions?.length>1||layout.portions?.some(portion=>portion.mode==='local')||hasTerrainGuide(layout);
 }
 
 export function formatPortionDesign(portion={}, {includeEquidistance=true}={}){
+  if(portion.terrainGuide===true)return 'Guida dal terreno';
   const angle=Number(portion.orientationDeg||0).toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1});
   return `${angle}° · ${portion.curved?'Curvi':'Rettilinei'}${includeEquidistance?` · Equidistanza ${portion.maintainRowEquidistance!==false?'sì':'no'}`:''}`;
 }

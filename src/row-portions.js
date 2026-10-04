@@ -1,5 +1,5 @@
-import clipping from './vendor/polygon-clipping.js?v=1.2.6';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.2.6';
+import clipping from './vendor/polygon-clipping.js?v=1.3.0';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.0';
 
 const clone=value=>JSON.parse(JSON.stringify(value));
 const topologyCache=new Map();
@@ -133,7 +133,7 @@ export function resolveRowPortions({polygon,exclusions=[],rowPortions=[],orienta
     const chosen=design(source,fallback);
     const signatures=new Set(matches.map(p=>JSON.stringify(design(saved[p.j],fallback))));
     const conflict=signatures.size>1?{type:'merged-layouts',portionIds:matches.map(p=>saved[p.j].id).sort(),selectedPortionId:source.id}:source?.conflict;
-    return {id,label:(assigned.has(index)&&source?.label)||newLabel(),geometry,anchor:interiorAnchor(geometry),...chosen,...(conflict?{conflict:clone(conflict)}:{})};
+    return {id,label:(assigned.has(index)&&source?.label)||newLabel(),geometry,anchor:interiorAnchor(geometry),...chosen,...(source?.terrainDesign?{terrainDesign:clone(source.terrainDesign)}:{}),...(conflict?{conflict:clone(conflict)}:{})};
   });
 }
 

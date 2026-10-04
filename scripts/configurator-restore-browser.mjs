@@ -7,6 +7,7 @@ import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {createInitialState} from '../src/state.js';
+import {resolveRowPortions,updateRowPortion} from '../src/row-portions.js';
 const require=createRequire(import.meta.url);
 const {chromium,devices}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright');
 const root=resolve(fileURLToPath(new URL('../',import.meta.url))),output=process.env.COUNTS_BROWSER_OUTPUT??'.counts-work/browser';await mkdir(output,{recursive:true});
@@ -43,7 +44,12 @@ try{
   if(name==='desktop-user'){
    state.project.rowCurvePoints=[{id:'before',position:.25,offsetM:5},{id:'after',position:.75,offsetM:-5}];
    state.project.exclusions=[{id:'passage',type:'linear',widthM:1.5,geometry:[[7.9999,44.00049325],[8.0011,44.00049325],[8.0011,44.00050675],[7.9999,44.00050675],[7.9999,44.00049325]]}];
-   Object.assign(state.project.fields[0],{rowCurvePoints:state.project.rowCurvePoints,exclusions:state.project.exclusions});
+   // Since 1.2.6, inherited global curves remain visible on the map but their
+   // handles are hidden. Restore two real local designs to exercise the editor.
+   state.project.rowPortions=resolveRowPortions({...state.project,polygon:state.project.geometry});
+   assert.equal(state.project.rowPortions.length,2);
+   for(const [index,portion] of state.project.rowPortions.entries())state.project.rowPortions=updateRowPortion(state.project.rowPortions,portion.id,{rowCurvePoints:[{id:index?'after':'before',position:.5,offsetM:index?-5:5}]});
+   Object.assign(state.project.fields[0],{rowCurvePoints:state.project.rowCurvePoints,exclusions:state.project.exclusions,rowPortions:state.project.rowPortions});
   }
   const workspace={version:1,ownerId:owner,projectId:state.project.localProjectId,fieldId:state.project.activeFieldId,
    map:{drawing:partial,mode:'perimeter',vertices:partial?[[8,44],[8.001,44]]:[],previousPerimeter:null,editRing:null,camera:{center:[8.0005,44.0005],zoom:16,bearing:0}},
@@ -77,17 +83,26 @@ try{
    await page.locator('#mobile-add-field').tap();await page.waitForFunction(()=>document.body.dataset.mobileScreen==='editor');
   }else{
    await page.locator('#row-spacing').fill('3.10');assert.equal((await readDraft()).state.project.rowSpacingM,3.1,'restored project accepts parameter edits');
-   assert.match(await page.locator('.curve-point-card').nth(0).textContent(),/Tratto 1/);
-   assert.match(await page.locator('.curve-point-card').nth(1).textContent(),/Tratto 2/);
+   assert.equal(await page.locator('#row-portion-picker button').count(),2,'the restored editor has both real portion choices');
+   assert.equal(await page.locator('.curve-point-card').count(),1,'only the selected local portion exposes its point');
    const signature=()=>page.evaluate(async key=>{const project=JSON.parse(localStorage.getItem(key)).state.project;
     const {calculateProject}=await import('/src/project-calculator.js');const result=calculateProject({polygon:project.geometry,...project});
-    const ids=[...new Set(result.rows.map(row=>row.segmentId))];return {ids,rows:ids.map(id=>result.rows.filter(row=>row.segmentId===id)),map:__map.getSource('vineyard-rows')._data.features.map(feature=>feature.geometry.coordinates)};
+    const ids=result.portions.map(portion=>portion.id);return {project,ids,rows:ids.map(id=>result.rows.filter(row=>row.portionId===id)),map:__map.getSource('vineyard-rows')._data.features.map(feature=>feature.geometry.coordinates)};
    },draftKey);
-   const before=await signature();assert.equal(before.ids.length,2);assert.ok(before.ids.every(Boolean));
+   const before=await signature();assert.equal(before.ids.length,2);assert.equal(new Set(before.ids).size,2);assert.ok(before.rows.every(rows=>rows.length>0));
+   assert.equal(await page.locator('#row-portion-picker button[aria-pressed="true"]').getAttribute('data-portion-id'),before.ids[0]);
    await page.locator('.curve-point-card').nth(0).locator('input[type="range"]').nth(1).evaluate(node=>{node.value='12';node.dispatchEvent(new Event('input',{bubbles:true}));node.dispatchEvent(new Event('change',{bubbles:true}));});
-   const after=await signature();assert.deepEqual(after.rows[1],before.rows[1],'changing the first curve keeps the second section unchanged');
+   const after=await signature();assert.deepEqual(after.ids,before.ids);assert.deepEqual(after.rows[1],before.rows[1],'changing the first local curve keeps the other portion rows unchanged');
+   assert.deepEqual(after.project.rowPortions.find(portion=>portion.id===before.ids[1]),before.project.rowPortions.find(portion=>portion.id===before.ids[1]),'the other saved local guide remains unchanged');
+   assert.deepEqual(after.project.rowCurvePoints,before.project.rowCurvePoints,'local edits leave the global reference controls unchanged');
    assert.notDeepEqual(after.rows[0],before.rows[0]);assert.notDeepEqual(after.map,before.map,'the actual map redraws the independently modified curves');
-   assert.equal((await readDraft()).state.project.rowCurvePoints.find(point=>point.id==='before').offsetM,12);
+   assert.equal(after.project.rowPortions.find(portion=>portion.id===before.ids[0]).rowCurvePoints.find(point=>point.id==='before').offsetM,12);
+   await page.locator('#row-portion-picker button[data-portion-id="'+before.ids[1]+'"]').click();
+   assert.equal(await page.locator('#row-portion-picker button[aria-pressed="true"]').getAttribute('data-portion-id'),before.ids[1]);
+   assert.equal(await page.locator('.curve-point-card').count(),1);
+   assert.equal(await page.locator('.curve-point-card input[type="range"]').nth(1).inputValue(),'-5','selecting the other portion restores its own local curve control');
+   assert.deepEqual((await signature()).rows,after.rows,'portion selection changes controls without changing geometry');
+   console.log(name+': restored local curve independence passed for '+before.ids.join(', '));
   }
   if(options.hasTouch){
    assert.equal(await page.locator('.mobile-brand').isVisible(),false,'home header stays hidden in the restored editor');

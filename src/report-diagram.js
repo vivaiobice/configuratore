@@ -1,4 +1,4 @@
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.2.6';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.0';
 
 function pathFromPoints(points) {
   if (!Array.isArray(points) || !points.length) return '';

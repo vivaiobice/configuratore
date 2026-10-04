@@ -5,6 +5,39 @@ import {parseHTML} from 'linkedom';
 import {createMobileUI} from '../src/mobile-ui.js';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
+async function invalidTerrainFields(){
+ const [{appliedTerrainField},{calculateProject}]=await Promise.all([import('./fixtures/terrain-field.mjs'),import('../src/project-calculator.js')]);
+ const {field}=appliedTerrainField();const invalid={...field,id:'invalid',rowSpacingM:4};const valid={...field,id:'valid',terrain:null,rowPortions:[]};
+ const metrics=field=>calculateProject({...field,polygon:field.geometry});assert.equal(metrics(invalid).terrainStatus,'invalid');
+ return {invalid,valid,metrics};
+}
+test('invalid terrain active-field chip names the field without a zero area',async()=>{
+ const {invalid,metrics}=await invalidTerrainFields();const c=setup(true,null,false,{getField:()=>invalid,getFields:()=>[invalid],getMetrics:metrics});c.ui.navigate('map');
+ assert.equal(c.$('#mobile-active-field').textContent,`${invalid.label} · Da rivedere ›`);
+});
+for(const mixed of [false,true])test(`mobile ${mixed?'mixed':'certified-flat'} terrain detail separates quantity metres from measured ground`,async()=>{
+ const [{appliedTerrainField},{calculateProject},{fromUTM}]=await Promise.all([import('./fixtures/terrain-field.mjs'),import('../src/project-calculator.js'),import('../src/coordinate-system.js')]);
+ const cut={id:'split',type:'linear',widthM:1.5,geometry:[[18.25,0],[19.75,0],[19.75,40],[18.25,40],[18.25,0]].map(([x,y])=>fromUTM([500000+x,5000000+y],32632))};
+ const {field}=appliedTerrainField(mixed?(x=>x<=20?0:(x-20)/2):(()=>0),{rowSpacingM:1,...(mixed?{exclusions:[cut]}:{})});const metrics=field=>calculateProject({...field,polygon:field.geometry}),m=metrics(field);assert.equal(m.quantityBasis,mixed?'mixed-certified-bases':'certified-flat-legacy');assert.notEqual(m.rowLinearM,m.surfaceRowLinearM);
+ const c=setup(true,null,false,{getField:()=>field,getMetrics:metrics});c.ui.navigate('detail');const values=Object.fromEntries([...c.document.querySelectorAll('.mobile-metrics div')].map(node=>[node.querySelector('dt').textContent,node.querySelector('dd').textContent]));
+ assert.equal(values['Metri per quantità'],`${m.rowLinearM.toLocaleString('it-IT',{maximumFractionDigits:1})} m`);assert.equal(values['Metri sul terreno'],`${m.surfaceRowLinearM.toLocaleString('it-IT',{maximumFractionDigits:1})} m`);assert.equal(values['Metri di filare'],undefined);assert.match(c.$('#mobile-field-detail').textContent,mixed?/Quantità in parte conservate/:/Quantità del disegno conservate/);assert.doesNotMatch(c.$('#mobile-field-detail').textContent,/1\.2\.6/);
+});
+test('mobile normal model-surface and no-terrain metres retain their existing label and format',async()=>{
+ const [{appliedTerrainField},{calculateProject}]=await Promise.all([import('./fixtures/terrain-field.mjs'),import('../src/project-calculator.js')]);const {field}=appliedTerrainField();
+ for(const terrain of [field.terrain,null]){const project={...field,terrain},metrics=field=>calculateProject({...field,polygon:field.geometry}),m=metrics(project);const c=setup(true,null,false,{getField:()=>project,getMetrics:metrics});c.ui.navigate('detail');
+ const row=[...c.document.querySelectorAll('.mobile-metrics div')].find(node=>node.querySelector('dt').textContent==='Metri di filare');assert.equal(row.querySelector('dd').textContent,`${m.rowLinearM.toLocaleString('it-IT',{maximumFractionDigits:1})} m`);assert.doesNotMatch(c.$('#mobile-field-detail').textContent,/Metri per quantità|Quantità del disegno conservate|Quantità in parte conservate/);}
+});
+test('invalid terrain detail exposes unavailable quantities instead of definitive zero',async()=>{
+ const {invalid,metrics}=await invalidTerrainFields();const c=setup(true,null,false,{getField:()=>invalid,getFields:()=>[invalid],getMetrics:metrics});c.ui.navigate('detail');
+ assert.match(c.$('#mobile-field-detail').textContent,/Da rivedere/);assert.equal(c.$('.mobile-commercial-vines').textContent,'—');assert.equal(c.$('.mobile-calculated-vines').textContent,'—');
+ for(const label of ['Pali intermedi','Pali di testa','Pali totali','Tratti di filare','Metri di filare']){const row=[...c.document.querySelectorAll('.mobile-metrics div')].find(node=>node.querySelector('dt').textContent===label);assert.equal(row.querySelector('dd').textContent,'—');}
+});
+test('mixed valid and invalid terrain fields cannot display an unlabeled project subtotal',async()=>{
+ const {invalid,valid,metrics}=await invalidTerrainFields();const c=setup(true,null,false,{getField:()=>invalid,getFields:()=>[valid,invalid],getMetrics:metrics});c.ui.navigate('fields');
+ const total=c.$('#mobile-fields-total');assert.match(total.textContent,/Da rivedere/);assert.match(total.textContent,/— barbatelle · — pali/);assert.doesNotMatch(total.textContent,new RegExp(`${metrics(valid).simulatedPlants} barbatelle`));
+ const invalidCard=c.$('[data-field-id="invalid"]');assert.match(invalidCard.textContent,/Da rivedere/);assert.match(invalidCard.textContent,/— barbatelle comm\. · — filari/);
+ assert.match(c.$('[data-field-id="valid"]').textContent,new RegExp(`${metrics(valid).commercialPlants25} barbatelle comm\\.`));
+});
 test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
 test('mobile release label follows the version displayed in the main header',()=>{
  const c=setup();

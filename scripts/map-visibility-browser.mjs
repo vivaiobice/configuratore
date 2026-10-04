@@ -62,7 +62,8 @@ try{
  for(const mobile of [false,true]){
   const name=mobile?'mobile':'desktop';
   const context=await browser.newContext(mobile?{viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true}:{viewport:{width:1440,height:1000}});
-  const page=await context.newPage(),errors=[];let blockedRequests=0;
+  const page=await context.newPage(),errors=[],consoleErrors=[];let blockedRequests=0;
+  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
   page.on('pageerror',error=>errors.push(error.message));
   const workspace={version:1,ownerId:owner,projectId:state.project.localProjectId,fieldId:state.project.activeFieldId,
    map:{drawing:false,mode:'perimeter',vertices:[],previousPerimeter:null,editRing:null,camera:{center:[0,44.9993],zoom:17,bearing:0}},
@@ -165,7 +166,7 @@ try{
    }
    assert.deepEqual(errors,[]);
    reports.push({name,passed:true,blockedRequests,externalRequestsAllowed:0,overlays:['Campo','Schema vigneto','Quote'],editingHandles:handlesBefore,profileViews});
-  }catch(error){await page.screenshot({path:resolve(output,name+'-failure.png'),fullPage:true});throw error;}
+  }catch(error){await writeFile(resolve(output,name+'-failure.json'),JSON.stringify({errors,consoleErrors,state:await page.evaluate(()=>({map:!!window.__map,loaded:window.__map?.loaded(),initialLoad:window.__map?.__initialLoad,profile:document.querySelector('#profile-trigger')?.textContent}))},null,2));await page.screenshot({path:resolve(output,name+'-failure.png'),fullPage:true});throw error;}
   finally{await context.close();}
  }
  await writeFile(resolve(output,'summary.json'),JSON.stringify({passed:true,reports},null,2));console.log(JSON.stringify({passed:true,reports},null,2));

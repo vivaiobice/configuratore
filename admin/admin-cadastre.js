@@ -1,5 +1,5 @@
-import {createCadastralOverlay} from '../src/cadastral-overlay.js?v=1.2.6';
-import {buildCadastralWmsUrl,buildCadastralIdentifyUrl,CADASTRAL_MIN_ZOOM} from '../src/cadastre.js?v=1.2.6';
+import {createCadastralOverlay} from '../src/cadastral-overlay.js?v=1.3.0';
+import {buildCadastralWmsUrl,buildCadastralIdentifyUrl,CADASTRAL_MIN_ZOOM} from '../src/cadastre.js?v=1.3.0';
 import {createCadastralDwellIdentifier} from '../src/cadastral-identify.js?v=53.2';
 
 export function mountAdminCadastre({map,container,beforeLayerId,fetchImpl=globalThis.fetch}={}) {

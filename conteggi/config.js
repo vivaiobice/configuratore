@@ -1,4 +1,4 @@
-import {APP_CONFIG} from '../src/config.js?v=1.2.6';
+import {APP_CONFIG} from '../src/config.js?v=1.3.0';
 // Replace these values only in the coordinated release. Browser flags never grant server permission.
 export const COUNTS_CONFIG=Object.freeze({
  version:APP_CONFIG.version,environment:APP_CONFIG.environment,backendUrl:APP_CONFIG.supabaseUrl,

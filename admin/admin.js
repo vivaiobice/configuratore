@@ -1,14 +1,14 @@
-import { APP_CONFIG } from '../src/config.js?v=1.2.6';
-import { COUNTS_CONFIG } from '../conteggi/config.js?v=1.2.6';
+import { APP_CONFIG } from '../src/config.js?v=1.3.0';
+import { COUNTS_CONFIG } from '../conteggi/config.js?v=1.3.0';
 import {resolveIntegrationConfig,buildCountsUrl} from '../src/counts-routes.js?v=counts1';
-import { connectSupabase } from '../src/backend.js?v=1.2.6';
+import { connectSupabase } from '../src/backend.js?v=1.3.0';
 import { resolveFieldLocation } from '../src/field-location.js?v=51';
-import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=1.0.2';
-import { initAdminMap } from './admin-map.js?v=1.2.6';
-import { mountAdminFieldMap } from './admin-field-map.js?v=1.2.6';
+import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=1.3.0';
+import { initAdminMap } from './admin-map.js?v=1.3.0';
+import { mountAdminFieldMap } from './admin-field-map.js?v=1.3.0';
 import { createAdminLocationManager } from './admin-location.js?v=51';
-import { createAdminService } from './admin-service.js?v=1.0.1';
-import { createAdminViews } from './admin-views.js?v=1.0.2';
+import { createAdminService } from './admin-service.js?v=1.3.0';
+import { createAdminViews } from './admin-views.js?v=1.3.0';
 
 const $=selector=>document.querySelector(selector);
 let client=null,service=null,currentUser=null,projects=[],profiles=[],adminMap=null,locationManager=null;
@@ -50,8 +50,9 @@ function render(){
   $('#kpi-fields').textContent=data.fieldRows.length.toLocaleString('it-IT');
   $('#kpi-quotes').textContent=data.projectRows.filter(row=>row.quoteRequested).length.toLocaleString('it-IT');
   $('#kpi-clients').textContent=data.clientRows.length.toLocaleString('it-IT');
-  $('#kpi-plants').textContent=data.fieldRows.filter(row=>row.plantingStatus==='planned').reduce((sum,row)=>sum+row.commercialPlants,0).toLocaleString('it-IT');
-  $('#kpi-area').textContent=`${Math.round(data.fieldRows.reduce((sum,row)=>sum+row.areaM2,0)).toLocaleString('it-IT')} m²`;
+  const invalidQuantities=data.fieldRows.some(row=>row.terrainStatus==='invalid');
+  $('#kpi-plants').textContent=invalidQuantities?'Da rivedere':data.fieldRows.filter(row=>row.plantingStatus==='planned').reduce((sum,row)=>sum+row.commercialPlants,0).toLocaleString('it-IT');
+  $('#kpi-area').textContent=invalidQuantities?'Da rivedere':`${Math.round(data.fieldRows.reduce((sum,row)=>sum+row.areaM2,0)).toLocaleString('it-IT')} m²`;
   const rows=activeSection==='fields'?data.fieldRows:activeSection==='projects'?data.projectRows:data.clientRows;
   views.renderSection(activeSection,rows);
   adminMap?.setFields(data.fieldRows);

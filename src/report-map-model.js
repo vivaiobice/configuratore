@@ -1,4 +1,4 @@
-import {layoutSatelliteAnnotations} from './report-satellite.js?v=1.2.6';
+import {layoutSatelliteAnnotations} from './report-satellite.js?v=1.3.0';
 import { sideMeasurements as measureSides } from './geometry.js?v=45';
 
 const MAX_MERCATOR_LAT = 85.05112878;

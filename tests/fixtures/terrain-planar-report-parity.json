@@ -1,0 +1,503 @@
+{
+  "state": {
+    "environment": "TEST",
+    "project": {
+      "localProjectName": "Parità 1.2.6",
+      "localProjectId": "parity",
+      "fields": [
+        {
+          "id": "parity",
+          "label": "Campo piano",
+          "geometry": [
+            [
+              8,
+              44
+            ],
+            [
+              8.001,
+              44
+            ],
+            [
+              8.001,
+              44.001
+            ],
+            [
+              8,
+              44.001
+            ],
+            [
+              8,
+              44
+            ]
+          ],
+          "rowSpacingM": 3,
+          "plantSpacingM": 1,
+          "orientationDeg": 0,
+          "postSpacingM": 5,
+          "headlandWidthM": 2,
+          "exclusions": []
+        }
+      ]
+    }
+  },
+  "report": {
+    "generatedAt": "2026-10-04T00:00:00Z",
+    "projectCode": "VO-1234567",
+    "revisionNumber": 1
+  },
+  "model": {
+    "title": "Studio preliminare ed esemplificativo di impianto viticolo",
+    "brand": "Vivai Obice",
+    "company": {
+      "name": "VIVAI OBICE S.S.A.",
+      "address": "Via Cossano, 6 · 12058 Santo Stefano Belbo (CN)",
+      "email": "info@vivaiobice.com",
+      "phone": "393 892 9801",
+      "vat": "01656710041",
+      "sdi": "SUBM70N"
+    },
+    "environment": "TEST",
+    "project": {
+      "id": null,
+      "code": "VO-1234567",
+      "name": "Parità 1.2.6",
+      "campaignYear": null,
+      "revisionNumber": 1,
+      "documentId": null,
+      "generatedAt": "2026-10-04T00:00:00Z"
+    },
+    "recipient": {
+      "firstName": "",
+      "lastName": "",
+      "companyName": "",
+      "email": "",
+      "phone": "",
+      "address": "",
+      "addressCity": "",
+      "addressProvince": "",
+      "addressPostalCode": "",
+      "plantLocation": "",
+      "province": "",
+      "reference": ""
+    },
+    "fields": [
+      {
+        "id": "parity",
+        "label": "Campo piano",
+        "geometryValid": true,
+        "location": {
+          "label": "",
+          "municipality": "",
+          "province": "",
+          "region": ""
+        },
+        "cadastralRefs": [],
+        "soil": null,
+        "soilCurrent": false,
+        "geometry": [
+          [
+            8,
+            44
+          ],
+          [
+            8.001,
+            44
+          ],
+          [
+            8.001,
+            44.001
+          ],
+          [
+            8,
+            44.001
+          ],
+          [
+            8,
+            44
+          ]
+        ],
+        "exclusions": [],
+        "rows": [
+          {
+            "start": [
+              8.000018753194432,
+              44.00001798640727
+            ],
+            "end": [
+              8.000018753194432,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000056259583298,
+              44.00001798640727
+            ],
+            "end": [
+              8.000056259583298,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000093765972164,
+              44.00001798640727
+            ],
+            "end": [
+              8.000093765972164,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.00013127236103,
+              44.00001798640727
+            ],
+            "end": [
+              8.00013127236103,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000168778749895,
+              44.00001798640727
+            ],
+            "end": [
+              8.000168778749895,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000206285138761,
+              44.00001798640727
+            ],
+            "end": [
+              8.000206285138761,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000243791527625,
+              44.00001798640727
+            ],
+            "end": [
+              8.000243791527625,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.00028129791649,
+              44.00001798640727
+            ],
+            "end": [
+              8.00028129791649,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000318804305357,
+              44.00001798640727
+            ],
+            "end": [
+              8.000318804305357,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000356310694222,
+              44.00001798640727
+            ],
+            "end": [
+              8.000356310694222,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000393817083088,
+              44.00001798640727
+            ],
+            "end": [
+              8.000393817083088,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000431323471952,
+              44.00001798640727
+            ],
+            "end": [
+              8.000431323471952,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000468829860818,
+              44.00001798640727
+            ],
+            "end": [
+              8.000468829860818,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000506336249684,
+              44.00001798640727
+            ],
+            "end": [
+              8.000506336249684,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.00054384263855,
+              44.00001798640727
+            ],
+            "end": [
+              8.00054384263855,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000581349027415,
+              44.00001798640727
+            ],
+            "end": [
+              8.000581349027415,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000618855416281,
+              44.00001798640727
+            ],
+            "end": [
+              8.000618855416281,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000656361805145,
+              44.00001798640727
+            ],
+            "end": [
+              8.000656361805145,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000693868194011,
+              44.00001798640727
+            ],
+            "end": [
+              8.000693868194011,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000731374582877,
+              44.00001798640727
+            ],
+            "end": [
+              8.000731374582877,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000768880971743,
+              44.00001798640727
+            ],
+            "end": [
+              8.000768880971743,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000806387360608,
+              44.00001798640727
+            ],
+            "end": [
+              8.000806387360608,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000843893749472,
+              44.00001798640727
+            ],
+            "end": [
+              8.000843893749472,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000881400138338,
+              44.00001798640727
+            ],
+            "end": [
+              8.000881400138338,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000918906527204,
+              44.00001798640727
+            ],
+            "end": [
+              8.000918906527204,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.00095641291607,
+              44.00001798640727
+            ],
+            "end": [
+              8.00095641291607,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          },
+          {
+            "start": [
+              8.000993919304936,
+              44.00001798640727
+            ],
+            "end": [
+              8.000993919304936,
+              44.000982013592726
+            ],
+            "lengthM": 107.19508023327376
+          }
+        ],
+        "sideMeasurements": [],
+        "layout": {
+          "portions": [
+            {
+              "id": "portion-wti6q1",
+              "label": "Porzione 1",
+              "mode": "inherited",
+              "orientationDeg": 0,
+              "curved": false,
+              "maintainRowEquidistance": true
+            }
+          ],
+          "rowSpacingM": 3,
+          "plantSpacingM": 1,
+          "orientationDeg": 0,
+          "headlandWidthM": 2,
+          "postSpacingM": 5,
+          "mechanizedHarvest": false
+        },
+        "plantMaterial": {
+          "grapeVariety": "Da definire",
+          "cloneSelection": null,
+          "rootstock": "Da definire",
+          "plantHeightCm": 40
+        },
+        "plantingYear": null,
+        "plantingStatus": "planned",
+        "context": {
+          "type": "new_planting",
+          "label": "",
+          "note": ""
+        },
+        "notes": "",
+        "metrics": {
+          "grossAreaM2": 8894.091134609944,
+          "netAreaM2": 8570.091134609944,
+          "headlandAreaM2": 324,
+          "perimeterM": 382.3629059504524,
+          "vertexCount": 4,
+          "rowCount": 27,
+          "rowLinearM": 2894.267166298393,
+          "theoreticalPlants": 2857,
+          "calculatedPlants": 2916,
+          "commercialPlants": 2925,
+          "headPosts": 54,
+          "intermediatePosts": 567,
+          "totalPosts": 621
+        },
+        "satelliteImage": null,
+        "satelliteOverlayMapModel": null,
+        "mapAttribution": "Imagery © Esri"
+      }
+    ],
+    "overview": null,
+    "summary": {
+      "fieldCount": 1,
+      "grossAreaM2": 8894.091134609944,
+      "netAreaM2": 8570.091134609944,
+      "rowCount": 27,
+      "rowLinearM": 2894.267166298393,
+      "calculatedPlants": 2916,
+      "commercialPlants": 2925,
+      "headPosts": 54,
+      "intermediatePosts": 567,
+      "totalPosts": 621,
+      "grapeVarieties": [
+        "Da definire"
+      ],
+      "clones": [],
+      "rootstocks": [
+        "Da definire"
+      ],
+      "plantingYears": []
+    },
+    "shareUrl": null,
+    "qrSvg": null,
+    "disclaimer": {
+      "version": "VO-DISC-2026-01",
+      "short": "Elaborato preliminare ed esemplificativo basato sui dati inseriti nel configuratore. Non costituisce progetto tecnico firmato, rilievo topografico, pratica autorizzativa o asseverazione.",
+      "full": "Il presente documento è uno studio preliminare ed esemplificativo di supporto alla valutazione di un possibile impianto viticolo. I dati, le quantità, le geometrie, le distanze e le rappresentazioni cartografiche derivano dalle informazioni inserite nel configuratore e da elaborazioni indicative. Il documento non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa, asseverazione, direzione lavori o garanzia di realizzabilità. Prima dell’esecuzione devono essere verificati sul posto confini, quote, pendenze, vincoli, accessi, distanze, sottoservizi e prescrizioni applicabili, ricorrendo quando necessario a professionisti abilitati e agli enti competenti."
+    },
+    "warnings": []
+  },
+  "htmlSha256": "053c24ecf754fd76031b6c825b4463bcf54c0cb77235e1c1aecd72fce0e59cef"
+}

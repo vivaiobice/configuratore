@@ -1,0 +1,119 @@
+[
+  {
+    "file": "piemonte-wcs-float32.tif",
+    "resolutionM": 5,
+    "coverage": "DTM",
+    "bounds": [
+      421478,
+      4948781,
+      421583,
+      4948886
+    ],
+    "fieldRing": [
+      [
+        421521,
+        4948823
+      ],
+      [
+        421541,
+        4948823
+      ],
+      [
+        421541,
+        4948843
+      ],
+      [
+        421521,
+        4948843
+      ],
+      [
+        421521,
+        4948823
+      ]
+    ],
+    "endpoint": "https://geomap.reteunitaria.piemonte.it/ws/taims/rp-01/taimsdtmwcs/wcs_ice_2009_2011_dtm",
+    "format": "GEOTIFF_16",
+    "firstHeight": 173.85899353027344,
+    "sha256": "0462b1dda15da1f9aa47cb0026f87e5e57be7fd12c48ab8f86ff92568acfb4a9",
+    "requestUrl": "https://geomap.reteunitaria.piemonte.it/ws/taims/rp-01/taimsdtmwcs/wcs_ice_2009_2011_dtm?SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&COVERAGE=DTM&CRS=EPSG%3A32632&RESPONSE_CRS=EPSG%3A32632&BBOX=421478%2C4948781%2C421583%2C4948886&RESX=5&RESY=5&FORMAT=GEOTIFF_16&INTERPOLATION=nearest+neighbor",
+    "cors": "*"
+  },
+  {
+    "file": "tuscany-tinitaly-float32.tif",
+    "resolutionM": 10,
+    "coverage": "TINItaly_1_1:tinitaly_dem",
+    "bounds": [
+      681500,
+      4846810,
+      681610,
+      4846920
+    ],
+    "fieldRing": [
+      [
+        681545,
+        4846855
+      ],
+      [
+        681565,
+        4846855
+      ],
+      [
+        681565,
+        4846875
+      ],
+      [
+        681545,
+        4846875
+      ],
+      [
+        681545,
+        4846855
+      ]
+    ],
+    "endpoint": "https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs",
+    "format": "GeoTIFF",
+    "firstHeight": 142.00660705566406,
+    "sha256": "f63d43b2cf308f7f3cf2f594b2fe875bb51c85f27bc3f0b3a355f99caeff89b0",
+    "requestUrl": "https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&COVERAGE=TINItaly_1_1%3Atinitaly_dem&CRS=EPSG%3A32632&RESPONSE_CRS=EPSG%3A32632&BBOX=681500%2C4846810%2C681610%2C4846920&RESX=10&RESY=10&FORMAT=GeoTIFF&INTERPOLATION=nearest+neighbor",
+    "cors": "*"
+  },
+  {
+    "file": "piemonte-fallback-tinitaly-float32.tif",
+    "resolutionM": 10,
+    "coverage": "TINItaly_1_1:tinitaly_dem",
+    "bounds": [
+      421480,
+      4948780,
+      421590,
+      4948890
+    ],
+    "fieldRing": [
+      [
+        421521,
+        4948823
+      ],
+      [
+        421541,
+        4948823
+      ],
+      [
+        421541,
+        4948843
+      ],
+      [
+        421521,
+        4948843
+      ],
+      [
+        421521,
+        4948823
+      ]
+    ],
+    "endpoint": "https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs",
+    "format": "GeoTIFF",
+    "firstHeight": 172.3372039794922,
+    "sha256": "df1ec93cf8c4fe12031b5e7176d7468ba57940903a09fdec5de6ba8c49fca901",
+    "requestUrl": "https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&COVERAGE=TINItaly_1_1%3Atinitaly_dem&CRS=EPSG%3A32632&RESPONSE_CRS=EPSG%3A32632&BBOX=421480%2C4948780%2C421590%2C4948890&RESX=10&RESY=10&FORMAT=GeoTIFF&INTERPOLATION=nearest+neighbor",
+    "cors": "*"
+  }
+]

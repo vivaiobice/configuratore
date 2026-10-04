@@ -18,23 +18,24 @@ const modules=(await Promise.all(['src','admin','conteggi'].map(sourceModules)))
 const graph=[];
 for(const path of new Set(modules)){
   const source=await read(path);
-  for(const match of source.matchAll(/(?:from\s*|import\s*\(?\s*)["']([^"']+)["']/g)){
+  for(const match of source.matchAll(/(?:from\s*|import\s*\(?\s*|new\s+URL\s*\(\s*)["']([^"']+)["']/g)){
     if(!match[1].startsWith('.'))continue;
     const url=new URL(match[1],new URL(path,root));
+    if(match[0].startsWith('new')&&!url.pathname.endsWith('.js'))continue;
     graph.push({from:path,to:url.pathname.slice(root.pathname.length),url});
   }
 }
-const targets=new Set(['src/map-overlay-visibility.js','src/report-diagram.js','src/report-map-model.js','src/report-satellite.js','src/config.js','src/fields.js','src/project-calculator.js','src/row-curves.js','src/row-portions.js','src/vendor/polygon-clipping.js','src/row-portion-editor.js','src/row-portion-summary.js','src/app.js','src/map.js','src/mobile-ui.js','src/report.js','src/project-summary.js','src/pdf-model.js','src/report-template.js','src/report-pdf-download.js','src/shared-project.js','admin/admin-map-data.js','src/revision-summary.js']);
+const targets=new Set(["admin/admin-cadastre.js","admin/admin-field-map.js","admin/admin-map-data.js","admin/admin-map.js","admin/admin-model.js","admin/admin-service.js","admin/admin-views.js","admin/admin.js","conteggi/boot.js","conteggi/config.js","conteggi/runtime.js","src/app.js","src/backend.js","src/cadastral-auto.js","src/cadastral-overlay.js","src/cadastre.js","src/cloud-project-model.js","src/cloud.js","src/config.js","src/coordinate-editor.js","src/coordinate-system.js","src/counts-auth-bootstrap.js","src/desktop-library-ui.js","src/desktop-ux.js","src/fields.js","src/local-projects.js","src/map-overlay-visibility.js","src/map.js","src/mobile-ui.js","src/passage-coordinates.js","src/pdf-model.js","src/project-archive-actions.js","src/project-calculator.js","src/project-summary.js","src/project-sync.js","src/quote-sync.js","src/report-context.js","src/report-diagram.js","src/report-map-model.js","src/report-overview.js","src/report-pdf-download.js","src/report-preflight.js","src/report-project-source.js","src/report-satellite.js","src/report-template.js","src/report.js","src/revision-summary.js","src/row-curves.js","src/row-portion-editor.js","src/row-portion-summary.js","src/row-portions.js","src/shared-project-entry.js","src/shared-project.js","src/state.js","src/storage.js","src/terrain-controller.js","src/terrain-design.js","src/terrain-map.js","src/terrain-model.js","src/terrain-provider.js","src/terrain-report-summary.js","src/terrain-serialization.js","src/terrain-worker-client.js","src/terrain-worker.js","src/tool-switch.js","src/user-projects-view.js","src/vendor/geotiff.js","src/vendor/polygon-clipping.js"]);
 let grew=true;while(grew){grew=false;for(const edge of graph)if(targets.has(edge.to)&&!targets.has(edge.from)){targets.add(edge.from);grew=true;}}
 
-test('all incoming changed runtime module edges use release 1.2.6',async()=>{
-  for(const edge of graph){await readFile(edge.url);if(targets.has(edge.to))assert.equal(edge.url.searchParams.get('v'),'1.2.6',`${edge.from} -> ${edge.to}`);}
+test('all incoming changed runtime module edges use release 1.3.0',async()=>{
+  for(const edge of graph){await readFile(edge.url);if(targets.has(edge.to))assert.equal(edge.url.searchParams.get('v'),'1.3.0',`${edge.from} -> ${edge.to}`);}
   for(const path of ['index.html','report.html','shared-project.html','admin/index.html','conteggi/index.html']){
     const source=await read(path);
     for(const match of source.matchAll(/(?:src|href)=["']([^"']+)["']/g)){
       if(!match[1].startsWith('.'))continue;
       const url=new URL(match[1],new URL(path,root)),target=url.pathname.slice(root.pathname.length);
-      if(targets.has(target)||['row-portions.css','report-layout.css','map-visibility.css','mobile.css'].includes(target))assert.equal(url.searchParams.get('v'),'1.2.6',path+' -> '+target);
+      if(targets.has(target)||['row-portions.css','report-layout.css','map-visibility.css','mobile.css','coordinates.css','terrain.css'].includes(target))assert.equal(url.searchParams.get('v'),'1.3.0',path+' -> '+target);
     }
   }
 });
@@ -54,15 +55,15 @@ test('offline worker never substitutes old script bytes for a different module v
   const scope={URL,Set,Map,Promise,console,fetch:async()=>{throw new Error('Offline');},self:{location:{origin:'https://example.test',href:'https://example.test/conteggi/sw.js'},addEventListener:(event,fn)=>handlers[event]=fn},caches:{open:async()=>cache}};
   vm.runInNewContext(source,scope);
   saved.set('https://example.test/src/fields.js?v=55.1','old engine bytes');
-  let result;handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.2.6',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
+  let result;handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.3.0',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
   await assert.rejects(result,/Offline/);
-  saved.set('https://example.test/src/fields.js?v=1.2.6','current engine bytes');
-  handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.2.6',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
-  assert.equal(await result,'current engine bytes');assert.match(source,/static-1\.2\.6/);
+  saved.set('https://example.test/src/fields.js?v=1.3.0','current engine bytes');
+  handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.3.0',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
+  assert.equal(await result,'current engine bytes');assert.match(source,/static-1\.3\.0/);
 });
 
 test('Admin entry preserves the counts query as a valid HTML-escaped parameter',async()=>{
  const source=await read('admin/index.html'),spec=source.match(/type="module" src="([^"]+)"/)[1].replaceAll('&amp;','&');
  const url=new URL(spec,'https://example.test/admin/');
- assert.equal(url.searchParams.get('v'),'1.2.6');assert.equal(url.searchParams.get('counts'),'2');
+ assert.equal(url.searchParams.get('v'),'1.3.0');assert.equal(url.searchParams.get('counts'),'2');
 });

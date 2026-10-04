@@ -1,5 +1,5 @@
-import {expandProjectFields} from '../admin/admin-model.js?v=55.7';
-import {initAdminMap} from '../admin/admin-map.js?v=1.2.6';
+import {expandProjectFields} from '../admin/admin-model.js?v=1.3.0';
+import {initAdminMap} from '../admin/admin-map.js?v=1.3.0';
 
 export async function loadUserProjectsData(client) {
  if(!client)throw new Error('Connessione non disponibile.');
@@ -38,8 +38,8 @@ export function createUserProjectsView({document=globalThis.document,auth,loadDa
   if(!allowed()){close();return;}
   map?.destroy?.();map=null;content().replaceChildren(back('‹ Utenti',owners),node('h3',group.name));
   for(const project of group.projects){
-   const fields=expandProjectFields([project]),area=fields.reduce((s,f)=>s+f.areaM2,0),plants=fields.reduce((s,f)=>s+f.calculatedPlants,0);
-   const button=node('button',`${project.name||'Progetto'} · ${project.public_code||''} · ${fields.length} campi · ${Math.round(area).toLocaleString('it-IT')} m² · ${Math.round(plants).toLocaleString('it-IT')} viti`,'user-owner-row');button.type='button';button.dataset.consultProject=project.id;button.addEventListener('click',()=>showProject(project,group));content().append(button);
+   const fields=expandProjectFields([project]),invalid=fields.some(f=>f.terrainStatus==='invalid'),area=fields.reduce((s,f)=>s+f.areaM2,0),plants=fields.reduce((s,f)=>s+f.calculatedPlants,0);
+   const button=node('button',`${project.name||'Progetto'} · ${project.public_code||''} · ${fields.length} campi · ${invalid?'Da rivedere · — m² · — viti':`${Math.round(area).toLocaleString('it-IT')} m² · ${Math.round(plants).toLocaleString('it-IT')} viti`}`,'user-owner-row');button.type='button';button.dataset.consultProject=project.id;button.addEventListener('click',()=>showProject(project,group));content().append(button);
   }
  }
  function showProject(project,group){
@@ -47,7 +47,7 @@ export function createUserProjectsView({document=globalThis.document,auth,loadDa
   content().replaceChildren(back('‹ Progetti del cliente',()=>projectsFor(group)),node('h3',project.name||'Progetto'));
   const fields=expandProjectFields([project]),host=node('div',null,'user-project-map');content().append(host);
   map=mountMap({container:host});map?.setFields?.(fields);
-  for(const f of fields){const card=node('article',null,'user-project-field');card.append(node('strong',f.label),node('p',`${f.grapeVariety||'Vitigno da definire'} · ${f.rootstock||'Portainnesto da definire'} · ${Math.round(f.areaM2).toLocaleString('it-IT')} m² · ${Math.round(f.calculatedPlants).toLocaleString('it-IT')} viti`));content().append(card);}
+  for(const f of fields){const card=node('article',null,'user-project-field');card.append(node('strong',f.label),node('p',`${f.grapeVariety||'Vitigno da definire'} · ${f.rootstock||'Portainnesto da definire'} · ${f.terrainStatus==='invalid'?'Da rivedere · — m² · — viti':`${Math.round(f.areaM2).toLocaleString('it-IT')} m² · ${Math.round(f.calculatedPlants).toLocaleString('it-IT')} viti`}`));content().append(card);}
  }
  async function open(){
   if(!allowed())throw new Error('Accesso riservato all’amministratore.');

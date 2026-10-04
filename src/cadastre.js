@@ -1,5 +1,5 @@
 import { pointInPolygon } from './geometry.js';
-import { APP_CONFIG } from './config.js?v=1.2.6';
+import { APP_CONFIG } from './config.js?v=1.3.0';
 
 const WMS_PROXY_ENDPOINT = `${APP_CONFIG.supabaseUrl}/functions/v1/cadastral-wms`;
 const MAX_IMAGE_SIZE = 2048;

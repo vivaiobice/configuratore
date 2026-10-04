@@ -413,14 +413,14 @@ export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curv
   return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX,...(segmentId?{segmentId}:{})}])[0];
 }
 
-export function generateCurvedRows({polygon,guidePolygon=null,clipRegion=null,rowOwnership=null,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0}={}){
+export function generateCurvedRows({polygon,guidePolygon=null,clipRegion=null,rowOwnership=null,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0,includeTerrainAxes=false,onTerrainFamily=null}={}){
   const frame=frameFor(polygon,orientationDeg,guidePolygon?referenceFor(guidePolygon):null);
   const spacing=Number(rowSpacingM),points=normalizeRowCurvePoints(rowCurvePoints);
   if(!frame||!Number.isFinite(spacing)||spacing<=0||(!points.length&&!guidePolygon))return [];
   if(guidePolygon){
     const guideFrame=frameFor(guidePolygon,orientationDeg,frame.ref);
     if(!guideFrame)return [];
-    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,clipRegion:rowOwnership?null:(clipRegion??[guidePolygon]),rowOwnership},frame,guideFrame,null);
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes,onTerrainFamily,clipRegion:rowOwnership?null:(clipRegion??[guidePolygon]),rowOwnership},frame,guideFrame,null);
   }
   const segments=segmentsFor(frame,exclusions);
   if(segments.length>1){
@@ -429,14 +429,14 @@ export function generateCurvedRows({polygon,guidePolygon=null,clipRegion=null,ro
       const span=segment.endPosition-segment.startPosition;
       const localPoints=resolved.filter(point=>point.segmentId===segment.id).map(point=>({...point,position:clamp((point.position-segment.startPosition)/span,.0001,.9999)}));
       const curveFrame={...frame,minY:frame.minY+segment.startPosition*frame.spanY,spanY:span*frame.spanY};
-      return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:localPoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,curveFrame,segment).map(row=>({...row,segmentId:segment.id}));
+      return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:localPoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes,onTerrainFamily},frame,curveFrame,segment).map(row=>({...row,segmentId:segment.id}));
     });
   }
   const wholePoints=normalizeRowCurvePoints(resolvedPoints(frame,segments,points));
-  return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:wholePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,frame,null);
+  return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:wholePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes,onTerrainFamily},frame,frame,null);
 }
 
-function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,clipRegion=null,rowOwnership=null},frame,curveFrame,segment){
+function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes=false,onTerrainFamily=null,clipRegion=null,rowOwnership=null},frame,curveFrame,segment){
   const spacing=Number(rowSpacingM);
   const nodes=curveNodes(points);
   const exclusionRings=(Array.isArray(exclusions)?exclusions:[]).map(item=>openRing(Array.isArray(item)?item:item?.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle))).filter(ring=>ring.length>=3);
@@ -449,6 +449,7 @@ function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:
   const firstBase=frame.minX+spacing/2-Math.ceil(maxOffset/spacing)*spacing;
   const lastBase=frame.maxX+maxOffset+spacing/2;
   const output=[];
+  const axisFamily=segment?.id??'whole';
   const candidates=[];
   if(maintainEquidistance!==false){
     const guide=Array.from({length:sampleCount+1},(_,index)=>guideSample(nodes,curveFrame,(frame.minY+index/sampleCount*frame.spanY-curveFrame.minY)/curveFrame.spanY));
@@ -460,7 +461,7 @@ function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:
         sample.point[0]+(sample.normal[0]*(1-blend)+blend)*distance,
         sample.point[1]+sample.normal[1]*(1-blend)*distance
       ]);
-      candidates.push(...splitSafeParallel(candidate,guide).map(coordinates=>({coordinates,sourceDistance:distance})));
+      candidates.push(...splitSafeParallel(candidate,guide).map(coordinates=>({coordinates,sourceDistance:distance,...(typeof onTerrainFamily==='function'?{terrainSampleStart:candidate.indexOf(coordinates[0])}:{})})));
     }
   }else{
     for(let baseX=firstBase;baseX<lastBase;baseX+=spacing){
@@ -486,12 +487,13 @@ function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:
         if(rowOwnership&&ownerIdInFrame(segment,ownershipRegions)!==rowOwnership.portionId)continue;
         const coordinates=segment.map(point=>localToLonLat(point,frame));
         const start=coordinates[0],end=coordinates.at(-1);
-        output.push({coordinates,start,end,lengthM,localCoordinates:segment,sourceDistance:candidate.sourceDistance});
+        output.push({coordinates,start,end,lengthM,localCoordinates:segment,sourceDistance:candidate.sourceDistance,...(includeTerrainAxes?{terrainAxisCoordinates:outer.map(point=>localToLonLat(point,frame)),terrainAxisDistance:candidate.sourceDistance,terrainAxisFamily:axisFamily}:{})});
       }
     }
   }
   if(maintainEquidistance!==false&&unsafeRowSpacing(output.map(row=>({coordinates:row.localCoordinates,sourceDistance:row.sourceDistance})),spacing*.45)){
-    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25),clipRegion,rowOwnership},frame,curveFrame,segment);
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25),includeTerrainAxes,onTerrainFamily,clipRegion,rowOwnership},frame,curveFrame,segment);
   }
+  if(typeof onTerrainFamily==='function')onTerrainFamily({id:axisFamily,candidates:candidates.map(candidate=>({distance:candidate.sourceDistance,sampleStart:candidate.terrainSampleStart??0,sampleCount:sampleCount+1,coordinates:candidate.coordinates.map(point=>localToLonLat(point,frame))}))});
   return output.map(({localCoordinates,sourceDistance,...row})=>row);
 }

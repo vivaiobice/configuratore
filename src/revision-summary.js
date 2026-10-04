@@ -2,6 +2,7 @@ const GROUPS = {
   geometry:['geometry'],
   exclusions:['exclusions'],
   layout:['rowPortions','rowSpacingM','plantSpacingM','orientationDeg','rowCurvePoints','maintainRowEquidistance','headlandWidthM','postSpacingM','mechanizedHarvest'],
+  terrain:['terrain'],
   material:['grapeVariety','cloneSelection','rootstock','plantingYear'],
   identity:['label','locationLabel','municipality','province','region'],
   notes:['projectContextType','projectContextNote','materialRequestNote']
@@ -33,6 +34,7 @@ function labelFor(categories) {
     geometry:'Perimetro e campi',
     exclusions:'Aree escluse e passaggi',
     layout:'Sesto d’impianto',
+    terrain:'Terreno e misure sul terreno',
     material:'Materiale vegetale',
     identity:'Nomi e località',
     notes:'Informazioni e note'

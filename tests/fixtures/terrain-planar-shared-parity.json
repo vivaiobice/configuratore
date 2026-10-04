@@ -1,0 +1,67 @@
+{
+  "payload": {
+    "projectId": "legacy-project",
+    "projectName": "Parità condivisione 1.2.6",
+    "projectCode": "VO-1234567",
+    "revisionNumber": 1,
+    "currentRevisionNumber": 1,
+    "createdAt": "2026-10-04T00:00:00Z",
+    "fields": [
+      {
+        "id": "legacy-null",
+        "label": "Campo 1",
+        "labelCustomized": false,
+        "geometry": [
+          [
+            8,
+            44
+          ],
+          [
+            8.001,
+            44
+          ],
+          [
+            8.001,
+            44.001
+          ],
+          [
+            8,
+            44.001
+          ],
+          [
+            8,
+            44
+          ]
+        ],
+        "sourceType": "manual",
+        "cadastralRefs": [],
+        "soil": null,
+        "terrain": null,
+        "rowSpacingM": 2.5,
+        "plantSpacingM": 0.9,
+        "orientationDeg": 0,
+        "orientationLocked": false,
+        "rowCurvePoints": [],
+        "rowPortions": [],
+        "maintainRowEquidistance": true,
+        "locationLabel": "",
+        "municipality": "",
+        "province": "",
+        "region": "",
+        "headlandWidthM": null,
+        "postSpacingM": 4.5,
+        "mechanizedHarvest": false,
+        "plantingStatus": "planned",
+        "projectContextType": "new_planting",
+        "projectContextNote": "",
+        "grapeVariety": "",
+        "rootstock": "",
+        "cloneSelection": "",
+        "plantHeightCm": 40,
+        "materialRequestNote": "",
+        "exclusions": []
+      }
+    ]
+  },
+  "htmlSha256": "5ee5541bab55ad945cb9e2a58dc5402c21de8f088d16cc782c93f3ccccdb9c9a"
+}

@@ -4,6 +4,13 @@ import fs from 'node:fs';
 import {parseHTML} from 'linkedom';
 
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+test('desktop field cards distinguish invalid terrain quantities and preserve legacy counts',async()=>{
+ const [{createDesktopLibraryUI},{appliedTerrainField},{calculateProject}]=await Promise.all([import('../src/desktop-library-ui.js'),import('./fixtures/terrain-field.mjs'),import('../src/project-calculator.js')]);
+ const {document}=parseHTML(html);globalThis.document=document;const {field}=appliedTerrainField();const invalid={...field,id:'invalid',rowSpacingM:4},valid={...field,id:'valid',terrain:null,rowPortions:[]};const metrics=field=>calculateProject({...field,polygon:field.geometry});assert.equal(metrics(invalid).terrainStatus,'invalid');
+ const ui=createDesktopLibraryUI({document,isDesktop:()=>true,getFields:()=>[valid,invalid],getProjects:()=>[],getFieldMetrics:metrics});ui.mount();document.querySelector('#desktop-fields-trigger').click();
+ const detail=id=>document.querySelector(`[data-desktop-field="${id}"] .desktop-field-info span`).textContent;
+ assert.match(detail('invalid'),/Da rivedere/);assert.match(detail('invalid'),/— barbatelle comm\. · — filari/);const m=metrics(valid);assert.equal(detail('valid'),`${m.commercialPlants25.toLocaleString('it-IT')} barbatelle comm. · ${m.rowCount.toLocaleString('it-IT')} filari · Vitigno da definire`);
+});
 
 test('desktop library exposes selectable Campi and Progetti without replacing the editor',async()=>{
  const module=await import('../src/desktop-library-ui.js');

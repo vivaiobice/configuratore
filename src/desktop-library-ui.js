@@ -1,5 +1,5 @@
-import {projectSummaryText} from './project-summary.js?v=1.2.6';
-import {renderProjectDiagramSvg} from './report-diagram.js?v=1.2.6';
+import {projectSummaryText} from './project-summary.js?v=1.3.0';
+import {renderProjectDiagramSvg} from './report-diagram.js?v=1.3.0';
 const text=(value)=>String(value??'');
 const ICON={print:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6zM17 12h1"/></svg>',mail:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>',edit:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16ZM13.5 6.5l4 4"/></svg>',save:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1Zm3 0v7h10V3M7 21v-8h10v8"/></svg>',refresh:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.5-5.7M20 4v6h-6"/></svg>',new:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>',expand:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'};
 function setIcon(button,name,label){button.innerHTML=ICON[name];button.title=label;button.setAttribute('aria-label',label);button.classList.add('library-icon-action');return button;}
@@ -20,7 +20,7 @@ export function createDesktopLibraryUI(api){
     const content=document.createElement('div');content.className='desktop-field-info';
     const title=document.createElement('strong');title.textContent=field.label||'Campo';
     const metrics=fieldMetrics(field),detail=document.createElement('span');
-    detail.textContent=`${(Number(metrics.commercialPlants25)||0).toLocaleString('it-IT')} barbatelle comm. · ${(Number(metrics.rowCount)||0).toLocaleString('it-IT')} filari · ${field.grapeVariety||'Vitigno da definire'}`;
+    detail.textContent=`${metrics.terrainStatus==='invalid'?'Da rivedere · — barbatelle comm. · — filari':`${(Number(metrics.commercialPlants25)||0).toLocaleString('it-IT')} barbatelle comm. · ${(Number(metrics.rowCount)||0).toLocaleString('it-IT')} filari`} · ${field.grapeVariety||'Vitigno da definire'}`;
     content.append(title,detail);main.append(thumbnail,content);main.addEventListener('click',()=>{api.selectField?.(field.id);close();});
     let countControls=null;
     if(api.countsEnabled){

@@ -1,5 +1,6 @@
-import { ensureProjectFields } from './fields.js?v=1.2.6';
-import { normalizeMapState } from './state.js?v=1.2.6';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.0';
+import { ensureProjectFields } from './fields.js?v=1.3.0';
+import { normalizeMapState } from './state.js?v=1.3.0';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function edgeFunctionError(error,fallback){
@@ -67,6 +68,7 @@ export function polygonToWkt(ring) {
 }
 
 export function toProjectRow(state, metrics, { ownerUserId, sessionId, projectId = undefined, contactId = undefined, resumeTokenHash = undefined } = {}) {
+  assertTerrainSerializationBudget(state);
   const project = state?.project ?? {};
   const clientProjectId = state?.cloud?.clientProjectId || project.localProjectId || null;
   const row = {

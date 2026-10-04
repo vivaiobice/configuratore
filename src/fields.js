@@ -5,7 +5,7 @@ const FIELD_KEYS = [
   'label','labelCustomized','geometry','sourceType','cadastralRefs','rowSpacingM','plantSpacingM','orientationDeg','orientationLocked','rowCurvePoints','rowPortions','maintainRowEquidistance',
   'locationLabel','municipality','province','region','headlandWidthM','postSpacingM','mechanizedHarvest','projectContextType',
   'projectContextNote','grapeVariety','rootstock','cloneSelection','plantHeightCm','materialRequestNote','exclusions'
-  ,'plantingStatus','soil'
+  ,'plantingStatus','soil','terrain'
 ];
 
 export function normalizePlantingStatus(value) {
@@ -28,7 +28,7 @@ export function createDefaultField(id = newId(), index = 1, overrides = {}) {
     labelCustomized,
     geometry:null,
     sourceType:'manual',
-    cadastralRefs:[],soil:null,
+    cadastralRefs:[],soil:null,terrain:null,
     rowSpacingM:2.5,
     plantSpacingM:0.9,
     orientationDeg:0,

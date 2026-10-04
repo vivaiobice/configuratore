@@ -1,15 +1,17 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
 import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.4';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.2.6';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=1.2.6';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.0';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.0';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.6';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.0';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.2.6';
-import {portionAtCoordinate} from './row-portions.js?v=1.2.6';
-import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.2.6';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.0';
+import {portionAtCoordinate} from './row-portions.js?v=1.3.0';
+import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.0';
+import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.0';
+import {regeneratePassage,reshapeExclusion} from './passage-coordinates.js?v=1.3.0';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
@@ -53,7 +55,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, onDraftChange = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onExclusionsReplace = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, onDraftChange = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -106,6 +108,17 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let editingExclusionId = null;
   let editRing = null;
   let editMarkers = [];
+  const coordinateEditor=createCoordinateEditor({document:globalThis.document});
+  let coordinateAction=null,coordinateVersion=0;
+  function closeCoordinates(){coordinateAction?.remove?.();coordinateAction=null;coordinateEditor.close();}
+  function offerCoordinates(element,coordinate,title,onApply){
+    closeCoordinates();const version=coordinateVersion;
+    const isCurrent=()=>vertexEditing&&version===coordinateVersion;
+    const action=document.createElement('button');action.type='button';action.className='vertex-coordinate-action';action.textContent='Coordinate';
+    const rect=element.getBoundingClientRect?.();if(rect){action.style.left=`${Math.max(8,Math.min(rect.left,globalThis.innerWidth-120))}px`;action.style.top=`${Math.max(8,Math.min(rect.bottom+5,globalThis.innerHeight-52))}px`;}
+    action.addEventListener('click',event=>{event.stopPropagation?.();if(!isCurrent()){closeCoordinates();return;}action.remove();coordinateAction=null;coordinateEditor.open({coordinate,title,isCurrent,onApply,trigger:element});});
+    document.body.append(action);coordinateAction=action;action.focus?.();
+  }
   let linearFinishPending = false;
   let touchStartPoint = null;
   let lastTouchEnd = -Infinity;
@@ -356,7 +369,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     if (!corridor) { onStatus('Il passaggio lineare è troppo corto. Inserisci due punti distinti.'); return false; }
     linearFinishPending = true;
     try {
-      return await finishExclusionRing(corridor, { type:'linear', widthM:1.5, label:'Passaggio lineare 1,50 m' });
+      return await finishExclusionRing(corridor, { type:'linear', widthM:1.5, label:'Passaggio lineare 1,50 m', sourceAxis:manualVertices.slice(0,2).map(p=>[...p]), passageGroupId:`passage-${Date.now()}-${Math.random().toString(36).slice(2,9)}` });
     } finally {
       linearFinishPending = false;
     }
@@ -549,8 +562,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function setExclusions(exclusions = []) {
+    const before=currentExclusions.find(item=>item.id===editingExclusionId);
+    const after=exclusions?.find?.(item=>item.id===editingExclusionId);
+    const changed=vertexEditing&&editingExclusionId!==null&&JSON.stringify(before)!==JSON.stringify(after);
     currentExclusions = Array.isArray(exclusions) ? exclusions : [];
     map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());
+    if(changed){if(after?.geometry){editRing=after.geometry.map(p=>[...p]);renderEditHandles();}else stopVertexEditing();}
   }
 
   function otherFieldsFeatureCollection(fields = currentOtherFields) {
@@ -780,6 +797,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function stopVertexEditing() {
+    coordinateVersion++;closeCoordinates();
     for (const marker of editMarkers) marker.remove();
     editMarkers = [];
     const wasEditing = vertexEditing;
@@ -810,9 +828,11 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function publishEditRing() {
     const ring = editRing.map(p=>[...p]);
     if (editingExclusionId !== null) {
-      currentExclusions = currentExclusions.map(item=>item.id===editingExclusionId ? {...item,geometry:ring} : item);
+      const target=currentExclusions.find(item=>item.id===editingExclusionId);
+      currentExclusions = reshapeExclusion(currentExclusions,editingExclusionId,ring);
       map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());
-      onExclusionChange(editingExclusionId,ring);
+      if(target?.sourceAxis&&target.passageGroupId)onExclusionsReplace(currentExclusions);
+      else onExclusionChange(editingExclusionId,ring,{type:'area',widthM:null,sourceAxis:null});
     } else {
       committedGeometry = ring;
       updateProjectGeometrySource(ring);
@@ -823,6 +843,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function renderEditHandles() {
+    coordinateVersion++;closeCoordinates();
     for (const marker of editMarkers) marker.remove();
     editMarkers = [];
     if (!vertexEditing || !editRing) return;
@@ -833,7 +854,13 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       element.setAttribute('aria-label', `Sposta punto ${index+1}`);
       element.textContent=String(index+1);
       const marker = new globalThis.maplibregl.Marker({element,draggable:true}).setLngLat(point).addTo(map);
+      let dragUntil=0,pointerStart=null,pointerMoved=false;const version=coordinateVersion;
+      element.addEventListener('pointerdown',event=>{pointerStart=[event.clientX,event.clientY];pointerMoved=false;});
+      element.addEventListener('pointermove',event=>{if(pointerStart&&Math.hypot(event.clientX-pointerStart[0],event.clientY-pointerStart[1])>5)pointerMoved=true;});
+      marker.on('dragstart',()=>{dragUntil=Infinity;closeCoordinates();});
+      element.addEventListener('click',event=>{event.preventDefault?.();event.stopPropagation?.();if(!vertexEditing||version!==coordinateVersion||pointerMoved||Date.now()<dragUntil)return;offerCoordinates(element,point,`Coordinate punto ${index+1}`,coordinate=>{editRing=replaceRingVertex(editRing,index,coordinate);publishEditRing();renderEditHandles();});});
       marker.on('dragend',()=>{
+        dragUntil=Date.now()+350;
         if (!vertexEditing) return;
         const {lng,lat}=marker.getLngLat();
         editRing[index]=[lng,lat];
@@ -855,6 +882,19 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       });
       editMarkers.push(new globalThis.maplibregl.Marker({element:add}).setLngLat(midpoint).addTo(map));
     });
+    const passage=currentExclusions.find(item=>item.id===editingExclusionId);
+    if(passage?.passageGroupId&&Array.isArray(passage.sourceAxis)&&passage.sourceAxis.length===2){
+      passage.sourceAxis.forEach((point,index)=>{
+        const element=document.createElement('button');element.type='button';element.className='passage-endpoint-handle';element.textContent=index===0?'A':'B';element.setAttribute('aria-label',`Coordinate estremo ${index===0?'iniziale':'finale'} del passaggio`);
+        element.addEventListener('click',event=>{event.preventDefault?.();event.stopPropagation?.();offerCoordinates(element,point,`Coordinate estremo ${index===0?'A':'B'}`,coordinate=>{
+          const next=regeneratePassage({exclusions:currentExclusions,id:editingExclusionId,endpointIndex:index,coordinate,field:committedGeometry});
+          const selected=next.find(item=>item.id===editingExclusionId)??next.find(item=>item.passageGroupId===passage.passageGroupId);
+          currentExclusions=next;editingExclusionId=selected.id;editRing=selected.geometry.map(p=>[...p]);
+          map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());onExclusionsReplace(next);renderEditHandles();
+        });});
+        editMarkers.push(new globalThis.maplibregl.Marker({element}).setLngLat(point).addTo(map));
+      });
+    }
   }
 
   function beginExclusionDraw() {

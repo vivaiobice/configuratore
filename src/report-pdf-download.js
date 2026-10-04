@@ -1,5 +1,6 @@
-import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.2.6';
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.2.6';
+import {terrainMeasureText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.0';
+import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.0';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.0';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 
 const A4=[595.28,841.89];
@@ -146,14 +147,16 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
       const rowY=y-25-index*36;
       page.drawRectangle({x:42,y:rowY-11,width:490,height:33,color:colors.soft});
       wrapped(page,field.label,{x:53,y:rowY+4,width:254,size:10,font:fonts.bold,color:colors.green,maxLines:1});
-      const detail=`${Math.round(field.metrics?.netAreaM2||0)} m² · ${field.metrics?.commercialPlants||0} barbatelle`;
+      const detail=field.terrain?.status==='invalid'?'Terreno non disponibile':`${Math.round(field.metrics?.netAreaM2||0)} m² · ${field.metrics?.commercialPlants||0} barbatelle`;
       wrapped(page,detail,{x:323,y:rowY+4,width:197,size:9,font:fonts.regular,color:colors.ink,maxLines:1});
     });
     if(model.fields.length>listed)page.drawText(`Altri ${model.fields.length-listed} campi nelle pagine seguenti`,{x:48,y:y-29-listed*36,size:9,font:fonts.regular,color:colors.muted});
     const cardsTop=y-70-listed*36;
     const s=model.summary??{};
-    const cards=[['Campi',model.fields.length],['Superficie netta',`${Math.round(s.netAreaM2||0)} m²`],['Filari',s.rowCount||0],
-      ['Metri lineari',`${Math.round(s.rowLinearM||0)} m`],['Quantità commerciale',s.commercialPlants||0],['Barbatelle calcolate',s.calculatedPlants||0],['Pali totali',s.totalPosts||0]];
+    const summaryValue=value=>value===null?'Non disponibile':String(value||0);
+    const summaryMeasure=(value,unit)=>value===null?'Non disponibile':`${Math.round(value||0)} ${unit}`;
+    const cards=[['Campi',model.fields.length],['Superficie netta',summaryMeasure(s.netAreaM2,'m²')],['Filari',summaryValue(s.rowCount)],
+      ['Metri lineari',summaryMeasure(s.rowLinearM,'m')],['Quantità commerciale',summaryValue(s.commercialPlants)],['Barbatelle calcolate',summaryValue(s.calculatedPlants)],['Pali totali',summaryValue(s.totalPosts)]];
     cards.forEach(([label,value],index)=>{
       const column=index%3,row=Math.floor(index/3);
       metricCard(page,label,value,{x:42+column*168,y:cardsTop-row*89,width:154,height:75},fonts,colors,{highlight:index===4});
@@ -184,8 +187,12 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
 
     page=add();y=title(page,`Dati - ${field.label}`,fonts,colors)-26;
     const m=field.metrics??{},l=field.layout??{},p=field.plantMaterial??{};
-    const left=[['Superficie lorda',`${Math.round(m.grossAreaM2||0)} m²`],['Superficie netta',`${Math.round(m.netAreaM2||0)} m²`],['Perimetro',`${Math.round(m.perimeterM||0)} m`],['Distanza piante',`${l.plantSpacingM??'-'} m`],['Distanza filari',`${l.rowSpacingM??'-'} m`],...(!hasPortionDesign(l)?[['Orientamento',`${l.orientationDeg??'-'}°`],['Curvatura',l.portions?.[0]?.curved?'Curvi':'Rettilinei']]:[]),['Capezzagna',`${l.headlandWidthM??'-'} m`],['Filari',String(m.rowCount??0)],['Metri lineari',`${Math.round(m.rowLinearM||0)} m`]];
-    const right=[['Quantità commerciale',String(m.commercialPlants??0)],['Barbatelle calcolate',String(m.calculatedPlants??0)],['Pali intermedi',String(m.intermediatePosts??0)],['Pali di testa',String(m.headPosts??0)],['Pali totali',String(m.totalPosts??0)],['Vitigno',p.grapeVariety],['Clone / selezione',p.cloneSelection],['Portinnesto',p.rootstock],['Altezza barbatella',`${p.plantHeightCm===60?60:40} cm`],['Annata impianto',String(field.plantingYear??'-')],['Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No']];
+    const terrain=field.terrain,unavailable=terrain?.status==='invalid';
+    const measured=value=>unavailable?'Non disponibile':String(Math.round(value||0));
+    const count=value=>unavailable?'Non disponibile':String(value??0);
+    if(terrain)y=wrapped(page,terrainMeasureText(terrain),{x:50,y,width:485,size:9,lineHeight:12,font:fonts.regular,color:colors.muted,maxLines:2})-12;
+    const left=[[terrain?'Sup. lorda orizzontale':'Superficie lorda',`${measured(m.grossAreaM2)} m²`],[terrain?'Sup. netta orizzontale':'Superficie netta',`${measured(m.netAreaM2)} m²`],...(terrain?.status==='applied'?[['Superficie sul terreno',`${measured(terrain.surfaceAreaM2)} m²`],['Sup. netta sul terreno',`${measured(terrain.surfaceNetAreaM2)} m²`]]:[]),['Perimetro',`${measured(m.perimeterM)} m`],['Distanza piante',`${l.plantSpacingM??'-'} m`],['Distanza filari',`${l.rowSpacingM??'-'} m`],...(!hasPortionDesign(l)?[['Orientamento',`${l.orientationDeg??'-'}°`],['Curvatura',l.portions?.[0]?.curved?'Curvi':'Rettilinei']]:[]),['Capezzagna',`${l.headlandWidthM??'-'} m`],['Filari',count(m.rowCount)],[terrain?.status==='applied'?(terrainUsesCertifiedQuantities(terrain)?'Metri per quantità':'Metri sul terreno'):'Metri lineari',`${measured(m.rowLinearM)} m`],...(terrain?.status==='applied'?[...(terrainUsesCertifiedQuantities(terrain)?[['Metri sul terreno',`${measured(terrain.surfaceRowLinearM)} m`]]:[]),['Metri orizzontali',`${measured(terrain.horizontalRowLinearM)} m`]]:[])];
+    const right=[['Quantità commerciale',count(m.commercialPlants)],['Barbatelle calcolate',count(m.calculatedPlants)],['Pali intermedi',count(m.intermediatePosts)],['Pali di testa',count(m.headPosts)],['Pali totali',count(m.totalPosts)],['Vitigno',p.grapeVariety],['Clone / selezione',p.cloneSelection],['Portinnesto',p.rootstock],['Altezza barbatella',`${p.plantHeightCm===60?60:40} cm`],['Annata impianto',String(field.plantingYear??'-')],['Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No']];
     page.drawText('Geometria e filari',{x:50,y,size:12,font:fonts.bold,color:colors.green});
     page.drawText('Materiale e quantità',{x:310,y,size:12,font:fonts.bold,color:colors.green});
     left.forEach(([label,value],index)=>line(page,label,value,50,y-27-index*24,235,fonts,colors));

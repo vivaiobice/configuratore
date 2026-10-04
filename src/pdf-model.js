@@ -1,7 +1,8 @@
-import {rowPortionDescriptors} from './row-portion-summary.js?v=1.2.6';
+import {terrainReportMetadata} from './terrain-report-summary.js?v=1.3.0';
+import {rowPortionDescriptors,hasTerrainGuide} from './row-portion-summary.js?v=1.3.0';
 import {soilProfileIsCurrent} from './soil.js';
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
-import { ensureProjectFields } from './fields.js?v=1.2.6';
+import { ensureProjectFields } from './fields.js?v=1.3.0';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',
@@ -14,8 +15,12 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
   const project = state?.project ?? {};
   const contact = state?.contact ?? null;
   const contextType = project.projectContextType || '';
+  const terrain=terrainReportMetadata(metrics);
+  const metric=value=>value??(terrain?.status==='invalid'?null:0);
+  const portions=rowPortionDescriptors(project,metrics);
 
   return {
+    ...(terrain?{terrain}:{}),
     title: 'Proposta preliminare d’impianto',
     brand: 'Vivai Obice',
     environment: state?.environment ?? 'TEST',
@@ -40,31 +45,31 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
       note: project.projectContextNote || ''
     } : null,
     geometry: {
-      areaM2: metrics.areaM2 ?? 0,
-      netAreaM2: metrics.netAreaM2 ?? metrics.areaM2 ?? 0,
-      headlandAreaM2: metrics.headlandAreaM2 ?? 0,
-      perimeterM: metrics.perimeterM ?? 0,
-      vertexCount: metrics.vertexCount ?? 0,
+      areaM2: metric(metrics.areaM2),
+      netAreaM2: metric(metrics.netAreaM2 ?? metrics.areaM2),
+      headlandAreaM2: metric(metrics.headlandAreaM2),
+      perimeterM: metric(metrics.perimeterM),
+      vertexCount: metric(metrics.vertexCount),
       polygon: project.geometry ?? null,
       sourceType: project.sourceType ?? 'manual',
       rows: Array.isArray(metrics.rows) ? metrics.rows : []
     },
     layout: {
-      portions:rowPortionDescriptors(project,metrics),
+      portions,
       rowSpacingM: project.rowSpacingM ?? null,
       plantSpacingM: project.plantSpacingM ?? null,
-      orientationDeg: project.orientationDeg ?? 0,
+      orientationDeg: hasTerrainGuide({portions}) ? null : project.orientationDeg ?? 0,
       headlandWidthM: project.headlandWidthM ?? null,
       postSpacingM: project.postSpacingM ?? null,
       mechanizedHarvest: Boolean(project.mechanizedHarvest),
-      rowCount: metrics.rowCount ?? 0,
-      rowLinearM: metrics.rowLinearM ?? 0,
-      theoreticalPlants: metrics.theoreticalPlants ?? 0,
-      simulatedPlants: metrics.simulatedPlants ?? 0,
-      commercialPlants25: metrics.commercialPlants25 ?? 0,
-      headPosts: metrics.headPosts ?? 0,
-      intermediatePosts: metrics.intermediatePosts ?? 0,
-      totalPosts: metrics.totalPosts ?? 0
+      rowCount: metric(metrics.rowCount),
+      rowLinearM: metric(metrics.rowLinearM),
+      theoreticalPlants: metric(metrics.theoreticalPlants),
+      simulatedPlants: metric(metrics.simulatedPlants),
+      commercialPlants25: metric(metrics.commercialPlants25),
+      headPosts: metric(metrics.headPosts),
+      intermediatePosts: metric(metrics.intermediatePosts),
+      totalPosts: metric(metrics.totalPosts)
     },
     plantingStatus: project.plantingStatus === 'planted' ? 'planted' : 'planned',
     plantMaterial: {
@@ -73,7 +78,7 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
       cloneSelection: project.cloneSelection || null,
       requestNote: project.materialRequestNote || '',
       requiresVerification: [project.grapeVariety, project.rootstock, project.cloneSelection].some(isOtherMaterialSelection) || Boolean(project.materialRequestNote),
-      quantity: metrics.commercialPlants25 ?? 0
+      quantity: metric(metrics.commercialPlants25)
     },
     resumeUrl,
     disclaimer: 'Simulazione preliminare e indicativa. Non sostituisce elaborati catastali, rilievi o progettazioni tecniche professionali quando richiesti.',
@@ -94,7 +99,7 @@ const COMPANY={
 };
 
 function n(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);}
-function total(fields,path){return fields.reduce((sum,field)=>sum+(n(path(field))??0),0);}
+function total(fields,path){return fields.some(field=>field.terrain?.status==='invalid')?null:fields.reduce((sum,field)=>sum+(n(path(field))??0),0);}
 function closedRing(value){
   if(!Array.isArray(value)||value.length<4)return false;
   const first=value[0],last=value.at(-1);
@@ -105,10 +110,14 @@ function unique(values){return [...new Set(values.map(value=>String(value??'').t
 
 function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=null){
   const geometryValid=closedRing(field.geometry);
+  const terrain=terrainReportMetadata(metrics);
+  const metric=value=>n(value)??(terrain?.status==='invalid'?null:0);
+  const portions=rowPortionDescriptors(field,metrics);
   return {
     id:String(field.id||field.clientFieldId||`field-${index+1}`),
     label:String(field.label||`Campo ${index+1}`),
     geometryValid,
+    ...(terrain?{terrain}:{}),
     location:{
       label:mapAssets.location?.label||field.locationLabel||'',municipality:mapAssets.location?.municipality||field.municipality||'',
       province:mapAssets.location?.province||field.province||'',region:field.region||''
@@ -121,9 +130,9 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
     rows:Array.isArray(metrics.rows)?metrics.rows:[],
     sideMeasurements:Array.isArray(metrics.sideMeasurements)?metrics.sideMeasurements:[],
     layout:{
-      portions:rowPortionDescriptors(field,metrics),
+      portions,
       rowSpacingM:n(field.rowSpacingM),plantSpacingM:n(field.plantSpacingM),
-      orientationDeg:n(field.orientationDeg)??0,headlandWidthM:n(field.headlandWidthM),
+      orientationDeg:hasTerrainGuide({portions})?null:n(field.orientationDeg)??0,headlandWidthM:n(field.headlandWidthM),
       postSpacingM:n(field.postSpacingM),mechanizedHarvest:Boolean(field.mechanizedHarvest)
     },
     plantMaterial:{
@@ -136,13 +145,14 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
     context:{type:field.projectContextType||'',label:CONTEXT_LABELS[field.projectContextType]||'',note:field.projectContextNote||''},
     notes:field.materialRequestNote||'',
     metrics:{
-      grossAreaM2:n(metrics.areaM2)??0,netAreaM2:n(metrics.netAreaM2??metrics.areaM2)??0,
-      headlandAreaM2:n(metrics.headlandAreaM2)??0,perimeterM:n(metrics.perimeterM)??0,
-      vertexCount:n(metrics.vertexCount)??0,rowCount:n(metrics.rowCount)??0,
-      rowLinearM:n(metrics.rowLinearM)??0,theoreticalPlants:n(metrics.theoreticalPlants)??0,
-      calculatedPlants:n(metrics.simulatedPlants)??0,commercialPlants:n(metrics.commercialPlants25)??0,
-      headPosts:n(metrics.headPosts)??0,intermediatePosts:n(metrics.intermediatePosts)??0,
-      totalPosts:n(metrics.totalPosts)??0
+      ...(terrain?{terrainStatus:terrain.status,terrainSource:terrain.source,quantityBasis:terrain.quantityBasis,surfaceRowLinearM:terrain.surfaceRowLinearM,horizontalRowLinearM:terrain.horizontalRowLinearM,surfaceAreaM2:terrain.surfaceAreaM2,surfaceNetAreaM2:terrain.surfaceNetAreaM2,surfaceHeadlandAreaM2:terrain.surfaceHeadlandAreaM2}:{}),
+      grossAreaM2:metric(metrics.areaM2),netAreaM2:metric(metrics.netAreaM2??metrics.areaM2),
+      headlandAreaM2:metric(metrics.headlandAreaM2),perimeterM:metric(metrics.perimeterM),
+      vertexCount:metric(metrics.vertexCount),rowCount:metric(metrics.rowCount),
+      rowLinearM:metric(metrics.rowLinearM),theoreticalPlants:metric(metrics.theoreticalPlants),
+      calculatedPlants:metric(metrics.simulatedPlants),commercialPlants:metric(metrics.commercialPlants25),
+      headPosts:metric(metrics.headPosts),intermediatePosts:metric(metrics.intermediatePosts),
+      totalPosts:metric(metrics.totalPosts)
     },
     satelliteImage:mapAssets.satelliteImage??null,
     satelliteOverlayMapModel:mapAssets.satelliteOverlayMapModel??null,
@@ -165,6 +175,7 @@ export function buildProjectReportModel({
   for(const id of requested)if(!byId.has(id))warnings.push(`Campo ${id} non trovato e non incluso.`);
   const fields=selected.map((field,index)=>{
     const model=reportField(field,index,getMetrics(field)??{},mapAssets[field.id]??{},project.campaignYear);
+    if(model.terrain?.status==='invalid')warnings.push(`${model.label}: terreno non disponibile; rivedere il disegno.`);
     if(!model.geometryValid)warnings.push(`${model.label}: perimetro non disponibile o incompleto.`);
     return model;
   });
