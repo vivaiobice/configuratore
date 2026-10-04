@@ -416,3 +416,19 @@ test('mobile project list can rename and delete an archived project',async()=>{
  $('[data-mobile-project-action="delete"]').click();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(c.deletedProject,'p1');assert.equal($('[data-mobile-project="p1"]'),null);
 });
+
+test('mobile saved field detail uses effective per-portion directions and curves',()=>{
+ const c=setup(true,null,false,{getField:()=>({id:'f1',label:'Porzioni',exclusions:[],orientationDeg:86.5}),
+  getMetrics:()=>({rows:[],portions:[{id:'a',label:'Porzione 1',mode:'local',orientationDeg:35,rowCurvePoints:[],maintainRowEquidistance:true},{id:'b',label:'Porzione 2',mode:'local',orientationDeg:105,rowCurvePoints:[{id:'c',position:.5,offsetM:3}],maintainRowEquidistance:false}]})});
+ c.ui.navigate('detail');
+ const text=c.$('#mobile-field-detail').textContent;
+ assert.match(text,/Porzione 1.*35,0°.*Rettilinei/);assert.match(text,/Porzione 2.*105,0°.*Curvi/);assert.doesNotMatch(text,/86,5°/);
+});
+
+test('saved portion labels are escaped in the mobile field detail',()=>{
+ const label='<img src=x onerror=alert(1)>';
+ const c=setup(true,null,false,{getMetrics:()=>({rows:[],portions:[{id:'a',label,mode:'local',orientationDeg:35,rowCurvePoints:[]}]})});
+ c.ui.navigate('detail');
+ assert.equal(Boolean(c.$('#mobile-field-detail dt img')),false);
+ assert.ok(c.$('#mobile-field-detail').textContent.includes(label));
+});

@@ -72,3 +72,22 @@ test('download includes the annotated satellite overview as an image page',async
   assert.match(content,/Catasto/);
   assert.ok((await page.getOperatorList()).fnArray.includes(pdfjs.OPS.paintImageXObject),'the PDF embeds the same labelled overview PNG as the preview');
 });
+
+test('native PDF paginates all portion designs without notes overlap or stale global direction',async()=>{
+ const portions=Array.from({length:60},(_,index)=>({id:`p-${index}`,label:`Porzione ${index+1} ${'etichetta lunga '.repeat(index%4)}`,mode:'local',orientationDeg:35+index/10,curved:index%2===1,maintainRowEquidistance:index%2===0}));
+ const field={...sample.fields[0],layout:{...sample.fields[0].layout,portions,orientationDeg:86.5},notes:'NOTA RISERVATA AL CAMPO'};
+ const bytes=await buildProjectPdfBytes({...sample,fields:[field]},{pdfLib:PDFLib,assetLoader:async()=>null});
+ const pdfjs=await import(`${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/pdfjs-dist/legacy/build/pdf.mjs`);
+ const doc=await pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise;
+ const pages=[];for(let i=1;i<=doc.numPages;i++)pages.push((await (await doc.getPage(i)).getTextContent()).items);
+ const content=pages.flat().map(item=>item.str).join(' ');
+ for(let i=1;i<=60;i++)assert.ok(content.includes(`Porzione ${i}`),`portion ${i} retained`);
+ assert.doesNotMatch(content,/86[,.]5°/);assert.match(content,/Rettilinei/);assert.match(content,/Curvi/);
+ assert.ok(doc.numPages>4);
+ for(const items of pages){
+  const designs=items.filter(item=>item.str.includes('°')||item.str.includes('Porzione'));
+  for(const item of designs)assert.ok(item.transform[5]>65&&item.transform[5]<740,'portion text stays inside printable body');
+  if(designs.length)assert.ok(!items.some(item=>item.str.includes('NOTA RISERVATA')),'notes stay on the separate data page');
+ }
+ const last=pages.at(-1).map(item=>item.str).join(' ');assert.ok(last.includes(`${doc.numPages} / ${doc.numPages}`),'truthful footer page count');
+});

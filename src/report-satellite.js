@@ -1,4 +1,4 @@
-import {buildCadastralWmsUrl} from './cadastre.js';
+import {buildCadastralWmsUrl} from './cadastre.js?v=1.2.5';
 import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=51';
 
 const ATTRIBUTION = SATELLITE_ATTRIBUTION;

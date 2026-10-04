@@ -1,3 +1,4 @@
+import {hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.2.5';
 import {soilRows,SOIL_DISCLAIMER} from './soil.js';
 import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
 
@@ -65,7 +66,7 @@ ${row('Vertici', number(geometry.vertexCount))}
 <section><h2>Impianto</h2>
 ${row('Distanza filari', `${number(layout.rowSpacingM, 2)} m`)}
 ${row('Distanza piante', `${number(layout.plantSpacingM, 2)} m`)}
-${row('Orientamento', `${number(layout.orientationDeg,1)}°`)}
+${hasPortionDesign(layout)?layout.portions.map(p=>row(p.label,formatPortionDesign(p))).join(''):row('Orientamento', `${number(layout.orientationDeg,1)}°`)}
 ${row('Filari', number(layout.rowCount))}
 ${row('Metri lineari', `${number(layout.rowLinearM)} m`)}
 ${row('Pali stimati', number(layout.totalPosts))}
@@ -137,7 +138,36 @@ function fieldMapBody(field,index,total){
 function fieldDataBody(field,index,total,{mobile=false}={}){
   const m=field.metrics??{},l=field.layout??{},p=field.plantMaterial??{};
   const dataRow=(label,value,css='')=>`<div class="document-data-row ${css}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
-  return `<section class="document-field-data"><p class="document-kicker">Campo ${index+1} di ${total}</p><h1>Dati · ${esc(field.label)}</h1><div class="document-data-columns"><section><h2>Geometria e filari</h2>${dataRow('Superficie lorda',`${reportNumber(m.grossAreaM2)} m²`)}${dataRow('Superficie netta',`${reportNumber(m.netAreaM2)} m²`)}${dataRow('Perimetro',`${reportNumber(m.perimeterM)} m`)}${dataRow('Distanza piante',`${reportNumber(l.plantSpacingM,2)} m`)}${dataRow('Distanza filari',`${reportNumber(l.rowSpacingM,2)} m`)}${dataRow('Orientamento',`${reportNumber(l.orientationDeg,1)}°`)}${dataRow('Capezzagna',`${reportNumber(l.headlandWidthM,1)} m`)}${dataRow('Filari',reportNumber(m.rowCount))}${dataRow('Metri lineari',`${reportNumber(m.rowLinearM)} m`)}</section><section><h2>Materiale e quantità</h2>${dataRow(mobile?'Quantità commerciale di barbatelle':'Quantità commerciale',reportNumber(m.commercialPlants),'quantity-commercial')}${dataRow('Barbatelle calcolate',reportNumber(m.calculatedPlants),'quantity-calculated')}${dataRow('Pali intermedi',reportNumber(m.intermediatePosts))}${dataRow('Pali di testa',reportNumber(m.headPosts))}${dataRow('Pali totali',reportNumber(m.totalPosts))}${dataRow('Vitigno',valueOrFallback(p.grapeVariety))}${dataRow('Clone / selezione',valueOrFallback(p.cloneSelection))}${dataRow('Portainnesto',valueOrFallback(p.rootstock))}${dataRow('Altezza barbatella',`${p.plantHeightCm===60?60:40} cm`)}${dataRow('Annata impianto',valueOrFallback(field.plantingYear))}${dataRow('Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare')}${dataRow('Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No')}</section></div><section class="document-notes"><h2>Inquadramento e note</h2><p><strong>${esc(valueOrFallback(field.context?.label))}</strong></p><p>${esc(field.context?.note||field.notes||'Nessuna nota.')}</p></section><div class="document-field-evidence-inline">${fieldEvidenceSummary(field)}</div></section>`;
+  return `<section class="document-field-data"><p class="document-kicker">Campo ${index+1} di ${total}</p><h1>Dati · ${esc(field.label)}</h1><div class="document-data-columns"><section><h2>Geometria e filari</h2>${dataRow('Superficie lorda',`${reportNumber(m.grossAreaM2)} m²`)}${dataRow('Superficie netta',`${reportNumber(m.netAreaM2)} m²`)}${dataRow('Perimetro',`${reportNumber(m.perimeterM)} m`)}${dataRow('Distanza piante',`${reportNumber(l.plantSpacingM,2)} m`)}${dataRow('Distanza filari',`${reportNumber(l.rowSpacingM,2)} m`)}${dataRow('Orientamento',hasPortionDesign(l)?`${l.portions.length} porzioni · dettagli nelle pagine seguenti`:`${reportNumber(l.orientationDeg,1)}°`)}${dataRow('Capezzagna',`${reportNumber(l.headlandWidthM,1)} m`)}${dataRow('Filari',reportNumber(m.rowCount))}${dataRow('Metri lineari',`${reportNumber(m.rowLinearM)} m`)}</section><section><h2>Materiale e quantità</h2>${dataRow(mobile?'Quantità commerciale di barbatelle':'Quantità commerciale',reportNumber(m.commercialPlants),'quantity-commercial')}${dataRow('Barbatelle calcolate',reportNumber(m.calculatedPlants),'quantity-calculated')}${dataRow('Pali intermedi',reportNumber(m.intermediatePosts))}${dataRow('Pali di testa',reportNumber(m.headPosts))}${dataRow('Pali totali',reportNumber(m.totalPosts))}${dataRow('Vitigno',valueOrFallback(p.grapeVariety))}${dataRow('Clone / selezione',valueOrFallback(p.cloneSelection))}${dataRow('Portainnesto',valueOrFallback(p.rootstock))}${dataRow('Altezza barbatella',`${p.plantHeightCm===60?60:40} cm`)}${dataRow('Annata impianto',valueOrFallback(field.plantingYear))}${dataRow('Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare')}${dataRow('Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No')}</section></div><section class="document-notes"><h2>Inquadramento e note</h2><p><strong>${esc(valueOrFallback(field.context?.label))}</strong></p><p>${esc(field.context?.note||field.notes||'Nessuna nota.')}</p></section><div class="document-field-evidence-inline">${fieldEvidenceSummary(field)}</div></section>`;
+}
+
+function portionBodies(field){
+  if(!hasPortionDesign(field.layout))return [];
+  // At 12px, 48 units reserve <=576px of the 643px print body: a
+  // conservative 1em per Latin glyph and 2em for fallback-font glyphs.
+  // Explicit non-wrapping lines make each paragraph exactly 18px + 6px gap.
+  const units=letter=>letter.codePointAt(0)<=255?1:2;
+  const width=text=>Array.from(text).reduce((sum,letter)=>sum+units(letter),0);
+  const lines=field.layout.portions.flatMap(p=>{
+    const text=`${p.label}: ${formatPortionDesign(p)}`;
+    const lines=[];let line='';
+    for(const word of text.split(/\s+/)){
+      if(line&&width(line+' '+word)>48){lines.push(line);line='';}
+      let piece='';const pieces=[];
+      for(const letter of word){
+        if(piece&&width(piece)+units(letter)>48){pieces.push(piece);piece='';}
+        piece+=letter;
+      }
+      if(piece)pieces.push(piece);
+      while(pieces.length>1)lines.push(pieces.shift());
+      line=line?line+' '+pieces[0]:pieces[0]||'';
+    }
+    if(line)lines.push(line);
+    return lines;
+  });
+  const pages=[];
+  for(let i=0;i<lines.length;i+=24)pages.push(`<section class="document-field-data"><p class="document-kicker">Orientamento e curvatura per porzione</p><h1>Filari · ${esc(field.label)}</h1>${lines.slice(i,i+24).map(line=>`<p class="document-portion-line">${esc(line)}</p>`).join('')}</section>`);
+  return pages;
 }
 
 function disclaimerBody(model){
@@ -149,7 +179,7 @@ export function renderProjectReportHtml(model,{mobile=false}={}){
   if(!model?.fields?.length)throw new TypeError('Il documento richiede almeno un campo.');
   const bodies=[coverBody(model)];
   if(model.fields.length>1||model.overview){const size=model.overview?4:12;for(let i=0;i<model.fields.length;i+=size)bodies.push(summaryBody(model,{mobile,fields:model.fields.slice(i,i+size),continuation:i>0,showOverview:i+size>=model.fields.length}));}
-  model.fields.forEach((field,index)=>{bodies.push(fieldMapBody(field,index,model.fields.length));bodies.push(fieldDataBody(field,index,model.fields.length,{mobile}));});
+  model.fields.forEach((field,index)=>{bodies.push(fieldMapBody(field,index,model.fields.length));bodies.push(fieldDataBody(field,index,model.fields.length,{mobile}));bodies.push(...portionBodies(field));});
   bodies.push(disclaimerBody(model));
   const total=bodies.length;
   const pages=bodies.map((body,index)=>`<section class="report-page report-page-${index+1}"><img class="document-watermark" src="./assets/logo-filigrana.png" alt="" aria-hidden="true">${pageHeader()}<div class="document-page-body">${body}</div>${pageFooter(model,index+1,total)}</section>`).join('');

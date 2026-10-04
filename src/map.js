@@ -1,12 +1,14 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
 import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.4';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=53.2';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=53.2';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.2.5';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.2.5';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.4';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.5';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.2.5';
+import {portionAtCoordinate} from './row-portions.js?v=1.2.5';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
@@ -28,6 +30,7 @@ const OTHER_FIELDS_FILL_ID = 'other-project-fields-fill';
 const OTHER_FIELDS_LINE_ID = 'other-project-fields-line';
 const OTHER_ROWS_SOURCE_ID = 'other-project-rows';
 const OTHER_ROWS_LAYER_ID = 'other-project-rows-line';
+const PORTIONS_SOURCE_ID='row-portions';
 
 function baseStyle() {
   return {
@@ -81,7 +84,6 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let searchMarker = null;
   let gpsMarker = null;
   let sideMeasurementMarkers = [];
-  let polygonOpsPromise = null;
   let manualDrawing = false;
   let manualMode = 'perimeter';
   let committedGeometry = null;
@@ -108,12 +110,28 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let previousPerimeter = null;
   let toolsVersion = 0;
   let curveControlMarkers=[];
+  let curveEditorVersion=0;
   let rowCurveEditor={geometry:null,orientationDeg:0,points:[],active:false};
   let cadastralVisible=false;
+  let rowPortions={portions:[],activeId:null,onSelect:()=>{},canSelect:()=>true};
+
+  function setRowPortions({portions=[],activeId=null,onSelect=()=>{},canSelect=()=>true}={}){
+    rowPortions={portions,activeId,onSelect,canSelect};
+    whenEditorReady(()=>map.getSource(PORTIONS_SOURCE_ID)?.setData({type:'FeatureCollection',features:rowPortions.portions.map((portion,index)=>({type:'Feature',id:portion.id,properties:{portionId:portion.id,label:portion.label,active:portion.id===rowPortions.activeId,index},geometry:{type:'Polygon',coordinates:portion.geometry}}))}));
+  }
+
+  function selectRowPortion(event){
+    if(manualDrawing||vertexEditing||vertexRemovalActive||editingExclusionId||linearFinishPending||!rowPortions.canSelect())return false;
+    const position=event.lngLat??(event.point?map.unproject?.(event.point):null);
+    const selected=portionAtCoordinate(rowPortions.portions,[Number(position?.lng),Number(position?.lat)]);
+    if(!selected)return false;
+    rowPortions.onSelect(selected.id);return true;
+  }
 
   function clearCurveControlMarkers(){for(const marker of curveControlMarkers)marker.remove?.();curveControlMarkers=[];}
 
   function setRowCurveEditor({geometry=null,orientationDeg=0,exclusions=[],points=[],active=false}={}){
+    const version=++curveEditorVersion;
     clearCurveControlMarkers();
     const normalized=resolveRowCurvePoints({polygon:geometry,orientationDeg,exclusions,rowCurvePoints:points});
     const segments=getRowCurveSegments({polygon:geometry,orientationDeg,exclusions});
@@ -123,9 +141,11 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       const element=document.createElement('button');element.type='button';element.className='curve-control-marker';element.textContent=String(index+1);element.title=`Punto di curvatura ${index+1}${segments.length>1?' · '+segments.find(segment=>segment.id===point.segmentId)?.label:''}`;element.setAttribute?.('aria-label',element.title);
       element.addEventListener?.('pointerdown',event=>event.stopPropagation?.());
       element.addEventListener?.('touchstart',event=>event.stopPropagation?.(),{passive:true});
+      element.addEventListener?.('click',event=>event.stopPropagation?.());
       const coordinate=curvePointToLonLat({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,point});
       const marker=new globalThis.maplibregl.Marker({element,draggable:true,anchor:'center'}).setLngLat(coordinate).addTo(map);
       marker.on?.('dragend',()=>{
+        if(version!==curveEditorVersion)return;
         const position=marker.getLngLat();
         const moved=lonLatToCurvePoint({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,coordinate:[position.lng,position.lat],id:point.id,segmentId:point.segmentId});
         const updated=resolveRowCurvePoints({polygon:geometry,orientationDeg:rowCurveEditor.orientationDeg,exclusions:rowCurveEditor.exclusions,
@@ -141,7 +161,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     return true;
   }
 
-  function finishRowCurveEditing(){const wasActive=rowCurveEditor.active||curveControlMarkers.length>0;clearCurveControlMarkers();rowCurveEditor={...rowCurveEditor,active:false};return Boolean(wasActive);}
+  function finishRowCurveEditing(){const wasActive=rowCurveEditor.active||curveControlMarkers.length>0;++curveEditorVersion;clearCurveControlMarkers();rowCurveEditor={...rowCurveEditor,active:false};return Boolean(wasActive);}
 
   const emitDrawingState = () => onDrawingState({
     active:manualDrawing,
@@ -275,15 +295,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   async function polygonOps() {
-    if (!polygonOpsPromise) {
-      polygonOpsPromise = import('https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/+esm').then((module) => {
-        const union = module.union ?? module.default?.union;
-        const intersection = module.intersection ?? module.default?.intersection;
-        if (typeof union !== 'function' || typeof intersection !== 'function') throw new Error('Modulo geometrico non disponibile');
-        return { union, intersection };
-      });
-    }
-    return polygonOpsPromise;
+    return polygonClipping;
   }
 
   async function polygonIntersection(fieldRing, exclusionRing) {
@@ -427,6 +439,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   map.on('click', event => {
     if (Date.now()-lastTouchEnd < 700) return;
     if (manualDrawing) { handleDrawingPoint(event); return; }
+    if (selectRowPortion(event)) return;
     const selected = map.queryRenderedFeatures?.(event.point, { layers:[PROJECT_GEOMETRY_FILL_ID, OTHER_FIELDS_FILL_ID] })?.[0];
     if (selected) onFieldSelect(selected.properties?.fieldId || null);
   });
@@ -444,6 +457,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     touchStartPoint=null;
     if (point && manualDrawing) handleDrawingPoint({...event,point:event.point ?? point});
     else if (point) {
+      if(selectRowPortion({...event,point}))return;
       const selected=map.queryRenderedFeatures?.(point,{layers:[PROJECT_GEOMETRY_FILL_ID,OTHER_FIELDS_FILL_ID]})?.[0];
       if(selected)onFieldSelect(selected.properties?.fieldId||null);
     }
@@ -487,6 +501,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.addLayer({ id:OTHER_FIELDS_LINE_ID, type:'line', source:OTHER_FIELDS_SOURCE_ID, layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#e8f1e9', 'line-width':3.5, 'line-dasharray':[2,1.2] } });
     map.addLayer({ id:PROJECT_GEOMETRY_FILL_ID, type:'fill', source:PROJECT_GEOMETRY_SOURCE_ID, paint:{ 'fill-color':'#b9d39d', 'fill-opacity':0.12 } });
     map.addLayer({ id:PROJECT_GEOMETRY_LINE_ID, type:'line', source:PROJECT_GEOMETRY_SOURCE_ID, layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#f5f6ed', 'line-width':1.1, 'line-opacity':0.62 } });
+    map.addSource(PORTIONS_SOURCE_ID,{type:'geojson',data:emptyCollection()});
+    map.addLayer({id:'row-portions-fill',type:'fill',source:PORTIONS_SOURCE_ID,paint:{'fill-color':['case',['==',['get','index'],0],'#b9d39d','#b8cfe2'],'fill-opacity':['case',['get','active'],.19,.08]}});
+    map.addLayer({id:'row-portions-outline',type:'line',source:PORTIONS_SOURCE_ID,paint:{'line-color':['case',['get','active'],'#ffe18a','#d5e5c5'],'line-width':['case',['get','active'],3,1],'line-opacity':['case',['get','active'],1,.5]}});
     map.addSource(EXCLUSIONS_SOURCE_ID, { type:'geojson', data:emptyCollection() });
     map.addLayer({ id:EXCLUSIONS_FILL_ID, type:'fill', source:EXCLUSIONS_SOURCE_ID, paint:{ 'fill-color':'#8a3f32', 'fill-opacity':0.22 } });
     map.addLayer({ id:EXCLUSIONS_LINE_ID, type:'line', source:EXCLUSIONS_SOURCE_ID, paint:{ 'line-color':'#fff1e7', 'line-width':2.5, 'line-dasharray':[1.5,1] } });
@@ -1088,5 +1105,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
     return true;
   }
-  return { map, draw, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
+  return { map, draw, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
 }

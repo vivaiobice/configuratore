@@ -1,11 +1,12 @@
+import {rowPortionDescriptors,hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.2.5';
 import { parseSharedReportUrl } from './report-share.js';
 import { parsePublicProjectCodeUrl } from './public-project-access.js';
-import { calculateProject } from './project-calculator.js?v=1.2.4';
+import { calculateProject } from './project-calculator.js?v=1.2.5';
 import { buildReportMapModel } from './report-map-model.js?v=45';
 import { renderProjectDiagramSvg } from './report-diagram.js?v=45';
-import { buildProjectReportModel } from './pdf-model.js?v=55.7';
-import { captureSatelliteImage } from './report-satellite.js?v=1.2.4';
-import { renderProjectReportHtml } from './report-template.js?v=55.7';
+import { buildProjectReportModel } from './pdf-model.js?v=1.2.5';
+import { captureSatelliteImage } from './report-satellite.js?v=1.2.5';
+import { renderProjectReportHtml } from './report-template.js?v=1.2.5';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { renderReportQrSvg } from './report-qr.js';
 import { buildPublicProjectUrl } from './public-project-access.js';
@@ -37,6 +38,7 @@ function fieldPresentation(field, index) {
     plantSpacingM: field?.plantSpacingM,
     orientationDeg: field?.orientationDeg,
     rowCurvePoints: field?.rowCurvePoints,
+    rowPortions: field?.rowPortions,
     maintainRowEquidistance: field?.maintainRowEquidistance!==false,
     postSpacingM: field?.postSpacingM,
     headlandWidthM: field?.headlandWidthM
@@ -113,7 +115,7 @@ export function renderSharedProjectHtml({ payload, canEdit = false } = {}) {
       <section class="shared-map-grid"><figure class="shared-map-panel"><div class="shared-live-map" data-field-index="${index}" aria-label="Mappa satellitare interattiva di ${escapeHtml(item.label)}"></div><figcaption>Immagine satellitare interattiva · Imagery © Esri</figcaption></figure><figure class="shared-map-panel">${renderProjectDiagramSvg({mapModel,mode:'technical'})}<figcaption>Schema tecnico indicativo</figcaption></figure></section>
       <section class="shared-metrics" aria-label="Dati principali del campo"><div><span>Superficie netta</span><strong>${formatted(metrics.netAreaM2)} m²</strong></div><div><span>Quantità commerciale</span><strong>${formatted(metrics.commercialPlants25)}</strong></div><div><span>Barbatelle calcolate</span><strong>${formatted(metrics.simulatedPlants)}</strong></div><div><span>Filari</span><strong>${formatted(metrics.rowCount)}</strong></div></section>
     </article><article class="shared-field-data report-page"><p class="report-eyebrow">Campo ${index+1} di ${fields.length}</p><h2>Dati · ${escapeHtml(item.label)}</h2><div class="shared-detail-grid"><section><h3>Geometria e filari</h3>
-      ${detailRow('Superficie lorda',`${formatted(metrics.areaM2)} m²`)}${detailRow('Superficie netta',`${formatted(metrics.netAreaM2)} m²`)}${detailRow('Perimetro',`${formatted(metrics.perimeterM)} m`)}${detailRow('Vertici',formatted(metrics.vertexCount))}${detailRow('Distanza piante',`${formatted(field.plantSpacingM,2)} m`)}${detailRow('Distanza filari',`${formatted(field.rowSpacingM,2)} m`)}${detailRow('Orientamento filari',`${formatted(field.orientationDeg,1)}°`)}${detailRow('Capezzagna',`${formatted(field.headlandWidthM,1)} m`)}${detailRow('Distanza pali',`${formatted(field.postSpacingM,1)} m`)}${detailRow('Filari',formatted(metrics.rowCount))}${detailRow('Metri lineari',`${formatted(metrics.rowLinearM)} m`)}</section><section><h3>Materiale e quantità</h3>
+      ${detailRow('Superficie lorda',`${formatted(metrics.areaM2)} m²`)}${detailRow('Superficie netta',`${formatted(metrics.netAreaM2)} m²`)}${detailRow('Perimetro',`${formatted(metrics.perimeterM)} m`)}${detailRow('Vertici',formatted(metrics.vertexCount))}${detailRow('Distanza piante',`${formatted(field.plantSpacingM,2)} m`)}${detailRow('Distanza filari',`${formatted(field.rowSpacingM,2)} m`)}${hasPortionDesign({portions:rowPortionDescriptors(field,metrics)})?rowPortionDescriptors(field,metrics).map(p=>detailRow(p.label,formatPortionDesign(p))).join(''):detailRow('Orientamento filari',`${formatted(field.orientationDeg,1)}°`)}${detailRow('Capezzagna',`${formatted(field.headlandWidthM,1)} m`)}${detailRow('Distanza pali',`${formatted(field.postSpacingM,1)} m`)}${detailRow('Filari',formatted(metrics.rowCount))}${detailRow('Metri lineari',`${formatted(metrics.rowLinearM)} m`)}</section><section><h3>Materiale e quantità</h3>
       ${detailRow('Quantità commerciale',formatted(metrics.commercialPlants25))}${detailRow('Barbatelle calcolate',formatted(metrics.simulatedPlants))}${detailRow('Pali intermedi',formatted(metrics.intermediatePosts))}${detailRow('Pali di testa',formatted(metrics.headPosts))}${detailRow('Pali totali',formatted(metrics.totalPosts))}${detailRow('Vitigno',field.grapeVariety||'Da definire')}${detailRow('Clone / selezione',field.cloneSelection||'Da definire')}${detailRow('Portainnesto',field.rootstock||'Da definire')}${detailRow('Altezza barbatella',`${field.plantHeightCm===60?60:40} cm`)}${detailRow('Annata impianto',field.campaignYear??field.plantingYear??'Da definire')}${detailRow('Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare')}${detailRow('Vendemmia meccanizzata',field.mechanizedHarvest?'Sì':'No')}</section></div>
       <section class="shared-notes"><h3>Inquadramento e note</h3><p>${escapeHtml(field.projectContextType==='new_planting'?'Nuovo impianto':field.projectContextType||'Da definire')}</p><p>${escapeHtml(field.projectContextNote||field.materialRequestNote||'Nessuna nota.')}</p></section></article>`;
   }).join('');

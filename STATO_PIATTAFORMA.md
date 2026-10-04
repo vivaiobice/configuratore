@@ -1,6 +1,22 @@
 # Piattaforma Vivai Obice — stato unico
 
-**Versione codice: 1.2.4 — 2 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione di questa consegna non eseguita. Progetta impianto resta alla radice del dominio esistente, Conteggi in `/conteggi/`. La consegna è un solo ZIP completo con sorgenti, test, asset, funzioni e migrazioni consolidate. Verifica rese è escluso.
+**Versione codice: 1.2.5 — 3 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione non eseguita. Progetta impianto alla radice, Conteggi in `/conteggi/`; nessuna nuova migrazione SQL o scrittura sui progetti cloud.
+
+## Porzioni indipendenti 1.2.5
+
+- Componenti coltivabili reali, fori ed esclusioni unite. Identità per sovrapposizione quando si muove una strada; unioni con disegni incompatibili segnalate nel configuratore.
+- Direzione, punti curva ed equidistanza locali alla porzione selezionata. Il disegno precedente resta ereditato fino alla modifica e resta disponibile come base nel campo.
+- Capezzagne sul perimetro originario; due pali di testa per ogni frammento fisico. La normalizzazione topologica non ritaglia ulteriormente i filari.
+- Editor, riepiloghi, Admin e documenti calcolano dagli stessi layout. Snapshot e revisioni conservano le porzioni in un solo campo. Documento e scheda mobile mostrano i parametri effettivi delle porzioni.
+- Moduli modificati e relativi importatori aggiornati a `?v=1.2.5`; cache Conteggi aggiornata, 37 risorse offline e corrispondenza esatta per JavaScript con query.
+
+## Verifiche 1.2.5
+
+`npm test`: **987 passati, 0 falliti, 0 saltati**. `npm run check` e `git diff --check` superati. Chromium desktop/mobile: selezione, direzione, curva, salvataggio, ricarica, cambio campo e disegno di un passaggio da 1,50 m. PDF nativo e stampa HTML: quattro fixture anonime, 5 pagine con 2 porzioni; con 60 porzioni e un’etichetta larga da 1.728 caratteri, 9 pagine native e 12 da stampa HTML; testo e PNG renderizzati e controllati. Verificato aggiornamento dalla cache 1.2.4 alle identità dei moduli 1.2.5.
+
+Dispositivi iOS/Safari reali e servizi LIVE non collaudati. L’esportatore nativo già presente è verificato senza introdurre un nuovo comando di download. La consegna resta un pacchetto statico completo; revisione finale e confezionamento avvengono dopo il controllo dell’intero ramo.
+
+## Cronologia 1.2.4
 
 ## Correzioni 1.2.4
 

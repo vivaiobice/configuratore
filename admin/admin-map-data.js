@@ -1,4 +1,4 @@
-import {calculateProject} from '../src/project-calculator.js?v=51';
+import {calculateProject} from '../src/project-calculator.js?v=1.2.5';
 
 const collection=features=>({type:'FeatureCollection',features});
 const valid=ring=>Array.isArray(ring)&&ring.length>=4&&ring.every(point=>Array.isArray(point)&&Number.isFinite(Number(point[0]))&&Number.isFinite(Number(point[1])));
@@ -7,10 +7,11 @@ const polygon=(ring,properties,id)=>({type:'Feature',id,properties,geometry:{typ
 export function buildAdminFieldPreviewData(row={}) {
   const field=row.field??row,ring=field.geometry?.type==='Polygon'?field.geometry.coordinates?.[0]:field.geometry;
   if(!valid(ring))return {valid:false,polygon:[],rows:[],exclusions:[],metrics:null};
-  const exclusions=(Array.isArray(field.exclusions)?field.exclusions:[]).map(item=>Array.isArray(item)?item:item?.geometry).filter(valid);
+  const exclusionRecords=Array.isArray(field.exclusions)?field.exclusions:[];
+  const exclusions=exclusionRecords.map(item=>Array.isArray(item)?item:item?.geometry).filter(valid);
   try {
-    const metrics=calculateProject({polygon:ring,exclusions,rowSpacingM:Number(field.rowSpacingM)||2.5,plantSpacingM:Number(field.plantSpacingM)||.9,orientationDeg:Number(field.orientationDeg)||0,rowCurvePoints:Array.isArray(field.rowCurvePoints)?field.rowCurvePoints:[],maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:Number(field.postSpacingM)||4.5,headlandWidthM:field.headlandWidthM});
-    return {valid:true,polygon:ring,rows:metrics.rows.map(row=>row.coordinates??(row.start&&row.end?[row.start,row.end]:[])).filter(line=>line.length>=2),exclusions,metrics};
+    const metrics=calculateProject({polygon:ring,exclusions:exclusionRecords,rowPortions:field.rowPortions,rowSpacingM:Number(field.rowSpacingM)||2.5,plantSpacingM:Number(field.plantSpacingM)||.9,orientationDeg:Number(field.orientationDeg)||0,rowCurvePoints:Array.isArray(field.rowCurvePoints)?field.rowCurvePoints:[],maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:Number(field.postSpacingM)||4.5,headlandWidthM:field.headlandWidthM});
+    return {valid:true,polygon:ring,rows:metrics.rows.map(row=>row.coordinates??(row.start&&row.end?[row.start,row.end]:[])).filter(line=>line.length>=2),exclusions,exclusionRecords,metrics};
   }catch{return {valid:false,polygon:[],rows:[],exclusions:[],metrics:null};}
 }
 

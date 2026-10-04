@@ -52,3 +52,17 @@ test('overlapping curve handles complete the merge and notify the editor without
   assert.equal(changed.length,1);assert.equal(changed[0].id,'b');assert.equal(handle.removed,true);
  }finally{Object.assign(globalThis,prior);}
 });
+
+test('a removed curve marker cannot apply a delayed drag to another selected portion',()=>{
+ const prior={document:globalThis.document,maplibregl:globalThis.maplibregl};
+ const geometry=[[0,45],[.001,45],[.001,45.001],[0,45.001],[0,45]];
+ try{
+  globalThis.document=parseHTML('<html><body></body></html>').document;
+  Marker.all=[];globalThis.maplibregl={Map:MapStub,Marker,NavigationControl:class{},ScaleControl:class{}};
+  const changes=[],api=initMap({container:'map',onRowCurvePointsChange:value=>changes.push(value)});
+  api.setRowCurveEditor({geometry,points:[{id:'a',position:.3,offsetM:2}],active:true});
+  const old=Marker.all.find(marker=>marker.element.className==='curve-control-marker');
+  api.setRowCurveEditor({geometry,orientationDeg:80,points:[{id:'b',position:.6,offsetM:4}],active:true});
+  old.events.get('dragend')();assert.deepEqual(changes,[],'stale gesture cannot patch the newly selected design');
+ }finally{Object.assign(globalThis,prior);}
+});

@@ -1,11 +1,13 @@
-# Vivai Obice — piattaforma unica 1.2.4
+# Vivai Obice — piattaforma unica 1.2.5
 
-Progetta impianto alla radice; Conteggi in `/conteggi/`. Stesso dominio e account, archivi funzionali separati. Questa release corregge la curvatura indipendente con passaggi da 1,50 m ritagliati sul campo, incluse strozzature quasi quadrate, e il conteggio dei pali di testa sulle interruzioni effettive. La pagina PDF offre “Aggiorna progetto” vicino al nome e recupera errori senza uscire; quote e nomi delle sole immagini satellitari del documento sono esterni ai campi. Stampa/PDF e Preventivo hanno bordo leggero e hover; il logo scuro ha un contorno più visibile.
+Progetta impianto alla radice; Conteggi in `/conteggi/`. Una strada che divide il campo in porzioni coltivabili consente ora direzione e curvatura locali, mantenendo un solo campo, archivio e documento. Le porzioni ereditano il disegno precedente fino alla prima modifica locale; selezione tramite pulsanti o mappa, con conteggi coerenti in editor, riepiloghi, Admin e stampa.
 
-L’interfaccia conserva Comfortaa e il documento il font precedente. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati. **948 test passati**, verifiche Chromium desktop/mobile e due revisioni indipendenti completate con fixture locali.
-- Stato corrente e verifiche: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
-- Pubblicazione del pacchetto unico e attivazione backend: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
-- Riproduzione locale: `npm ci`, `npm ci --prefix conteggi`, `npm test`, `npm run check`.
+L’interfaccia conserva Comfortaa e il documento il font precedente. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati. **987 test passati, 0 falliti, 0 saltati**, controllo sintattico e prove Chromium desktop/mobile con fixture anonime. Stampa HTML ed esportatore nativo verificati su 2 e 60 porzioni, incluse etichette larghe da 1.728 caratteri; dettagli su pagine aggiuntive, senza sovrapporre note o piè di pagina.
+
+- Rilascio e verifiche: [README_RELEASE_1.2.5.md](README_RELEASE_1.2.5.md).
+- Stato corrente: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
+- Pubblicazione del pacchetto unico: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
+- Riproduzione locale: `npm ci`, `npm ci --prefix conteggi`, `npm run offline:build`, `npm test`, `npm run check`.
 
 Le note che seguono descrivono rilasci storici del configuratore e non attestano la configurazione corrente.
 

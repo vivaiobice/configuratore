@@ -1,5 +1,5 @@
-import {COUNTS_CONFIG} from './config.js?v=1.2.4';
-import {createCountsRuntime} from './runtime.js?v=1.2.4';
+import {COUNTS_CONFIG} from './config.js?v=1.2.5';
+import {createCountsRuntime} from './runtime.js?v=1.2.5';
 import {mountCountsUI} from './ui.js?v=1.2.4';
 import {parseCountsUrl,buildCountsUrl} from './navigation.js';
 import {createCountsFeedback} from './feedback.js?v=1.2.4';

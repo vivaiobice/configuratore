@@ -1,4 +1,4 @@
-# Pubblicazione — piattaforma Vivai Obice 1.2.4
+# Pubblicazione — piattaforma Vivai Obice 1.2.5
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
@@ -8,7 +8,9 @@ Inventario e confronto del codice corrente, integrazione locale e prove automati
 
 Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consultazione admin, trasmissione e trasferimento verso un account già esistente hanno flag disattivati: caricare lo ZIP **non installa** questi servizi. I passaggi sotto sono da eseguire.
 
-La 1.2.4 aggiorna soltanto il codice: non richiede nuove migrazioni SQL. Prima di sostituire il pacchetto conservare la versione 1.2.3. Dopo il caricamento verificare la curvatura di un campo con passaggio trasversale da 1,50 m: un controllo per lato, indipendenza della modifica e due pali di testa per ciascun pezzo. Verificare Aggiorna progetto dalla pagina PDF e quote/nomi sulle sole immagini satellitari del documento.
+La 1.2.5 aggiunge porzioni con direzione e curvatura indipendenti nello stesso campo e aggiorna i report: non richiede nuove migrazioni SQL. Prima di sostituire il pacchetto conservare la versione 1.2.4. Dopo il caricamento verificare la curvatura di un campo con passaggio trasversale da 1,50 m: un controllo per lato, indipendenza della modifica e due pali di testa per ciascun pezzo. Verificare Aggiorna progetto dalla pagina PDF e quote/nomi sulle sole immagini satellitari del documento.
+
+Chiudere le precedenti schede Conteggi e riaprire online dopo l’aggiornamento, così il nuovo worker può attivarsi e precacheare i moduli con query esatta. Conservare IndexedDB e localStorage; non cancellare tutti i dati del sito. Verificare la riapertura offline soltanto dopo questa apertura online.
 
 ## Pubblicare il codice unico
 
@@ -22,7 +24,7 @@ La 1.2.4 aggiorna soltanto il codice: non richiede nuove migrazioni SQL. Prima d
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.4 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.5 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 

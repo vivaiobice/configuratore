@@ -1,7 +1,7 @@
 const KEY='vivai-obice:configuratore:projects:v1';
 import {migrateProjectArchive} from './local-migrations.js?v=55.6.1';
 import {ownerStorageKey} from './local-owner-scope.js';
-import {APP_CONFIG} from './config.js';
+import {APP_CONFIG} from './config.js?v=1.2.5';
 const archiveKey=()=>ownerStorageKey(KEY,APP_CONFIG.environment);
 export function readLocalProjects(storage){
  const raw=storage?.getItem?.(archiveKey());

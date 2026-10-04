@@ -1,6 +1,7 @@
+import {rowPortionDescriptors} from './row-portion-summary.js?v=1.2.5';
 import {soilProfileIsCurrent} from './soil.js';
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
-import { ensureProjectFields } from './fields.js?v=55.1';
+import { ensureProjectFields } from './fields.js?v=1.2.5';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',
@@ -49,6 +50,7 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
       rows: Array.isArray(metrics.rows) ? metrics.rows : []
     },
     layout: {
+      portions:rowPortionDescriptors(project,metrics),
       rowSpacingM: project.rowSpacingM ?? null,
       plantSpacingM: project.plantSpacingM ?? null,
       orientationDeg: project.orientationDeg ?? 0,
@@ -119,6 +121,7 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
     rows:Array.isArray(metrics.rows)?metrics.rows:[],
     sideMeasurements:Array.isArray(metrics.sideMeasurements)?metrics.sideMeasurements:[],
     layout:{
+      portions:rowPortionDescriptors(field,metrics),
       rowSpacingM:n(field.rowSpacingM),plantSpacingM:n(field.plantSpacingM),
       orientationDeg:n(field.orientationDeg)??0,headlandWidthM:n(field.headlandWidthM),
       postSpacingM:n(field.postSpacingM),mechanizedHarvest:Boolean(field.mechanizedHarvest)

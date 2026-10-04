@@ -1,3 +1,4 @@
+import {hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.2.5';
 import { buildReportMapModel } from './report-map-model.js?v=45';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 
@@ -48,6 +49,22 @@ function wrapped(page,value,{x,y,width,size=10,lineHeight=size*1.5,font,color,ma
   }
   if(line&&lines<maxLines)flush();
   return y-lines*lineHeight;
+}
+
+function portionPages(field,font){
+  if(!hasPortionDesign(field.layout))return [];
+  const lines=[];
+  for(const portion of field.layout.portions){
+    let line='';
+    for(const letter of pdfText(`${portion.label}: ${formatPortionDesign(portion)}`)){
+      if(line&&font.widthOfTextAtSize(line+letter,10)>485){lines.push(line);line='';}
+      line+=letter;
+    }
+    if(line)lines.push(line);
+    lines.push('');
+  }
+  const pages=[];for(let i=0;i<lines.length;i+=32)pages.push(lines.slice(i,i+32));
+  return pages;
 }
 
 function line(page,label,value,x,y,width,fonts,colors){
@@ -112,7 +129,8 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
   const colors={green:pdfLib.rgb(.09,.24,.16),ink:pdfLib.rgb(.12,.18,.14),muted:pdfLib.rgb(.33,.39,.35),line:pdfLib.rgb(.79,.85,.8),soft:pdfLib.rgb(.93,.96,.93),gold:pdfLib.rgb(.53,.47,.27),rust:pdfLib.rgb(.56,.34,.28),white:pdfLib.rgb(1,1,1)};
   const images={logo:await embeddedAsset(pdf,'./assets/logo-vivai-obice-lineare.png',assetLoader),watermark:await embeddedAsset(pdf,'./assets/logo-filigrana.png',assetLoader),qr:await embeddedQr(pdf,model.qrSvg,{documentRef})};
   const hasOverview=/^data:image\/png;base64,/i.test(String(model.overview?.satelliteImage??''));
-  const total=2+(model.fields.length>1?1:0)+(hasOverview?1:0)+model.fields.length*2;let current=0;
+  const designs=model.fields.map(field=>portionPages(field,fonts.regular));
+  const total=designs.reduce((n,pages)=>n+pages.length,0)+2+(model.fields.length>1?1:0)+(hasOverview?1:0)+model.fields.length*2;let current=0;
   const add=()=>frame(pdf,model,++current,total,images,fonts,colors);
   let page=add();let y=title(page,model.title||'Progetto viticolo',fonts,colors)-20;
   y=wrapped(page,model.project?.name||'',{x:42,y,width:490,size:13,font:fonts.bold,color:colors.ink})-12;
@@ -166,7 +184,7 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
     wrapped(page,model.overview.mapAttribution||'Imagery © Esri',{x:42,y:325,width:511,size:8,lineHeight:10,font:fonts.regular,color:colors.muted,maxLines:3});
   }
 
-  for(const field of model.fields){
+  for(const [fieldIndex,field] of model.fields.entries()){
     page=add();y=title(page,field.label,fonts,colors)-12;
     const fieldPlace=[field.location?.municipality,field.location?.province?`(${field.location.province})`:null].filter(Boolean).join(' ');
     if(fieldPlace)page.drawText(pdfText(fieldPlace),{x:50,y:y+1,size:9,font:fonts.regular,color:colors.muted});
@@ -182,13 +200,19 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
 
     page=add();y=title(page,`Dati - ${field.label}`,fonts,colors)-26;
     const m=field.metrics??{},l=field.layout??{},p=field.plantMaterial??{};
-    const left=[['Superficie lorda',`${Math.round(m.grossAreaM2||0)} m²`],['Superficie netta',`${Math.round(m.netAreaM2||0)} m²`],['Perimetro',`${Math.round(m.perimeterM||0)} m`],['Distanza piante',`${l.plantSpacingM??'-'} m`],['Distanza filari',`${l.rowSpacingM??'-'} m`],['Orientamento',`${l.orientationDeg??'-'}°`],['Capezzagna',`${l.headlandWidthM??'-'} m`],['Filari',String(m.rowCount??0)],['Metri lineari',`${Math.round(m.rowLinearM||0)} m`]];
+    const left=[['Superficie lorda',`${Math.round(m.grossAreaM2||0)} m²`],['Superficie netta',`${Math.round(m.netAreaM2||0)} m²`],['Perimetro',`${Math.round(m.perimeterM||0)} m`],['Distanza piante',`${l.plantSpacingM??'-'} m`],['Distanza filari',`${l.rowSpacingM??'-'} m`],['Orientamento',hasPortionDesign(l)?`${l.portions.length} porzioni (vedi dettagli)`:`${l.orientationDeg??'-'}°`],['Capezzagna',`${l.headlandWidthM??'-'} m`],['Filari',String(m.rowCount??0)],['Metri lineari',`${Math.round(m.rowLinearM||0)} m`]];
     const right=[['Quantità commerciale',String(m.commercialPlants??0)],['Barbatelle calcolate',String(m.calculatedPlants??0)],['Pali intermedi',String(m.intermediatePosts??0)],['Pali di testa',String(m.headPosts??0)],['Pali totali',String(m.totalPosts??0)],['Vitigno',p.grapeVariety],['Clone / selezione',p.cloneSelection],['Portinnesto',p.rootstock],['Altezza barbatella',`${p.plantHeightCm===60?60:40} cm`],['Annata impianto',String(field.plantingYear??'-')],['Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No']];
     page.drawText('Geometria e filari',{x:50,y,size:12,font:fonts.bold,color:colors.green});
     page.drawText('Materiale e quantità',{x:310,y,size:12,font:fonts.bold,color:colors.green});
     left.forEach(([label,value],index)=>line(page,label,value,50,y-27-index*24,235,fonts,colors));
     right.forEach(([label,value],index)=>line(page,label,value,310,y-27-index*24,235,fonts,colors));
     wrapped(page,`Inquadramento: ${field.context?.label||'Da definire'}   Riferimento / note: ${field.context?.note||field.notes||'Nessuna nota.'}`,{x:50,y:346,width:485,size:10,font:fonts.regular,color:colors.ink,maxLines:9});
+    for(const lines of designs[fieldIndex]){
+      page=add();y=title(page,`Filari - ${field.label}`,fonts,colors)-26;
+      page.drawText('Orientamento e curvatura per porzione',{x:50,y,size:11,font:fonts.bold,color:colors.green});
+      lines.forEach((text,index)=>{if(text)page.drawText(text,{x:50,y:y-28-index*15,size:10,font:fonts.regular,color:colors.ink});});
+    }
+
   }
   page=add();y=title(page,'Avvertenze e consultazione',fonts,colors)-28;
   wrapped(page,model.disclaimer?.full||'',{x:50,y,width:485,size:11,lineHeight:18,font:fonts.regular,color:colors.ink,maxLines:21});

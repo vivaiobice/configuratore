@@ -24,10 +24,10 @@ function toXY(point,ref){return [(point[0]-ref.lon)*DEG*EARTH_RADIUS_M*Math.cos(
 function toLonLat(point,ref){return [ref.lon+point[0]/(DEG*EARTH_RADIUS_M*Math.cos(ref.lat*DEG)),ref.lat+point[1]/(DEG*EARTH_RADIUS_M)];}
 function rotate([x,y],angle){const c=Math.cos(angle),s=Math.sin(angle);return [x*c-y*s,x*s+y*c];}
 
-function frameFor(polygon,orientationDeg=0){
+function frameFor(polygon,orientationDeg=0,reference=null){
   const raw=openRing(polygon);
   if(raw.length<3)return null;
-  const ref=referenceFor(raw);
+  const ref=reference??referenceFor(raw);
   const angle=-(Number(orientationDeg)||0)*DEG;
   const points=raw.map(point=>rotate(toXY(point,ref),angle));
   const xs=points.map(point=>point[0]),ys=points.map(point=>point[1]);
@@ -368,6 +368,36 @@ function unsafeRowSpacing(rows,minimum){
   return false;
 }
 
+// Decide ownership of an already physically clipped fragment. Normalized
+// topology may contain tiny artificial gaps, so it must never cut this fragment.
+function ownerIdInFrame(coordinates,regions){
+  if(!regions.length)return null;
+  if(regions.length===1)return regions[0].id;
+  const ranked=regions.map(region=>{
+    const [outer,...holes]=region.rings;
+    const pieces=clipPolyline(coordinates,point=>pointInRing(point,outer)&&!holes.some(hole=>pointInRing(point,hole)),{rings:region.rings});
+    return {region,length:pieces.reduce((sum,piece)=>sum+polylineLength(piece),0)};
+  });
+  ranked.sort((a,b)=>Math.abs(b.length-a.length)>1e-7?b.length-a.length:a.region.id.localeCompare(b.region.id));
+  if(ranked[0].length>1e-7)return ranked[0].region.id;
+  // A whole short fragment can fall in a normalization-only strip. Assign its
+  // nearest component deterministically rather than deleting real row length.
+  const nearest=regions.map(region=>{
+    let distance=Infinity;
+    for(let i=1;i<coordinates.length;i++)for(const ring of region.rings)for(let j=0;j<ring.length;j++)distance=Math.min(distance,segmentGapSquared(coordinates[i-1],coordinates[i],ring[j],ring[(j+1)%ring.length]));
+    return {id:region.id,distance};
+  });
+  nearest.sort((a,b)=>Math.abs(a.distance-b.distance)>1e-10?a.distance-b.distance:a.id.localeCompare(b.id));
+  return nearest[0].id;
+}
+
+export function rowOwnerId({coordinates,portions=[]}={}){
+  if(!Array.isArray(coordinates)||coordinates.length<2)return null;
+  const ref=referenceFor(coordinates);
+  const regions=portions.map(p=>({id:p.id,rings:p.geometry.map(ring=>openRing(ring).map(point=>toXY(point,ref)))}));
+  return ownerIdInFrame(coordinates.map(point=>toXY(point,ref)),regions);
+}
+
 export function curvePointToLonLat({polygon,orientationDeg=0,point}={}){
   const frame=frameFor(polygon,orientationDeg);
   if(!frame)throw new TypeError('Perimetro non valido');
@@ -383,10 +413,15 @@ export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curv
   return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX,...(segmentId?{segmentId}:{})}])[0];
 }
 
-export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0}={}){
-  const frame=frameFor(polygon,orientationDeg);
+export function generateCurvedRows({polygon,guidePolygon=null,clipRegion=null,rowOwnership=null,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0}={}){
+  const frame=frameFor(polygon,orientationDeg,guidePolygon?referenceFor(guidePolygon):null);
   const spacing=Number(rowSpacingM),points=normalizeRowCurvePoints(rowCurvePoints);
-  if(!frame||!Number.isFinite(spacing)||spacing<=0||!points.length)return [];
+  if(!frame||!Number.isFinite(spacing)||spacing<=0||(!points.length&&!guidePolygon))return [];
+  if(guidePolygon){
+    const guideFrame=frameFor(guidePolygon,orientationDeg,frame.ref);
+    if(!guideFrame)return [];
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,clipRegion:rowOwnership?null:(clipRegion??[guidePolygon]),rowOwnership},frame,guideFrame,null);
+  }
   const segments=segmentsFor(frame,exclusions);
   if(segments.length>1){
     const resolved=resolvedPoints(frame,segments,points);
@@ -401,10 +436,13 @@ export function generateCurvedRows({polygon,rowSpacingM,orientationDeg=0,rowCurv
   return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:wholePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,frame,null);
 }
 
-function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend},frame,curveFrame,segment){
+function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,clipRegion=null,rowOwnership=null},frame,curveFrame,segment){
   const spacing=Number(rowSpacingM);
   const nodes=curveNodes(points);
   const exclusionRings=(Array.isArray(exclusions)?exclusions:[]).map(item=>openRing(Array.isArray(item)?item:item?.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle))).filter(ring=>ring.length>=3);
+  const regionRings=(clipRegion??[]).map(ring=>openRing(ring).map(point=>rotate(toXY(point,frame.ref),frame.angle)));
+  const ownershipRegions=(rowOwnership?.portions??[]).map(p=>({id:p.id,rings:p.geometry.map(ring=>openRing(ring).map(point=>rotate(toXY(point,frame.ref),frame.angle)))}));
+  const inRegion=point=>!regionRings.length||(pointInRing(point,regionRings[0])&&!regionRings.slice(1).some(ring=>pointInRing(point,ring)));
   const step=clamp(Number(sampleStepM)||Math.min(1,spacing/3),.25,2);
   const sampleCount=Math.max(2,Math.ceil(frame.spanY/step));
   const maxOffset=Math.max(0,...points.map(point=>Math.abs(point.offsetM)));
@@ -441,10 +479,11 @@ function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:
       const trimmed=trimPolyline(outer,headlandWidthM);
       if(trimmed.length<2)continue;
       const cuts=[...(segment?.before?[{normal:segment.before.normal,value:segment.before.high}]:[]),...(segment?.after?[{normal:segment.after.normal,value:segment.after.low}]:[])];
-      const usable=exclusionRings.length||segment?clipPolyline(trimmed,point=>(!segment||segmentContains(segment,point))&&!exclusionRings.some(ring=>pointInRing(point,ring)),{rings:exclusionRings,cuts}):[trimmed];
+      const usable=exclusionRings.length||segment||regionRings.length?clipPolyline(trimmed,point=>inRegion(point)&&(!segment||segmentContains(segment,point))&&!exclusionRings.some(ring=>pointInRing(point,ring)),{rings:[...exclusionRings,...regionRings],cuts}):[trimmed];
       for(const segment of usable){
         const lengthM=polylineLength(segment);
         if(lengthM<.05)continue;
+        if(rowOwnership&&ownerIdInFrame(segment,ownershipRegions)!==rowOwnership.portionId)continue;
         const coordinates=segment.map(point=>localToLonLat(point,frame));
         const start=coordinates[0],end=coordinates.at(-1);
         output.push({coordinates,start,end,lengthM,localCoordinates:segment,sourceDistance:candidate.sourceDistance});
@@ -452,7 +491,7 @@ function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:
     }
   }
   if(maintainEquidistance!==false&&unsafeRowSpacing(output.map(row=>({coordinates:row.localCoordinates,sourceDistance:row.sourceDistance})),spacing*.45)){
-    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25)},frame,curveFrame,segment);
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25),clipRegion,rowOwnership},frame,curveFrame,segment);
   }
   return output.map(({localCoordinates,sourceDistance,...row})=>row);
 }

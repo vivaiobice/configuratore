@@ -1,5 +1,6 @@
 import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=45';
-import { generateCurvedRows, normalizeRowCurvePoints } from './row-curves.js?v=1.2.4';
+import { resolveRowPortions } from './row-portions.js?v=1.2.5';
+import { generateCurvedRows, normalizeRowCurvePoints, rowOwnerId } from './row-curves.js?v=1.2.5';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);
@@ -29,6 +30,7 @@ function emptyResult() {
     perimeterM: 0,
     vertexCount: 0,
     rows: [],
+    portions: [],
     rowCount: 0,
     rowLinearM: 0,
     simulatedPlants: 0,
@@ -40,7 +42,7 @@ function emptyResult() {
   };
 }
 
-export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, rowCurvePoints = [], maintainRowEquidistance = true, postSpacingM = null, headlandWidthM = null }) {
+export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantSpacingM, orientationDeg = 0, rowCurvePoints = [], rowPortions = [], maintainRowEquidistance = true, postSpacingM = null, headlandWidthM = null }) {
   if (!Array.isArray(polygon) || polygon.length < 4) return emptyResult();
   const rowSpacing = Number(rowSpacingM);
   const plantSpacing = Number(plantSpacingM);
@@ -52,11 +54,29 @@ export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantS
     return Array.isArray(ring)&&ring.length>=4;
   });
   const exclusionRings=validExclusions.map(item=>Array.isArray(item)?item:item.geometry);
-  const excludedAreaM2 = Math.min(metrics.areaM2, exclusionRings.reduce((sum, item) => sum + polygonMetrics(item).areaM2, 0));
+  const portions=resolveRowPortions({polygon,exclusions:validExclusions,rowPortions,orientationDeg,rowCurvePoints,maintainRowEquidistance});
+  const usableAreaM2=portions.reduce((sum,p)=>sum+polygonMetrics(p.geometry[0]).areaM2-p.geometry.slice(1).reduce((holes,r)=>holes+polygonMetrics(r).areaM2,0),0);
+  const excludedAreaM2=validExclusions.length?Math.max(0,Math.min(metrics.areaM2,metrics.areaM2-usableAreaM2)):0;
   const curvePoints=normalizeRowCurvePoints(rowCurvePoints);
-  const rowGenerator=(headland)=>curvePoints.length
-    ? generateCurvedRows({polygon,rowSpacingM:rowSpacing,orientationDeg:Number(orientationDeg)||0,rowCurvePoints:curvePoints,maintainEquidistance:maintainRowEquidistance!==false,exclusions:validExclusions,headlandWidthM:headland})
-    : generateRows(polygon,rowSpacing,Number(orientationDeg)||0,{exclusions:exclusionRings,headlandWidthM:headland});
+  const legacyRows=(headland,design={orientationDeg,rowCurvePoints:curvePoints,maintainRowEquidistance})=>design.rowCurvePoints.length
+    ? generateCurvedRows({polygon,rowSpacingM:rowSpacing,orientationDeg:Number(design.orientationDeg)||0,rowCurvePoints:design.rowCurvePoints,maintainEquidistance:design.maintainRowEquidistance!==false,exclusions:validExclusions,headlandWidthM:headland})
+    : generateRows(polygon,rowSpacing,Number(design.orientationDeg)||0,{exclusions:exclusionRings,headlandWidthM:headland});
+  const usesPortions=portions.length>1||(Array.isArray(rowPortions)&&rowPortions.length>0);
+  const rowGenerator=headland=>{
+    if(!usesPortions)return legacyRows(headland);
+    const inherited=portions.filter(p=>p.mode==='inherited'),groups=new Map(),rows=[];
+    for(const p of inherited){
+      const design=p.inheritedDesign??p,key=JSON.stringify([design.orientationDeg,design.rowCurvePoints,design.maintainRowEquidistance]);
+      if(!groups.has(key))groups.set(key,{design,ids:new Set()});
+      groups.get(key).ids.add(p.id);
+    }
+    for(const {design,ids} of groups.values())for(const row of legacyRows(headland,design)){
+      const ownerId=rowOwnerId({coordinates:row.coordinates??[row.start,row.end],portions});
+      if(ownerId&&ids.has(ownerId))rows.push({...row,portionId:ownerId});
+    }
+    for(const p of portions.filter(p=>p.mode==='local'))rows.push(...generateCurvedRows({polygon,guidePolygon:p.geometry[0],rowOwnership:{portionId:p.id,portions},rowSpacingM:rowSpacing,orientationDeg:p.orientationDeg,rowCurvePoints:p.rowCurvePoints,maintainEquidistance:p.maintainRowEquidistance!==false,exclusions:validExclusions,headlandWidthM:headland}).map(row=>({...row,portionId:p.id})));
+    return rows;
+  };
   const rawRows = rowGenerator(0);
   const headlandWidth = Number(headlandWidthM);
   const effectiveHeadland = Number.isFinite(headlandWidth) && headlandWidth > 0 ? headlandWidth : 0;
@@ -84,6 +104,7 @@ export function calculateProject({ polygon, exclusions = [], rowSpacingM, plantS
     headlandAreaM2,
     excludedAreaM2,
     rows,
+    portions,
     rowCount: rows.length,
     rowLinearM,
     simulatedPlants,

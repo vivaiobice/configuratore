@@ -1,11 +1,11 @@
-import { APP_CONFIG } from '../src/config.js?v=counts2';
-import { COUNTS_CONFIG } from '../conteggi/config.js?v=counts2';
+import { APP_CONFIG } from '../src/config.js?v=1.2.5';
+import { COUNTS_CONFIG } from '../conteggi/config.js?v=1.2.5';
 import {resolveIntegrationConfig,buildCountsUrl} from '../src/counts-routes.js?v=counts1';
-import { connectSupabase } from '../src/backend.js?v=51';
+import { connectSupabase } from '../src/backend.js?v=1.2.5';
 import { resolveFieldLocation } from '../src/field-location.js?v=51';
 import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=1.0.2';
-import { initAdminMap } from './admin-map.js?v=55.7';
-import { mountAdminFieldMap } from './admin-field-map.js?v=55.7';
+import { initAdminMap } from './admin-map.js?v=1.2.5';
+import { mountAdminFieldMap } from './admin-field-map.js?v=1.2.5';
 import { createAdminLocationManager } from './admin-location.js?v=51';
 import { createAdminService } from './admin-service.js?v=1.0.1';
 import { createAdminViews } from './admin-views.js?v=1.0.2';

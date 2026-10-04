@@ -1,5 +1,5 @@
-import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toSessionRow, toVisitorRow } from './backend.js?v=55.6.2';
-import { mergeLocalProjects } from './local-projects.js';
+import { projectPayloadToArchiveItem, projectPayloadToState, toProjectRow, toSessionRow, toVisitorRow } from './backend.js?v=1.2.5';
+import { mergeLocalProjects } from './local-projects.js?v=1.2.5';
 import { buildResumeUrl, newResumeToken, sha256Hex } from './resume.js';
 
 function projectHasGeometry(project) {

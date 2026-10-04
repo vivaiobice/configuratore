@@ -1,8 +1,8 @@
-import {createProjectSync} from './project-sync.js?v=1.2.4';
+import {createProjectSync} from './project-sync.js?v=1.2.5';
 import {createSyncQueue} from './sync-queue.js';
-import {projectPayloadToArchiveItem} from './backend.js';
+import {projectPayloadToArchiveItem} from './backend.js?v=1.2.5';
 import {mergeCloudSnapshot} from './cloud-state.js';
-import {prepareReportContext,assertReportContextScope} from './report-context.js?v=1.2.4';
+import {prepareReportContext,assertReportContextScope} from './report-context.js?v=1.2.5';
 import {buildCloudSnapshot} from './cloud-project-model.js';
 const clone=value=>structuredClone(value);
 export function hasReportProjectChanges(current,reported){

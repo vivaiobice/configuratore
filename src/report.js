@@ -1,20 +1,20 @@
 import {buildOverviewMapModel} from './report-overview.js';
 import {refreshFieldSoilForReport} from './soil-report.js';
-import { loadDraft } from './storage.js';
-import { ensureProjectFields } from './fields.js?v=55.1';
-import { calculateProject } from './project-calculator.js?v=1.2.4';
-import { buildProjectReportModel } from './pdf-model.js?v=55.7';
-import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=55.7';
+import { loadDraft } from './storage.js?v=1.2.5';
+import { ensureProjectFields } from './fields.js?v=1.2.5';
+import { calculateProject } from './project-calculator.js?v=1.2.5';
+import { buildProjectReportModel } from './pdf-model.js?v=1.2.5';
+import { createReportPreflight, updateReportPreflight, canIssueReport, DISCLAIMER_VERSION, resolveFieldLocations, locationForSelection } from './report-preflight.js?v=1.2.5';
 import { buildReportMapModel } from './report-map-model.js?v=45';
-import { captureSatelliteImage } from './report-satellite.js?v=1.2.4';
+import { captureSatelliteImage } from './report-satellite.js?v=1.2.5';
 import { newReportShareToken, hashReportShareToken, buildSharedReportUrl } from './report-share.js';
 import { renderReportQrSvg } from './report-qr.js';
-import { renderProjectReportHtml } from './report-template.js?v=1.0.1';
-import { APP_CONFIG } from './config.js';
-import { connectSupabase, createBackend } from './backend.js?v=55.1';
+import { renderProjectReportHtml } from './report-template.js?v=1.2.5';
+import { APP_CONFIG } from './config.js?v=1.2.5';
+import { connectSupabase, createBackend } from './backend.js?v=1.2.5';
 import {bindBackendToIdentity} from './identity-guard.js';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js';
-import {readReportContext,mountReportProjectContext,assertReportContextScope,refreshReportPreflight} from './report-context.js?v=1.2.4';
+import {readReportContext,mountReportProjectContext,assertReportContextScope,refreshReportPreflight} from './report-context.js?v=1.2.5';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { mountReportAddressAutocomplete } from './report-address.js?v=45';
 
@@ -22,7 +22,7 @@ export { REPORT_HANDOFF_KEY };
 
 function metricsForField(field){
   const exclusions=Array.isArray(field.exclusions)?field.exclusions:[];
-  return calculateProject({polygon:field.geometry,exclusions,rowSpacingM:field.rowSpacingM,plantSpacingM:field.plantSpacingM,orientationDeg:field.orientationDeg,rowCurvePoints:field.rowCurvePoints,maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:field.postSpacingM,headlandWidthM:field.headlandWidthM});
+  return calculateProject({polygon:field.geometry,exclusions,rowSpacingM:field.rowSpacingM,plantSpacingM:field.plantSpacingM,orientationDeg:field.orientationDeg,rowCurvePoints:field.rowCurvePoints,rowPortions:field.rowPortions,maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:field.postSpacingM,headlandWidthM:field.headlandWidthM});
 }
 
 function selectedFields(state,ids){

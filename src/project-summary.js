@@ -1,8 +1,8 @@
-import {calculateProject} from './project-calculator.js?v=1.2.4';
+import {calculateProject} from './project-calculator.js?v=1.2.5';
 
 export function fieldSummaryMetrics(field={}) {
  if(!Array.isArray(field.geometry)||field.geometry.length<4)return {areaM2:0,simulatedPlants:0};
- return calculateProject({polygon:field.geometry,exclusions:field.exclusions??[],rowSpacingM:field.rowSpacingM??2.5,plantSpacingM:field.plantSpacingM??.9,orientationDeg:field.orientationDeg??0,rowCurvePoints:field.rowCurvePoints,maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:field.postSpacingM??4.5,headlandWidthM:field.headlandWidthM});
+ return calculateProject({polygon:field.geometry,exclusions:field.exclusions??[],rowSpacingM:field.rowSpacingM??2.5,plantSpacingM:field.plantSpacingM??.9,orientationDeg:field.orientationDeg??0,rowCurvePoints:field.rowCurvePoints,rowPortions:field.rowPortions,maintainRowEquidistance:field.maintainRowEquidistance!==false,postSpacingM:field.postSpacingM??4.5,headlandWidthM:field.headlandWidthM});
 }
 export function summarizeProject(project={},getMetrics=fieldSummaryMetrics) {
  const result={fieldCount:0,areaM2:0,plants:0};

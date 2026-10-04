@@ -1,7 +1,8 @@
-import {projectSummaryText} from './project-summary.js?v=1.2.4';
+import {rowPortionDescriptors,hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.2.5';
+import {projectSummaryText} from './project-summary.js?v=1.2.5';
 import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE} from './soil.js?v=55.3';
 import {renderProjectDiagramSvg} from './report-diagram.js?v=45';
-import {calculateManualPlants,calculateManualArea} from './project-calculator.js?v=1.0.3';
+import {calculateManualPlants,calculateManualArea} from './project-calculator.js?v=1.2.5';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
 import {getTheme,setTheme} from './theme.js';
 import {installPenTapFallback} from './pen-tap.js?v=55.5';
@@ -110,6 +111,7 @@ export function createMobileUI(api){
  }
  function placeOrientation(){
   const parent=screen==='editor'?$('#mobile-orientation-controls'):$('.step[data-step="2"]');
+  move($('#row-portion-picker'),parent);
   move($('.range-field'),parent);
   move($('.row-curve-controls'),$('#mobile-curve-controls'));
  }
@@ -190,12 +192,12 @@ export function createMobileUI(api){
   api.removeField(id);transaction=false;awaitingPerimeter=false;navigate('fields');showNotice('Campo eliminato.');
  }
  function renderDetail(){
-  const field=api.getField();$('#mobile-detail-title').textContent=field.label||'Campo';
+  const field=api.getField(),portions=rowPortionDescriptors(field,api.getMetrics(field));$('#mobile-detail-title').textContent=field.label||'Campo';
   const soil=field.soil?.cartographic??field.soil;
   const soilValues=[['Tessitura superficiale',soil?.texture],['Calcare superficiale',soil?.limestone],['Drenaggio',soil?.drainage],['Reazione superficiale',soil?.reaction]];
   $('#mobile-field-detail').innerHTML=`${metricsHtml(field)}<dl class="mobile-materials">${[
-   ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],['Orientamento',`${n(field.orientationDeg)}°`],['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
-  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('')}${soilValues.map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value||'Non disponibile')}</dd></div>`).join('')}</dl><div class="mobile-soil-footer"><small>Fonte: ${escape(SOIL_SOURCE)} · CC BY 4.0${soil?.retrievedAt?` · ${escape(new Date(soil.retrievedAt).toLocaleDateString('it-IT'))}`:''}${soil&&!soilProfileIsCurrent(field.soil,field.geometry)?' · Perimetro modificato: aggiorna i dati.':''}</small><small>${escape(SOIL_DISCLAIMER)}</small><button type="button" data-mobile-refresh-soil>Aggiorna dati suolo</button><p data-mobile-soil-status role="status"></p></div><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
+   ['Annata impianto',field.campaignYear||'Da definire'],['Stato impianto',field.plantingStatus==='planted'?'Impianto realizzato / archivio storico':'Da realizzare'],['Sesto',`${n(field.plantSpacingM)} × ${n(field.rowSpacingM)} m`],['Capezzagne',`${n(field.headlandWidthM)} m`],['Distanza pali',`${n(field.postSpacingM)} m`],...(hasPortionDesign({portions})?portions.map(p=>[p.label,formatPortionDesign(p)]):[['Orientamento',`${n(field.orientationDeg)}°`]]),['Vitigno',field.grapeVariety||'Da definire'],['Portainnesto',field.rootstock||'Da definire'],['Clone',field.cloneSelection||'Da definire'],['Vendemmia meccanica',field.mechanizedHarvest?'Sì':'No'],['Passaggi / esclusioni',n(field.exclusions?.length)],['Note',field.projectContextNote||'—']
+  ].map(([label,value])=>`<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join('')}${soilValues.map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value||'Non disponibile')}</dd></div>`).join('')}</dl><div class="mobile-soil-footer"><small>Fonte: ${escape(SOIL_SOURCE)} · CC BY 4.0${soil?.retrievedAt?` · ${escape(new Date(soil.retrievedAt).toLocaleDateString('it-IT'))}`:''}${soil&&!soilProfileIsCurrent(field.soil,field.geometry)?' · Perimetro modificato: aggiorna i dati.':''}</small><small>${escape(SOIL_DISCLAIMER)}</small><button type="button" data-mobile-refresh-soil>Aggiorna dati suolo</button><p data-mobile-soil-status role="status"></p></div><p class="mobile-storage-note">Stima preliminare da verificare in fase di progettazione definitiva.</p>`;
   if(api.countsEnabled){const count=document.createElement('button');count.type='button';count.className='mobile-counts-link';count.textContent='＋ Nuovo conteggio per questo campo';count.addEventListener('click',()=>Promise.resolve().then(()=>api.openCountsForField?.(field.id)).catch(error=>showNotice(error.message||'Conteggi non disponibile.')));$('#mobile-field-detail').append(count);}
   const refresh=$('[data-mobile-refresh-soil]');refresh.disabled=!field.geometry;refresh.addEventListener('click',async()=>{refresh.disabled=true;const status=$('[data-mobile-soil-status]');status.textContent='Consultazione della cartografia in corso…';try{const result=await api.analyzeSoil?.();if(result)renderDetail();else status.textContent='Dati del suolo temporaneamente non disponibili';}finally{if(refresh.isConnected)refresh.disabled=false;}});
  }

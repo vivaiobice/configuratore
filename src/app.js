@@ -1,47 +1,47 @@
-import {createCadastralCoordinator} from './cadastral-auto.js?v=55.7';
-import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=55.7';
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=55.6';
-import { createMobileUI } from './mobile-ui.js?v=1.2.4';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.0.3&counts=1';
+import {createCadastralCoordinator} from './cadastral-auto.js?v=1.2.5';
+import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=1.2.5';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=1.2.5';
+import { createMobileUI } from './mobile-ui.js?v=1.2.5';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.2.5&counts=1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.0.4';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=55.6.1';
-import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=51';
-import { initMap } from './map.js?v=1.2.4';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.2.4';
-import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=counts1';
-import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.4';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.2.5';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=1.2.5';
+import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=1.2.5';
+import { initMap } from './map.js?v=1.2.5';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.2.5';
+import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=1.2.5';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.2.5';
 import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
 import {mountToolMenu} from './tool-menu.js?v=1.2.4';
 import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=counts2';
 import {setLocalOwnerScope} from './local-owner-scope.js';
-import { APP_CONFIG } from './config.js';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.4';
+import { APP_CONFIG } from './config.js?v=1.2.5';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.2.5';
 import {rememberCountsOwner} from './counts-offline-owner.js';
 import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.4';
 import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.4';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.4';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.2.5';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=55.6.2';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=1.2.5';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=1.2.4';
+import { createProjectSync } from './project-sync.js?v=1.2.5';
 import {ensureQuoteRevision} from './quote-sync.js?v=55.6.7';
 import { buildCloudSnapshot } from './cloud-project-model.js';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.0.1';
+import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.2.5';
 import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=1.0.2';
 import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
 import {createViewMode} from './view-mode.js?v=55.4';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
-import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.2.4';
-import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.2.4';
+import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.2.5';
+import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.2.5';
 import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
@@ -52,8 +52,9 @@ import { createProfileUI } from './profile-ui.js?v=1.2.4';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
-import { normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.4';
+import { resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.5';
 import {curveControlRange,nextCurveControlPoint} from './row-curve-control-state.js';
+import {rowPortionEditorState,rowPortionDesignPatch,nextPortionCurvePoint,renderRowPortionPicker} from './row-portion-editor.js?v=1.2.5';
 import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=45';
 
 const $ = (selector) => document.querySelector(selector);
@@ -91,6 +92,8 @@ catch{console.warn('Conteggi non configurato su questa origine');countsConfig=re
 let perimeterEventSent = Boolean(state.project.geometry);
 let curveEditingActive=false;
 let curveControlInteracting=false;
+let activeRowPortionId=null;
+let rowPortionFieldId=null;
 let cadastralOverlayActive=false;
 const authBridge=createAuthBridge();
 let adminReadClient=null;
@@ -259,6 +262,7 @@ function calculateFieldProject(project) {
     plantSpacingM:project?.plantSpacingM,
     orientationDeg:project?.orientationDeg,
     rowCurvePoints:project?.rowCurvePoints,
+    rowPortions:project?.rowPortions,
     maintainRowEquidistance:project?.maintainRowEquidistance!==false,
     postSpacingM:project?.postSpacingM,
     headlandWidthM:project?.headlandWidthM
@@ -269,6 +273,15 @@ function calculateAndRender() {
   const project = state.project;
   const result = calculateFieldProject(project);
   latestMetrics = result;
+  if(rowPortionFieldId!==project.activeFieldId){activeRowPortionId=null;rowPortionFieldId=project.activeFieldId;curveEditingActive=false;}
+  const portionState=rowPortionEditorState(project,activeRowPortionId,result.portions);
+  const reconciledId=portionState.active?.id??null;
+  if(activeRowPortionId!==reconciledId)curveEditingActive=false;
+  activeRowPortionId=reconciledId;
+  renderRowPortionPicker($('#row-portion-picker'),overviewMode?{enabled:false}:portionState,selectRowPortion);
+  mapApi?.setRowPortions?.({portions:overviewMode||!portionState.enabled?[]:result.portions,activeId:activeRowPortionId,onSelect:selectRowPortion,
+    canSelect:()=>!overviewMode&&(!mobileUi?.isActive?.()||mobileUi.captureSession().screen==='editor')});
+  syncOrientationControl();
   const areaText = formatArea(result.areaM2);
   const perimeterText = formatMetres(result.perimeterM);
   const rowsText = result.rowCount ? result.rowCount.toLocaleString('it-IT') : '—';
@@ -306,25 +319,33 @@ function calculateAndRender() {
 function syncOrientationControl() {
   const control = $('#orientation');
   const output = $('#orientation-output');
-  const value=normalizeOrientationDeg(state.project.orientationDeg);
+  const value=normalizeOrientationDeg(portionEditorState().orientationDeg);
   if (control) control.value = String(value);
   if (output&&document.activeElement!==output) output.value = formatOrientationDeg(value);
 }
 
 function curveId(){return globalThis.crypto?.randomUUID?.()??`curve-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;}
-function curveContext(){return {polygon:state.project.geometry,orientationDeg:state.project.orientationDeg,exclusions:state.project.exclusions??[]};}
-function syncCurveEditor(){mapApi?.setRowCurveEditor?.({geometry:state.project.geometry,orientationDeg:state.project.orientationDeg,exclusions:state.project.exclusions??[],points:state.project.rowCurvePoints??[],active:curveEditingActive});}
-function patchCurvePoints(points,{preserveControls=false}={}){curveControlInteracting=preserveControls;try{patchProject({rowCurvePoints:resolveRowCurvePoints({...curveContext(),rowCurvePoints:points})});}finally{curveControlInteracting=false;}}
+function portionEditorState(){return rowPortionEditorState(state.project,activeRowPortionId);}
+function selectRowPortion(id){
+ if(overviewMode)return;
+ const editor=portionEditorState();if(!editor.enabled||!editor.portions.some(p=>p.id===id))return;
+ activeRowPortionId=id;curveEditingActive=false;mapApi?.finishRowCurveEditing?.();
+ patchProject({rowPortions:editor.portions});
+}
+function patchRowDesign(patch){patchProject(rowPortionDesignPatch(state.project,activeRowPortionId,patch));}
+function curveContext(){return portionEditorState().context;}
+function syncCurveEditor(){const editor=portionEditorState();mapApi?.setRowCurveEditor?.({geometry:editor.context.polygon,orientationDeg:editor.orientationDeg,exclusions:editor.context.exclusions,points:editor.points,active:!overviewMode&&curveEditingActive&&(!editor.active||editor.active.mode==='local')});}
+function patchCurvePoints(points,{preserveControls=false}={}){curveControlInteracting=preserveControls;try{patchRowDesign({rowCurvePoints:resolveRowCurvePoints({...curveContext(),rowCurvePoints:points})});}finally{curveControlInteracting=false;}}
 function renderCurveControls(){
   const list=$('#curve-points-list');if(!list)return;
-  const segments=getRowCurveSegments(curveContext()),points=resolveRowCurvePoints({...curveContext(),rowCurvePoints:state.project.rowCurvePoints});
-  const equidistance=$('#curve-equidistance');if(equidistance)equidistance.checked=state.project.maintainRowEquidistance!==false;
+  const editor=portionEditorState(),segments=getRowCurveSegments(editor.context),points=resolveRowCurvePoints({...editor.context,rowCurvePoints:editor.points});
+  const equidistance=$('#curve-equidistance');if(equidistance)equidistance.checked=editor.maintainRowEquidistance;
   list.replaceChildren();
   const add=$('#curve-add-button'),edit=$('#curve-edit-button'),reset=$('#curve-reset-button');
   if(add)add.disabled=!state.project.geometry||points.length>=8;
   if(edit){edit.disabled=!state.project.geometry||!points.length;edit.setAttribute('aria-pressed',String(curveEditingActive));edit.textContent=curveEditingActive?'Fine modifica':'Modifica sulla mappa';}
-  if(reset)reset.disabled=!points.length;
-  if(!points.length){const empty=document.createElement('p');empty.className='curve-points-empty';empty.textContent=state.project.geometry?'Filari rettilinei. Aggiungi un punto per curvarli.':'Disegna prima il perimetro del campo.';list.append(empty);return;}
+  if(reset)reset.disabled=!points.length&&!(editor.active?.mode==='inherited'&&editor.active.rowCurvePoints.length);
+  if(!points.length){const empty=document.createElement('p');empty.className='curve-points-empty';empty.textContent=editor.active?.mode==='inherited'&&editor.active.rowCurvePoints.length?'Curva precedente mantenuta. Aggiungi un punto o raddrizza i filari per progettare questa porzione.':state.project.geometry?'Filari rettilinei. Aggiungi un punto per curvarli.':'Disegna prima il perimetro del campo.';list.append(empty);return;}
   points.forEach((point,index)=>{
     const card=document.createElement('div');card.className='curve-point-card';
     const heading=document.createElement('div');heading.className='curve-point-heading';
@@ -585,12 +606,14 @@ function setOverviewControls(disabled){
 }
 function enterOverviewMode(){
  mapApi?.stopTools?.();curveEditingActive=false;mapApi?.finishRowCurveEditing?.();mapApi?.clearGeometry();overviewMode=true;
+ activeRowPortionId=null;mapApi?.setRowPortions?.({portions:[]});renderRowPortionPicker($('#row-portion-picker'),{enabled:false},selectRowPortion);
  syncOtherFieldsOnMap();desktopFieldSelectors.render(state.project.fields??[],'');setOverviewControls(true);mapApi?.focusAllFields?.();setStatus('Vista generale: nessun campo selezionato. Seleziona un campo per modificarlo.');
 }
 
 function loadActiveFieldOnMap() {
   overviewMode=false;setOverviewControls(false);
   curveEditingActive=false;
+  activeRowPortionId=null;rowPortionFieldId=state.project.activeFieldId;
   mapApi?.finishRowCurveEditing?.();
   mapApi?.clearGeometry();
   syncOtherFieldsOnMap();
@@ -987,23 +1010,26 @@ $('#plant-spacing')?.addEventListener('change', () => track('planting_spacing_ch
 $('#headland')?.addEventListener('change', () => track('advanced_option_changed', { option:'headland', enabled:Boolean(state.project.headlandWidthM) }));
 $('#post-spacing')?.addEventListener('change', () => track('advanced_option_changed', { option:'post_spacing', enabled:Boolean(state.project.postSpacingM) }));
 function applyOrientationValue(raw,{trackChange=false}={}){
-  const value=normalizeOrientationDeg(raw,state.project.orientationDeg);
-  patchProject({orientationDeg:value,orientationLocked:true});syncOrientationControl();
+  const value=normalizeOrientationDeg(raw,portionEditorState().orientationDeg);
+  const patch=rowPortionDesignPatch(state.project,activeRowPortionId,{orientationDeg:value});
+  patchProject({...patch,orientationLocked:true});syncOrientationControl();
   if(trackChange)track('orientation_changed',{degrees:value});
 }
 $('#orientation')?.addEventListener('input',(event)=>applyOrientationValue(event.target.value));
-$('#orientation')?.addEventListener('change', () => track('orientation_changed', { degrees:state.project.orientationDeg }));
+$('#orientation')?.addEventListener('change', () => track('orientation_changed', { degrees:portionEditorState().orientationDeg }));
 $('#orientation-output')?.addEventListener('input',(event)=>{if(event.target.value.trim()!=='')applyOrientationValue(event.target.value);});
 $('#orientation-output')?.addEventListener('change',(event)=>applyOrientationValue(event.target.value,{trackChange:true}));
 for (const button of document.querySelectorAll('[data-angle]')) button.addEventListener('click',()=>applyOrientationValue(button.dataset.angle,{trackChange:true}));
 $('#curve-add-button')?.addEventListener('click',()=>{
   if(!state.project.geometry)return;
-  const points=normalizeRowCurvePoints(state.project.rowCurvePoints);if(points.length>=8)return;
-  curveEditingActive=true;patchCurvePoints([...points,nextCurveControlPoint(points,getRowCurveSegments(curveContext()),curveId())]);
+  const editor=portionEditorState(),points=editor.points;if(points.length>=8)return;
+  const point=editor.active?nextPortionCurvePoint(editor.active,points,curveId()):nextCurveControlPoint(points,getRowCurveSegments(editor.context),curveId());
+  if(!point)return;
+  curveEditingActive=true;patchCurvePoints([...points,point]);
 });
-$('#curve-edit-button')?.addEventListener('click',()=>{if(!state.project.geometry||!state.project.rowCurvePoints?.length)return;curveEditingActive=!curveEditingActive;renderCurveControls();syncCurveEditor();});
+$('#curve-edit-button')?.addEventListener('click',()=>{if(!state.project.geometry||!portionEditorState().points.length)return;curveEditingActive=!curveEditingActive;renderCurveControls();syncCurveEditor();});
 $('#curve-reset-button')?.addEventListener('click',()=>{curveEditingActive=false;mapApi?.finishRowCurveEditing?.();patchCurvePoints([]);});
-$('#curve-equidistance')?.addEventListener('change',event=>patchProject({maintainRowEquidistance:event.target.checked}));
+$('#curve-equidistance')?.addEventListener('change',event=>patchRowDesign({maintainRowEquidistance:event.target.checked}));
 $('#mechanized')?.addEventListener('input', (event) => {
   const enabled = event.target.checked;
   const headlandWidthM = normalizeHeadlandForMechanization(state.project.headlandWidthM, enabled);
