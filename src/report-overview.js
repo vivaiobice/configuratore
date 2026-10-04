@@ -1,4 +1,4 @@
-import {buildReportMapModel} from './report-map-model.js';
+import {buildReportMapModel} from './report-map-model.js?v=1.2.6';
 import {interiorLabelPoint} from './geometry.js';
 export const FIELD_COLORS=['#ffe082','#80deea','#ffab91','#c5e1a5','#ce93d8','#90caf9'];
 export function buildOverviewMapModel(fields,getMetrics=()=>({})){

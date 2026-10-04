@@ -1,14 +1,15 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
 import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.4';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.2.5';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=1.2.5';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.2.6';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.2.6';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.5';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.2.6';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.2.5';
-import {portionAtCoordinate} from './row-portions.js?v=1.2.5';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.2.6';
+import {portionAtCoordinate} from './row-portions.js?v=1.2.6';
+import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.2.6';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
@@ -98,6 +99,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let activeFieldLabelMarker = null;
   let currentActiveFieldLabel = 'Campo';
   const fieldLabelOverlay=createMapFieldLabelOverlay({map});
+  const overlayVisibility=createMapOverlayVisibility({map});
   let drawEditingSuspended = false;
   let editableFeatureId = null;
   let vertexEditing = false;
@@ -514,6 +516,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     editorReady=true;
     for(const callback of [...editorReadyTasks]){editorReadyTasks.delete(callback);callback();}
     renderOtherFieldLabels();
+    overlayVisibility.refresh();
     cadastralOverlay.refresh();
     onReady();
   });
@@ -534,6 +537,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
         .addTo(map);
       sideMeasurementMarkers.push(marker);
     }
+    overlayVisibility.refresh();
   }
 
   function exclusionFeatureCollection(exclusions = currentExclusions) {
@@ -573,6 +577,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       ...currentOtherFields,
       ...(committedGeometry?[{geometry:committedGeometry,label:currentActiveFieldLabel}]:[])
     ]);
+    overlayVisibility.refresh();
   }
 
   function renderActiveFieldLabel() {
@@ -585,6 +590,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     element.className = 'field-label-marker active-field-label';
     element.textContent = currentActiveFieldLabel || 'Campo';
     activeFieldLabelMarker = new globalThis.maplibregl.Marker({ element, anchor:'center' }).setLngLat(point).addTo(map);
+    overlayVisibility.refresh();
   }
 
   function renderOtherFieldLabels() {
@@ -599,6 +605,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       element.textContent = field?.label || 'Campo';
       otherFieldLabelMarkers.push(new globalThis.maplibregl.Marker({ element, anchor:'center' }).setLngLat(point).addTo(map));
     }
+    overlayVisibility.refresh();
   }
 
   function otherRowsFeatureCollection(fields = currentOtherFields) {
@@ -623,7 +630,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     updateProjectGeometrySource(committedGeometry);
     updateSideMeasurements(committedGeometry);
     if (map.getLayer(PROJECT_GEOMETRY_LINE_ID)) {
-      try { map.setLayoutProperty(PROJECT_GEOMETRY_LINE_ID, 'visibility', 'visible'); } catch {}
+      overlayVisibility.refresh();
       try { map.moveLayer?.(PROJECT_GEOMETRY_LINE_ID); } catch {}
     }
   }
@@ -1105,5 +1112,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
     return true;
   }
-  return { map, draw, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
+  return { map, draw, setOverlayVisibility:overlayVisibility.set, getOverlayVisibility:overlayVisibility.state, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
 }

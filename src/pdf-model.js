@@ -1,7 +1,7 @@
-import {rowPortionDescriptors} from './row-portion-summary.js?v=1.2.5';
+import {rowPortionDescriptors} from './row-portion-summary.js?v=1.2.6';
 import {soilProfileIsCurrent} from './soil.js';
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
-import { ensureProjectFields } from './fields.js?v=1.2.5';
+import { ensureProjectFields } from './fields.js?v=1.2.6';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',

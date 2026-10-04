@@ -1,4 +1,4 @@
-import {buildCadastralWmsUrl} from './cadastre.js?v=1.2.5';
+import {buildCadastralWmsUrl} from './cadastre.js?v=1.2.6';
 import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=51';
 
 const ATTRIBUTION = SATELLITE_ATTRIBUTION;
@@ -67,8 +67,8 @@ function labelLines(label,measure,maxWidth){
 
 // Layout uses the capture map's CSS-pixel projection. The same annotated PNG is
 // embedded in the generator preview and downloaded PDF, including Catasto.
-export function layoutSatelliteAnnotations({polygon=[],sideMeasurements=[],fields,width=1000,height=650,measureText}={}){
-  const overview=Array.isArray(fields),fontSize=overview?16:13;
+export function layoutSatelliteAnnotations({polygon=[],sideMeasurements=[],fields,width=1000,height=650,measureText,fontSize:requestedFontSize,leaderGap=24,reservedBoxes=[],compact=false}={}){
+  const overview=Array.isArray(fields),fontSize=requestedFontSize??(overview?16:13);
   const measure=(label)=>measureText?measureText(label,fontSize):String(label).length*fontSize*.62;
   const polygons=(overview?fields.map(field=>field.polygon):[polygon]).map(closedPolygon);
   const requests=overview?fields:sideMeasurements;
@@ -83,9 +83,9 @@ export function layoutSatelliteAnnotations({polygon=[],sideMeasurements=[],field
     const candidates=[];
     for(const edge of relevant){
       const anchor=edge.anchor;
-      for(const distance of [0,12,28,48,76,112,160,224,320,-16]){
-        for(const tangentOffset of [0,-18,18,-36,36,-64,64,-100,100,-160,160]){
-          const offset=24+Math.abs(edge.normal[0])*boxWidth/2+Math.abs(edge.normal[1])*boxHeight/2+distance;
+      for(const distance of (compact?[0,8,16,24,36,52,76,112,160,224,320,-8]:[0,12,28,48,76,112,160,224,320,-16])){
+        for(const tangentOffset of (compact?[0,-12,12,-24,24,-36,36,-48,48,-72,72,-96,96,-132,132,-180,180,-240,240]:[0,-18,18,-36,36,-64,64,-100,100,-160,160])){
+          const offset=leaderGap+Math.abs(edge.normal[0])*boxWidth/2+Math.abs(edge.normal[1])*boxHeight/2+distance;
           const center=[anchor[0]+edge.normal[0]*offset+edge.tangent[0]*tangentOffset,anchor[1]+edge.normal[1]*offset+edge.tangent[1]*tangentOffset];
           candidates.push({center,anchor,score:Math.hypot(center[0]-preferred[0],center[1]-preferred[1])+Math.abs(tangentOffset)*.2+(distance<0?120:0)});
         }
@@ -93,7 +93,7 @@ export function layoutSatelliteAnnotations({polygon=[],sideMeasurements=[],field
     }
     const acceptable=({center,anchor},{clearLeaders=true,clearFields=true}={})=>{
       const box={x:center[0]-boxWidth/2,y:center[1]-boxHeight/2,width:boxWidth,height:boxHeight};
-      if(box.x<4||box.y<4||box.x+boxWidth>width-4||box.y+boxHeight>height-4||polygons.some(ring=>boxHitsPolygon(box,ring))||placed.some(item=>boxesOverlap(box,item.box)))return null;
+      if(box.x<4||box.y<4||box.x+boxWidth>width-4||box.y+boxHeight>height-4||polygons.some(ring=>boxHitsPolygon(box,ring))||placed.some(item=>boxesOverlap(box,item.box))||reservedBoxes.some(item=>boxesOverlap(box,item)))return null;
       const end=boundaryPoint(anchor,center,box),leader=[anchor,end];
       // Start just outside the projected edge and prefer routes clear of fields.
       const start=anchor.map((value,i)=>value+(end[i]-value)*.001);

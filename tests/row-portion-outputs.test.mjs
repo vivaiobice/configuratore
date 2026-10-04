@@ -86,10 +86,11 @@ test('fixed-height HTML print pages retain every descriptor in a large portion l
  field.layout.portions=Array.from({length:60},(_,i)=>({id:`p${i}`,label:`Porzione-${i+1} ${'Etichetta '.repeat(i%4)}`,mode:'local',orientationDeg:i,curved:i%2===0,maintainRowEquidistance:true}));
  const html=renderProjectReportHtml(model);
  for(let i=1;i<=60;i++)assert.ok(html.includes(`Porzione-${i} `));
- assert.ok((html.match(/Orientamento e curvatura per porzione/g)||[]).length>2);
+ assert.ok((html.match(/Geometria e filari/g)||[]).length>2);
+ assert.doesNotMatch(html,/Orientamento e curvatura/);
  assert.ok(!html.includes('86,5°'));
  assert.equal((html.match(/\bCurvi\b/g)||[]).length,30,'wrapping must preserve whole curve-status words');
- assert.equal((html.match(/\bEquidistanza\b/g)||[]).length,60);
+ assert.doesNotMatch(html,/Equidistanza/);
 });
 
 test('wide and fallback-font labels fit conservative single-line print chunks without losing characters',()=>{
@@ -101,5 +102,5 @@ test('wide and fallback-font labels fit conservative single-line print chunks wi
  assert.equal(lines.join('').match(/W/g)?.length,1728);
  assert.equal(lines.join('').match(/界/g)?.length,120);
  assert.equal(lines.join('').match(/🙂/gu)?.length,20);
- assert.ok((html.match(/Orientamento e curvatura per porzione/g)||[]).length>=2);
+ assert.ok((html.match(/Geometria e filari/g)||[]).length>=2);
 });

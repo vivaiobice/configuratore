@@ -1,6 +1,16 @@
 # Piattaforma Vivai Obice — stato unico
 
-**Versione codice: 1.2.5 — 3 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione non eseguita. Progetta impianto alla radice, Conteggi in `/conteggi/`; nessuna nuova migrazione SQL o scrittura sui progetti cloud.
+**Versione codice: 1.2.6 — 4 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione non eseguita. Progetta impianto alla radice, Conteggi in `/conteggi/`; nessuna nuova migrazione SQL o scrittura sui progetti cloud.
+
+## Visibilità, stampa e Profilo 1.2.6
+
+- Occhio nelle mappe principale, Campi ed editor, desktop/mobile: Campo, Schema vigneto e Quote indipendenti, preferenza temporanea e Mostra tutto. I dati e i vertici di modifica restano disponibili.
+- Schema tecnico stampato con quote esterne e campo ordinario più grande nello stesso riquadro. Perimetri densi con disposizione esterna proporzionata allo spazio. Anteprime piccole leggere; font del documento conservato.
+- Orientamento e curvatura in Geometria e filari, senza sezione dedicata o stato dell’equidistanza. Note separate anche con titoli lunghi; continuazione dati per molte porzioni.
+- Profilo mobile compatto, tutti i dieci campi e comandi visibili senza scorrimento a 320 × 568, 390 × 844 e 568 × 320 pixel in Chromium. Selettore tema generato verificato.
+- `npm test`: **1004 passati, 0 falliti, 0 saltati**. Sintassi e whitespace verificati; mappe desktop/mobile e sette fixture HTML/PDF native collaudate, comprese 100/150 quote e nomi lunghi. Moduli aggiornati a `?v=1.2.6`, 37 risorse offline. Dispositivi fisici e servizi LIVE non collaudati.
+
+Dettagli in [README_RELEASE_1.2.6.md](README_RELEASE_1.2.6.md). Le sezioni che seguono conservano la cronologia e le verifiche delle versioni precedenti.
 
 ## Porzioni indipendenti 1.2.5
 
@@ -91,4 +101,4 @@ Frontend statico; dipendenze cartografiche esistenti. Test con `npm ci`, `npm ci
 
 Le tre migrazioni additive e le funzioni `counts-api`, `counts-admin`, `submit-counts` sono consolidate in `supabase/`. `PUBBLICAZIONE.md` riporta installazione, flag, riuso dei secret, collaudo e rollback. Le note in `docs/conteggi/` e le altre release sono storiche; questo è il documento corrente.
 
-Pubblicare il pacchetto completo nel checkout esistente. Chiudere le vecchie schede e riaprire online per gli asset 1.2.4; mantenere origine HTTPS e archivi. Nessuna rimozione obbligatoria. Per il rollback disattivare i servizi nuovi e ripubblicare il pacchetto precedente, conservando tabelle, account, IndexedDB e localStorage. Non cancellare tutti i dati del sito.
+Pubblicare il pacchetto completo nel checkout esistente. Chiudere le vecchie schede e riaprire online per gli asset 1.2.6; mantenere origine HTTPS e archivi. Nessuna rimozione obbligatoria. Per il rollback disattivare i servizi nuovi e ripubblicare il pacchetto precedente, conservando tabelle, account, IndexedDB e localStorage. Non cancellare tutti i dati del sito.

@@ -84,7 +84,7 @@ try{
   const ready=()=>page.waitForFunction(key=>{const saved=JSON.parse(localStorage.getItem(key));return window.__map?.getSource('row-portions')&&window.__map?.getSource('manual-draw')&&document.querySelector('#profile-trigger')?.textContent!=='Profilo'&&saved?.workspace?.savedAt&&!document.querySelector('.workspace-restore-gate');},draftKey,{timeout:15000});
   const snapshot=()=>page.evaluate(async key=>{
    const record=JSON.parse(localStorage.getItem(key)),project=record.state.project;
-   const {calculateProject}=await import('/src/project-calculator.js?v=1.2.5');
+   const {calculateProject}=await import('/src/project-calculator.js?v=1.2.6');
    const result=calculateProject({...project,polygon:project.geometry});
    const mapRows=__map.getSource('vineyard-rows')._data.features.map(f=>f.geometry.coordinates);
    const features=__map.getSource('row-portions')._data.features;
@@ -102,7 +102,7 @@ try{
    await page.waitForFunction(()=>!__map.isMoving());
    await page.locator('.maplibregl-canvas').first().scrollIntoViewIfNeeded();
    return page.evaluate(async id=>{
-    const {portionAtCoordinate}=await import('/src/row-portions.js?v=1.2.5');
+    const {portionAtCoordinate}=await import('/src/row-portions.js?v=1.2.6');
     const portion=__map.getSource('row-portions')._data.features.find(f=>f.properties.portionId===id);
     const geometry=portion.geometry.coordinates,p={id,geometry};
     const candidates=[],outer=geometry[0],xs=outer.map(c=>c[0]),ys=outer.map(c=>c[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
@@ -149,7 +149,7 @@ try{
   await openCurves();await page.locator('#curve-add-button').click();
   const curved=await snapshot();isolated(curved);const localB=curved.project.rowPortions.find(p=>p.id===b.id);assert.equal(localB.rowCurvePoints.length,1);
   assert.equal(await page.locator('.curve-control-marker').count(),1);
-  const inside=await page.evaluate(async p=>{const {portionAtCoordinate}=await import('/src/row-portions.js?v=1.2.5');const {curvePointToLonLat}=await import('/src/row-curves.js?v=1.2.5');return portionAtCoordinate([p],curvePointToLonLat({polygon:p.geometry[0],orientationDeg:p.orientationDeg,point:p.rowCurvePoints[0]}))?.id;},localB);
+  const inside=await page.evaluate(async p=>{const {portionAtCoordinate}=await import('/src/row-portions.js?v=1.2.6');const {curvePointToLonLat}=await import('/src/row-curves.js?v=1.2.6');return portionAtCoordinate([p],curvePointToLonLat({polygon:p.geometry[0],orientationDeg:p.orientationDeg,point:p.rowCurvePoints[0]}))?.id;},localB);
   assert.equal(inside,b.id,'actual first map handle is inside selected component');
   await page.locator('.curve-point-card input[type="range"]').nth(1).evaluate(node=>{node.value='12';node.dispatchEvent(new Event('input',{bubbles:true}));node.dispatchEvent(new Event('change',{bubbles:true}));});
   const offset=await snapshot();isolated(offset);assert.equal(offset.project.rowPortions.find(p=>p.id===b.id).rowCurvePoints[0].offsetM,12);

@@ -25,7 +25,7 @@ const many=structuredClone(model);many.fields[0].layout.portions=Array.from({len
 if(process.env.COUNTS_WIDE_PORTION_LABEL==='1')many.fields[0].layout.portions[0].label='W'.repeat(1728);
 const documents=new Map(),reports=[];
 for(const [name,value] of [['mixed',model],['many',many]]){
- const html=`<!doctype html><html lang="it"><head><meta charset="utf-8"><link rel="stylesheet" href="/report.css?v=1.2.4"><link rel="stylesheet" href="/report-layout.css?v=1.2.5"><link rel="stylesheet" href="/fonts.css?v=1.2.4"><link rel="stylesheet" href="/report-print.css?v=45" media="print"></head><body>${renderProjectReportHtml(value)}</body></html>`;
+ const html=`<!doctype html><html lang="it"><head><meta charset="utf-8"><link rel="stylesheet" href="/report.css?v=1.2.4"><link rel="stylesheet" href="/report-layout.css?v=1.2.6"><link rel="stylesheet" href="/fonts.css?v=1.2.4"><link rel="stylesheet" href="/report-print.css?v=45" media="print"></head><body>${renderProjectReportHtml(value)}</body></html>`;
  documents.set('/fixture-'+name+'.html',html);await writeFile(resolve(output,name+'.html'),html);
  const bytes=await buildProjectPdfBytes(value,{pdfLib:PDFLib,assetLoader:async path=>new Uint8Array(await readFile(resolve(root,path)))});
  await writeFile(resolve(output,'native-'+name+'.pdf'),bytes);
@@ -38,7 +38,7 @@ const server=createServer(async(req,res)=>{try{
  const local=resolve(root,path);if(!local.startsWith(root+'/'))throw new Error('Forbidden');
  res.setHeader('Cache-Control','public, max-age=3600');
  res.setHeader('Content-Type',({'.js':'application/javascript','.css':'text/css','.html':'text/html','.png':'image/png','.ttf':'font/ttf'})[extname(local)]||'application/octet-stream');
- res.end(oldCore.has(path)&&url.searchParams.get('v')!=='1.2.5'?oldCore.get(path):await readFile(local));
+ res.end(oldCore.has(path)&&url.searchParams.get('v')!=='1.2.6'?oldCore.get(path):await readFile(local));
  }catch{res.writeHead(404);res.end('Missing fixture');}});
 await new Promise(done=>server.listen(0,'127.0.0.1',done));const base='http://127.0.0.1:'+server.address().port;
 let browser;
@@ -48,10 +48,10 @@ try{
  page.on('request',request=>requests.push(request.url()));page.on('pageerror',error=>errors.push(error.message));
  await page.goto(base+'/warm.html');
  await page.evaluate(async()=>{await import('/src/fields.js?v=55.1');await import('/src/project-calculator.js?v=1.2.4');});
- const result=await page.evaluate(async field=>{const {calculateProject}=await import('/src/project-calculator.js?v=1.2.5');await import('/src/pdf-model.js?v=1.2.5');const m=calculateProject({...field,polygon:field.geometry});return {rowCount:m.rowCount,headPosts:m.headPosts,portions:m.portions.length};},field);
+ const result=await page.evaluate(async field=>{const {calculateProject}=await import('/src/project-calculator.js?v=1.2.6');await import('/src/pdf-model.js?v=1.2.6');const m=calculateProject({...field,polygon:field.geometry});return {rowCount:m.rowCount,headPosts:m.headPosts,portions:m.portions.length};},field);
  assert.deepEqual(result,{rowCount:metrics.rowCount,headPosts:metrics.headPosts,portions:2});
  for(const path of ['/src/fields.js','/src/project-calculator.js','/src/row-curves.js','/src/row-portions.js']){
-  const urls=[...new Set(requests.filter(url=>new URL(url).pathname===path&&new URL(url).searchParams.get('v')==='1.2.5'))];assert.equal(urls.length,1,path+' has one current module identity');
+  const urls=[...new Set(requests.filter(url=>new URL(url).pathname===path&&new URL(url).searchParams.get('v')==='1.2.6'))];assert.equal(urls.length,1,path+' has one current module identity');
  }
  for(const [name,value] of [['mixed',model],['many',many]]){
   await page.goto(base+'/fixture-'+name+'.html');await page.emulateMedia({media:'print'});await page.evaluate(()=>document.fonts.ready);

@@ -1,10 +1,12 @@
-# Vivai Obice — piattaforma unica 1.2.5
+# Vivai Obice — piattaforma unica 1.2.6
 
-Progetta impianto alla radice; Conteggi in `/conteggi/`. Una strada che divide il campo in porzioni coltivabili consente ora direzione e curvatura locali, mantenendo un solo campo, archivio e documento. Le porzioni ereditano il disegno precedente fino alla prima modifica locale; selezione tramite pulsanti o mappa, con conteggi coerenti in editor, riepiloghi, Admin e stampa.
+Progetta impianto alla radice; Conteggi in `/conteggi/`. Il pulsante occhio nelle mappe principale, Campi ed editor controlla separatamente Campo, Schema vigneto e Quote, su desktop e mobile. La scelta resta temporanea e non modifica geometria, progetto o quantità. Restano le porzioni indipendenti della 1.2.5, con direzione e curvatura locali in un solo campo.
 
-L’interfaccia conserva Comfortaa e il documento il font precedente. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati. **987 test passati, 0 falliti, 0 saltati**, controllo sintattico e prove Chromium desktop/mobile con fixture anonime. Stampa HTML ed esportatore nativo verificati su 2 e 60 porzioni, incluse etichette larghe da 1.728 caratteri; dettagli su pagine aggiuntive, senza sovrapporre note o piè di pagina.
+Lo schema tecnico stampato dispone le quote all’esterno e ingrandisce i campi ordinari dentro lo stesso riquadro; orientamento e curvatura sono sintetizzati in Geometria e filari, senza stampare lo stato dell’equidistanza. Il Profilo mobile compatto mostra tutti i campi e comandi nelle dimensioni verificate, compreso 320 × 568 pixel. L’interfaccia conserva Comfortaa e il documento il font precedente.
 
-- Rilascio e verifiche: [README_RELEASE_1.2.5.md](README_RELEASE_1.2.5.md).
+**1004 test passati, 0 falliti, 0 saltati**, controllo sintattico e prove Chromium desktop/mobile con fixture anonime. Stampa HTML ed esportatore nativo verificati con sette fixture, comprese 60 porzioni, etichette molto lunghe, nomi su più righe e perimetri con 100/150 quote. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati.
+
+- Rilascio e verifiche: [README_RELEASE_1.2.6.md](README_RELEASE_1.2.6.md).
 - Stato corrente: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
 - Pubblicazione del pacchetto unico: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
 - Riproduzione locale: `npm ci`, `npm ci --prefix conteggi`, `npm run offline:build`, `npm test`, `npm run check`.

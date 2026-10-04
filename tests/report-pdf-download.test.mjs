@@ -87,7 +87,55 @@ test('native PDF paginates all portion designs without notes overlap or stale gl
  for(const items of pages){
   const designs=items.filter(item=>item.str.includes('°')||item.str.includes('Porzione'));
   for(const item of designs)assert.ok(item.transform[5]>65&&item.transform[5]<740,'portion text stays inside printable body');
-  if(designs.length)assert.ok(!items.some(item=>item.str.includes('NOTA RISERVATA')),'notes stay on the separate data page');
+  const note=items.find(item=>item.str.includes('NOTA RISERVATA'));
+  if(note&&designs.length)assert.ok(Math.min(...designs.map(item=>item.transform[5]))-note.transform[5]>20,'inline designs remain clear of notes');
+  if(designs.length)assert.ok(items.some(item=>item.str==='Geometria e filari'),'overflow stays part of geometry data');
  }
  const last=pages.at(-1).map(item=>item.str).join(' ');assert.ok(last.includes(`${doc.numPages} / ${doc.numPages}`),'truthful footer page count');
+});
+
+
+test('native PDF integrates ordinary portion direction and curve inside the existing geometry data page',async()=>{
+ const portions=[{label:'Porzione A',mode:'local',orientationDeg:35,curved:false},{label:'Porzione B',mode:'local',orientationDeg:105,curved:true,maintainRowEquidistance:false}];
+ const bytes=await buildProjectPdfBytes({...sample,fields:[{...sample.fields[0],layout:{...sample.fields[0].layout,portions,orientationDeg:86.5}}]},{pdfLib:PDFLib,assetLoader:async()=>null});
+ const pdfjs=await import(`${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/pdfjs-dist/legacy/build/pdf.mjs`);
+ const doc=await pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise;
+ assert.equal(doc.numPages,4);const text=(await (await doc.getPage(3)).getTextContent()).items.map(item=>item.str).join(' ');
+ for(const label of ['Geometria e filari','Porzione A','35,0°','Rettilinei','Porzione B','105,0°','Curvi'])assert.ok(text.includes(label),label);
+ assert.doesNotMatch(text,/Equidistan|Orientamento e curvatura|86[,.]5°/);
+});
+test('native PDF prints the effective inherited curve status beside the global direction',async()=>{
+ const field={...sample.fields[0],layout:{...sample.fields[0].layout,portions:[{label:'Campo',mode:'inherited',orientationDeg:20,curved:true}]}};
+ const bytes=await buildProjectPdfBytes({...sample,fields:[field]},{pdfLib:PDFLib,assetLoader:async()=>null});
+ const pdfjs=await import(`${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/pdfjs-dist/legacy/build/pdf.mjs`),doc=await pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise;
+ const text=(await (await doc.getPage(3)).getTextContent()).items.map(item=>item.str).join(' ');assert.match(text,/Orientamento\s+20°/);assert.match(text,/Curvatura\s+Curvi/);assert.equal(doc.numPages,4);
+});
+
+test('wrapped field titles keep six inline portion lines clear of notes',async()=>{
+ const portions=Array.from({length:3},(_,i)=>({label:`Porzione ${i+1}`,mode:'local',orientationDeg:35+i,curved:false}));
+ const label='Campo prova con nome deliberatamente più lungo per andare a capo '.repeat(2);
+ const field={...sample.fields[0],label,layout:{...sample.fields[0].layout,portions},notes:'NOTA DOPO TUTTI I DATI'};
+ const bytes=await buildProjectPdfBytes({...sample,fields:[field]},{pdfLib:PDFLib,assetLoader:async()=>null});
+ const pdfjs=await import(`${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/pdfjs-dist/legacy/build/pdf.mjs`),doc=await pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise;
+ const items=(await (await doc.getPage(3)).getTextContent()).items;
+ assert.ok(items.filter(item=>item.height>20).length>=2,'fixture title actually wraps');
+ const designs=items.filter(item=>item.str.includes('Porzione')||item.str.includes('Rettilinei'));
+ assert.equal(designs.length,6,'all three portions stay inline');
+ const notes=items.find(item=>item.str.includes('NOTA DOPO TUTTI'));
+ assert.ok(notes);assert.ok(Math.min(...designs.map(item=>item.transform[5]))-notes.transform[5]>=20,'notes follow the actual lowest portion line');
+ assert.ok(notes.transform[5]>65,'notes remain above the footer');
+});
+
+test('native PDF retains all 150 dense perimeter quotes inside the unchanged technical panel',async()=>{
+ const geometry=Array.from({length:150},(_,i)=>{const a=i*Math.PI/75;return [8+.006*Math.cos(a),44+.003*Math.sin(a)];});geometry.push(geometry[0]);
+ const bytes=await buildProjectPdfBytes({...sample,fields:[{...sample.fields[0],geometry}]},{pdfLib:PDFLib,assetLoader:async()=>null});
+ const pdfjs=await import(`${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/pdfjs-dist/legacy/build/pdf.mjs`),doc=await pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise;
+ const quotes=(await (await doc.getPage(2)).getTextContent()).items.filter(item=>/^\d+ m$/.test(item.str));
+ assert.equal(quotes.length,150);
+ for(const [i,item] of quotes.entries()){
+  const x=item.transform[4],y=item.transform[5];
+  assert.equal(item.height,8,'feasible dense fixture keeps the previous 8pt dimension font');
+  assert.ok(x>=122&&x+item.width<=472&&y>=69&&y+item.height<=296.5,'full text inside technical panel');
+  for(const other of quotes.slice(i+1)){const ox=other.transform[4],oy=other.transform[5];assert.ok(x+item.width<=ox||ox+other.width<=x||y+item.height<=oy||oy+other.height<=y,'actual PDF quote text does not overlap');}
+ }
 });

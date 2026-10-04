@@ -3,7 +3,7 @@ const CONSENT_KEY = 'vivai-obice:configuratore:consent';
 const DRAFT_VERSION = 3;
 import { migrateDraftEnvelope } from './local-migrations.js?v=55.6.1&counts=1';
 import {ownerStorageKey} from './local-owner-scope.js';
-import {APP_CONFIG} from './config.js?v=1.2.5';
+import {APP_CONFIG} from './config.js?v=1.2.6';
 import {secureUuid} from './secure-id.js';
 const draftKey=()=>ownerStorageKey(DRAFT_KEY,APP_CONFIG.environment);
 

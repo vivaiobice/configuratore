@@ -1,4 +1,4 @@
-import {loadDraftRecord,saveDraft} from './storage.js?v=1.2.5';
+import {loadDraftRecord,saveDraft} from './storage.js?v=1.2.6';
 
 export function restoreWorkspaceForOwner(record,ownerId,projectId){
   const workspace=record?.workspace;

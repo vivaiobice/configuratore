@@ -24,17 +24,17 @@ for(const path of new Set(modules)){
     graph.push({from:path,to:url.pathname.slice(root.pathname.length),url});
   }
 }
-const targets=new Set(['src/config.js','src/fields.js','src/project-calculator.js','src/row-curves.js','src/row-portions.js','src/vendor/polygon-clipping.js','src/row-portion-editor.js','src/row-portion-summary.js','src/app.js','src/map.js','src/mobile-ui.js','src/report.js','src/project-summary.js','src/pdf-model.js','src/report-template.js','src/report-pdf-download.js','src/shared-project.js','admin/admin-map-data.js','src/revision-summary.js']);
+const targets=new Set(['src/map-overlay-visibility.js','src/report-diagram.js','src/report-map-model.js','src/report-satellite.js','src/config.js','src/fields.js','src/project-calculator.js','src/row-curves.js','src/row-portions.js','src/vendor/polygon-clipping.js','src/row-portion-editor.js','src/row-portion-summary.js','src/app.js','src/map.js','src/mobile-ui.js','src/report.js','src/project-summary.js','src/pdf-model.js','src/report-template.js','src/report-pdf-download.js','src/shared-project.js','admin/admin-map-data.js','src/revision-summary.js']);
 let grew=true;while(grew){grew=false;for(const edge of graph)if(targets.has(edge.to)&&!targets.has(edge.from)){targets.add(edge.from);grew=true;}}
 
-test('all incoming changed runtime module edges use release 1.2.5',async()=>{
-  for(const edge of graph){await readFile(edge.url);if(targets.has(edge.to))assert.equal(edge.url.searchParams.get('v'),'1.2.5',`${edge.from} -> ${edge.to}`);}
+test('all incoming changed runtime module edges use release 1.2.6',async()=>{
+  for(const edge of graph){await readFile(edge.url);if(targets.has(edge.to))assert.equal(edge.url.searchParams.get('v'),'1.2.6',`${edge.from} -> ${edge.to}`);}
   for(const path of ['index.html','report.html','shared-project.html','admin/index.html','conteggi/index.html']){
     const source=await read(path);
     for(const match of source.matchAll(/(?:src|href)=["']([^"']+)["']/g)){
       if(!match[1].startsWith('.'))continue;
       const url=new URL(match[1],new URL(path,root)),target=url.pathname.slice(root.pathname.length);
-      if(targets.has(target)||['row-portions.css','report-layout.css'].includes(target))assert.equal(url.searchParams.get('v'),'1.2.5',path+' -> '+target);
+      if(targets.has(target)||['row-portions.css','report-layout.css','map-visibility.css','mobile.css'].includes(target))assert.equal(url.searchParams.get('v'),'1.2.6',path+' -> '+target);
     }
   }
 });
@@ -54,15 +54,15 @@ test('offline worker never substitutes old script bytes for a different module v
   const scope={URL,Set,Map,Promise,console,fetch:async()=>{throw new Error('Offline');},self:{location:{origin:'https://example.test',href:'https://example.test/conteggi/sw.js'},addEventListener:(event,fn)=>handlers[event]=fn},caches:{open:async()=>cache}};
   vm.runInNewContext(source,scope);
   saved.set('https://example.test/src/fields.js?v=55.1','old engine bytes');
-  let result;handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.2.5',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
+  let result;handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.2.6',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
   await assert.rejects(result,/Offline/);
-  saved.set('https://example.test/src/fields.js?v=1.2.5','current engine bytes');
-  handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.2.5',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
-  assert.equal(await result,'current engine bytes');assert.match(source,/static-1\.2\.5/);
+  saved.set('https://example.test/src/fields.js?v=1.2.6','current engine bytes');
+  handlers.fetch({request:{url:'https://example.test/src/fields.js?v=1.2.6',method:'GET',mode:'cors',destination:'script'},respondWith:p=>result=p});
+  assert.equal(await result,'current engine bytes');assert.match(source,/static-1\.2\.6/);
 });
 
 test('Admin entry preserves the counts query as a valid HTML-escaped parameter',async()=>{
  const source=await read('admin/index.html'),spec=source.match(/type="module" src="([^"]+)"/)[1].replaceAll('&amp;','&');
  const url=new URL(spec,'https://example.test/admin/');
- assert.equal(url.searchParams.get('v'),'1.2.5');assert.equal(url.searchParams.get('counts'),'2');
+ assert.equal(url.searchParams.get('v'),'1.2.6');assert.equal(url.searchParams.get('counts'),'2');
 });

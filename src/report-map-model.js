@@ -1,3 +1,4 @@
+import {layoutSatelliteAnnotations} from './report-satellite.js?v=1.2.6';
 import { sideMeasurements as measureSides } from './geometry.js?v=45';
 
 const MAX_MERCATOR_LAT = 85.05112878;
@@ -110,4 +111,77 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
       sideMeasurements:measureSides(ring).map(side=>({...side,point:side.midpoint,label:`${Math.round(side.lengthM).toLocaleString('it-IT')} m`}))
     }
   };
+}
+
+function refitTechnicalVectors(model,transform){
+  return {...model,polygon:model.polygon.map(transform),
+    rows:model.rows.map(row=>{const coordinates=row.coordinates.map(transform);return {...row,coordinates,start:coordinates[0],end:coordinates.at(-1)};}),
+    exclusions:model.exclusions.map(area=>({...area,points:area.points.map(transform)})),
+    sideMeasurements:model.sideMeasurements.map(side=>({...side,point:transform(side.point)}))};
+}
+
+// Dense boundaries use a finite grid of quotes outside the entire field bbox.
+// Reserving explicit columns avoids quadratic candidate searches and guarantees
+// all labels stay outside, inside the panel, and disjoint. Leaders paint below
+// opaque tags, so dense routes cannot obscure another measurement.
+function columnTechnicalAnnotations(model,{fontSize,measureText},bounds){
+  const {width,height}=model,n=model.sideMeasurements.length;
+  const top=Math.min(82,height*.2),edge=4,fieldGap=8;
+  const sorted=model.sideMeasurements.map((side,index)=>({...side,index})).sort((a,b)=>a.point[0]-b.point[0]);
+  const groups=[sorted.slice(0,Math.ceil(n/2)),sorted.slice(Math.ceil(n/2))];
+  let ratio=1,cellWidth,cellHeight,rows,columns,tagWidths;
+  for(;;){
+    const size=fontSize*ratio;
+    const measure=label=>measureText?measureText(label,size):String(label).length*size*.62;
+    tagWidths=model.sideMeasurements.map(side=>Math.max(32*ratio,measure(side.label)+12*ratio));
+    cellWidth=Math.max(0,...tagWidths)+3*ratio;cellHeight=(fontSize+11)*ratio;
+    rows=Math.max(1,Math.floor((height-top-edge)/cellHeight));
+    columns=groups.map(group=>Math.ceil(group.length/rows));
+    if(width-2*edge-(columns[0]+columns[1])*cellWidth-2*fieldGap>=width*.2)break;
+    ratio*=.85;
+  }
+  const left=edge+columns[0]*cellWidth+fieldGap,right=width-edge-columns[1]*cellWidth-fieldGap;
+  const scale=Math.min((right-left)/Math.max(bounds.maxX-bounds.minX,1e-9),(height-44*height/360)/Math.max(bounds.maxY-bounds.minY,1e-9));
+  const transform=([x,y])=>[(x-bounds.center[0])*scale+(left+right)/2,(y-bounds.center[1])*scale+height/2];
+  const technical=refitTechnicalVectors(model,transform),annotations=[];
+  groups.forEach((group,side)=>{
+    group.sort((a,b)=>a.point[1]-b.point[1]);
+    group.forEach((request,index)=>{
+      const column=index%columns[side],row=Math.floor(index/columns[side]);
+      const tagWidth=tagWidths[request.index],tagHeight=(fontSize+8)*ratio;
+      const x=(side?width-edge-columns[1]*cellWidth:edge)+column*cellWidth+(cellWidth-3*ratio)/2;
+      const y=top+row*cellHeight+tagHeight/2,anchor=transform(request.point);
+      const box={x:x-tagWidth/2,y:y-tagHeight/2,width:tagWidth,height:tagHeight};
+      annotations.push({id:request.id??request.index,label:request.label,lines:[request.label],fontSize:fontSize*ratio,box,point:[x,y],anchor,leader:[anchor,[side?box.x:box.x+box.width,y]]});
+    });
+  });
+  technical.annotations=annotations;
+  return technical;
+}
+
+// Keep capture bounds and satellite projection unchanged. Only explicit print
+// diagrams refit vectors; ordinary thumbnails never call the annotation solver.
+export function buildTechnicalReportMapModel(model, {measureText,fontSize=Math.min(22,13*model.height/360)}={}) {
+  if(!model.valid)return model;
+  const {width,height}=model;
+  const xs=model.polygon.map(p=>p[0]),ys=model.polygon.map(p=>p[1]);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const bounds={minX,maxX,minY,maxY,center:[(minX+maxX)/2,(minY+maxY)/2]};
+  const margin=22*height/360;
+  const maximum=Math.min((width-2*margin)/Math.max(maxX-minX,1e-9),(height-2*margin)/Math.max(maxY-minY,1e-9));
+  const options={fontSize,measureText};
+  // A modest side count can retain short leaders and a larger field. Search at
+  // most six fits; dense or difficult boundaries take the deterministic grid.
+  if(model.sideMeasurements.length<=40){
+    for(const fit of [1,.975,.95,.925,.9,.875]){
+      const transform=([x,y])=>[(x-bounds.center[0])*maximum*fit+width/2,(y-bounds.center[1])*maximum*fit+height/2];
+      const technical=refitTechnicalVectors(model,transform);
+      try{
+        technical.annotations=layoutSatelliteAnnotations({...technical,compact:true,fontSize,leaderGap:8*height/360,measureText,
+          reservedBoxes:[{x:width-64,y:18,width:32,height:62}]});
+        return technical;
+      }catch(error){if(error?.code!=='annotations')throw error;}
+    }
+  }
+  return columnTechnicalAnnotations(model,options,bounds);
 }
