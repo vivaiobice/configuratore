@@ -17,7 +17,7 @@ async function canvasPNG(pixels,size){
  canvas.width=0;canvas.height=0;return blob.arrayBuffer();
 }
 async function frozenSurface(model){
- const [{createTerrainSampler,validateTerrainModel},{toUTM,fromUTM}]=await Promise.all([import('./terrain-model.js?v=1.3.0'),import('./coordinate-system.js?v=1.3.0')]);
+ const [{createTerrainSampler,validateTerrainModel},{toUTM,fromUTM}]=await Promise.all([import('./terrain-model.js?v=1.3.1-prova.1'),import('./coordinate-system.js?v=1.3.1-prova.1')]);
  const validation=validateTerrainModel(model);if(!validation.valid&&!validation.ok)throw new Error('Modello del terreno non valido.');
  const {origin,step,width,height}=model.grid;const epsg=Number(model.crs.split(':')[1]);
  const xs=[origin[0],origin[0]+step[0]*(width-1)],ys=[origin[1],origin[1]+step[1]*(height-1)];const xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);

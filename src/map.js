@@ -1,17 +1,17 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
 import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.4';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.0';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.0';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.1-prova.1';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.1-prova.1';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
 import { installTrackpadRotation } from './map-gestures.js?v=49';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.0';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.1-prova.1';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.0';
-import {portionAtCoordinate} from './row-portions.js?v=1.3.0';
-import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.0';
-import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.0';
-import {regeneratePassage,reshapeExclusion} from './passage-coordinates.js?v=1.3.0';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
+import {portionAtCoordinate} from './row-portions.js?v=1.3.1-prova.1';
+import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.1-prova.1';
+import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.1-prova.1';
+import {regeneratePassage,reshapeExclusion} from './passage-coordinates.js?v=1.3.1-prova.1';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';

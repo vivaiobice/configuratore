@@ -1,16 +1,16 @@
-import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.0';
+import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.1-prova.1';
 // Candidate acquisition and solver output never mutate the live project.
-import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.0';
+import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.1-prova.1';
 export function terrainPortionEditorState(project,activeId,result){
  return rowPortionEditorState(project,activeId,result?.terrainStatus==='invalid'?null:result?.portions);
 }
 const DESIGN_KEYS=['geometry','exclusions','rowSpacingM','plantSpacingM','postSpacingM','headlandWidthM','orientationDeg','rowCurvePoints','rowPortions','maintainRowEquidistance'];
 export function terrainContextKey(context,project){return JSON.stringify([context,...DESIGN_KEYS.map(key=>project?.[key]),project?.terrain?.model?.contentHash]);}
-const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.0')).loadTerrainForField(options);
-const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.0')).runTerrainProposal(options,control);
-const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.0')).terrainSummary(model);
-const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.0');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
-const defaultView=async options=>(await import('./terrain-map.js?v=1.3.0')).createTerrainMapView(options);
+const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.1-prova.1')).loadTerrainForField(options);
+const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.1-prova.1')).runTerrainProposal(options,control);
+const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.1-prova.1')).terrainSummary(model);
+const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.1-prova.1');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
+const defaultView=async options=>(await import('./terrain-map.js?v=1.3.1-prova.1')).createTerrainMapView(options);
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
 export function createTerrainController({document,getProject,getContext,getPortionId=()=>null,getMapApi=()=>null,getResult=()=>null,applyProposal,onStatus=()=>{},onProposalChange=()=>{},loadTerrain=defaultLoad,runProposal=defaultRun,summarize=defaultSummary,covers=defaultCoverage,createMapView=defaultView}){
  const card=document.querySelector('#terrain-card');

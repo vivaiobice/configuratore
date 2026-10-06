@@ -1,11 +1,11 @@
-import { toUTM } from './coordinate-system.js?v=1.3.0';
-import { fromArrayBuffer } from './vendor/geotiff.js?v=1.3.0';
+import { toUTM } from './coordinate-system.js?v=1.3.1-prova.1';
+import { fromArrayBuffer } from './vendor/geotiff.js?v=1.3.1-prova.1';
 import {
   createTerrainModel,
   terrainInputHash,
   MAX_TERRAIN_CELLS,
   TerrainModelError,
-} from './terrain-model.js?v=1.3.0';
+} from './terrain-model.js?v=1.3.1-prova.1';
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024,
   SUPPORT_MARGIN_M = 40;
 export const TERRAIN_SOURCES = Object.freeze({

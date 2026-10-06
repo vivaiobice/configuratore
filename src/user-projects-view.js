@@ -1,5 +1,5 @@
-import {expandProjectFields} from '../admin/admin-model.js?v=1.3.0';
-import {initAdminMap} from '../admin/admin-map.js?v=1.3.0';
+import {expandProjectFields} from '../admin/admin-model.js?v=1.3.1-prova.1';
+import {initAdminMap} from '../admin/admin-map.js?v=1.3.1-prova.1';
 
 export async function loadUserProjectsData(client) {
  if(!client)throw new Error('Connessione non disponibile.');

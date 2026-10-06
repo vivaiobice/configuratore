@@ -125,3 +125,31 @@ test('actual transverse and oblique plane rows have analytic 3D spacing, lengths
   assert.equal(p.result.simulatedPlants,p.result.rows.reduce((s,r)=>s+Math.floor(r.lengthM)+1,0));
  }
 });
+test('opt-in phase diagnostics preserve proposal output and hashes',async()=>{
+ const input=await fixture((x,y)=>.2*x+.1*y+.001*x*y),phases=[];
+ // Legacy envelopes contain wall-clock elapsedMs. Hold that pre-existing input
+ // fixed to compare every byte, including snapshotHash, across observers.
+ const now=Date.now;Date.now=()=>1700000000000;
+ try{
+  const plain=design.buildTerrainProposal({...input,followTerrain:true});
+  const observed=design.buildTerrainProposal({...input,followTerrain:true,onPhase:event=>phases.push(event)});
+  assert.equal(plain.ok,true,plain.message);assert.ok(phases.length>0);assert.deepEqual(observed,plain);
+  for(const name of ['chart','guide','clipping','distances','headlands','envelope'])assert.ok(phases.some(p=>p.name===name),name);
+  assert.ok(phases.every(p=>Number.isFinite(p.elapsedMs)&&p.elapsedMs>=0));
+ }finally{Date.now=now;}
+});
+
+test('a rejected flat-family preservation attributes general fallback work to guide',async()=>{
+ const input=await fixture();
+ input.project.rowCurvePoints=[{position:.3,offsetM:2},{position:.7,offsetM:-2}];
+ input.project.maintainRowEquidistance=false;
+ const phases=[],now=Date.now;Date.now=()=>1700000000000;
+ try{
+  const plain=design.buildTerrainProposal(input);
+  const observed=design.buildTerrainProposal({...input,onPhase:event=>phases.push(event.name)});
+  assert.equal(plain.ok,true,plain.message);
+  assert.equal(plain.terrain.applied.portionResults[0].design.guide,'continuous-face-chart');
+  assert.deepEqual(observed,plain);
+  assert.deepEqual(phases.slice(0,6),['chart','guide','clipping','distances','guide','clipping']);
+ }finally{Date.now=now;}
+});

@@ -1,5 +1,5 @@
-import clipping from './vendor/polygon-clipping.js?v=1.3.0';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.0';
+import clipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.1-prova.1';
 
 const clone=value=>JSON.parse(JSON.stringify(value));
 const topologyCache=new Map();

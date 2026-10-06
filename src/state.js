@@ -1,5 +1,5 @@
 import { suggestRowOrientation } from './geometry.js?v=45';
-import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=1.3.0';
+import { ensureProjectFields, updateActiveFieldProject } from './fields.js?v=1.3.1-prova.1';
 
 export function normalizeMapState(map = {}) {
   return { base:map?.base === 'street' ? 'street' : 'satellite' };

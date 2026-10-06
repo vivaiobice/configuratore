@@ -1,31 +1,25 @@
-import {FIELD_KEYS} from './fields.js?v=1.3.0';
-import clipping from './vendor/polygon-clipping.js?v=1.3.0';
-import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.0';
-import {getTerrainMesh,validateTerrainModel,terrainPolylineLength,terrainSurfaceArea,terrainInputHash,sampleTerrain} from './terrain-model.js?v=1.3.0';
+import {legacyTerrainInputs as inputs,legacyTerrainDesignInputHash as terrainDesignInputHash,readTerrainEnvelope,hashTerrainEnvelope as snapshotHash} from './terrain-replay.js?v=1.3.1-prova.1';
+export {terrainDesignInputHash};
+import {FIELD_KEYS} from './fields.js?v=1.3.1-prova.1';
+import clipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
+import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.1-prova.1';
+import {getTerrainMesh,validateTerrainModel,terrainPolylineLength,terrainSurfaceArea,terrainInputHash,sampleTerrain} from './terrain-model.js?v=1.3.1-prova.1';
 import {polygonMetrics,estimatePlantsFromRows,roundUpTo25,generateRows} from './geometry.js?v=45';
-import {resolveRowPortions} from './row-portions.js?v=1.3.0';
-import {rowOwnerId,generateCurvedRows} from './row-curves.js?v=1.3.0';
-import {calculateProject} from './project-calculator.js?v=1.3.0';
+import {resolveRowPortions} from './row-portions.js?v=1.3.1-prova.1';
+import {rowOwnerId,generateCurvedRows} from './row-curves.js?v=1.3.1-prova.1';
+import {calculateProject} from './project-calculator.js?v=1.3.1-prova.1';
+import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.1-prova.1';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.1-prova.1';
 
 const VERSION='terrain-face-chart-1', MAX_NODES=500000, ERROR_TARGET=.01;
 const clone=v=>JSON.parse(JSON.stringify(v));
 const maxOf=values=>values.reduce((a,b)=>Math.max(a,b),-Infinity);
 const minOf=values=>values.reduce((a,b)=>Math.min(a,b),Infinity);
-const snapshotHash=a=>terrainInputHash({inputs:a.inputs,result:a.result,portionResults:a.portionResults,validation:a.validation});
 const add=(a,b)=>a.map((v,i)=>v+b[i]), sub=(a,b)=>a.map((v,i)=>v-b[i]), mul=(a,k)=>a.map(v=>v*k), dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0), norm=a=>Math.hypot(...a), cross=(a,b)=>a[0]*b[1]-a[1]*b[0];
 const mix=(a,b,t)=>add(a,mul(sub(b,a),t));
 function fail(status,message){throw Object.assign(new Error(message),{status});}
 export const planeHorizontalSpacing=(spacing,a,b)=>spacing*Math.sqrt((1+a*a)/(1+a*a+b*b));
-function inputs(p){return {polygon:p.polygon??p.geometry,exclusions:p.exclusions??[],rowSpacingM:Number(p.rowSpacingM),plantSpacingM:Number(p.plantSpacingM),orientationDeg:Number(p.orientationDeg)||0,rowCurvePoints:p.rowCurvePoints??[],rowPortions:p.rowPortions??[],maintainRowEquidistance:p.maintainRowEquidistance!==false,postSpacingM:p.postSpacingM==null?null:Number(p.postSpacingM),headlandWidthM:p.headlandWidthM==null?null:Number(p.headlandWidthM)};}
-export function terrainDesignInputHash(project,model){return terrainInputHash({modelHash:model.contentHash,...inputs(project)});}
-function invalid(message){return {terrainStatus:'invalid',terrainMessage:message,quantityBasis:'invalid',surfaceRowLinearM:null,rows:[],portions:[],areaM2:null,netAreaM2:null,headlandAreaM2:null,excludedAreaM2:null,perimeterM:null,vertexCount:null,rowCount:null,rowLinearM:null,horizontalRowLinearM:null,surfaceAreaM2:null,surfaceNetAreaM2:null,simulatedPlants:null,theoreticalPlants:null,commercialPlants25:null,headPosts:null,intermediatePosts:null,totalPosts:null};}
-export function readAppliedTerrainResult(input){
- const terrain=input.terrain;if(!terrain)return null;
- const a=terrain.applied;
- if(!validateTerrainModel(terrain.model).valid||!a?.validation?.valid||!a.result||a.inputHash!==terrainDesignInputHash(input,terrain.model))return invalid('Terreno da ricalcolare: dati o parametri modificati.');
- if(a.snapshotHash!==snapshotHash(a)||a.resultHash!==terrainInputHash(a.result)||!Array.isArray(a.result.rows)||a.result.terrainStatus!=='applied')return invalid('Geometria terreno applicata non valida.');
- return clone(a.result);
-}
+export function readAppliedTerrainResult(input){return readTerrainEnvelope(input);}
 
 function verifyChartBoundary(boundary,tick){
  for(let i=0;i<boundary.length;i++)for(let j=i+2;j<boundary.length;j++){
@@ -380,7 +374,7 @@ function retainedFamilyChart(base,family,polygon,tick,requiredAxes){
  const ringToChart=ring=>splitRingAtFaces(ring.slice(0,-1).map(local),xyFaces,tick).map(convert),boundary=ringToChart(polygon);verifyChartBoundary(boundary,tick);
  return {...base,faces,boundary,ringToChart};
 }
-function preservedFlatFamily({project,model,portion,portions,baseChart,tick}){
+function preservedFlatFamily({project,model,portion,portions,baseChart,tick,diagnosticPhase}){
  const headland=Math.max(0,Number(project.headlandWidthM)||0),input=inputs(project);
  const angle=(Number(portion.orientationDeg)||0)*Math.PI/180,normal=[Math.cos(angle),Math.sin(angle)],tangent=[-Math.sin(angle),Math.cos(angle)];
  const ref=input.polygon.slice(0,-1).reduce((a,p)=>add(a,p),[0,0]).map(v=>v/(input.polygon.length-1));
@@ -397,6 +391,7 @@ function preservedFlatFamily({project,model,portion,portions,baseChart,tick}){
   }
   return rows.filter(r=>rowOwnerId({coordinates:r.coordinates??[r.start,r.end],portions})===portion.id);
  };
+ diagnosticPhase('clipping');
  const untrimmed=legacyRows(0),expected=legacyRows(headland);if(!untrimmed.length)return null;
  const holes=(project.exclusions??[]).map(e=>(Array.isArray(e)?e:e.geometry).map(p=>sub(toUTM(p,baseChart.epsg),baseChart.origin.slice(0,2))));
  const inside=(p,ring)=>{let yes=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])yes=!yes;}return yes;};
@@ -456,6 +451,7 @@ function preservedFlatFamily({project,model,portion,portions,baseChart,tick}){
   axis.fragments.forEach((fragment,i)=>{fragment.original=originals[i];fragment.range=[minOf(fragment.points.map(p=>dot(p.slice(0,2),tangent))),maxOf(fragment.points.map(p=>dot(p.slice(0,2),tangent)))];});
  }
  const range=(points,lo,hi)=>{const out=[];for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],ta=dot(a.slice(0,2),tangent),tb=dot(b.slice(0,2),tangent),span=tb-ta;if(Math.abs(span)<1e-12)continue;let s=(lo-ta)/span,t=(hi-ta)/span;if(s>t)[s,t]=[t,s];s=Math.max(0,s);t=Math.min(1,t);if(t>s){if(!out.length)out.push(mix(a,b,s));out.push(mix(a,b,t));}}return out;};
+ diagnosticPhase('distances');
  const certificates=[];
  for(let k=1;k<axes.length;k++){
   let lower=Infinity,upper=Infinity;
@@ -476,6 +472,7 @@ function preservedFlatFamily({project,model,portion,portions,baseChart,tick}){
   chart=retainedFamilyChart(baseChart,[...observedFamilies.values()][0],input.polygon,tick,axes);
  }
  const outer=chart.ringToChart(input.polygon),chartHoles=(project.exclusions??[]).map(e=>chart.ringToChart(Array.isArray(e)?e:e.geometry));
+ diagnosticPhase('headlands');
  const headlandArea=headlandBands(chart,outer,chartHoles,portion,headland,tick);
  return {...result,id:portion.id,label:portion.label,headlandArea,rawHorizontal:result.horizontalRowLinearM,rawSurface:result.rowLinearM,design:{guide:'certified-legacy-family',orientationRad:angle,phase:'legacy',spacingChartM:null,axisCount:axes.length,followTerrain:false},validation:{valid:true,method:'supporting-plane-legacy-family',minimumSpacingLowerM:certificates.length?minOf(certificates.map(c=>c.lower)):input.rowSpacingM,errorBoundM:certificates.length?maxOf(certificates.map(c=>c.upper-c.lower)):0,roundoffBoundM:0,pairCount:certificates.length}};
 }
@@ -500,10 +497,15 @@ function portionElevationRange(chart,portion,tick){
  if(!Number.isFinite(min)||!Number.isFinite(max))fail('uncovered','La porzione non è coperta dal modello.');
  return max-min;
 }
-function designPortion({project,model,portion,portions,baseChart,followTerrain,tick}){
+function designPortion({project,model,portion,portions,baseChart,followTerrain,tick,diagnosticPhase}){
+ diagnosticPhase('guide');
  let angle=(Number(portion.orientationDeg)||0)*Math.PI/180;
  const range=portionElevationRange(baseChart,portion,tick);
- if(range<=.01){const preserved=preservedFlatFamily({project,model,portion,portions,baseChart,tick});if(preserved)return preserved;}
+ if(range<=.01){
+  const preserved=preservedFlatFamily({project,model,portion,portions,baseChart,tick,diagnosticPhase});
+  if(preserved)return preserved;
+  diagnosticPhase('guide');
+ }
  if(followTerrain&&range>.01){
   // Deterministic contour-inspired direction from the anchor face. The full
   // family follows the continuous native-face chart, not a planar translation.
@@ -524,6 +526,7 @@ function designPortion({project,model,portion,portions,baseChart,followTerrain,t
   const nodes=[{position:0,offsetM:0},...portion.rowCurvePoints,{position:1,offsetM:0}].sort((a,b)=>a.position-b.position);
   chart=shearGuide(chart,nodes.map(n=>[n.offsetM,lo+n.position*span]),tick);
  }
+ diagnosticPhase('clipping');
  const outer=chart.ringToChart(project.geometry??project.polygon),holes=(project.exclusions??[]).map(e=>chart.ringToChart(Array.isArray(e)?e:e.geometry));
  const guide=chart.ringToChart(portion.mode==='local'?portion.geometry[0]:project.geometry??project.polygon),minX=Math.min(...guide.map(p=>p[0])),maxX=Math.max(...guide.map(p=>p[0]));
  const spacing=Number(project.rowSpacingM),headland=Math.max(0,Number(project.headlandWidthM)||0),postSpacing=Number(project.postSpacingM),plantSpacing=Number(project.plantSpacingM);
@@ -551,7 +554,9 @@ function designPortion({project,model,portion,portions,baseChart,followTerrain,t
   }
   const current={x,intervals:physical};
   if(last&&physical.length&&last.intervals.length){
+   diagnosticPhase('distances');
    const certificate=spacingCertificate(chart,last,current,model,tick);
+   diagnosticPhase('clipping');
    if(certificate){
     if(certificate.lower<spacing||certificate.error>ERROR_TARGET)fail('review-required','Interfila non certificabile entro 1 cm: disegno da rivedere.');
     certificates.push(certificate);
@@ -561,11 +566,28 @@ function designPortion({project,model,portion,portions,baseChart,followTerrain,t
  }
  if(!rows.length)fail('review-required','La guida non produce filari coltivabili verificabili.');
  const result=totals(rows,postSpacing,plantSpacing);
+ diagnosticPhase('headlands');
  const headlandArea=headlandBands(chart,outer,holes,portion,headland,tick);
  return {...result,headlandArea,id:portion.id,label:portion.label,design:{guide:automaticGuide?'native-contour-distance-family':'continuous-face-chart',guidePoints:automaticGuide,guideCoordinates,orientationRad:angle,phase:gap/2,spacingChartM:gap,axisCount:axisIndex,followTerrain},validation:{valid:true,nodeCount:chart.nodeCount??chart.xyz.length,method:'continuous-face-chart/supporting-plane-and-scalar-bounds',minimumSpacingLowerM:certificates.length?Math.min(...certificates.map(c=>c.lower)):spacing,errorBoundM:certificates.length?Math.max(...certificates.map(c=>c.error)):0,roundoffBoundM:Math.max(0,...certificates.map(c=>c.roundoff)),pairCount:certificates.length},rawHorizontal,rawSurface};
 }
-export function buildTerrainProposal({project,model,portionId=null,followTerrain=true,recomputeAll=false,deadlineMs=10000}={}){
- const started=Date.now();let work=0;
+export function buildTerrainProposal({project,model,portionId=null,followTerrain=true,recomputeAll=false,deadlineMs,onPhase,algorithmVersion,mode,budget}={}){
+ if(algorithmVersion==='terrain-contour-family-1'){
+  const selectedMode=mode??(followTerrain?'adapt':'measure');
+  try{
+   const operationBudget=budget??createTerrainBudget({kind:selectedMode==='measure'?'measure':'adapt',deadlineMs});
+   return buildContourTerrainProposal({project,model,portionId,mode:selectedMode,recomputeAll,budget:operationBudget});
+  }catch(error){return {ok:false,status:error.status??'invalid-input',kind:selectedMode,message:error.message};}
+ }
+ if(algorithmVersion!==undefined&&algorithmVersion!==VERSION)return {ok:false,status:'unsupported-algorithm',message:'Versione del motore terreno non supportata.'};
+ if(deadlineMs===undefined)deadlineMs=10000;
+ const started=Date.now();let work=0,currentPhase=null,phaseStarted=0;
+ // Diagnostic observers are outside inputs, persisted envelopes and hashes.
+ // A broken observer must not change a usable proposal or its failure status.
+ const diagnosticPhase=name=>{
+  if(typeof onPhase!=='function')return;
+  if(currentPhase!==null){const event={name:currentPhase,elapsedMs:performance.now()-phaseStarted};try{onPhase(event);}catch{}}
+  currentPhase=name;phaseStarted=performance.now();
+ };
  const tick=()=>{if(++work%64===0&&Date.now()-started>=Math.min(10000,deadlineMs))fail('budget-exceeded','Tempo di calcolo superato. Il progetto precedente è conservato.');};
  try{
   if(!(deadlineMs>0))fail('budget-exceeded','Tempo di calcolo superato.');
@@ -576,6 +598,7 @@ export function buildTerrainProposal({project,model,portionId=null,followTerrain
   if(!Array.isArray(polygon)||polygon.length<4||!(input.rowSpacingM>0)||!(input.plantSpacingM>0))fail('invalid-input','Perimetro o distanze non validi.');
   const portions=resolveRowPortions(input);if(!portions.length)fail('invalid-input','Nessuna porzione coltivabile.');
   if(portionId&&!portions.some(p=>p.id===portionId))fail('invalid-input','Porzione non più disponibile.');
+  diagnosticPhase('chart');
   const baseChart=chartFor(model,tick),before=calculateProject({...input,terrain:project.terrain??null});
   const previous=project.terrain?.applied,local=!!(!recomputeAll&&previous&&portionId&&project.terrain.model.contentHash===model.contentHash);
   const oldInputs=previous?.inputs;
@@ -588,8 +611,9 @@ export function buildTerrainProposal({project,model,portionId=null,followTerrain
   const portionResults=[];
   for(const portion of portions){
    if(local&&portion.id!==portionId){const saved=previous.portionResults.find(p=>p.id===portion.id);if(!saved)fail('review-required','Porzioni cambiate: ricalcolare il campo.');portionResults.push(clone(saved));continue;}
-   portionResults.push(designPortion({project,model,portion,portions,baseChart,followTerrain:followTerrain&&(!portionId||portion.id===portionId),tick}));
+   portionResults.push(designPortion({project,model,portion,portions,baseChart,followTerrain:followTerrain&&(!portionId||portion.id===portionId),tick,diagnosticPhase}));
   }
+  diagnosticPhase('envelope');
   const rows=portionResults.flatMap(p=>p.rows),metrics=polygonMetrics(polygon),surfaceAreaM2=terrainSurfaceArea(model,polygon);
   const usableAreaM2=portions.reduce((s,p)=>s+polygonMetrics(p.geometry[0]).areaM2-p.geometry.slice(1).reduce((a,r)=>a+polygonMetrics(r).areaM2,0),0);
   const usableSurface=portions.reduce((s,p)=>s+terrainSurfaceArea(model,{type:'Polygon',coordinates:p.geometry}),0);
@@ -612,5 +636,5 @@ export function buildTerrainProposal({project,model,portionId=null,followTerrain
   if(new TextEncoder().encode(JSON.stringify({...field,rowPortions,terrain})).length>1048576)fail('size-exceeded','Il campo supera il limite di 1 MiB. Il progetto precedente è conservato.');
   const changes=portionResults.map(p=>({portionId:p.id,label:p.label,before:quantities(previous?.portionResults?.find(old=>old.id===p.id)??totals((before.rows??[]).filter(r=>r.portionId===p.id||portions.length===1),input.postSpacingM,input.plantSpacingM)),after:quantities(p)}));
   return {ok:true,status:'ready',message:'Proposta terreno verificata.',terrain,rowPortions,result,changes};
- }catch(error){return {ok:false,status:error.status??'review-required',message:error.message??'Disegno da rivedere.'};}
+ }catch(error){return {ok:false,status:error.status??'review-required',message:error.message??'Disegno da rivedere.'};}finally{diagnosticPhase(null);}
 }

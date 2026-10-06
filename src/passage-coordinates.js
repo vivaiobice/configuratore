@@ -1,6 +1,6 @@
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.0';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
 import {corridorPolygonFromLine,normalizeIntersectionRings,polygonMetrics} from './geometry.js?v=45';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.0';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.1-prova.1';
 export function reshapeExclusion(exclusions,id,geometry){
  const target=exclusions.find(item=>item.id===id),group=target?.sourceAxis&&target.passageGroupId;
  return exclusions.map(item=>{if(item.id!==id&&!(group&&item.passageGroupId===group))return item;const {sourceAxis,...rest}=item;return {...rest,geometry:item.id===id?geometry:item.geometry,type:'area',widthM:null,label:item.type==='linear'&&/^Passaggio lineare/.test(item.label??'')?'Area esclusa rimodellata':item.label};});

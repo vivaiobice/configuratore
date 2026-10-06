@@ -8,7 +8,7 @@ export function runTerrainProposal(options,{signal,WorkerImpl=globalThis.Worker}
   const finish=(value,error=false)=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);worker?.terminate();(error?reject:resolve)(value);};
   const abort=()=>finish(new DOMException('Operazione annullata.','AbortError'),true);
   try{
-   worker=new WorkerImpl(new URL('./terrain-worker.js?v=1.3.0',import.meta.url),{type:'module'});
+   worker=new WorkerImpl(new URL('./terrain-worker.js?v=1.3.1-prova.1',import.meta.url),{type:'module'});
    signal?.addEventListener('abort',abort,{once:true});
    worker.onmessage=event=>finish(event.data);
    worker.onerror=()=>finish({ok:false,status:'worker-error',message:'Calcolo interrotto. Il progetto precedente è conservato.'});

@@ -105,7 +105,15 @@ test('unapplied shared HTML preserves approved 1.2.6 formatting including nullab
  const {readFile}=await import('node:fs/promises');const {createHash}=await import('node:crypto');
  const fixture=JSON.parse(await readFile(new URL('./fixtures/terrain-planar-shared-parity.json',import.meta.url),'utf8'));
  assert.equal(fixture.payload.fields[0].headlandWidthM,null);
- assert.equal(createHash('sha256').update(renderSharedProjectHtml({payload:fixture.payload})).digest('hex'),fixture.htmlSha256);
+ const previousTZ=process.env.TZ;
+ try{
+  // Approved 1.2.6 HTML fixture was captured at UTC+03.
+  process.env.TZ='Etc/GMT-3';
+  assert.equal(createHash('sha256').update(renderSharedProjectHtml({payload:fixture.payload})).digest('hex'),fixture.htmlSha256);
+ }finally{
+  if(previousTZ===undefined)delete process.env.TZ;
+  else process.env.TZ=previousTZ;
+ }
 });
 
 for(const postSpacingM of [null,0])test(`real applied proposal with post spacing ${postSpacingM} replays unchanged in every field caller`,async()=>{

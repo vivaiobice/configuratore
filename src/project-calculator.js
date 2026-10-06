@@ -1,7 +1,7 @@
-import { readAppliedTerrainResult } from './terrain-design.js?v=1.3.0';
+import { readAppliedTerrainResult } from './terrain-design.js?v=1.3.1-prova.1';
 import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=45';
-import { resolveRowPortions } from './row-portions.js?v=1.3.0';
-import { generateCurvedRows, normalizeRowCurvePoints, rowOwnerId } from './row-curves.js?v=1.3.0';
+import { resolveRowPortions } from './row-portions.js?v=1.3.1-prova.1';
+import { generateCurvedRows, normalizeRowCurvePoints, rowOwnerId } from './row-curves.js?v=1.3.1-prova.1';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);

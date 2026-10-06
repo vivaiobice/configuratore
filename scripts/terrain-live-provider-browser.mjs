@@ -48,9 +48,9 @@ try{
   await page.goto(origin+'/');
   for(const fixture of requests.slice(0,2)){
     const result=await page.evaluate(async fixture=>{
-      const {loadTerrainForField}=await import('/src/terrain-provider.js?v=1.3.0');
-      const {fromUTM}=await import('/src/coordinate-system.js?v=1.3.0');
-      const {validateTerrainModel,decodeTerrainGrid}=await import('/src/terrain-model.js?v=1.3.0');
+      const {loadTerrainForField}=await import('/src/terrain-provider.js?v=1.3.1-prova.1');
+      const {fromUTM}=await import('/src/coordinate-system.js?v=1.3.1-prova.1');
+      const {validateTerrainModel,decodeTerrainGrid}=await import('/src/terrain-model.js?v=1.3.1-prova.1');
       const started=performance.now();
       const model=await loadTerrainForField({polygon:fixture.fieldRing.map(point=>fromUTM(point)),signal:AbortSignal.timeout(45000)});
       const validation=validateTerrainModel(model),values=decodeTerrainGrid(model);

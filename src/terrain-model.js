@@ -1,5 +1,6 @@
-import { toUTM, fromUTM } from './coordinate-system.js?v=1.3.0';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.0';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.1-prova.1';
+import { toUTM, fromUTM } from './coordinate-system.js?v=1.3.1-prova.1';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
 export const MAX_TERRAIN_CELLS = 262144;
 export const MAX_TERRAIN_FIELD_BYTES = 1024 * 1024;
 export class TerrainModelError extends Error {
@@ -666,4 +667,16 @@ export function getTerrainMesh(model) {
     step: [...p.grid.step],
     crs: model.crs,
   };
+}
+
+/** Field-only native-face extrema and slope; terrainSummary remains support-wide. */
+export function terrainScopedSummary(model, geometry) {
+  const validation = validateTerrainModel(model);
+  if (!validation.valid) return validation;
+  try {
+    const {minM, maxM, maxSlopePercent} = createContourDomain({model, geometry});
+    return {valid: true, minM, maxM, rangeM: maxM - minM, maxSlopePercent};
+  } catch (error) {
+    return {valid: false, errors: [error.message], status: error.status};
+  }
 }

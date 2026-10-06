@@ -1,6 +1,6 @@
-import {terrainMeasureText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.0';
-import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.0';
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.0';
+import {terrainMeasureText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.1-prova.1';
+import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.1-prova.1';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.1-prova.1';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 
 const A4=[595.28,841.89];

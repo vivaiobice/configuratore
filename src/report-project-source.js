@@ -1,9 +1,9 @@
-import {createProjectSync} from './project-sync.js?v=1.3.0';
+import {createProjectSync} from './project-sync.js?v=1.3.1-prova.1';
 import {createSyncQueue} from './sync-queue.js';
-import {projectPayloadToArchiveItem} from './backend.js?v=1.3.0';
+import {projectPayloadToArchiveItem} from './backend.js?v=1.3.1-prova.1';
 import {mergeCloudSnapshot} from './cloud-state.js';
-import {prepareReportContext,assertReportContextScope} from './report-context.js?v=1.3.0';
-import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.0';
+import {prepareReportContext,assertReportContextScope} from './report-context.js?v=1.3.1-prova.1';
+import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.1-prova.1';
 const clone=value=>structuredClone(value);
 export function hasReportProjectChanges(current,reported){
  const shape=value=>{const {name,campaignYear,origin,fields}=buildCloudSnapshot(value);return {name,campaignYear,origin,fields};};

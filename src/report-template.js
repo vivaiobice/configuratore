@@ -1,7 +1,7 @@
-import {terrainMeasureText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.0';
-import {hasPortionDesign,formatPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.0';
+import {terrainMeasureText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.1-prova.1';
+import {hasPortionDesign,formatPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.1-prova.1';
 import {soilRows,SOIL_DISCLAIMER} from './soil.js';
-import { renderProjectDiagramSvg } from './report-diagram.js?v=1.3.0';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=1.3.1-prova.1';
 
 function esc(value) {
   return String(value ?? '')
