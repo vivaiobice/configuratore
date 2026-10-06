@@ -1,0 +1,43 @@
+import {normalizeCadastralReferences,manualCadastralReference} from './cadastral-references.js?v=55.7';
+
+export function createCadastralReferenceEditor({document,container,onChange=()=>{}}) {
+  if(!container||!document)throw new TypeError('Editor container required');
+  let legacy=[];
+  const originals=new WeakMap();
+  let mobile=false;
+  const rows=()=>[...container.querySelectorAll('[data-reference-row]')];
+  const values=()=>normalizeCadastralReferences([...legacy,...rows().map(row=>{
+    const original=originals.get(row)??{};
+    const value=manualCadastralReference({...Object.fromEntries(['municipality','section','sheet','parcel'].map(key=>[key,row.querySelector(`[name="${key}"]`)?.value])),lookupKey:original.lookupKey});
+    if(!value)return null;
+    const updated={...original,...value,source:original.source==='automatic'?'automatic':'manual'};
+    if(!value.section)delete updated.section;
+    return updated;
+  })]);
+  function appendRow(ref={}) {
+    const row=document.createElement('div');row.dataset.referenceRow='';row.className='cadastral-reference-row';originals.set(row,{...ref});
+    const columns=[['municipality','Comune'],...(ref.section?[['section','Sezione']]:[]),['sheet','Foglio'],['parcel','Particella']];
+    row.classList.toggle('has-section',Boolean(ref.section));
+    for(const [name,title] of columns) {
+      const label=document.createElement('label');label.textContent=title;const input=document.createElement('input');input.className='control-input';input.name=name;input.value=String(ref[name]??'');input.setAttribute('aria-label',`${title} riferimento catastale ${rows().length+1}`);label.append(input);row.append(label);
+    }
+    const actions=document.createElement('div');actions.className='cadastral-reference-actions';
+    const remove=document.createElement('button');remove.type='button';remove.dataset.removeReference='';remove.textContent='×';remove.title='Rimuovi mappale';remove.setAttribute('aria-label',`Rimuovi mappale ${rows().length+1}`);actions.append(remove);row.append(actions);container.append(row);
+  }
+  function placeAdd(){const add=container.querySelector('[data-add-reference]');if(add)container.append(add);}
+  function emit(){onChange(values());}
+  function click(event){if(event.target.closest('[data-add-reference]')){appendRow();placeAdd();emit();return;}const remove=event.target.closest('[data-remove-reference]');if(remove){const row=remove.closest('[data-reference-row]');const add=row?.querySelector('[data-add-reference]');if(add)container.append(add);row?.remove();if(!rows().length)appendRow();placeAdd();emit();}}
+  function change(event){if(event.target.matches?.('input[name]')){const row=event.target.closest('[data-reference-row]');originals.set(row,{...originals.get(row),source:'manual'});emit();}}
+  container.addEventListener('click',click);container.addEventListener('change',change);
+  return {
+    render(refs,{municipality=''}={}) {
+      const normalized=normalizeCadastralReferences(refs);
+      legacy=normalized.filter(ref=>ref.source!=='manual'&&!['municipality','sheet','parcel'].some(key=>key in ref));
+      container.replaceChildren();const manual=normalized.filter(ref=>!legacy.includes(ref)&&('municipality' in ref||ref.source==='manual'));
+      for(const ref of manual.length?manual:[{municipality}])appendRow(ref);
+      const add=document.createElement('button');add.type='button';add.dataset.addReference='';add.textContent='+ Aggiungi mappale';container.append(add);placeAdd();
+    },
+    setMobile(value){mobile=Boolean(value);placeAdd();},
+    destroy(){container.removeEventListener('click',click);container.removeEventListener('change',change);container.replaceChildren();}
+  };
+}

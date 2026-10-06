@@ -1,0 +1,59 @@
+/* Version 1.0.2: persistent labels and compact project/field management. */
+.map-field-label-overlay{position:absolute;inset:0;z-index:12;pointer-events:none;overflow:hidden}
+.map-field-label-overlay .field-label-marker{position:absolute;display:block;transform:translate(-50%,-50%);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#153e28f2;border:2px solid #fff;box-shadow:0 3px 12px #0009;font-size:11px;line-height:1.1;padding:5px 9px}
+.desktop-library-card{width:min(760px,100%)}
+.desktop-library-actions{align-items:center;gap:7px;margin:14px 0 18px}
+.desktop-library-project-target{display:flex;align-items:center;gap:7px;margin-right:auto;color:#53665a;font-size:11px;font-weight:800;min-width:0}
+.desktop-library-project-target[hidden],.desktop-library-edit-options[hidden]{display:none!important}
+.desktop-library-project-target select{width:min(210px,30vw);min-height:38px;padding:6px 26px 6px 8px;border:1px solid #d5ddd6;border-radius:10px;background:#fff;font-size:12px;font-weight:700}
+.desktop-library-actions .library-icon-action,.desktop-library-item-actions .library-icon-action{display:grid;place-items:center;flex:none;width:40px;min-width:40px;height:40px;min-height:40px;padding:8px;border:1px solid #d5ddd6;border-radius:10px;background:#fff;color:#183f28;cursor:pointer}
+.library-icon-action svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.library-icon-action:hover,.library-icon-action:focus-visible{background:#e5efe7;border-color:#94b79c;outline:2px solid #2c7c50;outline-offset:1px}
+.library-icon-action:disabled{opacity:.45;cursor:not-allowed}
+.desktop-library-actions #desktop-user-projects{min-height:40px;padding:0 10px}
+.desktop-library-item{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;cursor:default}
+.desktop-library-item-main{display:flex;align-items:center;gap:14px;min-width:0;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.desktop-library-item-main:hover strong{text-decoration:underline}
+.desktop-library-item-main:focus-visible{outline:3px solid #68a77b;outline-offset:4px;border-radius:6px}
+.desktop-field-thumbnail{flex:none;width:76px;height:64px;border:1px solid #d4ded5;border-radius:11px;overflow:hidden;background:#edf3ed}
+.desktop-field-thumbnail svg{display:block;width:100%;height:100%}
+.desktop-field-info{min-width:0}.desktop-field-info strong{font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.desktop-field-info span{line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+.desktop-library-item-actions{position:relative;display:flex;align-items:center;gap:5px}
+.desktop-library-edit-options{position:absolute;right:0;top:calc(100% + 5px);z-index:6;display:flex;gap:6px;padding:8px;background:#fff;border:1px solid #d5ddd6;border-radius:11px;box-shadow:0 9px 24px #173c2830}
+.desktop-library-edit-options button{white-space:nowrap}
+.desktop-library-item .desktop-library-rename{grid-column:1/-1}
+.desktop-project-card .desktop-library-item-main{display:block}
+.desktop-project-card .desktop-library-item-main strong{font-size:15px}
+.desktop-project-card .desktop-library-item-main span{line-height:1.4}
+.desktop-project-card[data-expanded="true"] [data-project-action="expand"] svg{transform:rotate(180deg)}
+.cadastral-reference-row,.cadastral-reference-row.has-section{grid-template-columns:minmax(0,2.3fr) minmax(0,.72fr) minmax(0,.95fr) 30px;gap:5px;align-items:end}
+.cadastral-reference-row.has-section{grid-template-columns:minmax(0,2fr) minmax(0,.65fr) minmax(0,.7fr) minmax(0,.85fr) 30px}
+.cadastral-reference-row .cadastral-reference-actions{grid-column:auto;align-self:end;display:block;min-width:0}
+.cadastral-reference-row [data-remove-reference]{display:grid;place-items:center;width:30px;min-width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;font-size:19px;line-height:1;color:#8e3431;background:#fff4f2;border:1px solid #deb9b4}
+.cadastral-reference-row [data-remove-reference]:hover,.cadastral-reference-row [data-remove-reference]:focus-visible{background:#f8ded8;outline:2px solid #9b3932;outline-offset:1px}
+#cadastral-reference-editor>[data-add-reference]{display:inline-flex;align-items:center;margin:6px 0}
+html[data-theme="dark"] .desktop-library-edit-options,html[data-theme="dark"] .desktop-library-project-target select,html[data-theme="dark"] .desktop-library-actions .library-icon-action,html[data-theme="dark"] .desktop-library-item-actions .library-icon-action{background:#294333;color:#eef6ef;border-color:#536e5b}
+@media(max-width:800px),(max-width:1100px) and (pointer:coarse){
+ #mobile-app .mobile-page-heading{gap:5px}
+ #mobile-app .mobile-page-heading h1{font-size:22px;min-width:65px}
+ #mobile-app .mobile-heading-actions{gap:4px}
+ #mobile-app .mobile-heading-actions button{display:grid;place-items:center;min-width:38px;width:38px;min-height:40px;height:40px;padding:8px;border-radius:10px}
+ #mobile-app #mobile-save-fields,#mobile-app #mobile-save-project{width:38px;min-width:38px;min-height:40px;height:40px;margin:0;padding:8px}
+ #mobile-app .mobile-heading-actions button svg{width:20px;height:20px}
+ #mobile-app .mobile-field-row-actions[hidden],#mobile-app .mobile-project-actions[hidden]{display:none!important}
+ #mobile-app .mobile-card-edit{display:grid;place-items:center;width:38px;min-width:38px;height:38px;min-height:38px;padding:7px;border:1px solid #d2dfd4;border-radius:10px;background:#f2f5f2;color:#183f28}
+ #mobile-app .mobile-card-edit svg{width:20px;height:20px}
+ #mobile-app .mobile-field-card-row .mobile-card-edit{position:absolute;right:9px;top:50%;z-index:3;transform:translateY(-50%)}
+ #mobile-app .mobile-field-card-row.delete-revealed .mobile-card-edit{opacity:0;pointer-events:none}
+ #mobile-app .mobile-field-card{padding-right:53px}
+ #mobile-app .mobile-project-titlebar .mobile-card-edit{flex:none;align-self:center}
+ #mobile-app .mobile-project-actions{grid-column:1/-1;justify-content:flex-end}
+ #mobile-app .mobile-field-row-actions{flex-wrap:wrap}
+ #mobile-app #mobile-project-action-target{width:100%}
+ #mobile-app #cadastral-reference-editor .cadastral-reference-row,#mobile-app #cadastral-reference-editor .cadastral-reference-row.has-section{grid-template-columns:minmax(0,2fr) minmax(0,.7fr) minmax(0,.85fr) 30px;gap:4px}
+ #mobile-app #cadastral-reference-editor .cadastral-reference-row.has-section{grid-template-columns:minmax(0,1.5fr) minmax(0,.6fr) minmax(0,.6fr) minmax(0,.7fr) 30px}
+ #mobile-app #cadastral-reference-editor .cadastral-reference-row label:first-child{grid-column:auto}
+ #mobile-app #cadastral-reference-editor .cadastral-reference-row .cadastral-reference-actions{grid-column:auto;display:block}
+ #mobile-app #cadastral-reference-editor .cadastral-reference-row .cadastral-reference-actions button{width:30px;height:34px;min-height:34px;padding:0;margin:0}
+}
