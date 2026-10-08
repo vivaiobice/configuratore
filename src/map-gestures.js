@@ -22,7 +22,7 @@ export function trackpadPanDelta(event) {
   return [dx,dy];
 }
 
-export function installTrackpadRotation(map, { touchRotation = false } = {}) {
+export function installTrackpadRotation(map, { touchRotation = false, terrain = false, orbitCenter = null } = {}) {
   const container = map?.getCanvasContainer?.() ?? map?.getContainer?.();
   if (!container?.addEventListener) return () => {};
 
@@ -35,15 +35,40 @@ export function installTrackpadRotation(map, { touchRotation = false } = {}) {
   else map.touchZoomRotate?.disableRotation?.();
   map.touchPitch?.disable?.();
 
+  let terrainWheelKind=null,lastTerrainWheelTime=null;
+  const resetWheelBurst=()=>{terrainWheelKind=null;lastTerrainWheelTime=null;};
   const onWheel = (event) => {
+    if(terrain&&(event.ctrlKey||event.metaKey)){resetWheelBurst();return;}
+    if(terrain&&(event.shiftKey||event.altKey))resetWheelBurst();
+    // In terrain mode Shift tilts the view; Alt rotates around the field.
+    // The planar editor retains its established Shift/Alt bearing behavior.
+    if (terrain && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      const delta=wheelRotationDelta(event);
+      if (!delta) return;
+      event.preventDefault?.();event.stopImmediatePropagation?.();
+      map.jumpTo?.({pitch:Math.max(0,Math.min(85,map.getMaxPitch?.()??75,map.getPitch()+delta)),...(orbitCenter?{center:[...orbitCenter]}:{})});
+      return;
+    }
     const delta = wheelRotationDelta(event);
     if (delta) {
       event.preventDefault?.();
       event.stopImmediatePropagation?.();
-      map.setBearing?.(map.getBearing() + delta);
+      if(terrain&&orbitCenter)map.jumpTo?.({center:[...orbitCenter],bearing:map.getBearing()+delta});
+      else map.setBearing?.(map.getBearing() + delta);
       return;
     }
     const pan=trackpadPanDelta(event);
+    if(terrain){
+      const timestamp=Number.isFinite(event.timeStamp)?event.timeStamp:(globalThis.performance?.now?.()??Date.now());
+      // Decide only at a burst's start. Faster trackpad inertia must not turn
+      // an established pan into zoom, and a mouse wobble must not start a pan.
+      if(lastTerrainWheelTime===null||timestamp-lastTerrainWheelTime>180||timestamp<lastTerrainWheelTime){
+        const verticalWheel=pan&&Math.abs(pan[1])>=40&&Math.abs(pan[0])<=Math.max(2,Math.abs(pan[1])*.05);
+        terrainWheelKind=pan&&!verticalWheel?'pan':'native';
+      }
+      lastTerrainWheelTime=timestamp;
+      if(terrainWheelKind==='native')return;
+    }
     if (!pan) return;
     event.preventDefault?.();
     // MapLibre also listens to wheel events for zoom. Stop that listener only
@@ -56,6 +81,7 @@ export function installTrackpadRotation(map, { touchRotation = false } = {}) {
   let enabled=false,rotation=Boolean(touchRotation),disposed=false;
   function setEnabled(value){
     value=Boolean(value)&&!disposed;if(value===enabled)return;enabled=value;
+    resetWheelBurst();
     if(value)container.addEventListener('wheel',onWheel,{passive:false,capture:true});
     else container.removeEventListener('wheel',onWheel,true);
   }
@@ -80,16 +106,16 @@ export function createMapGesturePolicy({map,touchRotation}){
  return {
   // Save the owned 2D plane even when the live camera is navigating in 3D.
   cameraForCheckpoint(){return checkpointCamera?copyCamera(checkpointCamera):cameraSnapshot(map);},
-  enter3D(){
+  enter3D({orbitCenter=null}={}){
    if(destroyed)throw new Error('Policy della mappa chiusa.');
    if(releaseCurrent)return releaseCurrent;
    map.stop?.();const camera=cameraSnapshot(map);
-   const handlers=['dragRotate','touchPitch','touchZoomRotate','scrollZoom','dragPan'].filter(name=>map[name]?.isEnabled);
+   const handlers=['dragRotate','touchPitch','touchZoomRotate','scrollZoom','dragPan','doubleClickZoom','keyboard'].filter(name=>map[name]?.isEnabled);
    const states=handlers.map(name=>[name,map[name].isEnabled()]);
    const rotation=touchRotation?.isTouchRotationEnabled?.()??false,wheel=touchRotation?.isEnabled?.()??false;
    touchRotation?.setEnabled?.(false);
    // Retain the established pixel pan / modifier rotation / native pinch paths.
-   const temporaryWheel=installTrackpadRotation(map,{touchRotation:true});
+   const temporaryWheel=installTrackpadRotation(map,{touchRotation:true,terrain:true,orbitCenter});
    for(const name of handlers)map[name].enable();touchRotation?.setTouchRotation?.(true);
    let released=false;checkpointCamera=camera;
    releaseCurrent=({restoreCamera=true}={})=>{

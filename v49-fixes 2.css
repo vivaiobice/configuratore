@@ -1,0 +1,67 @@
+/* V49 desktop fixes. Mobile layout and palette intentionally remain unchanged. */
+@media (min-width:801px) and (pointer:fine){
+  .map-search-control{align-items:center;justify-content:flex-end;overflow:visible;transition:width .24s ease,background .2s ease}
+  .map-search-control.is-open{width:min(430px,calc(100vw - 90px))}
+  .map-search-form{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;width:100%;min-width:0;animation:map-search-slide .22s ease both}
+  .map-search-form[hidden]{display:none}
+  .map-search-form input{min-width:0;height:42px;padding:0 12px;border:1px solid #bdc9c0;border-radius:10px;background:#fff;color:#183f28;font:inherit;font-weight:650}
+  .map-search-form>button{height:42px;padding:0 13px;border:0;border-radius:10px;background:#1c6040;color:#fff;font:inherit;font-weight:800}
+  .map-search-suggestions{position:absolute;z-index:12;top:calc(100% + 8px);left:0;right:0;max-height:260px;overflow:auto;padding:6px;border:1px solid #d6dfd8;border-radius:12px;background:#fff;box-shadow:0 14px 34px #10211733}
+  .map-search-suggestions[hidden]{display:none}
+  .map-search-suggestions .search-suggestion{display:block;width:100%;padding:10px;border:0;border-radius:8px;background:transparent;color:#183f28;text-align:left;font:inherit;font-size:12px}
+  .map-search-suggestions .search-suggestion:hover{background:#edf4ef}
+  @keyframes map-search-slide{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+  .profile-dialog-card{width:min(680px,100%)}
+  .profile-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .profile-fields .profile-wide{grid-column:1/-1}
+  .profile-account-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+
+  html[data-theme="dark"] .topbar-actions>button,
+  html[data-theme="dark"] .topbar-actions>.map-command-bar>.map-load-project{
+    border-color:#5d7866!important;background:#294735!important;color:#f1f7f2!important
+  }
+  html[data-theme="dark"] .topbar-actions>button:hover,
+  html[data-theme="dark"] .topbar-actions>.map-command-bar>.map-load-project:hover{background:#355b43!important}
+  html[data-theme="dark"] .topbar .brand-logo{filter:drop-shadow(0 0 .45px rgba(255,255,255,.92))!important}
+
+  html[data-theme="dark"] .public-project-dialog,
+  html[data-theme="dark"] .quick-calculator-card,
+  html[data-theme="dark"] .desktop-library-card,
+  html[data-theme="dark"] .profile-dialog-card,
+  html[data-theme="dark"] .contact-dialog,
+  html[data-theme="dark"] .contact-dialog form{background:#203529!important;color:#eef6ef!important;border-color:#536e5b!important}
+  html[data-theme="dark"] .public-project-dialog h2,
+  html[data-theme="dark"] .quick-calculator-card h2,
+  html[data-theme="dark"] .quick-calculator-card strong,
+  html[data-theme="dark"] .contact-dialog h2,
+  html[data-theme="dark"] .desktop-library-card h2{color:#f3f8f4!important}
+  html[data-theme="dark"] .public-project-dialog p,
+  html[data-theme="dark"] .public-project-dialog label,
+  html[data-theme="dark"] .quick-calculator-card p,
+  html[data-theme="dark"] .quick-calculator-card label,
+  html[data-theme="dark"] .quick-calculator-card span,
+  html[data-theme="dark"] .contact-dialog label{color:#c9d8cc!important}
+  html[data-theme="dark"] .dialog-close,
+  html[data-theme="dark"] .desktop-library-card header button{background:#34513e!important;color:#eef6ef!important}
+  html[data-theme="dark"] .manual-calculator,
+  html[data-theme="dark"] .manual-calculator-results>div,
+  html[data-theme="dark"] .desktop-library-item,
+  html[data-theme="dark"] .desktop-library-empty{background:#294333!important;color:#eef6ef!important;border-color:#536e5b!important}
+  html[data-theme="dark"] .manual-calculator-results .manual-commercial{background:#356a49!important}
+
+  html[data-theme="dark"] .exclusion-panel{background:#263e2e!important;color:#eef6ef!important;border-color:#536e5b!important}
+  html[data-theme="dark"] .exclusion-list,
+  html[data-theme="dark"] .empty-exclusions{background:transparent!important;color:#c9d8cc!important}
+  html[data-theme="dark"] .exclusion-item input{background:#1f3528!important;color:#eef6ef!important;border-color:#536e5b!important}
+
+  html[data-theme="dark"] .desktop-map-tools .map-tool-group,
+  html[data-theme="dark"] .map-field-picker{border:1px solid #587360!important;background:rgba(31,53,40,.94)!important;box-shadow:0 8px 24px #07130c55!important}
+  html[data-theme="dark"] .desktop-map-tools .map-tool-group button,
+  html[data-theme="dark"] .map-field-picker select{border-color:#587360!important;background:#294735!important;color:#eef6ef!important}
+  html[data-theme="dark"] .cadastre-menu{border-color:#587360!important;background:#203529!important}
+  html[data-theme="dark"] .map-search-form input,
+  html[data-theme="dark"] .map-search-suggestions{border-color:#587360!important;background:#203529!important;color:#eef6ef!important}
+  html[data-theme="dark"] .map-search-suggestions .search-suggestion{color:#eef6ef!important}
+  html[data-theme="dark"] .map-search-suggestions .search-suggestion:hover{background:#355b43!important}
+}

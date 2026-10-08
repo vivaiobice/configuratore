@@ -1,10 +1,10 @@
 import {
-  Q, ZERO, ONE, TWO, number, add, sub, mul, div, neg, cmp, sign, sq, key, pointKey, vadd,
+  Q, ZERO, ONE, TWO, number, numberBounds, min, max, add, sub, mul, div, neg, cmp, sign, sq, key, pointKey, vadd,
   vsub, scale, dot, cross, orient, mid, unique, xy, inTriangle, inRegion, height,
   splitSegment, radical, radd, rscale,exactDomain,pointOnSegment
-} from './terrain-exact.js?v=1.3.2';
-import {resolveSourceAxis,SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.2';
-import {resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.2';
+} from './terrain-exact.js?v=1.3.3';
+import {resolveSourceAxis,SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.3';
+import {resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.3';
 // Affine scalar [constant, coefficient] and affine XY [constantXY, slopeXY].
 const scalarAt=(p, t)=>add(p[0], mul(p[1], t));
 const vectorAt=(p, t)=>vadd(p[0], scale(p[1], t));
@@ -240,7 +240,8 @@ export function traceNormalBundles({
 }){
   const targetSegments=targetPieces.map((p, i)=>({
     ...p,
-    targetPieceIndex:i
+    targetPieceIndex:i,
+    nativeBounds:[numberBounds(min(p.a[0],p.b[0]))[0],numberBounds(min(p.a[1],p.b[1]))[0],numberBounds(max(p.a[0],p.b[0]))[1],numberBounds(max(p.a[1],p.b[1]))[1]]
   })),
   targetFirst=targetSegments[0];
   if(!targetFirst)return {
@@ -447,6 +448,10 @@ export function traceNormalBundles({
         }
       }
       for (const piece of targetSegments){
+        // A ray cannot hit this target before leaving the current native face
+        // when their outward enclosures are disjoint. Boundary ties remain.
+        const a=piece.nativeBounds,b=f.nativeBounds;
+        if(!uniformPlane&&b&&(a[0]>b[2]||a[2]<b[0]||a[1]>b[3]||a[3]<b[1]))continue;
         collect(piece.a, piece.b, {
           kind:'target',
           targetPieceIndex:piece.targetPieceIndex,
@@ -672,4 +677,4 @@ export function traceNormalBundles({
   };
 }
 
-export {traceSurfaceBand} from './terrain-surface-bands.js?v=1.3.2';
+export {traceSurfaceBand} from './terrain-surface-bands.js?v=1.3.3';

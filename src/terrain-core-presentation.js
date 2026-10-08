@@ -1,5 +1,5 @@
-import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.2';
-import {createTerrainControls} from './terrain-controls.js?v=1.3.2';
+import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.3';
+import {createTerrainControls} from './terrain-controls.js?v=1.3.3';
 
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
@@ -40,7 +40,7 @@ export function terrainCoreWidgetState(state={}, {project={},enabled=true}={}) {
   repeatMode:Boolean(canAdapt && !state.busy && !state.viewOpening && !proposal && saved),
   proposal:proposal?{pending:true,canApply:state.canApply===true}:null,
   progress:active && state.busy===true && state.statusKind==='saving'?{phase:'checkpoint'}:active && state.progress?{phase:state.progress.phase}:null,
-  status:active && state.statusKind && !idleAcquired?{kind:state.statusKind}:null,
+  status:active && state.statusKind && !idleAcquired?{kind:state.statusKind,...(state.lastProposalOutcome?.budgetReason?{budgetReason:state.lastProposalOutcome.budgetReason}:{})}:null,
   restoreAvailability:{kind:restoreKind},
  };
 }

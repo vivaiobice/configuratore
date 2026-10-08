@@ -1,15 +1,15 @@
-import {legacyTerrainInputs as inputs,legacyTerrainDesignInputHash as terrainDesignInputHash,readTerrainEnvelope,hashTerrainEnvelope as snapshotHash} from './terrain-replay.js?v=1.3.2';
+import {legacyTerrainInputs as inputs,legacyTerrainDesignInputHash as terrainDesignInputHash,readTerrainEnvelope,hashTerrainEnvelope as snapshotHash} from './terrain-replay.js?v=1.3.3';
 export {terrainDesignInputHash};
-import {FIELD_KEYS} from './fields.js?v=1.3.2';
-import clipping from './vendor/polygon-clipping.js?v=1.3.2';
-import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.2';
-import {getTerrainMesh,validateTerrainModel,terrainPolylineLength,terrainSurfaceArea,terrainInputHash,sampleTerrain} from './terrain-model.js?v=1.3.2';
+import {FIELD_KEYS} from './fields.js?v=1.3.3';
+import clipping from './vendor/polygon-clipping.js?v=1.3.3';
+import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.3';
+import {getTerrainMesh,validateTerrainModel,terrainPolylineLength,terrainSurfaceArea,terrainInputHash,sampleTerrain} from './terrain-model.js?v=1.3.3';
 import {polygonMetrics,estimatePlantsFromRows,roundUpTo25,generateRows} from './geometry.js?v=45';
-import {resolveRowPortions} from './row-portions.js?v=1.3.2';
-import {rowOwnerId,generateCurvedRows} from './row-curves.js?v=1.3.2';
-import {calculateProject} from './project-calculator.js?v=1.3.2';
-import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.2';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
+import {resolveRowPortions} from './row-portions.js?v=1.3.3';
+import {rowOwnerId,generateCurvedRows} from './row-curves.js?v=1.3.3';
+import {calculateProject} from './project-calculator.js?v=1.3.3';
+import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
 
 const VERSION='terrain-face-chart-1', MAX_NODES=500000, ERROR_TARGET=.01;
 const clone=v=>JSON.parse(JSON.stringify(v));
@@ -570,12 +570,12 @@ function designPortion({project,model,portion,portions,baseChart,followTerrain,t
  const headlandArea=headlandBands(chart,outer,holes,portion,headland,tick);
  return {...result,headlandArea,id:portion.id,label:portion.label,design:{guide:automaticGuide?'native-contour-distance-family':'continuous-face-chart',guidePoints:automaticGuide,guideCoordinates,orientationRad:angle,phase:gap/2,spacingChartM:gap,axisCount:axisIndex,followTerrain},validation:{valid:true,nodeCount:chart.nodeCount??chart.xyz.length,method:'continuous-face-chart/supporting-plane-and-scalar-bounds',minimumSpacingLowerM:certificates.length?Math.min(...certificates.map(c=>c.lower)):spacing,errorBoundM:certificates.length?Math.max(...certificates.map(c=>c.error)):0,roundoffBoundM:Math.max(0,...certificates.map(c=>c.roundoff)),pairCount:certificates.length},rawHorizontal,rawSurface};
 }
-export function buildTerrainProposal({project,model,portionId=null,followTerrain=true,recomputeAll=false,deadlineMs,onPhase,algorithmVersion,mode,budget}={}){
+export function buildTerrainProposal({project,model,portionId=null,followTerrain=true,recomputeAll=false,deadlineMs,onPhase,algorithmVersion,mode,budget,manualGroundSpacing=false}={}){
  if(algorithmVersion==='terrain-contour-family-1'){
   const selectedMode=mode??(followTerrain?'adapt':'measure');
   try{
    const operationBudget=budget??createTerrainBudget({kind:selectedMode==='measure'?'measure':'adapt',deadlineMs});
-   return buildContourTerrainProposal({project,model,portionId,mode:selectedMode,recomputeAll,budget:operationBudget});
+   return buildContourTerrainProposal({project,model,portionId,mode:selectedMode,recomputeAll,manualGroundSpacing,budget:operationBudget});
   }catch(error){return {ok:false,status:error.status??'invalid-input',kind:selectedMode,message:error.message};}
  }
  if(algorithmVersion!==undefined&&algorithmVersion!==VERSION)return {ok:false,status:'unsupported-algorithm',message:'Versione del motore terreno non supportata.'};

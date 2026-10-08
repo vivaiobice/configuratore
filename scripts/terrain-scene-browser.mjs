@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {deflateSync} from 'node:zlib';
+import {imageryPng,imageryColor,installTerrainWebGLAcceptance} from './fixtures/terrain-patterned-imagery.mjs';
 import assert from 'node:assert/strict';
 import {createInitialState} from '../src/state.js';
 import {ensureProjectFields} from '../src/fields.js';
@@ -26,20 +26,11 @@ const [maplibre,draw,maplibreCss,drawCss]=await Promise.all([
  readFile(process.env.COUNTS_MAPBOX_DRAW_CSS_PATH??resolve(assets,'mapbox-gl-draw.css'),'utf8')
 ]);
 
-// A visibly artificial green checker raster exercises real tile textures without
-// contacting a satellite service or implying that anonymous data is imagery.
-function crc32(bytes){let crc=0xffffffff;for(const byte of bytes){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return (crc^0xffffffff)>>>0;}
-function png(transparent=false){
- const width=256,height=256,scanlines=Buffer.alloc(height*(width*4+1));
- for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-  const p=y*(width*4+1)+1+x*4,tone=((x>>5)+(y>>5))%2;
-  scanlines.set(transparent?[0,0,0,0]:tone?[109,137,92,255]:[139,155,109,255],p);
- }
- const chunk=(name,data)=>{const type=Buffer.from(name),length=Buffer.alloc(4),crc=Buffer.alloc(4);length.writeUInt32BE(data.length);crc.writeUInt32BE(crc32(Buffer.concat([type,data])));return Buffer.concat([length,type,data,crc]);};
- const header=Buffer.alloc(13);header.writeUInt32BE(width);header.writeUInt32BE(height,4);header[8]=8;header[9]=6;
- return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',header),chunk('IDAT',deflateSync(scanlines)),chunk('IEND',Buffer.alloc(0))]);
-}
-const texture=png(),transparentTexture=png(true);
+const baseline=process.env.TERRAIN_SCENE_BROWSER_BASELINE==='green';
+const baselineSource=baseline?await readFile(resolve(root,'scripts/fixtures/terrain-scene-view-green-baseline.txt'),'utf8'):null;
+const transparentTexture=imageryPng({transparent:true});
+const rasterCache=new Map();
+function raster(z,x,y){const key=[z,x,y].join('/');if(!rasterCache.has(key))rasterCache.set(key,imageryPng({z,x,y}));return rasterCache.get(key);}
 const server=createServer(async(req,res)=>{try{
  let pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
  if(pathname.endsWith('/'))pathname+='index.html';
@@ -54,9 +45,10 @@ const exposeMap=`;const OriginalMap=maplibregl.Map;maplibregl.Map=class extends 
  addLayer(layer,...args){
   if(layer.type==='custom'){
    const record={id:layer.id,active:true,renders:0,lastCommands:[],firstRenderedAt:null};window.__customLayers.push(record);
+   for(const method of ['onAdd','onRemove']){const original=layer[method];if(original)layer[method]=function(...args){const before=window.__terrainOwner;window.__terrainOwner=layer.id;try{return original.apply(this,args);}finally{window.__terrainOwner=before;}};}
    const nativeRender=layer.render;layer.render=function(...renderArgs){
     record.renders++;record.firstRenderedAt??=performance.now();const before=window.__renderScope;
-    const commands=[];window.__renderScope=commands;try{return nativeRender.apply(this,renderArgs);}finally{record.lastCommands=commands;window.__renderScope=before;}
+    const commands=[];window.__renderScope=commands;window.__terrainOwner=layer.id;try{return nativeRender.apply(this,renderArgs);}finally{record.lastCommands=commands;window.__renderScope=before;window.__terrainOwner=null;}
    };
   }
   return super.addLayer(layer,...args);
@@ -86,11 +78,12 @@ try{
  browser=await chromium.launch({headless:true,executablePath:process.env.COUNTS_CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});
  for(const mobile of views){
   const name=mobile?'mobile':'desktop',context=await browser.newContext(mobile?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{viewport:{width:900,height:720}}),page=await context.newPage();
-  const errors=[],glErrors=[],local404=[],externalDenied=new Set(),fixtureRasters=[];
+  const errors=[],glErrors=[],local404=[],externalDenied=new Set(),fixtureRasters=[];let failNativeImagery=false;
   page.on('pageerror',error=>errors.push(error.stack??error.message));
   page.on('console',message=>{if(message.type()==='error'&&/WebGL|GL_INVALID|shader compilation|link program/i.test(message.text()))glErrors.push(message.text());});
   page.on('response',response=>{if(response.url().startsWith(base+'/')&&response.status()===404)local404.push(response.url());});
   const workspace={version:1,ownerId:owner,projectId:state.project.localProjectId,fieldId:'f',map:{drawing:false,mode:'perimeter',vertices:[],previousPerimeter:null,editRing:null,camera:{center:geo([50,50]),zoom:17,bearing:19}},navigation:{mobile:{screen:'map',transaction:false},fullscreen:false,transactionSnapshot:null}};
+  await context.addInitScript(installTerrainWebGLAcceptance);
   await context.addInitScript(({state,workspace,owner,draftKey,model})=>{
    window.__fixture={user:{id:owner,is_anonymous:true,app_metadata:{}},model};localStorage.setItem(draftKey,JSON.stringify({version:3,state,workspace,savedAt:new Date().toISOString()}));localStorage.setItem('vivai-obice:configuratore:consent','necessary');
    window.__graphics=[];window.__customLayers=[];window.__renderScope=null;window.__longTasks=[];
@@ -118,6 +111,7 @@ try{
   },{state,workspace,owner,draftKey,model});
   await page.route('**/*',route=>{
    const url=new URL(route.request().url());if(url.href.startsWith(base+'/')){
+    if(baseline&&url.pathname==='/src/terrain-scene-view.js')return route.fulfill({contentType:'application/javascript',body:baselineSource});
     if(url.pathname==='/src/terrain-provider.js')return route.fulfill({contentType:'application/javascript',body:'export async function loadTerrainForField(){return window.__fixture.model;}'});return route.continue();
    }
    if(url.href==='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js')return route.fulfill({contentType:'application/javascript',body:maplibre+exposeMap});
@@ -126,14 +120,15 @@ try{
    if(url.href==='https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css')return route.fulfill({contentType:'text/css',body:drawCss});
    if(url.href==='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')return route.fulfill({contentType:'application/javascript',body:sdk});
    if(url.hostname==='server.arcgisonline.com'&&url.pathname.includes('/MapServer/tile/')){
-    fixtureRasters.push(url.pathname);return route.fulfill({contentType:'image/png',body:url.pathname.includes('/Reference/')?transparentTexture:texture});
+    if(failNativeImagery&&route.request().resourceType()==='fetch')return route.fulfill({status:503,headers:{'access-control-allow-origin':'*'},body:'Anonymous failure fixture'});
+    const match=url.pathname.match(/\/tile\/(\d+)\/(\d+)\/(\d+)/);const [,z,y,x]=match?.map(Number)??[];fixtureRasters.push({path:url.pathname,z,y,x,native:route.request().resourceType()==='fetch'});return route.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:url.pathname.includes('/Reference/')?transparentTexture:raster(z,x,y)});
    }
-   if(url.hostname==='tile.openstreetmap.org')return route.fulfill({contentType:'image/png',body:texture});
+   if(url.hostname==='tile.openstreetmap.org')return route.fulfill({contentType:'image/png',body:raster(18,0,0)});
    if(url.pathname.endsWith('.css'))return route.fulfill({contentType:'text/css',body:''});
    externalDenied.add(url.hostname+url.pathname);return route.abort();
   });
   const click=async selector=>{const node=page.locator(selector).first();await node.scrollIntoViewIfNeeded();if(mobile)await node.tap();else await node.click();};
-  const camera=()=>page.evaluate(()=>({center:__map.getCenter().toArray(),zoom:__map.getZoom(),pitch:__map.getPitch(),bearing:__map.getBearing(),padding:__map.getPadding()}));
+  const camera=()=>page.evaluate(()=>({center:__map.getCenter().toArray(),zoom:__map.getZoom(),pitch:__map.getPitch(),bearing:__map.getBearing(),padding:__map.getPadding(),maxPitch:__map.getMaxPitch()}));
   const handlers=()=>page.evaluate(()=>Object.fromEntries(['dragRotate','touchPitch','touchZoomRotate','scrollZoom','dragPan'].map(key=>[key,__map[key].isEnabled()])));
   const data=()=>page.evaluate(key=>({project:JSON.parse(localStorage.getItem(key)).state.project,metrics:['#summary-rows','#summary-linear','#summary-plants','#summary-commercial'].map(selector=>document.querySelector(selector)?.textContent),eyes:[...document.querySelectorAll('[data-map-visibility]')].map(node=>[node.dataset.mapVisibility,node.checked])}),draftKey);
   const checkpoint=()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)).workspace.map.camera,draftKey);
@@ -142,6 +137,7 @@ try{
   const sceneActive=()=>page.evaluate(()=>__customLayers.some(layer=>layer.active&&__map.getLayer(layer.id)));
   const open=async()=>{await click(control);await page.waitForFunction(()=>document.querySelector('[data-map-terrain]')?.getAttribute('aria-pressed')==='true'&&__customLayers.some(layer=>layer.active&&layer.renders>=2),null,{timeout:20000});};
   const close=async()=>{await click(control);await page.waitForFunction(()=>document.querySelector('[data-map-terrain]')?.getAttribute('aria-pressed')!=='true'&&!__customLayers.some(layer=>layer.active&&__map.getLayer(layer.id)));await settle();};
+  const captureSurface=async()=>{await page.evaluate(()=>{window.__captureTerrainSurface=true;__map.triggerRepaint();});await page.waitForFunction(()=>window.__captureTerrainSurface===false);return page.evaluate(()=>__terrainGL.surfaces.at(-1));};
   const phases=[];
   const beginPhase=async label=>page.evaluate(label=>{
    const sample={label,start:performance.now(),times:[],active:true};window.__phase=sample;
@@ -151,7 +147,7 @@ try{
    const phase=await page.evaluate(()=>{const sample=window.__phase;sample.active=false;const times=[sample.start,...sample.times,performance.now()],gaps=times.slice(1).map((time,index)=>Math.max(0,time-times[index]));return {label:sample.label,frameCount:sample.times.length,durationMs:times.at(-1)-sample.start,maxFrameGapMs:Math.max(0,...gaps),longTasks:__longTasks.filter(task=>task.startTime>=sample.start),commands:__customLayers.filter(layer=>layer.active).map(layer=>({id:layer.id,renders:layer.renders,commands:layer.lastCommands}))};});
    phases.push(phase);await writeFile(resolve(output,name+'-phases.json'),JSON.stringify(phases,null,2));
    assert.ok(phase.frameCount>=2,name+' '+phase.label+': animation frames advance');
-   assert.ok(phase.maxFrameGapMs<150,name+' '+phase.label+': max frame gap '+phase.maxFrameGapMs+' ms must stay below 150 ms');return phase;
+   if(!baseline)assert.ok(phase.maxFrameGapMs<150,name+' '+phase.label+': max frame gap '+phase.maxFrameGapMs+' ms must stay below 150 ms');return phase;
   };
   const timed=async(label,action)=>{await beginPhase(label);await action();return finishPhase();};
   let record;
@@ -160,6 +156,8 @@ try{
    const environment={browser:await browser.version(),...await page.evaluate(()=>{const canvas=__map.getCanvas(),gl=canvas.getContext('webgl2')??canvas.getContext('webgl'),debug=gl?.getExtension('WEBGL_debug_renderer_info');return {userAgent:navigator.userAgent,renderer:debug?gl.getParameter(debug.UNMASKED_RENDERER_WEBGL):gl?.getParameter(gl.RENDERER),vendor:debug?gl.getParameter(debug.UNMASKED_VENDOR_WEBGL):gl?.getParameter(gl.VENDOR),viewport:[innerWidth,innerHeight],dpr:devicePixelRatio,canvas:[canvas.width,canvas.height]};})};
    await page.evaluate(()=>{__map.stop();__map.touchZoomRotate.disable();__map.scrollZoom.disable();__map.jumpTo({pitch:12,bearing:19,padding:{top:3,bottom:4,left:5,right:6}});});await settle();
    const savedCamera=await camera(),savedHandlers=await handlers(),savedData=await data(),savedCheckpoint=await checkpoint();
+   const sourceSnapshot=()=>page.evaluate(()=>({field:__map.getSource('project-geometry')?._data,rows:__map.getSource('vineyard-rows')?._data,labels:[...document.querySelectorAll('#map .field-label-marker')].map(node=>({text:node.textContent,visible:!!node.getClientRects().length,position:[node.style.left,node.style.top]})),quotes:[...document.querySelectorAll('#map .side-measurement-label')].map(node=>({text:node.textContent,visible:!!node.getClientRects().length}))}));
+   const planarSources=await sourceSnapshot();await writeFile(resolve(output,name+'-real-app-planar-sources.json'),JSON.stringify(planarSources,null,2));
    assert.ok(savedData.metrics.some(value=>value&&/[0-9]/.test(value)),'real manual project quantities are present');assert.equal(savedData.eyes.length,3);
    await timed('open-native-scene',async()=>{await open();await page.waitForTimeout(300);});
    const native=await page.evaluate(()=>__graphics.filter(worker=>worker.url.includes('terrain-scene-worker')&&worker.scene).at(-1).scene);
@@ -168,13 +166,39 @@ try{
    const renderState=await page.evaluate(()=>({terrain:__map.getTerrain(),demSources:Object.entries(__map.getStyle().sources).filter(([,source])=>source.type==='raster-dem').map(([id])=>id),commands:__customLayers.filter(layer=>layer.active).flatMap(layer=>layer.lastCommands)}));
    assert.equal(renderState.terrain,null,'native custom scene avoids the MapLibre terrain RTT path');assert.deepEqual(renderState.demSources,[]);assert.ok(renderState.commands.some(command=>command.method==='drawElements'&&command.count===24576),'actual WebGL draws every native terrain face');assert.ok(renderState.commands.some(command=>command.method==='drawArrays'&&command.count>0),'actual WebGL draws sampled field and vineyard lines');
    await page.screenshot({path:resolve(output,name+'-3d-initial.png'),fullPage:true});
+   const textureEvidence=await captureSurface();await writeFile(resolve(output,name+'-texture-evidence.json'),JSON.stringify(textureEvidence,null,2));
+   assert.ok(textureEvidence.texture&&textureEvidence.uvs&&/sampler2D/.test(textureEvidence.shader),'native elevated face draw must bind spatial satellite texture and Mercator UVs; old green renderer fails here');
+   const nativeImageryRequests=await page.evaluate(()=>window.__nativeImageryRequests);assert.ok(nativeImageryRequests.length>0,'native imagery atlas must request intercepted World_Imagery tiles');
+   const atlasTiles=nativeImageryRequests.map(url=>{const [,z,y,x]=new URL(url).pathname.match(/\/tile\/(\d+)\/(\d+)\/(\d+)/).map(Number);return {z,y,x};}),atlasZ=atlasTiles[0].z;assert.ok(atlasTiles.every(tile=>tile.z===atlasZ));
+   const minX=Math.min(...atlasTiles.map(tile=>tile.x)),maxX=Math.max(...atlasTiles.map(tile=>tile.x)),minY=Math.min(...atlasTiles.map(tile=>tile.y)),maxY=Math.max(...atlasTiles.map(tile=>tile.y));
+   let maxUVError=0;for(let index=0;index<textureEvidence.vertices.length/3;index++){const worldX=textureEvidence.vertices[index*3]+native.reference.anchor[0],worldY=textureEvidence.vertices[index*3+1]+native.reference.anchor[1];maxUVError=Math.max(maxUVError,Math.abs(textureEvidence.uvs[index*3]-(worldX*2**atlasZ-minX)/(maxX-minX+1)),Math.abs(textureEvidence.uvs[index*3+1]-(worldY*2**atlasZ-minY)/(maxY-minY+1)));}
+   assert.ok(maxUVError<1e-6,'all actual GPU UVs agree with georeferenced Mercator atlas including seams: '+maxUVError);
+   const textureSamples=textureEvidence.samples.map(sample=>{const expected=imageryColor(sample.point[0]+native.reference.anchor[0],sample.point[1]+native.reference.anchor[1]);return {...sample,expected,error:Math.max(...expected.map((channel,index)=>Math.abs(channel-sample.pixel[index])))};});
+   const matchingPixels=textureSamples.filter(sample=>sample.error<25);assert.ok(matchingPixels.length>=8,'actual elevated native surface pixels must agree with spatial known imagery: '+matchingPixels.length);
+   assert.ok(new Set(matchingPixels.map(sample=>sample.expected.join(','))).size>=3,'native surface displays three or more distinct spatial imagery colors');
+   const satellite={atlasZ,tileCount:atlasTiles.length,atlasBounds:[minX,minY,maxX,maxY],maxUVError,matchingPixels:matchingPixels.length,samples:textureSamples};
+   const elevatedSources=await sourceSnapshot();await writeFile(resolve(output,name+'-real-app-elevated-sources.json'),JSON.stringify(elevatedSources,null,2));
+   assert.deepEqual(elevatedSources.rows,planarSources.rows,'native rendering preserves actual running app row source geometry');assert.deepEqual(elevatedSources.field,planarSources.field,'native rendering preserves actual field source geometry');
+   assert.ok(elevatedSources.labels.some(label=>label.visible&&label.text==='Campo f'),'active field name stays visible in elevated view');assert.ok(elevatedSources.quotes.some(label=>label.visible&&/\d/.test(label.text)),'real side dimension quotes stay visible in elevated view');
+   assert.equal(await page.locator('.terrain-camera-controls:visible').count(),1);
+   const hitTargets=()=>page.evaluate(()=>[...document.querySelectorAll('[data-terrain-camera]')].map(button=>{const rect=button.getBoundingClientRect(),hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);return {action:button.dataset.terrainCamera,width:rect.width,height:rect.height,disabled:button.disabled,reachable:hit===button||button.contains(hit),rect:[rect.x,rect.y,rect.width,rect.height]};}));
+   const controlsHitTargets=await hitTargets();assert.ok(controlsHitTargets.every(target=>target.width>=44&&target.height>=44&&target.reachable),'every44px camera control receives actual center pointer input without obscuring toolbar');
+   const cameraControls=[];for(const action of ['rotate-left','rotate-right','zoom-in','zoom-out','pitch-up','pitch-down','north','recenter','return-2d']){const button=page.locator('[data-terrain-camera="'+action+'"]');assert.equal(await button.count(),1);assert.ok(await button.isVisible());assert.ok(await button.getAttribute('aria-label'));cameraControls.push(action);}
+   const controlDeltas={};for(const action of ['rotate-left','rotate-right','zoom-in','zoom-out','pitch-up','pitch-down']){const before=await camera();await click('[data-terrain-camera="'+action+'"]');await settle();const after=await camera();const key=action.startsWith('rotate')?'bearing':action.startsWith('zoom')?'zoom':'pitch';controlDeltas[action]=after[key]-before[key];assert.ok(Math.abs(controlDeltas[action])>=(key==='zoom'?.49:key==='pitch'?4.9:9),'visible '+action+' changes camera via '+(mobile?'tap':'click'));}
+   await click('[data-terrain-camera="north"]');await settle();assert.ok(Math.abs((await camera()).bearing)<1e-6);
+   await click('[data-terrain-camera="pitch-up"]');await click('[data-terrain-camera="pitch-up"]');await click('[data-terrain-camera="pitch-up"]');await settle();assert.ok(Math.abs((await camera()).pitch-85)<1e-6,'visible controls reach85 degree elevated viewpoint');const highPitchTexture=await captureSurface();assert.ok(highPitchTexture.texture&&highPitchTexture.samples.length>0,'native satellite surface remains rendered at85 degree pitch');await page.screenshot({path:resolve(output,name+'-3d-high-pitch.png'),fullPage:true});await click('[data-terrain-camera="recenter"]');await settle();
+   await page.keyboard.press('Tab');
+   const controlFeedback=await page.locator('[data-terrain-camera="recenter"]').evaluate(node=>{node.focus();const css=getComputedStyle(node);return {outlineWidth:css.outlineWidth,outlineStyle:css.outlineStyle,boxShadow:css.boxShadow,backgroundColor:css.backgroundColor};});assert.ok((controlFeedback.outlineStyle!=='none'&&parseFloat(controlFeedback.outlineWidth)>0)||controlFeedback.boxShadow!=='none','visible focus feedback on camera control');
    await timed('loaded-stationary',async()=>page.waitForTimeout(1200));
    await timed('loaded-forced-render',async()=>page.evaluate(()=>new Promise(done=>{const start=performance.now();function frame(){__map.triggerRepaint();if(performance.now()-start<1200)requestAnimationFrame(frame);else done();}requestAnimationFrame(frame);})));
    const rect=await page.locator('#map canvas.maplibregl-canvas').boundingBox(),cx=rect.x+rect.width*.5,cy=rect.y+rect.height*.52,deltas={};
    if(!mobile){
-    let before=await camera();await timed('mouse-rotate-pitch',async()=>{await page.mouse.move(cx,cy);await page.mouse.down({button:'right'});await page.mouse.move(cx+90,cy+50,{steps:15});await page.mouse.up({button:'right'});await settle();});let after=await camera();deltas.desktopPitch=after.pitch-before.pitch;deltas.desktopRotate=after.bearing-before.bearing;assert.ok(Math.abs(deltas.desktopPitch)>5);assert.ok(Math.abs(deltas.desktopRotate)>10);
+    let before=await camera();await timed('mouse-pan',async()=>{await page.mouse.move(cx,cy);await page.mouse.down();await page.mouse.move(cx+55,cy+25,{steps:10});await page.mouse.up();await settle();});let panAfter=await camera();deltas.mousePan=Math.hypot(panAfter.center[0]-before.center[0],panAfter.center[1]-before.center[1]);assert.ok(deltas.mousePan>1e-7);
+    before=await camera();await timed('mouse-rotate-pitch',async()=>{await page.mouse.move(cx,cy);await page.mouse.down({button:'right'});await page.mouse.move(cx+90,cy+50,{steps:15});await page.mouse.up({button:'right'});await settle();});let after=await camera();deltas.desktopPitch=after.pitch-before.pitch;deltas.desktopRotate=after.bearing-before.bearing;assert.ok(Math.abs(deltas.desktopPitch)>5);assert.ok(Math.abs(deltas.desktopRotate)>10);
     before=await camera();await timed('trackpad-pan',async()=>{await page.mouse.move(cx,cy);await page.mouse.wheel(40,60);await settle();});after=await camera();deltas.trackpadPan=Math.hypot(after.center[0]-before.center[0],after.center[1]-before.center[1]);assert.ok(deltas.trackpadPan>1e-7);
-    before=await camera();await timed('trackpad-rotate',async()=>{await page.keyboard.down('Shift');await page.mouse.wheel(0,60);await page.keyboard.up('Shift');await settle();});after=await camera();deltas.trackpadRotate=after.bearing-before.bearing;assert.ok(Math.abs(deltas.trackpadRotate-10.8)<1e-6);
+    before=await camera();await timed('trackpad-rotate',async()=>{await page.keyboard.down('Alt');await page.mouse.wheel(0,60);await page.keyboard.up('Alt');await settle();});after=await camera();deltas.trackpadRotate=after.bearing-before.bearing;assert.ok(Math.abs(deltas.trackpadRotate-10.8)<1e-6);
+    before=await camera();await timed('trackpad-pitch',async()=>{await page.keyboard.down('Shift');await page.mouse.wheel(0,60);await page.keyboard.up('Shift');await settle();});after=await camera();deltas.trackpadPitch=after.pitch-before.pitch;assert.ok(Math.abs(deltas.trackpadPitch)>5);
+    before=await camera();await timed('mouse-wheel-zoom',async()=>{await page.mouse.wheel(0,-160);await settle();});after=await camera();deltas.mouseWheelZoom=after.zoom-before.zoom;assert.ok(deltas.mouseWheelZoom>.1);
     before=await camera();await timed('trackpad-zoom',async()=>{await page.keyboard.down('Control');await page.mouse.wheel(0,-160);await page.keyboard.up('Control');await settle();});after=await camera();deltas.trackpadZoom=after.zoom-before.zoom;assert.ok(deltas.trackpadZoom>.1);
    }else{
     const cdp=await context.newCDPSession(page);
@@ -185,7 +209,10 @@ try{
     before=await camera();await timed('touch-pan',async()=>touch(Array.from({length:13},(_,index)=>[[cx+index*4,cy+index*2]])));after=await camera();deltas.touchPan=Math.hypot(after.center[0]-before.center[0],after.center[1]-before.center[1]);assert.ok(deltas.touchPan>1e-7);
    }
    assert.deepEqual(await checkpoint(),savedCheckpoint,'3D gestures keep the pre-entry 2D workspace camera');assert.deepEqual(await data(),savedData,'3D rendering and gestures do not change project quantities or data');
-   await page.screenshot({path:resolve(output,name+'-3d.png'),fullPage:true});
+   const perspectiveTexture=await captureSurface();assert.ok(perspectiveTexture.texture&&perspectiveTexture.samples.length>=3,'satellite remains bound to real native elevated draw after pointer perspective changes');
+   await page.screenshot({path:resolve(output,name+'-3d-gestures.png'),fullPage:true});
+   await click('[data-terrain-camera="recenter"]');await settle();const recentered=await camera();assert.ok(Math.hypot(recentered.center[0]-native.reference.coordinate[0],recentered.center[1]-native.reference.coordinate[1])<1e-9,'visible recenter returns camera to selected field');assert.ok(Math.abs(recentered.pitch-55)<1e-6);
+   await click('[data-terrain-camera="rotate-right"]');await settle();await page.screenshot({path:resolve(output,name+'-3d.png'),fullPage:true});
    await click('[data-map-visibility-trigger]');await click('[data-map-visibility="schema"]');await page.waitForTimeout(100);
    const withoutSchema=await page.evaluate(()=>({checked:document.querySelector('[data-map-visibility="schema"]').checked,commands:__customLayers.filter(layer=>layer.active).flatMap(layer=>layer.lastCommands)}));
    assert.equal(withoutSchema.checked,false);assert.ok(withoutSchema.commands.filter(command=>command.method==='drawArrays').length<renderState.commands.filter(command=>command.method==='drawArrays').length,'schema eye removes actual row drawing commands');
@@ -194,8 +221,10 @@ try{
    assert.equal(withoutField.checked,false);assert.ok(!withoutField.commands.some(command=>command.method==='drawElements'),'field eye hides the native face surface');assert.ok(await sceneActive(),'eye choices keep the 3D camera mode active');
    await click('[data-map-visibility="quotes"]');assert.equal(await page.locator('#map .side-measurement-label:visible').count(),0,'quote eye hides every HTML dimension label');
    await click('[data-map-visibility-restore]');await click('[data-map-visibility-trigger]');await settle();assert.deepEqual((await data()).eyes,savedData.eyes);
-   await close();assert.deepEqual(await camera(),savedCamera);assert.deepEqual(await handlers(),savedHandlers);assert.deepEqual(await data(),savedData);
+   await click('[data-terrain-camera="return-2d"]');await page.waitForFunction(()=>!__customLayers.some(layer=>layer.active&&__map.getLayer(layer.id)));await settle();assert.equal(await page.locator('.terrain-camera-controls').count(),0);assert.deepEqual(await camera(),savedCamera);assert.deepEqual(await handlers(),savedHandlers);assert.deepEqual(await data(),savedData);
+   const firstResources=await page.evaluate(()=>__terrainGL.resources);assert.ok(firstResources.some(resource=>resource.kind==='Texture'),'native satellite allocates an actual WebGL texture');assert.ok(firstResources.every(resource=>resource.deleted),'2D return deletes every owned GPU buffer/program/shader/VAO/texture');
    await open();await close();assert.deepEqual(await camera(),savedCamera);assert.deepEqual(await handlers(),savedHandlers);
+   failNativeImagery=true;await click(control);await page.waitForFunction(()=>document.querySelector('#map-status')?.textContent.includes('satellitare')&&document.querySelector('[data-map-terrain]')?.getAttribute('aria-busy')!=='true');const imageryFailure=await page.locator('#map-status').textContent();assert.equal(await sceneActive(),false,'imagery failure exposes no green replacement native surface');assert.deepEqual(await camera(),savedCamera);assert.deepEqual(await handlers(),savedHandlers);assert.equal(await page.locator('.terrain-camera-controls').count(),0);failNativeImagery=false;
    // Transport latency makes this reproducible; production workers and handlers
    // remain unchanged. Cancellation must terminate the worker before delivery.
    await page.evaluate(()=>{window.__delayNextSceneBuild=true;});await click(control);
@@ -212,12 +241,14 @@ try{
    assert.equal(fieldChange.activeFieldId,'other');assert.equal(fieldChange.customActive,false);assert.ok(fieldChange.targetVisible);assert.equal(fieldChange.controlCount,1);assert.ok(Math.hypot(afterField.center[0]-target[0],afterField.center[1]-target[1])<.001,'distant field remains fitted after old 3D view cleanup');assert.deepEqual(await handlers(),savedHandlers);
    const firstFit=fieldChange.moves.findIndex(move=>Math.hypot(move.center[0]-target[0],move.center[1]-target[1])<.001);assert.ok(firstFit>=0);assert.ok(!fieldChange.moves.slice(firstFit+1).some(move=>Math.hypot(move.center[0]-savedCamera.center[0],move.center[1]-savedCamera.center[1])<.00001),'old 3D checkpoint never overwrites the new field fit');
    const workers=await page.evaluate(()=>__graphics.filter(worker=>worker.url.includes('terrain-scene-worker')));assert.ok(workers.length>=4);assert.ok(workers.every(worker=>worker.builds===1&&worker.terminated),'each 3D view owns and releases one graphics worker');
+   let mobilePreview=null;if(mobile){await click('#mobile-app [data-view="fields"]');await click('.mobile-field-card[data-field-id="f"]');await settle();assert.equal(await page.locator('#mobile-detail-map #map').count(),1,'real map reparented into mobile field detail preview');const previewCamera=await camera();await page.waitForFunction(()=>document.querySelector('[data-map-terrain]')?.disabled===false);await open();const previewHits=await hitTargets();assert.ok(previewHits.every(target=>target.reachable&&target.width>=44&&target.height>=44),'every native control stays reachable in reparented mobile preview');const previewTexture=await captureSurface();assert.ok(previewTexture.texture&&previewTexture.samples.length>0);await page.screenshot({path:resolve(output,name+'-3d-detail-preview.png'),fullPage:true});await click('[data-terrain-camera="return-2d"]');await settle();assert.deepEqual(await camera(),previewCamera);assert.deepEqual(await handlers(),savedHandlers);assert.equal(await page.locator('.terrain-camera-controls').count(),0);mobilePreview={nativeTexture:true,cameraRestored:true,hitTargets:previewHits};}
+   const gpuResources=await page.evaluate(()=>__terrainGL.resources);assert.ok(gpuResources.every(resource=>resource.deleted),'repeated views and field change release every owned native GPU resource');assert.equal(await page.locator('.terrain-camera-controls').count(),0);
    const glCode=await page.evaluate(()=>{const canvas=__map.getCanvas(),gl=canvas.getContext('webgl2')??canvas.getContext('webgl');return gl.getError();});assert.equal(glCode,0,'real WebGL reports no error');assert.deepEqual(glErrors,[]);assert.deepEqual(errors,[]);assert.deepEqual(local404,[]);assert.ok(fixtureRasters.length>0,'actual local raster tiles were uploaded through the real basemap source');
-   record={name,environment,actualMapLibre:'4.7.1',scope:'Actual app with anonymous 65×65 native DTM and synthetic raster fixtures; desktop/mobile Chromium input emulation, not physical-device certification or private-field verification.',native,deltas,phases,renderState,withoutSchema,withoutField,cancellation,workers,fieldChange,afterField,cameraRestored:true,individualHandlersRestored:true,workspaceCameraPreserved:true,projectAndQuantitiesUnchanged:true,errors,glErrors,glCode,local404,fixtureRasterRequests:fixtureRasters.length,externalDenied:[...externalDenied],externalClassification:'External SDKs/graphics are pinned local bytes; provider returns an anonymous frozen model; remaining external services are deliberately blocked.'};
-   reports.push(record);await writeFile(resolve(output,name+'-report.json'),JSON.stringify(record,null,2));await writeFile(resolve(output,'report.json'),JSON.stringify(reports,null,2));await page.screenshot({path:resolve(output,name+'-2d-distant-field.png'),fullPage:true});console.log(name+' native scene PASS '+JSON.stringify({maximumFrameGapMs:Math.max(...phases.map(phase=>phase.maxFrameGapMs)),nativeVertices:native.nativeVertexCount,nativeFaces:native.nativeTriangleCount,workers:workers.length}));
+   record={name,satellite,imageryFailure,cameraControls,controlsHitTargets,mobilePreview,controlDeltas,controlFeedback,gpuResources,sourceSnapshots:{planar:'./'+name+'-real-app-planar-sources.json',elevated:'./'+name+'-real-app-elevated-sources.json'},environment,actualMapLibre:'4.7.1',scope:'Actual app with anonymous 65×65 native DTM and globally continuous Mercator patterned aerial-test fixtures; desktop/mobile Chromium input emulation, not physical-device certification or private-field verification.',native,deltas,phases,renderState,withoutSchema,withoutField,cancellation,workers,fieldChange,afterField,cameraRestored:true,individualHandlersRestored:true,workspaceCameraPreserved:true,projectAndQuantitiesUnchanged:true,errors,glErrors,glCode,local404,fixtureRasterRequests:fixtureRasters.length,externalDenied:[...externalDenied],externalClassification:'External SDKs/graphics are pinned local bytes; provider returns an anonymous frozen model; remaining external services are deliberately blocked.'};
+   reports.push(record);await writeFile(resolve(output,name+'-report.json'),JSON.stringify(record,null,2));await writeFile(resolve(output,'report.json'),JSON.stringify(reports,null,2));await page.screenshot({path:resolve(output,name+(mobile?'-2d-detail-preview.png':'-2d-distant-field.png')),fullPage:true});console.log(name+' native scene PASS '+JSON.stringify({maximumFrameGapMs:Math.max(...phases.map(phase=>phase.maxFrameGapMs)),nativeVertices:native.nativeVertexCount,nativeFaces:native.nativeTriangleCount,workers:workers.length}));
   }catch(error){
    await page.screenshot({path:resolve(output,name+'-failure.png'),fullPage:true}).catch(()=>{});
-   const diagnostic=await page.evaluate(()=>({status:document.querySelector('.terrain-status')?.textContent,control:document.querySelector('[data-map-terrain]')?.outerHTML,screen:document.body.dataset.mobileScreen,workers:window.__graphics,layers:window.__customLayers,terrain:window.__map?.getTerrain()})).catch(()=>null);
+   const diagnostic=await page.evaluate(()=>({status:document.querySelector('#map-status')?.textContent??document.querySelector('.terrain-status')?.textContent,control:document.querySelector('[data-map-terrain]')?.outerHTML,screen:document.body.dataset.mobileScreen,workers:window.__graphics,layers:window.__customLayers,terrain:window.__map?.getTerrain()})).catch(()=>null);
    await writeFile(resolve(output,name+'-failure.json'),JSON.stringify({message:error.stack,diagnostic,phases,errors,glErrors,local404,externalDenied:[...externalDenied]},null,2));throw error;
   }finally{await context.close();}
  }

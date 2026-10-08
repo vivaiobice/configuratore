@@ -5,7 +5,7 @@ import {createContourDomain} from '../src/terrain-contour-domain.js';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {measureSurfaceFootprint} from '../src/terrain-surface-bands.js?v=1.3.2';
+import {measureSurfaceFootprint} from '../src/terrain-surface-bands.js?v=1.3.3';
 const api=existsSync(new URL('../src/terrain-contour-family.js',import.meta.url))?await import('../src/terrain-contour-family.js'):{};
 const make=(height,geometryXY)=>{const f=contourFixture({height,geometryXY});return {f,domain:createContourDomain({model:f.model,geometry:{type:'Polygon',coordinates:[f.project.geometry]}})};};
 const family=options=>{assert.equal(typeof api.buildContourFamily,'function');return api.buildContourFamily(options);};
@@ -129,4 +129,37 @@ for(const [size,twoSlopes,minRows] of [[100,false,34],[40,true,14]])test(`comple
   assert.ok(Math.abs(r.coverage.servedAreaM2-total*40)<.003);
  }
  t.diagnostic(JSON.stringify({rows:r.rows.length,nodes,elapsedMs:performance.now()-began,candidates:r.diagnostics.candidates.map(c=>({id:c.id,valid:c.valid,pruned:c.pruned}))}));
+});
+
+for(const reason of ['time','work'])test(`optional next candidate ${reason} spike preserves only the completely certified incumbent`,()=>{
+ const {domain}=make((x,y)=>y/5,[[0,0],[12,0],[12,9.8/Math.sqrt(1.04)],[0,9.8/Math.sqrt(1.04)],[0,0]]);
+ let now=0,optionalCalls=0;const base=createTerrainBudget({kind:'adapt',clock:()=>now});
+ const budget={...base,withReserve(reserve,callback){optionalCalls++;return base.withReserve(reserve,()=>{
+  if(reason==='time')now=30000-reserve.remainingMs;
+  else base.check(500000-reserve.nodeCount-base.usage().nodeCount+1);
+  return callback();
+ });}};
+ const r=family({domain,portion:{id:'p'},spacingM:3,budget});
+ assert.equal(optionalCalls,1);assert.equal(r.ok,true,JSON.stringify(r.diagnostics));
+ assert.equal(r.diagnostics.searchComplete,false);assert.equal(r.diagnostics.optionalSearchStop.reason,'completion-reserve-interruption');
+ assert.equal(r.diagnostics.optionalSearchStop.budgetReason,reason);
+ assert.equal(r.diagnostics.candidates.filter(c=>c.valid===true).length,1);
+ assert.equal(r.diagnostics.candidates.filter(c=>c.incomplete).length,1);
+ assert.equal(r.diagnostics.selectedCandidateId,'candidate:0');
+ assert.ok(r.validation.valid);assert.ok(r.validation.maxElevationDeviationM<=.001);
+ assert.ok(r.validation.lowerM>=2.8&&r.validation.upperM<=3.2);budget.check();
+ assert.ok(budget.remainingMs()>0);assert.ok(budget.usage().nodeCount<=500000);
+});
+
+test('a certified explicit singleton reserves completion before the first scheduled progression',()=>{
+ const {domain}=make((x,y)=>y/5,[[0,0],[12,0],[12,9.8/Math.sqrt(1.04)],[0,9.8/Math.sqrt(1.04)],[0,0]]);
+ let now=0,optionalCalls=0;const base=createTerrainBudget({kind:'adapt',clock:()=>now});
+ const budget={...base,withReserve(reserve,callback){optionalCalls++;return base.withReserve(reserve,()=>{now=30000-reserve.remainingMs;return callback();});}};
+ const r=family({domain,portion:{id:'p'},spacingM:3,candidateGeneration:{kind:'scoped-cut-1',singleLevelM:1},budget});
+ assert.equal(r.ok,true,JSON.stringify(r.diagnostics));assert.equal(optionalCalls,1);
+ assert.equal(r.diagnostics.searchComplete,false);assert.equal(r.diagnostics.selectedCandidateId,'scoped-cut:single-level');
+ assert.equal(r.diagnostics.candidates.filter(c=>c.valid===true).length,1);
+ assert.equal(r.diagnostics.candidates.find(c=>c.id==='candidate:0')?.incomplete,true);
+ assert.deepEqual(r.diagnostics.optionalSearchStop.skippedCandidateIds,['candidate:0','candidate:1']);
+ budget.check();assert.ok(budget.remainingMs()>0);
 });

@@ -1,5 +1,5 @@
-import {resolveRowPortions,updateRowPortion,portionAtCoordinate} from './row-portions.js?v=1.3.2';
-import {normalizeRowCurvePoints,curvePointToLonLat,lonLatToCurvePoint,getRowCurveSegments} from './row-curves.js?v=1.3.2';
+import {resolveRowPortions,updateRowPortion,portionAtCoordinate} from './row-portions.js?v=1.3.3';
+import {normalizeRowCurvePoints,curvePointToLonLat,lonLatToCurvePoint,getRowCurveSegments} from './row-curves.js?v=1.3.3';
 import {nextCurveControlPoint} from './row-curve-control-state.js';
 
 export function rowPortionEditorState(project={},activeId=null,resolved=null){

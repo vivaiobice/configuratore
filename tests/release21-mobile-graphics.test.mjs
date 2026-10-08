@@ -1,3 +1,4 @@
+import {releaseQuery} from './helpers/release-query.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -27,7 +28,7 @@ test('mobile hides zoom buttons and exposes only the north reset control',()=>{
  assert.doesNotMatch(ui,/move\(\$\('#rotate-right'\)/);
 });
 test('release cache bust advances mobile files without changing desktop stylesheet',()=>{
- assert.match(html,/mobile\.css\?v=55\.2/);assert.match(html,/src\/app\.js\?v=1\.3\.1-prova\.1/);assert.match(html,/styles\.css\?v=18/);
+ assert.match(html,/mobile\.css\?v=55\.2/);assert.match(html,releaseQuery('src/app.js'));assert.match(html,/styles\.css\?v=18/);
 });
 test('map fills the complete mobile viewport behind the floating dock',()=>{
  assert.match(css,/#mobile-map-host\{[^}]*inset:0/s);

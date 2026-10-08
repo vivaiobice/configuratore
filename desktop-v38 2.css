@@ -1,0 +1,35 @@
+/* V38 · compact desktop map tools and sidebar reordering. Mobile remains on its existing layout. */
+.desktop-tool-rail{position:absolute;right:18px;top:50%;display:flex;flex-direction:column;align-items:flex-end;gap:8px;transform:translateY(-50%);pointer-events:none}
+.desktop-tool-rail .map-tool-group{position:static;left:auto;right:auto;top:auto;bottom:auto;width:54px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding:5px;transform:none;overflow:visible;pointer-events:auto}
+.desktop-tool-rail .tool-button{width:44px;min-width:44px;height:40px;padding:8px 11px;overflow:hidden;text-align:left;white-space:nowrap;transition:width .2s ease,background-color .2s ease,box-shadow .2s ease}
+.desktop-tool-rail .tool-button:is(:hover,:focus-visible){width:158px;background:#fff;box-shadow:0 8px 22px rgba(15,34,23,.2);outline:none}
+.desktop-tool-rail .map-tools-positioning .tool-button{min-width:44px;text-align:left}
+.map-field-picker{position:absolute;z-index:6;top:18px;left:50%;display:grid;gap:3px;min-width:190px;padding:6px 9px 8px;border:1px solid rgba(255,255,255,.65);border-radius:13px;background:rgba(247,250,247,.9);color:#526057;box-shadow:0 8px 28px rgba(15,34,23,.18);transform:translateX(-50%);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-size:9px;font-weight:800;letter-spacing:.03em}
+.map-field-picker select{min-height:31px;padding:5px 28px 5px 8px;border:0;border-radius:8px;background:#fff;color:#183f28;font-size:12px;font-weight:800;outline:none}
+.desktop-map-tools .map-rotation{right:52px;bottom:10px;left:auto;top:auto;display:flex;transform:none;padding:4px}
+.map-wrap > .maplibregl-ctrl-bottom-right{right:0;bottom:0}
+.mobile-campaign-year{display:none!important}
+.advanced-body{display:flex;flex-direction:column}
+.advanced-spacing{order:1}
+.advanced-mechanization{order:2}
+.advanced-material{order:3;display:flex;flex-direction:column;gap:8px}
+.advanced-context{order:4;margin-top:13px}
+.advanced-notes{order:5;margin-top:10px}
+.desktop-campaign-year{order:6;display:block;margin-top:12px}
+.advanced-context>label,.advanced-notes>label{display:block;font-size:11px;color:var(--muted);font-weight:650}
+.advanced-context select,.advanced-notes input{display:block;margin-top:6px}
+.advanced-material>.soft-divider{width:100%;margin:15px 0 5px}
+.desktop-mechanization-advice{margin:-5px 0 9px;padding:9px 10px;border:1px solid #e0e7e2;border-radius:10px;background:#f3f6f3;color:#526057;font-size:10px;line-height:1.45}
+.project-advice-item.advice-mechanization_verify_machine,.project-advice-item.advice-mechanization_headland_missing{display:none}
+.project-advice:has(> .advice-mechanization_verify_machine:only-child),.project-advice:has(> .advice-mechanization_headland_missing:only-child){display:none}
+.manual-spacing-grid{margin:10px 0}
+.exclusion-panel{border:1px solid #e1e7e2;border-radius:16px;background:#fff;box-shadow:0 3px 14px rgba(20,32,25,.045)}
+
+@media(max-width:800px),(max-width:1100px) and (pointer:coarse){
+ .map-field-picker,.desktop-campaign-year{display:none!important}
+ .mobile-campaign-year{display:block!important}
+ .advanced-body{display:block}
+ .desktop-mechanization-advice{display:none!important}
+ .project-advice-item.advice-mechanization_verify_machine,.project-advice-item.advice-mechanization_headland_missing{display:block}
+ .project-advice:has(> .advice-mechanization_verify_machine:only-child),.project-advice:has(> .advice-mechanization_headland_missing:only-child){display:grid}
+}

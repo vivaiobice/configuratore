@@ -50,3 +50,35 @@ test('usage snapshots are immutable diagnostics and retain the actual reduced de
  now=22;assert.throws(()=>budget.check(),{status:'budget-exceeded'});
  assert.deepEqual(budget.usage(),{nodeCount:10,elapsedMs:12,remainingMs:0});
 });
+
+test('budget errors distinguish elapsed deadline from retained work with phase and immutable usage',()=>{
+ let now=0;const time=create({kind:'adapt',deadlineMs:12,clock:()=>now});time.phase('contour-elevation');now=12;
+ assert.throws(()=>time.check(),error=>error.status==='budget-exceeded'&&error.budgetReason==='time'&&error.budgetPhase==='contour-elevation'&&error.budgetUsage.elapsedMs===12&&Object.isFrozen(error.budgetUsage));
+ const work=create({kind:'adapt',clock:()=>0});work.phase('finite-polyline-contours');
+ assert.throws(()=>work.check(500001),error=>error.status==='budget-exceeded'&&error.budgetReason==='work'&&error.budgetPhase==='finite-polyline-contours'&&error.budgetUsage.remainingMs===30000&&error.budgetUsage.nodeCount===500001);
+});
+
+test('optional work stops at a live shared completion reserve without resetting charges',()=>{
+ let now=0;const budget=create({kind:'adapt',clock:()=>now});
+ assert.equal(typeof budget.withReserve,'function');
+ budget.check(10);
+ assert.throws(()=>budget.withReserve({nodeCount:20000,remainingMs:1000},()=>{
+  budget.check(479991);
+ }),error=>error.budgetReservation===true&&error.budgetReason==='work');
+ assert.equal(budget.usage().nodeCount,480001);budget.check(19999);assert.equal(budget.usage().nodeCount,500000);
+ assert.throws(()=>budget.check(1),error=>error.status==='budget-exceeded'&&!error.budgetReservation);
+});
+test('optional time reservation propagates despite an internal caught error and leaves real time available',()=>{
+ let now=0;const budget=create({kind:'adapt',clock:()=>now});
+ assert.throws(()=>budget.withReserve({nodeCount:20000,remainingMs:1000},()=>{
+  now=29000;try{budget.check();}catch{};return 'partial';
+ }),error=>error.budgetReservation===true&&error.budgetReason==='time');
+ budget.check();assert.equal(budget.remainingMs(),1000);
+ now=30000;assert.throws(()=>budget.check(),error=>error.budgetReason==='time'&&!error.budgetReservation);
+});
+test('an actual expired parent budget cannot be recovered as an optional interruption',()=>{
+ let now=0;const budget=create({kind:'adapt',clock:()=>now});
+ assert.throws(()=>budget.withReserve({nodeCount:20000,remainingMs:1000},()=>{
+  now=30000;budget.check();
+ }),error=>error.budgetReason==='time'&&!error.budgetReservation);
+});

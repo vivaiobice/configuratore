@@ -1,12 +1,12 @@
-import {buildTerrainProposal} from './terrain-design.js?v=1.3.2';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.2';
-import {buildTerrainRestoreProposal,attachTerrainRestore,assertTerrainRestoreHistory} from './terrain-history.js?v=1.3.2';
-import {buildTerrainCutSuggestions} from './terrain-cut-suggestions.js?v=1.3.2';
-import {buildOwnedTerrainEndpointReplacement} from './terrain-contour-design.js?v=1.3.2';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.2';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.2';
-import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.2';
+import {buildTerrainProposal} from './terrain-design.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.3';
+import {buildTerrainRestoreProposal,attachTerrainRestore,assertTerrainRestoreHistory} from './terrain-history.js?v=1.3.3';
+import {buildTerrainCutSuggestions} from './terrain-cut-suggestions.js?v=1.3.3';
+import {buildOwnedTerrainEndpointReplacement} from './terrain-contour-design.js?v=1.3.3';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.3';
+import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.3';
 
 const invalidCut=message=>Object.assign(new Error(message),{status:'invalid-input'});
 function cutProposal(options,budget){
@@ -49,12 +49,12 @@ self.onmessage=event=>{
   }
   else if(kind!=='adapt'&&kind!=='measure')proposal={ok:false,status:'unsupported-operation',kind,message:'Operazione terreno non disponibile.'};
   else proposal=buildTerrainProposal({...options,mode:kind,budget});
- }catch(error){proposal={ok:false,status:error.status??'invalid-input',kind,message:error.message};}
+ }catch(error){proposal={ok:false,status:error.status??'invalid-input',kind,message:error.message,...(error.budgetReason?{budgetReason:error.budgetReason,diagnostics:{budget:{reason:error.budgetReason,phase:error.budgetPhase,...error.budgetUsage}}}:{})};}
  if(kind==='cut'){
   // The output postMessage is another owned clone. An exhausted ledger must
   // discard even a fully produced candidate before sending any partial patch.
   try{chargeTerrainOperationCopy(proposal,budget);budget.check();}
-  catch(error){proposal={ok:false,status:error.status??'invalid-input',kind,message:error.message};}
+  catch(error){proposal={ok:false,status:error.status??'invalid-input',kind,message:error.message,...(error.budgetReason?{budgetReason:error.budgetReason,diagnostics:{budget:{reason:error.budgetReason,phase:error.budgetPhase,...error.budgetUsage}}}:{})};}
   self.postMessage({type:'result',proposal,operationId:options.operationId,usage:budget?.usage()});return;
  }
  self.postMessage({type:'result',proposal});

@@ -10,9 +10,10 @@ import {
   vsub as rv,
   pointKey as rkey,
   orient as rorient,
-  sign as rsign
+  sign as rsign,
+  numberBounds as rationalBounds
 }
-from './terrain-exact.js?v=1.3.2';
+from './terrain-exact.js?v=1.3.3';
 const facetCache=new WeakMap(),facetBudgets=new WeakMap();
 function cachedFacets(exact,budget) {
   if(facetCache.has(exact)){
@@ -178,7 +179,8 @@ function connectedPatchIndex(exact,frame,budget) {
           edgeId,
           faceId:id,
           a:native.vertices[i],
-          b:native.vertices[(i+1)%3]
+          b:native.vertices[(i+1)%3],
+          nativeBounds:Object.freeze([0,1].map(j=>Math.min(rationalBounds(native.raw.vertices[i][j])[0],rationalBounds(native.raw.vertices[(i+1)%3][j])[0])).concat([0,1].map(j=>Math.max(rationalBounds(native.raw.vertices[i][j])[1],rationalBounds(native.raw.vertices[(i+1)%3][j])[1]))))
         }));
       }
     }
@@ -227,7 +229,10 @@ export function createBandKernel(exact, field, budget) {
   const K=(a,s)=>node(a.map(x=>M(x,s))),
   dot=(a,b)=>a.reduce((s,x,i)=>A(s,M(x,b[i])),Z);
   const cross=(a,b)=>S(M(a[0],b[1]),M(a[1],b[0]));
-  const orient=(a,b,c)=>cross(W(b,a),W(c,a));
+  // Predicates need scalar differences, not retained geometry vectors. Avoid
+  // constructing two temporary XY arrays per exact orientation/on-segment
+  // query; these dominated the unchanged shared geometry-work ceiling.
+  const orient=(a,b,c)=>S(M(S(b[0],a[0]),S(c[1],a[1])),M(S(b[1],a[1]),S(c[0],a[0])));
   const scalar=(a,t)=>A(a[0],M(a[1],t)),
   vector=(a,t)=>V(a[0],K(a[1],t));
   const mid=(a,b)=>D(A(a,b),q(2)),
@@ -255,7 +260,7 @@ export function createBandKernel(exact, field, budget) {
     budget?.check(2);
     return exact.querySegment(a,b,budget).map(f=>byId.get(f.id));
   };
-  const onSegment=(p,a,b)=>!G(orient(a,b,p))&&G(dot(W(p,a),W(p,b)))<=0;
+  const onSegment=(p,a,b)=>!G(orient(a,b,p))&&G(A(M(S(p[0],a[0]),S(p[0],b[0])),M(S(p[1],a[1]),S(p[1],b[1]))))<=0;
   const triangle=(p,f)=>{
     const ss=f.vertices.map((a,i)=>G(orient(a,f.vertices[(i+1)%3],p)));
     return ss.every(s=>s>=0)||ss.every(s=>s<=0);
@@ -423,35 +428,34 @@ export function createBandKernel(exact, field, budget) {
     return first;
   };
   const event=(p,v,a,b,meta)=>{
-    const e=W(b,a),
-    den=cross(v,e);
+    const ex=S(b[0],a[0]),ey=S(b[1],a[1]),den=S(M(v[0],ey),M(v[1],ex));
     if(!G(den))return null;
-    const delta=W(a,p[0]);
+    const dx=S(a[0],p[0][0]),dy=S(a[1],p[0][1]);
     return {
       ...meta,
-      lambda:[D(cross(delta,e),den),D(N(cross(p[1],e)),den)],
-      member:[D(cross(delta,v),den),D(N(cross(p[1],v)),den)]
+      lambda:[D(S(M(dx,ey),M(dy,ex)),den),D(N(S(M(p[1][0],ey),M(p[1][1],ex))),den)],
+      member:[D(S(M(dx,v[1]),M(dy,v[0])),den),D(N(cross(p[1],v)),den)]
     };
   };
   const hit=(state,e)=>[V(state.p[0],K(state.v,e.lambda[0])),V(state.p[1],K(state.v,e.lambda[1]))];
   const partition=(state,events,extra)=>{
     if(state.point)return [state];
     const values=[state.lo,state.hi];
-    const root=a=>{
+    const root=(constant,slope)=>{
       budget?.check();
-      if(!G(a[1]))return;
-      const t=D(N(a[0]),a[1]);
+      if(!G(slope))return;
+      const t=D(N(constant),slope);
       if(C(t,state.lo)>0&&C(t,state.hi)<0)values.push(t);
     };
     for(const e of events){
-      root(e.lambda);
+      root(e.lambda[0],e.lambda[1]);
       if(e.member){
-        root(e.member);
-        root([S(e.member[0],O),e.member[1]]);
+        root(e.member[0],e.member[1]);
+        root(S(e.member[0],O),e.member[1]);
       }
     }
-    for(let i=0;i<events.length;i++)for(let j=0;j<i;j++)root(W(events[i].lambda,events[j].lambda));
-    extra.forEach(root);
+    for(let i=0;i<events.length;i++)for(let j=0;j<i;j++)root(S(events[i].lambda[0],events[j].lambda[0]),S(events[i].lambda[1],events[j].lambda[1]));
+    extra.forEach(([constant,slope])=>root(constant,slope));
     const sorted=roots(values),
     out=[];
     for(let i=1;i<sorted.length;i++){
@@ -680,10 +684,23 @@ export function traceBandBundles(k,seeds,{
         };
         const patch=k.patchFor(face);
         if(patch){
-          for(const edge of patch.frontierEdges)collect(edge.a,edge.b,{
-            kind:'edge',
-            edgeId:edge.edgeId
-          });
+          // The local affine rays stop at this width before any later event.
+          // Their endpoint enclosure excludes remote patch frontier segments
+          // without changing exact event ordering, ties or point strata.
+          const extent=[Infinity,Infinity,-Infinity,-Infinity],stopWidth=corridor?A(halfWidth,F.q(.01)):halfWidth;
+          for(const parameter of [state.lo,state.hi]){
+            const begin=vector(state.p,parameter),end=V(begin,K(v,S(stopWidth,scalar(state.elapsed,parameter))));
+            for(const point of [begin,end])for(let coordinate=0;coordinate<2;coordinate++){
+              const bounds=F.bounds(point[coordinate]);
+              extent[coordinate]=Math.min(extent[coordinate],bounds[0]);extent[coordinate+2]=Math.max(extent[coordinate+2],bounds[1]);
+            }
+          }
+          for(const edge of patch.frontierEdges){
+            const b=edge.nativeBounds;
+            if(b&&(b[0]>extent[2]||b[2]<extent[0]||b[1]>extent[3]||b[3]<extent[1]))continue;
+            collect(edge.a,edge.b,{kind:'edge',edgeId:edge.edgeId});
+          }
+
         }else if(!k.uniformPlane)for(let i=0;i<3;i++)collect(face.vertices[i],face.vertices[(i+1)%3],{
           kind:'edge',
           edgeId:face.edgeIds[i]

@@ -1,4 +1,4 @@
-import {renameLocalProject,removeLocalProject,writeLocalProject} from './local-projects.js?v=1.3.2';
+import {renameLocalProject,removeLocalProject,writeLocalProject} from './local-projects.js?v=1.3.3';
 
 export async function renameArchivedProject({storage,item,name,backend=null,buildSnapshot=()=>({}),operationId=()=>globalThis.crypto.randomUUID()}={}){
  const normalized=String(name??'').trim();

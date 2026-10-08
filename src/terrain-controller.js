@@ -1,14 +1,14 @@
-import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.2';
+import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.3';
 // Candidate acquisition and solver output never mutate the live project.
-import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.2';
-import {attachTerrainRestore,terrainRestoreAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.2';
-import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.2';
-import {terrainInputHash} from './terrain-model.js?v=1.3.2';
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.2';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
-import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.2';
-import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.2';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.2';
+import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.3';
+import {attachTerrainRestore,terrainRestoreAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.3';
+import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.3';
+import {terrainInputHash} from './terrain-model.js?v=1.3.3';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
+import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.3';
+import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.3';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.3';
 export function terrainPortionEditorState(project,activeId,result){
  return rowPortionEditorState(project,activeId,result?.terrainStatus==='invalid'?null:result?.portions);
 }
@@ -80,11 +80,11 @@ function validateCandidate(project,proposal){
  if(Object.hasOwn(proposal,'result')&&terrainInputHash(proposal.result)!==terrainInputHash(project.terrain.applied.result))throw new Error('Le quantità della proposta non corrispondono al disegno.');
  assertTerrainSerializationBudget(project);
 }
-const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.2')).loadTerrainForField(options);
-const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.2')).runTerrainProposal(options,control);
-const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.2')).terrainSummary(model);
-const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.2');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
-const defaultView=async options=>(await import('./terrain-map.js?v=1.3.2')).createTerrainMapView(options);
+const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.3')).loadTerrainForField(options);
+const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.3')).runTerrainProposal(options,control);
+const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.3')).terrainSummary(model);
+const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.3');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
+const defaultView=async options=>(await import('./terrain-map.js?v=1.3.3')).createTerrainMapView(options);
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
 export function createTerrainController({document,getProject,getContext,getPortionId=()=>null,getMapApi=()=>null,getResult=()=>null,getCheckpointSnapshot,applyProposal,onStatus=()=>{},onProposalChange=()=>{},onStateChange=()=>{},onBudgetUsage=()=>{},loadTerrain=defaultLoad,runProposal=defaultRun,summarize=defaultSummary,covers=defaultCoverage,createMapView=defaultView}){
  const card=document.querySelector('#terrain-card');
@@ -259,12 +259,12 @@ export function createTerrainController({document,getProject,getContext,getPorti
     else{chargeTerrainOperationCopy(model,captureBudget);requestModel=clone(model);}
     captureBudget.check();
    }else requestModel=clone(model);
-   const result=await runProposal({project:draftProject,model:requestModel,portionId,recomputeAll,followTerrain:kind==='adapt',algorithmVersion:TERRAIN_CONTOUR_ALGORITHM_VERSION,kind,mode:kind,operationId,deadlineMs:nativeCut?captureBudget.remainingMs():TERRAIN_OPERATION_CAP_MS[kind],...(nativeCut?{initialNodeCount:captureBudget.usage().nodeCount,...Object.fromEntries(['cutRequest','diagnostics','noCutProposal'].filter(key=>nativeRequest[key]!==undefined).map(key=>[key,nativeRequest[key]]))}:{})},{signal:abort.signal,onProgress:value=>{if(current()){progress=clone(value);render();}},...(nativeCut?{onBudgetUsage:value=>{accounting=value;accountingReceivedAt=performance.now();reportBudget('worker-result',value);}}:{})});
+   const result=await runProposal({project:draftProject,model:requestModel,portionId,recomputeAll,followTerrain:kind==='adapt',...(kind==='measure'?{manualGroundSpacing:true}:{}),algorithmVersion:TERRAIN_CONTOUR_ALGORITHM_VERSION,kind,mode:kind,operationId,deadlineMs:nativeCut?captureBudget.remainingMs():TERRAIN_OPERATION_CAP_MS[kind],...(nativeCut?{initialNodeCount:captureBudget.usage().nodeCount,...Object.fromEntries(['cutRequest','diagnostics','noCutProposal'].filter(key=>nativeRequest[key]!==undefined).map(key=>[key,nativeRequest[key]]))}:{})},{signal:abort.signal,onProgress:value=>{if(current()){progress=clone(value);render();}},...(nativeCut?{onBudgetUsage:value=>{accounting=value;accountingReceivedAt=performance.now();reportBudget('worker-result',value);}}:{})});
    if(!current())return discard();
    if(!result?.ok){
     busy=false;lastProposalOutcome=clone(result??{ok:false,status:'unavailable',kind});
     if(kind==='adapt'&&result?.ok===false&&result.kind==='adapt'&&result.status==='review-required')cutFailure={outcome:lastProposalOutcome,modelHash:requestModel.contentHash,inputHash:terrainGeometryInputHash(draftProject,requestModel)};
-    setStatus(`Disegno da rivedere. ${result?.message??result?.status??'Proposta non validabile.'}`,result?.status==='budget-exceeded'||result?.status==='timeout'?result.status:result?.status==='restore-conflict'?'restore-conflict':'incompatible');return result;
+    setStatus(`Disegno da rivedere. ${result?.message??result?.status??'Proposta non validabile.'}`,['budget-exceeded','timeout','ground-spacing-unsupported'].includes(result?.status)?result.status:result?.status==='restore-conflict'?'restore-conflict':'incompatible');return result;
    }
    if(nativeCut){
     if(!accounting||!Number.isSafeInteger(accounting.nodeCount)||accounting.nodeCount<0||!Number.isFinite(accounting.remainingMs)||!Number.isFinite(accountingReceivedAt))throw Object.assign(new Error('Contabilità del calcolo non valida.'),{status:'invalid-transport'});
@@ -288,7 +288,7 @@ export function createTerrainController({document,getProject,getContext,getPorti
    if(!current())return discard();
    proposal=complete;nativePreview=nativePrepared??null;proposalKey=captured;proposalHistory=capturedHistory;proposalPortion=selected;proposalMode=capturedMode;projectPatchDraft=complete.projectPatch;busy=false;lastProposalOutcome=complete;
    releaseExternal();onProposalChange(proposal);setStatus('Anteprima pronta. Controlla le quantità e scegli Applica.','ready');return proposal;
-  }catch(error){if(!current())return discard();busy=false;lastProposalOutcome={ok:false,kind,status:error?.name==='AbortError'?'cancelled':error.status??'error'};setStatus(`Disegno da rivedere. ${error.message??'Calcolo non disponibile.'}`,lastProposalOutcome.status==='cancelled'?'cancelled':lastProposalOutcome.status==='budget-exceeded'?'budget-exceeded':'error');return null;}
+  }catch(error){if(!current())return discard();busy=false;lastProposalOutcome={ok:false,kind,status:error?.name==='AbortError'?'cancelled':error.status??'error',...(error.budgetReason?{budgetReason:error.budgetReason}: {})};setStatus(`Disegno da rivedere. ${error.message??'Calcolo non disponibile.'}`,lastProposalOutcome.status==='cancelled'?'cancelled':lastProposalOutcome.status==='budget-exceeded'?'budget-exceeded':'error');return null;}
   }finally{releaseExternal();}
  }
  async function apply({signal}={}){
@@ -331,7 +331,7 @@ export function createTerrainController({document,getProject,getContext,getPorti
    const api=getMapApi(),map=api?.map;if(!map){setStatus('Vista 3D non disponibile sulla mappa.');return;}
    const candidate=visibleProposal();
    const scene=api.getTerrainSceneSnapshot?.({exclusions:candidate?.projectPatch?.exclusions,rowPortions:candidate?.rowPortions??candidate?.result?.portions})??{geometry:getProject().geometry,exclusions:[],rowPortions:[]};
-   opened=await createMapView({map,model,...scene,rows:visibleProposal()?.result?.rows??getResult()?.rows??scene.rows??[],getVisibility:api.getOverlayVisibility,onSceneActive:api.setTerrainSceneActive,gesturePolicy:api.gesturePolicy,onStatus,onError:error=>{if(current()){close3D();setStatus(`Vista 3D non disponibile. ${error.message??''}`);}}});if(!current()){opened.destroy();return;}
+   opened=await createMapView({map,model,...scene,rows:visibleProposal()?.result?.rows??getResult()?.rows??scene.rows??[],getVisibility:api.getOverlayVisibility,onSceneActive:api.setTerrainSceneActive,gesturePolicy:api.gesturePolicy,onReturn2D:close3D,onStatus,onError:error=>{if(current()){close3D();setStatus(`Vista 3D non disponibile. ${error.message??''}`);}}});if(!current()){opened.destroy();return;}
    view=opened;api.stopTools?.();if(!current()){opened.destroy();return;}
    await opened.open();if(!current()){opened.destroy();return;}
    in3D=true;api.setRows?.(visibleProposal()?.result?.rows??getResult()?.rows??[]);

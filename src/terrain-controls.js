@@ -3,6 +3,7 @@ const PHASE_LABELS = {
  contours:'Preparazione dei filari…',
  'contour-elevation':'Verifica delle quote…',
  'contour-spacing':'Verifica delle distanze tra i filari…',
+ 'manual-ground-spacing':'Calcolo dell’interfila sul terreno…',
  family:'Ricerca della disposizione dei filari…',
  cut:'Ricerca di un passaggio…',
  restore:'Preparazione del ripristino…',
@@ -10,9 +11,10 @@ const PHASE_LABELS = {
  checkpoint:'Salvataggio del progetto…',
 };
 const STATUS_LABELS = {
- 'budget-exceeded':'Il calcolo ha raggiunto il limite di tempo. Riprova.',
+ 'budget-exceeded':'Il calcolo ha raggiunto il limite di calcolo. Il disegno precedente è conservato.',
  timeout:'Il calcolo ha raggiunto il limite di tempo. Riprova.',
  incompatible:'Non è stata trovata una disposizione compatibile per questa porzione.',
+ 'ground-spacing-unsupported':'L’interfila sul terreno non è verificabile con questa guida manuale. Modifica la guida o usa Adatta al terreno.',
  'restore-conflict':'Il disegno precedente non può essere ripristinato dopo le modifiche successive.',
  cancelled:'Operazione annullata.',
  unavailable:'Operazione non disponibile per questa porzione.',
@@ -34,6 +36,7 @@ function normalizeState(value={}) {
   canAdapt:value.canAdapt===true,canSuggestCut:value.canSuggestCut===true,repeatMode:value.repeatMode===true,
   restoreKind:['exact','proposal','conflict'].includes(restoreKind)?restoreKind:'unavailable',
   statusKind:typeof value.status?.kind==='string'?value.status.kind:null,
+  budgetReason:['time','work'].includes(value.status?.budgetReason)?value.status.budgetReason:null,
   progressPhase:typeof value.progress?.phase==='string'?value.progress.phase:null,
  };
 }
@@ -118,6 +121,9 @@ export function createTerrainControls({host,onModeChange,onApply,onCancel,onSugg
   let message=feedback;
   if(!message && state.busy)message=Object.hasOwn(PHASE_LABELS,state.progressPhase)?PHASE_LABELS[state.progressPhase]:'Elaborazione in corso…';
   if(!message && pending)message='Operazione in corso…';
+  if(!message && state.statusKind==='budget-exceeded' && state.budgetReason)message=state.budgetReason==='work'
+   ?'Il calcolo ha raggiunto il limite di complessità. Il disegno precedente è conservato.'
+   :'Il calcolo ha raggiunto il limite di tempo. Il disegno precedente è conservato.';
   if(!message && state.statusKind)message=Object.hasOwn(STATUS_LABELS,state.statusKind)?STATUS_LABELS[state.statusKind]:STATUS_LABELS.unavailable;
   if(!message && state.restoreKind==='conflict')message=STATUS_LABELS['restore-conflict'];
   if(!message && state.pendingProposal)message=STATUS_LABELS.ready;

@@ -1,14 +1,17 @@
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.2';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.2';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.3';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.3';
 
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.2';
-import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.2';
-import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
-import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.2';
-import {createContourDomain} from './terrain-contour-domain.js?v=1.3.2';
-import {measureContourAxes} from './terrain-contour-family.js?v=1.3.2';
-import {resolveRowPortions} from './row-portions.js?v=1.3.2';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.3';
+import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
+import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
+import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.3';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.3';
+import {measureContourAxes} from './terrain-contour-family.js?v=1.3.3';
+import {resolveRowPortions} from './row-portions.js?v=1.3.3';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.3';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.3';
+import {calculateProject} from './project-calculator.js?v=1.3.3';
 const clone=value=>JSON.parse(JSON.stringify(value));
 // Inspect the actual serialized payload without recursively walking the stack
 // or first allocating a flattened coordinate list. Aliases are visited once per
@@ -60,7 +63,7 @@ function envelopeHash(applied,budget){
  return checkedHash(Object.hasOwn(applied,'schemaVersion')?{schemaVersion:applied.schemaVersion,algorithmVersion:applied.algorithmVersion,...contents}:contents,budget);
 }
 export function hashTerrainEnvelope(applied){return envelopeHash(applied);}
-/** @returns {import('./terrain-contour-contracts.js?v=1.3.1-prova.1').AppliedEnvelopeV2} */
+/** @returns {import('./terrain-contour-contracts.js?v=1.3.3').AppliedEnvelopeV2} */
 export function createContourEnvelope({project,model,result,portionResults,validation,budget}){
  budget?.check();
  const inputs=geometryInputs(project,budget);
@@ -123,6 +126,40 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
  const hash=value=>checkedHash(value,budget);
  const portions=applied.portionResults??[];
  let finiteBudget,originalDomain,currentPortions;
+ const validateGround=portion=>{
+  const design=portion.design,marker=design.groundSpacing;
+  if(design.mode!=='measure'||marker?.algorithmVersion!=='native-manual-ground-spacing-1'||design.modelHash!==model.contentHash||design.crs!==model.crs||Object.hasOwn(design,'axisGeometryConvention'))return false;
+  finiteBudget??=budget??createTerrainBudget({kind:'measure'});
+  const b=finiteBudget,h=value=>checkedHash(value,b),input=legacyTerrainInputs(project);
+  const raw=input.rowPortions.filter(saved=>saved.id===portion.id);
+  if(raw.length!==1||h(raw[0].terrainDesign)!==h(design))return false;
+  currentPortions??=resolveRowPortions({...input,budget:b});
+  const actual=currentPortions.filter(saved=>saved.id===portion.id);if(actual.length!==1||canonicalDomains.has(portion.id))return false;
+  const domain=createContourDomain({model,geometry:{type:'Polygon',coordinates:actual[0].geometry},budget:b});
+  if(h(design.axisScopeGeometry)!==h(domain.geometry))return false;
+  const references=sourceManualRows(input,actual[0],b),axes=manualAxes(input,actual[0],references,Number(model.crs.split(':')[1]),b);
+  const geometryXY={type:'MultiPolygon',coordinates:[...new Set(domain.boundaries.map(boundary=>boundary.polygonIndex))].map(id=>domain.boundaries.filter(boundary=>boundary.polygonIndex===id).map(boundary=>boundary.coordinatesXY))};
+  const rebuilt=groundSpaceManualAxes({model,axes,manualStraight:manualStraightIntent(actual[0]),geometryXY,rowSpacingM:input.rowSpacingM,portionId:portion.id,budget:b});
+  if(h(rebuilt.axes)!==h(design.axes)||h(rebuilt.validation)!==h(marker.validation))return false;
+  originalDomain??=createContourDomain({model,geometry:{type:'Polygon',coordinates:[input.polygon]},budget:b});
+  const measured=measureContourAxes({domain:originalDomain,physicalDomain:domain,axes:rebuilt.axes,headlandWidthM:Math.max(0,input.headlandWidthM??0),budget:b});
+  // Certify the actual flat support before retaining legacy coordinates and
+  // quantities; a submitted quantity label cannot bypass native replay.
+  if(portion.quantityBasis==='certified-flat-legacy'){
+   if(rebuilt.validation.method!=='native-flat-legacy-spacing'||input.headlandWidthM)return false;
+   const legacy=calculateProject({...input,terrain:null});
+   const expected=legacy.rows.filter(row=>row.portionId===portion.id||currentPortions.length===1);
+   if(expected.length!==measured.rows.length)return false;
+   measured.rows=preserveFlatManualQuantities(measured.rows,expected);
+  }
+  if(h(measured.rows)!==h(portion.rows??[]))return false;
+  if(h((applied.result.rows??[]).filter(row=>row.portionId===portion.id))!==h(measured.rows))return false;
+  for(const row of measured.rows){
+   b.check();const saved=(applied.result.rows??[]).filter(candidate=>candidate.fragmentId===row.fragmentId&&candidate.axisId===row.axisId&&candidate.portionId===row.portionId);
+   if(saved.length!==1||h(saved[0])!==h(row))return false;
+  }
+  return true;
+ };
  const validateFinite=portion=>{
   const design=portion.design;
   finiteBudget??=budget??createTerrainBudget({kind:'cut'});
@@ -159,14 +196,15 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
   budget?.check();
   const design=saved.terrainDesign;
   if(!design)continue;
-  if(Object.hasOwn(design,'axisGeometryConvention')||(design.axes??[]).some(axis=>Object.hasOwn(axis,'axisGeometryConvention'))){
-   const portion=portions.find(p=>p.id===saved.id);
-   if(!portion||hash(design)!==hash(portion.design))return false;
+  if(Object.hasOwn(design,'groundSpacing')||Object.hasOwn(design,'axisGeometryConvention')||(design.axes??[]).some(axis=>Object.hasOwn(axis,'axisGeometryConvention'))){
+   const matches=portions.filter(portion=>portion.id===saved.id);
+   if(matches.length!==1||hash(design)!==hash(matches[0].design))return false;
   }
  }
  for(const portion of portions){
   budget?.check();
   const design=portion.design??{};
+  if(Object.hasOwn(design,'groundSpacing')){if(!validateGround(portion))return false;continue;}
   const markers=(design.axes??[]).filter(axis=>Object.hasOwn(axis,'axisGeometryConvention'));
   if(design.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION){if(!validateFinite(portion))return false;continue;}
   if(Object.hasOwn(design,'axisGeometryConvention')&&design.axisGeometryConvention!==SOURCE_DOMAIN_AXIS_CONVENTION)return false;
@@ -200,6 +238,7 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
    if(!resultRow||hash(resultRow)!==hash(row))return false;
   }
  }
+ if(portions.some(portion=>Object.hasOwn(portion.design??{},'groundSpacing'))&&hash(applied.result.rows)!==hash(portions.flatMap(portion=>portion.rows??[])))return false;
  // An unknown marker cannot hide solely in the aggregate result.
  for(const row of applied.result.rows??[]){
   budget?.check();

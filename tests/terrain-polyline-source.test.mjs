@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTerrainModel} from '../src/terrain-model.js?v=1.3.2';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.2';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.2';
-import {fromUTM,toUTM} from '../src/coordinate-system.js?v=1.3.2';
-import {axisBinding,exactPieceLengthBounds} from '../src/terrain-axis-geometry.js?v=1.3.2';
-import {Q,ZERO,add,mul,div,cmp,sub,sign,height,pointKey,inRegion,exactDomain,radical,radd,radicalCompare,dot,vsub} from '../src/terrain-exact.js?v=1.3.2';
+import {createTerrainModel} from '../src/terrain-model.js?v=1.3.3';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.3';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.3';
+import {fromUTM,toUTM} from '../src/coordinate-system.js?v=1.3.3';
+import {axisBinding,exactPieceLengthBounds} from '../src/terrain-axis-geometry.js?v=1.3.3';
+import {Q,ZERO,add,mul,div,cmp,sub,sign,height,pointKey,inRegion,exactDomain,radical,radd,radicalCompare,dot,vsub} from '../src/terrain-exact.js?v=1.3.3';
 
 // A missing implementation is an explicit API assertion RED, not an import
 // failure. Unexpected dependency errors still fail the test module itself.
@@ -101,9 +101,13 @@ test('saved actual source support and backtracking are checked independently of 
  assert.throws(()=>resolve(domain,backtrack,budget),{status:'axis-geometry-unresolved'});
 });
 
-test('coincident native knot and geographic boundary order remains an explicit unpaired rejection',t=>{
+test('legacy dense coincident knot keeps its unpaired rejection while exact coalescence certifies the complete source',async t=>{
  const p=api(),{domain,budget}=fixture({heightFn:x=>.4*Math.abs(x),geometry:rectangle(-15,-10,15,10)});
- assert.throws(()=>p.traceFinitePolylineContourLevel(domain,4,{portionId:'source',budget}),error=>{
+ const {readFile}=await import('node:fs/promises'),saved=JSON.parse(await readFile(new URL('./fixtures/terrain-dense-v132-unpaired-source.json',import.meta.url),'utf8'));
+ const compact=p.traceFinitePolylineContourLevel(domain,4,{portionId:'source',budget});
+ assert.equal(compact.axes.length,1);assert.deepEqual(compact.diagnostics,[]);
+ assert.equal(resolve(domain,compact.axes[0],budget).uncovered.length,0);
+ assert.throws(()=>resolve(domain,saved.axis,budget),error=>{
   assert.equal(error.status,'axis-geometry-unresolved');assert.match(error.message,/contact ancestry is unpaired/);
   const d=error.diagnostics;
   assert.equal(d.firstDifference,2);assert.equal(d.nativeCount,24);assert.equal(d.geographicCount,26);

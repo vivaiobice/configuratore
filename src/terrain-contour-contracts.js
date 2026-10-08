@@ -8,12 +8,16 @@
  * @typedef {[number,number,number]} XYZ Metres in the model CRS, elevation last.
  * @typedef {{type:'Polygon',coordinates:GeoPoint[][]}} Polygon Rings include holes.
  * @typedef {{type:'MultiPolygon',coordinates:GeoPoint[][][]}} MultiPolygon
- * @typedef {ReturnType<import('./terrain-model.js?v=1.3.1-prova.1').createTerrainModel>} FrozenModel
- * @typedef {ReturnType<import('./fields.js?v=1.3.1-prova.1').createDefaultField>} Project
- * @typedef {ReturnType<import('./row-portions.js?v=1.3.1-prova.1').resolveRowPortions>[number]} Portion
+ * @typedef {ReturnType<import('./terrain-model.js?v=1.3.3').createTerrainModel>} FrozenModel
+ * @typedef {ReturnType<import('./fields.js?v=1.3.3').createDefaultField>} Project
+ * @typedef {ReturnType<import('./row-portions.js?v=1.3.3').resolveRowPortions>[number]} Portion
  * @typedef {'adapt'|'measure'|'cut'|'restore'} TerrainOperationKind
  * @typedef {{phase:string,elapsedMs:number,remainingMs:number,nodeCount:number}} TerrainProgress
+ * @typedef {'time'|'work'} TerrainBudgetReason
+ * Budget exhaustion errors retain status:'budget-exceeded' and expose
+ * budgetReason, budgetPhase and immutable budgetUsage for truthful feedback.
  * @typedef {{check:(nodeDelta?:number)=>void,phase:(name:string)=>void,
+ * withReserve:(reserve:{nodeCount:number,remainingMs:number},callback:Function)=>any,
  * remainingMs:()=>number,timings:()=>Object<string,number>,
  * usage:()=>Readonly<{nodeCount:number,elapsedMs:number,remainingMs:number}>}} TerrainBudget
  * check() counts no nodes by default: nodeDelta counts generated or retained
@@ -21,6 +25,9 @@
  * across phases and candidates. timings() returns milliseconds by phase name;
  * onProgress receives TerrainProgress on phase changes.
  * initialNodeCount carries already charged nodes without granting a new cap.
+ * withReserve temporarily limits optional synchronous work on this same budget;
+ * its budgetReservation interruption retains all charges and can only resume
+ * after the true shared work/deadline check succeeds.
  * usage() is an immutable copy for diagnostics/accounting only, never native
  * validity evidence, persisted proposal data or geometry registration.
  * @typedef {{modelHash:string,crs:string,faces:Object[],boundaries:Object[],

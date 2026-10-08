@@ -1,15 +1,15 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
-import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.2';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
-import {terrainInputHash} from './terrain-model.js?v=1.3.2';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.2';
-import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.2';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
+import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.3';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
+import {terrainInputHash} from './terrain-model.js?v=1.3.3';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
+import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.3';
 import {
  Q,ZERO,ONE,TWO,add,sub,mul,div,cmp,sign,min,max,sq,dot,cross,vsub,at,
  mid,key,pointKey,pointOnSegment,segmentIntersection,inRegion,
  unique,number,numberBounds,xy,exactDomain,splitSegment,height,radical,
  radd,radicalCompare,radicalBounds,lengthBounds,nextUp,nextDown
-} from './terrain-exact.js?v=1.3.2';
+} from './terrain-exact.js?v=1.3.3';
 
 export const FINITE_POLYLINE_AXIS_CONVENTION='finite-polyline-domain-intersection-1';
 export const POLYLINE_SOURCE_PARAMETER_OPERATION='polyline-source-parameter-intervals-1';
@@ -62,8 +62,21 @@ export function finitePolylineSourceHash(axis,budget){
 
 /** Borrow real S. Native Q vertices/faces are constructed only on first touch;
  * neither a new full XYZ mesh nor a geographic support rectangle is created. */
+const operationEvidence=new WeakMap();
+function evidenceFor(budget){
+ let evidence=operationEvidence.get(budget);
+ if(!evidence){evidence={readers:new WeakMap(),sources:new WeakMap(),resolved:new WeakMap()};operationEvidence.set(budget,evidence);}
+ return evidence;
+}
+function domainEvidence(map,domain,originalDomain=domain){
+ let originals=map.get(domain);if(!originals){originals=new WeakMap();map.set(domain,originals);}
+ let entries=originals.get(originalDomain);if(!entries){entries=new Map();originals.set(originalDomain,entries);}
+ return entries;
+}
 function supportReader(domain,budget){
- const acquired=readAcquiredNativeSupport(domain,{budget}),mesh=acquired.mesh,vertices=new Map(),faces=new Map();
+ const acquired=readAcquiredNativeSupport(domain,{budget}),readers=evidenceFor(budget).readers;
+ if(readers.has(acquired))return readers.get(acquired);
+ const mesh=acquired.mesh,vertices=new Map(),faces=new Map();
  const vertex=id=>{
   if(!vertices.has(id)){budget.check(1);vertices.set(id,mesh.vertices[id].map(Q));}
   return vertices.get(id);
@@ -93,7 +106,8 @@ function supportReader(domain,budget){
   }
   return result;
  };
- return {acquired,mesh,face,vertex,boundaries:[],queryPoint:(a,b)=>query(a,a,b),querySegment:query};
+ const reader={acquired,mesh,face,vertex,boundaries:[],queryPoint:(a,b)=>query(a,a,b),querySegment:query};
+ readers.set(acquired,reader);return reader;
 }
 
 function levelGraph(reader,levelM,budget){
@@ -222,7 +236,7 @@ function finiteCaps(points,kernel,budget){
  return retained;
 }
 
-function constructSource(domain,levelM,{originalDomain=domain,portionId='default',ordinal=0,budget}){
+function constructSourceFresh(domain,levelM,{originalDomain=domain,portionId='default',ordinal=0,budget,preserveNativeKnots=false}){
  if(!Number.isFinite(levelM)||typeof portionId!=='string'||!portionId||!Number.isSafeInteger(ordinal)||ordinal<0)throw fail('Finite contour level and source identity required');
  const reader=supportReader(originalDomain,budget),current=readAcquiredNativeSupport(domain,{budget});
  if(current.modelHash!==reader.acquired.modelHash||current.crs!==reader.acquired.crs)throw fail('Original/current native model or CRS mismatch');
@@ -231,13 +245,45 @@ function constructSource(domain,levelM,{originalDomain=domain,portionId='default
  if(graph.diagnostics.length)return {axes:[],diagnostics:graph.diagnostics};
  const components=[],epsg=Number(domain.crs.split(':')[1]);
  for(const points of graph.components){
-  const retained=finiteCaps(points,kernel,budget);if(!retained)continue;
+  const capped=finiteCaps(points,kernel,budget);if(!capped)continue;
+  // Collinear native knots carry no contour geometry. Remove them exactly
+  // before geographic projection creates artificial ULP-sized bends. Every
+  // real turn and both finite caps survive; native face integration is unchanged.
+  const retained=[];
+  for(const point of capped){
+   budget.check();
+   while(!preserveNativeKnots&&retained.length>1){
+    const a=retained.at(-2),b=retained.at(-1),u=vsub(b,a),v=vsub(point,b);
+    if(sign(cross(u,v))||sign(dot(u,v))<=0)break;
+    retained.pop();
+   }
+   retained.push(point);
+  }
   const coordinates=[],coordinatesXY=[];
   for(const point of retained){budget.check(3);const geographic=fromUTM(xy(point),epsg);coordinates.push(geographic);coordinatesXY.push(toUTM(geographic,epsg));}
   budget.check(1);components.push({coordinates,coordinatesXY});
  }
  if(!components.length)return {axes:[],diagnostics:[]};
  budget.check(1);return {axes:[freeze({axisId:`${portionId}:level:${levelM}`,portionId,levelM,ordinal,axisGeometryConvention:FINITE_POLYLINE_AXIS_CONVENTION,axisGeometryBinding:bindingFor(domain,originalDomain),components},budget)],diagnostics:[]};
+}
+
+// Reuse only deterministic evidence computed by this operation from the actual
+// immutable owner domains. New budgets reconstruct; submitted values are still
+// compared in full, never accepted on a caller hash or registration.
+function constructSource(domain,levelM,{originalDomain=domain,portionId='default',ordinal=0,budget,preserveNativeKnots=false}){
+ budget.check();
+ if(!Number.isFinite(levelM)||typeof portionId!=='string'||!portionId||!Number.isSafeInteger(ordinal)||ordinal<0)throw fail('Finite contour level and source identity required');
+ const originalSupport=readAcquiredNativeSupport(originalDomain,{budget}),currentSupport=readAcquiredNativeSupport(domain,{budget});
+ if(currentSupport.modelHash!==originalSupport.modelHash||currentSupport.crs!==originalSupport.crs)throw fail('Original/current native model or CRS mismatch');
+ // Geometry is a complete contour capped by original P only. Child P affects
+ // its explicit binding and later exact physical clipping, never this source.
+ // Share those immutable components across actual child scopes in this operation.
+ const entries=domainEvidence(evidenceFor(budget).sources,originalDomain,originalDomain),cacheKey=JSON.stringify([levelM,portionId,preserveNativeKnots]);
+ let source=entries.get(cacheKey);
+ if(!source){source=freeze(constructSourceFresh(originalDomain,levelM,{originalDomain,portionId,ordinal:0,budget,preserveNativeKnots}),budget);entries.set(cacheKey,source);}
+ if(!ordinal&&domain===originalDomain)return source;
+ budget.check(source.axes.length);
+ return freeze({axes:source.axes.map(axis=>({...axis,ordinal,axisGeometryBinding:bindingFor(domain,originalDomain)})),diagnostics:source.diagnostics},budget);
 }
 
 function compileSource(axis,budget){
@@ -387,10 +433,15 @@ export function resolveFinitePolylineSourceAxis(kernel,axis,budget=createTerrain
  readAcquiredNativeSupport(domain,{budget});readAcquiredNativeSupport(originalDomain,{budget});
  if(kernel!==exactDomain(domain,budget))throw fail('Finite polyline resolution requires the actual owner-domain exact kernel');
  if(binding.modelHash!==domain.modelHash||binding.crs!==domain.crs||originalDomain.modelHash!==domain.modelHash||originalDomain.crs!==domain.crs||binding.originalScopeHash!==scopeHash(originalDomain)||(original?binding.originalScopeHash:binding.scopeHash)!==scopeHash(domain))throw fail('Finite polyline model/CRS/current/original scope binding mismatch');
- const regenerated=constructSource(domain,axis.levelM,{originalDomain,portionId:axis.portionId,ordinal:axis.ordinal,budget});
- if(regenerated.axes.length!==1||regenerated.axes[0].axisId!==axis.axisId||JSON.stringify(regenerated.axes[0].components)!==JSON.stringify(axis.components))throw fail('Saved finite source differs from deterministic complete native-level regeneration');
+ const entries=domainEvidence(evidenceFor(budget).resolved,domain,originalDomain),cacheKey=JSON.stringify(axis);
+ if(entries.has(cacheKey)){budget.check(1);return {...entries.get(cacheKey)};}
+ const regenerationOptions={originalDomain,portionId:axis.portionId,ordinal:axis.ordinal,budget};
+ const matches=regenerated=>regenerated.axes.length===1&&regenerated.axes[0].axisId===axis.axisId&&JSON.stringify(regenerated.axes[0].components)===JSON.stringify(axis.components);
+ // Existing dense saved sources retain their original complete construction.
+ // Both forms are freshly reconstructed from actual S, never caller evidence.
+ if(!matches(constructSource(domain,axis.levelM,regenerationOptions))&&!matches(constructSource(domain,axis.levelM,{...regenerationOptions,preserveNativeKnots:true})))throw fail('Saved finite source differs from deterministic complete native-level regeneration');
  const {compiled}=validateActual(axis,domain,originalDomain,budget),resolved=pairedClip(axis,compiled,domain,budget,kernel);
- return resolved;
+ freeze(resolved,budget);entries.set(cacheKey,resolved);budget.check(1);return {...resolved};
 }
 
 export function polylinePhysicalFragments(pieces,budget=createTerrainBudget({kind:'measure'})){

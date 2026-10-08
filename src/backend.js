@@ -1,6 +1,6 @@
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.2';
-import { ensureProjectFields } from './fields.js?v=1.3.2';
-import { normalizeMapState } from './state.js?v=1.3.2';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.3';
+import { ensureProjectFields } from './fields.js?v=1.3.3';
+import { normalizeMapState } from './state.js?v=1.3.3';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function edgeFunctionError(error,fallback){

@@ -1,7 +1,9 @@
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.3';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.3';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.2';
+from './terrain-budget.js?v=1.3.3';
 import {
   exactDomain,
   Q,
@@ -16,74 +18,69 @@ import {
   cmp,
   sqrtBounds
 }
-from './terrain-exact.js?v=1.3.2';
+from './terrain-exact.js?v=1.3.3';
 import {
   toUTM
 }
-from './coordinate-system.js?v=1.3.2';
+from './coordinate-system.js?v=1.3.3';
 import {
   buildContourFamily,
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.2';
+from './terrain-contour-family.js?v=1.3.3';
 import {
   createContourDomain,createCanonicalCutChildDomain,createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes
 }
-from './terrain-contour-domain.js?v=1.3.2';
+from './terrain-contour-domain.js?v=1.3.3';
 import {
   legacyTerrainInputs,
   terrainGeometryInputHash,
   readTerrainEnvelope,
   createContourEnvelope
 }
-from './terrain-replay.js?v=1.3.2';
+from './terrain-replay.js?v=1.3.3';
 import {
   validateTerrainModel,terrainInputHash
 }
-from './terrain-model.js?v=1.3.2';
+from './terrain-model.js?v=1.3.3';
 import {
   resolveRowPortions
 }
-from './row-portions.js?v=1.3.2';
+from './row-portions.js?v=1.3.3';
 import {
-  generateRows,
   polygonMetrics,
   estimatePlantsFromRows,
   roundUpTo25
 }
 from './geometry.js?v=45';
 import {
-  generateCurvedRows
-}
-from './row-curves.js?v=1.3.2';
-import {
   calculateProject
 }
-from './project-calculator.js?v=1.3.2';
+from './project-calculator.js?v=1.3.3';
 import {
   assertTerrainSerializationBudget
 }
-from './terrain-serialization.js?v=1.3.2';
+from './terrain-serialization.js?v=1.3.3';
 import {
   certifyUniformPlaneSupport,
   measureSurfaceFootprint,
   measureSurfaceUnion,createRegularTerrainRegionOperations,sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.2';
-import {buildTerrainPassage} from './terrain-passage.js?v=1.3.2';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.2';
-import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.2';
-import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.2';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
-import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.2';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.2';
+from './terrain-surface-bands.js?v=1.3.3';
+import {buildTerrainPassage} from './terrain-passage.js?v=1.3.3';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
+import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.3';
+import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.3';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
+import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.3';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.3';
 const failure=(status,message)=>Object.assign(new Error(message),{
   status
 });
 export {
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.2';
+from './terrain-contour-family.js?v=1.3.3';
 function geometryNodes(value) {
   if(Array.isArray(value)){
     if((value.length===2||value.length===3)&&value.every(Number.isFinite))return 1;
@@ -109,59 +106,6 @@ function totals(rows,postSpacingM,plantSpacingM) {
     intermediatePosts,
     totalPosts:headPosts+intermediatePosts
   };
-}
-function sourceManualRows(input,portion,budget) {
-  const design=portion.mode==='local'?portion:portion.inheritedDesign??portion;
-  const rows=portion.mode==='local'||design.rowCurvePoints?.length?
-  generateCurvedRows({
-    polygon:input.polygon,
-    ...(portion.mode==='local'?{
-      guidePolygon:portion.geometry[0]
-    }
-    :{
-    }),
-    rowSpacingM:input.rowSpacingM,
-    orientationDeg:design.orientationDeg,
-    rowCurvePoints:design.rowCurvePoints,
-    maintainEquidistance:design.maintainRowEquidistance!==false,
-    headlandWidthM:0,
-    includeTerrainAxes:true
-  }):
-  generateRows(input.polygon,input.rowSpacingM,design.orientationDeg);
-  budget.check(rows.reduce((s,r)=>s+(r.coordinates?.length??2)+(r.terrainAxisCoordinates?.length??0),0));
-  return rows;
-}
-function manualAxes(input,portion,rows,epsg,budget) {
-  const axes=[];
-  const groups=new Map();
-  const design=portion.mode==='local'?portion:portion.inheritedDesign??portion;
-  const angle=(Number(design.orientationDeg)||0)*Math.PI/180;
-  const origin=input.polygon[0],
-  scaleY=6371008.8*Math.PI/180;
-  const latitude=input.polygon.slice(0,-1).reduce((s,p)=>s+p[1],0)/(input.polygon.length-1),
-  scaleX=scaleY*Math.cos(latitude*Math.PI/180);
-  for(const row of rows){
-    const phase=((row.start[0]-origin[0])*scaleX*Math.cos(angle)+(row.start[1]-origin[1])*scaleY*Math.sin(angle))/input.rowSpacingM;
-    const key=row.terrainAxisFamily?`${row.terrainAxisFamily}:${row.terrainAxisDistance}`:`straight:${Math.round(phase*1e6)/1e6}`;
-    let axis=groups.get(key);
-    if(!axis){
-      axis={
-        axisId:`${portion.id}:manual:${axes.length}`,
-        portionId:portion.id,
-        ordinal:axes.length,
-        components:[]
-      };
-      groups.set(key,axis);
-      axes.push(axis);
-    }
-    const coordinates=row.terrainAxisCoordinates??row.coordinates??[row.start,row.end];
-    const coordinatesXY=coordinates.map(p=>toUTM(p,epsg));
-    budget.check(coordinatesXY.length);
-    if(!axis.components.some(c=>JSON.stringify(c.coordinatesXY)===JSON.stringify(coordinatesXY)))axis.components.push({
-      coordinatesXY
-    });
-  }
-  return axes;
 }
 function areaOf(domain,budget) {
   if(canonicalCutDomainScope(domain))return measureDomainSurfaceArea({domain,budget,areaMode:certifyUniformPlaneSupport(domain,budget)?'constant-plane':'coplanar-patches'});
@@ -242,6 +186,7 @@ export function buildContourTerrainProposal({
   portionId=null,
   mode='adapt',
   recomputeAll=false,
+  manualGroundSpacing=false,
   budget=createTerrainBudget({
     kind:mode==='measure'?'measure':'adapt'
   })
@@ -262,14 +207,14 @@ export function buildContourTerrainProposal({
     const local=previous?.schemaVersion===2&&previous.algorithmVersion==='terrain-contour-family-1'&&!!portionId&&!recomputeAll;
     if(local){
       if(project.terrain.model.contentHash!==model.contentHash)throw failure('review-required','The model changed; recompute the whole field.');
-      const finitePrevious=previous.portionResults?.some(portion=>portion.design?.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION);
+      const budgetedPrevious=previous.portionResults?.some(portion=>portion.design?.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION||portion.design?.groundSpacing);
       const saved=readTerrainEnvelope({
         ...previous.inputs,
         terrain:project.terrain
-      },finitePrevious?{budget}:undefined);
-      // The opt-in saved finite reconstruction also precharges its returned
+      },budgetedPrevious?{budget}:undefined);
+      // Saved finite and ground-layout reconstructions precharge their returned
       // result copy. Historical reads retain their original caller charge.
-      if(!finitePrevious)budget.check(geometryNodes(saved));
+      if(!budgetedPrevious)budget.check(geometryNodes(saved));
       if(saved?.terrainStatus!=='applied')throw failure('invalid-applied','Applied terrain integrity check failed.');
       const withoutTarget=value=>({
         ...value,
@@ -326,7 +271,9 @@ export function buildContourTerrainProposal({
       const manual=sourceManualRows(input,portion,budget),
       sourceAxes=manualAxes(input,portion,manual,epsg,budget);
       const adapt=mode==='adapt'&&(!portionId||portion.id===portionId);
-      let axes=sourceAxes,
+      const previousGround=previous?.portionResults?.find(saved=>saved.id===portion.id)?.design?.groundSpacing;
+      const ground=!adapt&&mode==='measure'&&(manualGroundSpacing===true||previousGround)?groundSpaceManualAxes({model,axes:sourceAxes,manualStraight:manualStraightIntent(portion),geometryXY:domain.geometryXY??{type:'MultiPolygon',coordinates:[...new Set(domain.boundaries.map(boundary=>boundary.polygonIndex))].map(id=>domain.boundaries.filter(boundary=>boundary.polygonIndex===id).map(boundary=>boundary.coordinatesXY))},rowSpacingM:input.rowSpacingM,portionId:portion.id,budget}):null;
+      let axes=ground?.axes??sourceAxes,
       familyRows=null,
       coverage={
         servedAreaM2:null,
@@ -337,7 +284,8 @@ export function buildContourTerrainProposal({
       validation={
         valid:true,
         method:'manual-native-face-measurement',
-        automaticSpacing:false
+        automaticSpacing:false,
+        ...(ground?ground.validation:{})
       };
       if(adapt){
         const reference={
@@ -352,7 +300,7 @@ export function buildContourTerrainProposal({
           domain,
           portion,
           reference,
-          ...(!certifyUniformPlaneSupport(domain,budget)?{candidateGeneration:{kind:'scoped-cut-1',axisGeometryConvention:FINITE_POLYLINE_AXIS_CONVENTION}}:{}),
+          ...(!certifyUniformPlaneSupport(domain,budget)||!certifyUniformPlaneSupport(original,budget)?{candidateGeneration:{kind:'scoped-cut-1',axisGeometryConvention:FINITE_POLYLINE_AXIS_CONVENTION}}:{}),
           spacingM:input.rowSpacingM,
           budget,
           referenceAreaM2
@@ -361,7 +309,7 @@ export function buildContourTerrainProposal({
           portionId:portion.id,
           ...family.diagnostics
         });
-        if(!family.ok)throw failure(family.status,'The requested contour family remains unresolved.');
+        if(!family.ok)throw Object.assign(failure(family.status,family.diagnostics?.message??'Non è stata trovata una disposizione verificabile per questa porzione.'),family.diagnostics?.budgetReason?{budgetReason:family.diagnostics.budgetReason,budgetPhase:family.diagnostics.budgetPhase,budgetUsage:family.diagnostics.budgetUsage}:{});
         axes=family.axes;
         familyRows=family.rows;
         coverage={
@@ -387,14 +335,7 @@ export function buildContourTerrainProposal({
       const flat=exactDomain(domain,budget).faces.every(f=>!sign(f.q));
       if(!adapt&&flat&&!input.headlandWidthM){
         const expected=legacy.rows.filter(r=>r.portionId===portion.id||portions.length===1);
-        if(expected.length===rows.length)rows=rows.map((row,i)=>({
-          ...row,
-          start:expected[i].start,
-          end:expected[i].end,
-          coordinates:[expected[i].start,...row.coordinates.slice(1,-1),expected[i].end],
-          lengthM:expected[i].lengthM,
-          quantityBasis:'certified-flat-legacy'
-        }));
+        rows=preserveFlatManualQuantities(rows,expected);
       }
       if(!rows.length)throw failure('review-required','No usable physical row fragments.');
       const heads=headlandArea(original,domain,axes,Math.max(0,input.headlandWidthM??0),budget);
@@ -425,7 +366,8 @@ export function buildContourTerrainProposal({
         orientationDeg:portion.orientationDeg,
         rowCurvePoints:structuredClone(portion.rowCurvePoints),
         maintainRowEquidistance:portion.maintainRowEquidistance,
-        followTerrain:false
+        followTerrain:false,
+        ...(ground?{groundSpacing:{algorithmVersion:'native-manual-ground-spacing-1',validation:ground.validation},axes,modelHash:model.contentHash,crs:model.crs,axisScopeGeometry:structuredClone(domain.geometry)}:{})
       };
       // Store compact proof summaries, not transient affine-event diagnostic trees.
       const summary={
@@ -440,8 +382,7 @@ export function buildContourTerrainProposal({
           coverageComplete:validation.coverage.complete,
           headlandSubset:validation.headlandSubset
         }
-        : {
-        })
+        : ground?ground.validation:{})
       };
       portionResults.push({
         ...totals(rows,input.postSpacingM,input.plantSpacingM),
@@ -570,7 +511,8 @@ export function buildContourTerrainProposal({
       status:error.status??(error instanceof RangeError?'size-exceeded':'review-required'),
       kind:mode,
       message:error.message,
-      diagnostics,
+      ...(error.budgetReason?{budgetReason:error.budgetReason}:{}),
+      diagnostics:{...diagnostics,...(error.budgetReason?{budget:{reason:error.budgetReason,phase:error.budgetPhase,...error.budgetUsage}}:{})},
       timings:budget.timings()
     };
   }

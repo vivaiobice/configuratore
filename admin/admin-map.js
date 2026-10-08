@@ -1,7 +1,7 @@
 import {createFieldNameMarkers} from '../src/field-name-markers.js';
-import {satelliteStyle} from '../src/satellite-style.js?v=51';
-import {buildAdminMapData} from './admin-map-data.js?v=1.3.2';
-import {mountAdminCadastre} from './admin-cadastre.js?v=1.3.2';
+import {satelliteStyle} from '../src/satellite-style.js?v=1.3.3';
+import {buildAdminMapData} from './admin-map-data.js?v=1.3.3';
+import {mountAdminCadastre} from './admin-cadastre.js?v=1.3.3';
 
 export function boundsForFeatureCollection(collection) {
   let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;

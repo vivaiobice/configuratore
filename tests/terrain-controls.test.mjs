@@ -146,7 +146,7 @@ test('progress announces friendly Italian phases without displaying internal imp
 test('status distinguishes time limit, incompatibility and cancellation without raw error text',async()=>{
  const ui=await setup();
  for(const [kind,expected] of [['budget-exceeded',/tempo/i],['incompatible',/compatibile/i],['cancelled',/annullata/i]]) {
-  ui.render({status:{kind,message:'solver nativeXY secret detail'}});assert.match(ui.host.textContent,expected);assert.ok(!ui.host.textContent.includes('nativeXY'));
+  ui.render({status:{kind,...(kind==='budget-exceeded'?{budgetReason:'time'}:{}),message:'solver nativeXY secret detail'}});assert.match(ui.host.textContent,expected);assert.ok(!ui.host.textContent.includes('nativeXY'));
  }
 });
 

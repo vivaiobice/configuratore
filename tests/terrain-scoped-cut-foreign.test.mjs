@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.2';
-import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.2';
+import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.3';
+import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.3';
 import {resolveRowPortions} from '../src/row-portions.js';
-import {createCanonicalCutChildDomain,canonicalCutDomainScope} from '../src/terrain-contour-domain.js?v=1.3.2';
+import {createCanonicalCutChildDomain,canonicalCutDomainScope} from '../src/terrain-contour-domain.js?v=1.3.3';
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
 function foreignFixture(){
  // Both true divider boundaries reuse the actual saved perimeter vertices in

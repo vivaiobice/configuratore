@@ -1,5 +1,5 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.2';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
 
 // Accounting for one actual structuredClone/postMessage allocation. Aliases
 // are retained by structured cloning, so each shared coordinate/grid is paid
@@ -56,15 +56,16 @@ export function runTerrainProposal(options,{signal,WorkerImpl=globalThis.Worker,
    }else deadlineMs=Math.min(10000,Math.max(0,options?.deadlineMs??10000));
   }catch(error){resolve({ok:false,status:error.status??'invalid-input',...(nativeCut?{kind:'cut'}:{}),message:error.message});return;}
   if(typeof WorkerImpl!=='function'){resolve({ok:false,status:'worker-unavailable',message:'Calcolo terreno non disponibile in questo browser.'});return;}
-  let worker,timer,settled=false;
+  let worker,timer,settled=false,lastProgress=null;
   const finish=(value,error=false)=>{if(settled)return;settled=true;clearTimeoutImpl(timer);signal?.removeEventListener('abort',abort);worker?.terminate();(error?reject:resolve)(value);};
   const abort=()=>finish(new DOMException('Operazione annullata.','AbortError'),true);
   try{
-   worker=new WorkerImpl(new URL('./terrain-worker.js?v=1.3.2',import.meta.url),{type:'module'});
+   worker=new WorkerImpl(new URL('./terrain-worker.js?v=1.3.3',import.meta.url),{type:'module'});
    signal?.addEventListener('abort',abort,{once:true});
    worker.onmessage=event=>{
     if(settled)return;
     if(event.data?.type==='progress'){
+     lastProgress=event.data;
      // Observers are diagnostics: failure cannot settle or orphan the worker.
      try{onProgress(event.data);}catch{}
      return;
@@ -84,7 +85,7 @@ export function runTerrainProposal(options,{signal,WorkerImpl=globalThis.Worker,
    };
    worker.onerror=()=>finish({ok:false,status:'worker-error',message:'Calcolo interrotto. Il progetto precedente è conservato.'});
    if(nativeCut){const now=clock();if(!Number.isFinite(now)||now<lastClock)throw new RangeError('Tempo di calcolo non valido.');lastClock=now;workerDeadlineMs=Math.min(copyBudget.remainingMs(),Math.max(0,deadlineMs-(now-started)));request={...request,deadlineMs:workerDeadlineMs};}
-   timer=setTimeoutImpl(()=>finish({ok:false,status:'budget-exceeded',message:'Tempo di calcolo superato. Il progetto precedente è conservato.'}),(nativeCut?workerDeadlineMs:deadlineMs)+100);
+   timer=setTimeoutImpl(()=>finish({ok:false,status:'budget-exceeded',budgetReason:'time',diagnostics:{budget:{reason:'time',phase:lastProgress?.phase??null,nodeCount:lastProgress?.nodeCount??null,elapsedMs:lastProgress?.elapsedMs??null}},message:'Tempo di calcolo superato. Il progetto precedente è conservato.'}),(nativeCut?workerDeadlineMs:deadlineMs)+100);
    worker.postMessage(request);
   }catch(error){finish({ok:false,status:'worker-error',message:error.message});}
  });

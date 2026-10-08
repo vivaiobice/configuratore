@@ -1,10 +1,10 @@
-# Vivai Obice — piattaforma unica 1.3.2
+# Vivai Obice — piattaforma unica 1.3.3
 
-Configuratore alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. Entrambi mostrano **1.3.2 · LIVE**.
+Configuratore alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. Entrambi mostrano **1.3.3 · LIVE**.
 
 La vista **3D sulla mappa** usa direttamente il modello altimetrico acquisito e i filari del progetto o della proposta corrente. La navigazione conserva il disegno, le quantità e la posizione da ritrovare tornando in 2D. Il disegno manuale 1.2.6 e i progetti 1.3.0 restano compatibili.
 
-La revisione completa il rendering e i gesti 3D: prove locali con MapLibre reale, Worker e WebGL su desktop e touch emulato superano il limite di 150 ms fra fotogrammi. I dettagli, i comandi e i limiti del collaudo sono in [README_RELEASE_1.3.2.md](README_RELEASE_1.3.2.md). Le prove anonime non certificano i campi reali o i dispositivi fisici; il calcolo automatico dei filari conserva i propri controlli e rifiuti precedenti.
+La revisione aggiunge il satellite sul rilievo, completa i gesti 3D e corregge le distanze misurate sul terreno: prove locali con MapLibre reale, Worker e WebGL su desktop e touch emulato superano il limite di 150 ms fra fotogrammi. I dettagli, i comandi e i limiti del collaudo sono in [README_RELEASE_1.3.3.md](README_RELEASE_1.3.3.md). Le prove anonime non certificano i campi reali o i dispositivi fisici; il calcolo automatico conserva i controlli sulle quote, sull’interfila e sui tratti effettivamente coltivabili.
 
 ## V53.3 — stato attivo del selettore mappa in Dark Mode
 

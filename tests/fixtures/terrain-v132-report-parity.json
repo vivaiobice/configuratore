@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "274f031",
+  "htmlSha256": "9f39db645fb41c4a14205afd2646094481b6c252f2b873b9d50034b3f7f7c564",
+  "baseline": "1.3.2 released HTML; report model remains the independent approved 1.2.6 model",
+  "sourceHashes": {
+    "src/report-template.js": "a4b6921fe002d625336f7ed99700f28b416abaa41629376a7d29f52b968239be",
+    "src/report-diagram.js": "2e6e9673809b9e551090d672e70e6d9c1254ae19a977be771a74f361cda26509",
+    "src/report-map-model.js": "88cf903f31136581e6bc3691e980cf47219cbdd1d4ba1fabfa568e65f9c915ff",
+    "src/row-portion-summary.js": "c1b7d24c2c8cdf02eb3636a44de5fcae31494f443de329f8b89169c06c8f93ba"
+  }
+}

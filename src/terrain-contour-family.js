@@ -1,26 +1,27 @@
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.2';
+from './terrain-budget.js?v=1.3.3';
 import {
   traceContourLevel
 }
-from './terrain-contours.js?v=1.3.2';
+from './terrain-contours.js?v=1.3.3';
 import {
   certifyContourSpacing
 }
-from './terrain-contour-validation.js?v=1.3.2';
+from './terrain-contour-validation.js?v=1.3.3';
 import {
   traceSurfaceBand,
   measureSurfaceUnion,
   compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.2';
+from './terrain-surface-bands.js?v=1.3.3';
 import {
   toUTM,
   fromUTM
 }
-from './coordinate-system.js?v=1.3.2';
+from './coordinate-system.js?v=1.3.3';
 import {
   exactDomain,
   Q,
@@ -44,10 +45,10 @@ import {
   ZERO,
   orient
 }
-from './terrain-exact.js?v=1.3.2';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.2';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.2';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.2';
+from './terrain-exact.js?v=1.3.3';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.3';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.3';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.3';
 const failed=(status,diagnostics)=>({
   ok:false,
   status,
@@ -806,6 +807,15 @@ function planeAreaUpper(axes,facts,spacingM,budget) {
     }
   return numberBounds(upper)[1];
 }
+function completionReserveNodes(candidate,budget){
+  const count=value=>{
+    budget.check();
+    if(Array.isArray(value))return (value.length===2||value.length===3)&&value.every(Number.isFinite)?1:value.reduce((sum,item)=>sum+count(item),0);
+    return value&&typeof value==='object'?Object.values(value).reduce((sum,item)=>sum+count(item),0):0;
+  };
+  // Reserve the emitted family/envelope copies plus fixed model/input overhead.
+  return Math.max(20000,2*count({axes:candidate.axes,rows:candidate.rows,validation:candidate.validation}));
+}
 /** Finite deterministic phase/progression search. Exhaustion is not an
  * impossibility proof. Every returned family has a complete fresh certificate;
  * one caller budget covers extraction, all rejected candidates and all bands. */
@@ -828,7 +838,9 @@ export function buildContourFamily({
     searchScope:'finite-two-phase-plane-or-two-progression-variable',
     candidates:[],
     frontiers:[],
-    globalOptimality:false
+    globalOptimality:false,
+    searchComplete:true,
+    selectionPolicy:'best-complete-candidate-in-finite-search'
   };
   try {
     budget.check();
@@ -941,7 +953,18 @@ export function buildContourFamily({
           else diagnostics.frontiers.push({candidateId:'scoped-cut:reference-anchored',reason:'reference-level-outside-profile'});
         }
       }
+      // An explicit singleton/reference offer may already be certified before
+      // the scheduled progressions. Its first optional expansion needs exactly
+      // the same enforced reserve as every later candidate.
+      let optionalReserve=complete.length?{nodeCount:completionReserveNodes(rankContourCandidates(complete,{budget})[0],budget),remainingMs:1000}:null;
+      if(optionalReserve&&!budget.withReserve){
+        diagnostics.searchComplete=false;
+        diagnostics.selectionPolicy='best-complete-candidate-with-completion-reserve';
+        diagnostics.optionalSearchStop={reason:'completion-reserve-unavailable',skippedCandidateIds:schedules.map((schedule,index)=>schedule.id??`candidate:${index}`)};
+        schedules.length=0;
+      }
       for(let c=0;c<schedules.length;c++){
+        const candidateStarted=budget.usage?.();
         const {
           phase,
           scale
@@ -949,6 +972,7 @@ export function buildContourFamily({
         =schedules[c],
         candidateId=schedules[c].id??`candidate:${c}`,
         axes=[];
+        const executeCandidate=()=>{
         for(let coordinate=phase,ordinal=0;coordinate<range;coordinate=phase+(++ordinal)*step*scale){
           budget.check();
           if(ordinal&&coordinate===phase+(ordinal-1)*step*scale)throw new RangeError('Unrepresentable level progression');
@@ -979,6 +1003,37 @@ export function buildContourFamily({
           kind:'scheduled-range-exhausted-not-impossibility'
         });
         evaluate(candidateId,!finiteSource&&(facts.plane||profile)?analyticPlaneCandidates(axes,facts,budget,diagnostics,reference.originalDomain??domain):axes);
+        };
+        try{
+          if(optionalReserve)budget.withReserve(optionalReserve,executeCandidate);
+          else executeCandidate();
+        }catch(error){
+          if(!error.budgetReservation||!complete.length)throw error;
+          // The optional attempt spent real cumulative work, but yielded before
+          // the live operation's completion reserve. No partial proof applies.
+          budget.check();
+          if(!diagnostics.candidates.some(candidate=>candidate.id===candidateId))diagnostics.candidates.push({id:candidateId,valid:false,incomplete:true,reason:'completion-reserve'});
+          diagnostics.searchComplete=false;
+          diagnostics.selectionPolicy='best-complete-candidate-with-completion-reserve';
+          diagnostics.optionalSearchStop={reason:'completion-reserve-interruption',budgetReason:error.budgetReason,reserveNodes:optionalReserve.nodeCount,reserveMs:optionalReserve.remainingMs,usage:budget.usage(),skippedCandidateIds:schedules.slice(c).map((schedule,index)=>schedule.id??`candidate:${c+index}`)};
+          break;
+        }
+        if(complete.length&&c+1<schedules.length&&candidateStarted){
+          const incumbent=rankContourCandidates(complete,{budget})[0],reserveNodes=completionReserveNodes(incumbent,budget),usage=budget.usage();
+          const estimatedNextNodes=Math.ceil((usage.nodeCount-candidateStarted.nodeCount)*1.5),estimatedNextMs=(usage.elapsedMs-candidateStarted.elapsedMs)*1.5;
+          const reserveMs=1000;
+          if(!budget.withReserve||TERRAIN_MAX_NODES-usage.nodeCount<estimatedNextNodes+reserveNodes||usage.remainingMs<estimatedNextMs+reserveMs){
+            // Optional phase optimization never spends a fully proved incumbent's
+            // completion reserve. Every candidate considered for selection has
+            // already passed spacing, elevation, physical rows and service union.
+            budget.check();
+            diagnostics.searchComplete=false;
+            diagnostics.selectionPolicy='best-complete-candidate-with-completion-reserve';
+            diagnostics.optionalSearchStop={reason:'completion-reserve',estimatedNextNodes,estimatedNextMs,reserveNodes,reserveMs,usage,skippedCandidateIds:schedules.slice(c+1).map((schedule,index)=>schedule.id??`candidate:${c+1+index}`)};
+            break;
+          }
+          optionalReserve={nodeCount:reserveNodes,remainingMs:reserveMs};
+        }
       }
     }
     if(!complete.length)return failed('review-required',{
@@ -1013,7 +1068,9 @@ export function buildContourFamily({
   }catch(error){
     return failed(error.status??'review-required',{
       ...diagnostics,
-      message:error.message
+      message:error.message,
+      ...(error.diagnostics?{cause:error.diagnostics}:{}),
+      ...(error.budgetReason?{budgetReason:error.budgetReason,budgetPhase:error.budgetPhase,budgetUsage:error.budgetUsage}:{})
     });
   }
 }

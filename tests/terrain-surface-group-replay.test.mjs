@@ -57,9 +57,9 @@ test('rehashing an unknown or orphan canonical scope recipe cannot borrow saved 
 // Exact group/field intersection is empty, so the genuine cached quantities
 // remain applicable. It has no native owner construction or child recipes.
 test('valid V2 literal group without native child recipes preserves applied replay',async()=>{
- const {fromUTM}=await import('../src/coordinate-system.js?v=1.3.2');
- const {resolveTerrainExclusionGroups,terrainExclusionContains}=await import('../src/terrain-exclusion-groups.js?v=1.3.2');
- const {createTerrainBudget}=await import('../src/terrain-budget.js?v=1.3.2');
+ const {fromUTM}=await import('../src/coordinate-system.js?v=1.3.3');
+ const {resolveTerrainExclusionGroups,terrainExclusionContains}=await import('../src/terrain-exclusion-groups.js?v=1.3.3');
+ const {createTerrainBudget}=await import('../src/terrain-budget.js?v=1.3.3');
  const project=fresh(),applied=project.terrain.applied,beforeResult=structuredClone(applied.result);
  const geometry=[[50,50],[55,50],[55,55],[50,55],[50,50]].map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
  project.exclusions=[...project.exclusions,{id:'literal-outside-field',passageGroupId:'literal-edited',surfaceGroupVersion:1,surfaceGroupOwner:true,geometry,surfaceGeometry:{type:'MultiPolygon',coordinates:[[geometry]]},surfaceGeometryConvention:'literal'}];

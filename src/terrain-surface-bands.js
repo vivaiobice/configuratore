@@ -1,12 +1,12 @@
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.2';
+from './terrain-budget.js?v=1.3.3';
 import {
   fromUTM,
   toUTM
 }
-from './coordinate-system.js?v=1.3.2';
+from './coordinate-system.js?v=1.3.3';
 import {
   Q,
   rationalSquareRoot,
@@ -32,27 +32,27 @@ import {
   nextUp,
   nextDown
 }
-from './terrain-exact.js?v=1.3.2';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.2';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.2';
+from './terrain-exact.js?v=1.3.3';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.3';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.3';
 import {
   axisPieces
 }
-from './terrain-surface-flow.js?v=1.3.2';
+from './terrain-surface-flow.js?v=1.3.3';
 import {
   certifyContourElevation
 }
-from './terrain-contour-validation.js?v=1.3.2';
+from './terrain-contour-validation.js?v=1.3.3';
 import {
   createAlgebraicField
 }
-from './terrain-algebraic.js?v=1.3.2';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
+from './terrain-algebraic.js?v=1.3.3';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
 import {
   createBandKernel,
   traceBandBundles
 }
-from './terrain-geodesic-flow.js?v=1.3.2';
+from './terrain-geodesic-flow.js?v=1.3.3';
 /** Compare an outward binary64 enclosure to exact binary-input thresholds.
  * Adding the ceiling in floating point first could admit an extra ULP. */
 export function widthBoundsWithin(bounds,centerM) {
@@ -334,20 +334,45 @@ function boundaryGuards(k,polygons,patches,boundaryGuardM,{preserveSourceCapGaps
     maxDistanceSquared:maxDistance
   };
 }
+/** Exact connected collinear cap strata share one geometric half-plane.
+ * Its existing extreme endpoints give that line a representable geographic
+ * witness without deleting a native stratum or extending its support. */
+function finiteCapConstraintRepresentatives(k,patches){
+  const caps=patches.flatMap(patch=>patch.physicalSourceCaps??[]),groups=[];
+  for(const cap of caps){
+    const identity=JSON.stringify([cap.axisId,cap.componentIndex,cap.segmentIndex,cap.source]);
+    let merged={...cap,members:[cap],identity};
+    for(let i=0;i<groups.length;){
+      const other=groups[i];k.budget?.check();
+      if(other.identity!==identity){i++;continue;}
+      const direction=k.W(merged.b,merged.a);
+      if(k.G(k.cross(direction,k.W(other.a,merged.a)))||k.G(k.cross(direction,k.W(other.b,merged.a)))||
+        k.G(k.cross(direction,merged.outward))*k.G(k.cross(direction,other.outward))<=0||
+        ![other.a,other.b].some(p=>k.onSegment(p,merged.a,merged.b))&&![merged.a,merged.b].some(p=>k.onSegment(p,other.a,other.b))){i++;continue;}
+      const coordinate=k.G(direction[0])?0:1,points=[merged.a,merged.b,other.a,other.b].sort((a,b)=>k.C(a[coordinate],b[coordinate]));
+      k.budget?.check(2);
+      merged={...merged,a:points[0],b:points[3],members:[...merged.members,...other.members]};
+      groups.splice(i,1);i=0;
+    }
+    groups.push(merged);
+  }
+  return new Map(groups.flatMap(group=>group.members.map(cap=>[cap,group])));
+}
 /** Initial emitted-corner casting only. The original source and nominal
  * butt-cap lines remain immutable. Both native and geographic half-planes
  * must independently face outward; all actual corridor checks follow. */
-function castFinitePhysicalCapCorner(k,point,originalPoint,coordinate,patches,epsg,maxQ) {
+function castFinitePhysicalCapCorner(k,point,originalPoint,coordinate,patches,epsg,maxQ,representatives) {
   const constraints=[];
-  for(const patch of patches)for(const cap of patch.physicalSourceCaps??[]){
+  for(const patch of patches)for(const originalCap of patch.physicalSourceCaps??[]){
     k.budget?.check();
-    if(!k.onSegment(originalPoint,cap.a,cap.b))continue;
+    if(!k.onSegment(originalPoint,originalCap.a,originalCap.b))continue;
+    const cap=representatives.get(originalCap);
     k.budget?.check(17);
     const direction=k.W(cap.b,cap.a),nativeSide=k.G(k.cross(direction,cap.outward));
     if(!nativeSide)throw numericFailure('unresolved-finite-cap-outward-side');
     const geographicA=fromUTM(k.xy(cap.a),epsg).map(Q),geographicB=fromUTM(k.xy(cap.b),epsg).map(Q),geographicOut=fromUTM(k.xy(k.V(cap.a,cap.outward)),epsg).map(Q);
     const geographicDirection=vsub(geographicB,geographicA),geographicSide=sign(cross(geographicDirection,vsub(geographicOut,geographicA)));
-    if(!geographicSide)throw numericFailure('unresolved-finite-cap-geographic-side');
+    if(!geographicSide)throw Object.assign(numericFailure('unresolved-finite-cap-geographic-side'),{provenance:{nativeCapXY:[k.xy(cap.a),k.xy(cap.b)],geographicCap:[xy(geographicA),xy(geographicB)],outwardXY:k.xy(cap.outward),capCount:patches.reduce((sum,patch)=>sum+(patch.physicalSourceCaps?.length??0),0)}});
     constraints.push({cap,direction,nativeSide,geographicA,geographicDirection,geographicSide});
   }
   if(!constraints.length)return {coordinate};
@@ -375,20 +400,19 @@ function castFinitePhysicalCapCorner(k,point,originalPoint,coordinate,patches,ep
   return {coordinate:best.coordinate,provenance:{method:'initial-finite-cap-outward-half-planes',candidateCount:attempted,nativeOutward:true,geographicOutward:true,displacementUpperM:k.F.bounds(k.F.sqrt(k.F.rationalBounds(best.groundSquared)[1]))[1]}};
 }
 function lineIntersections(k,a,b,c,d) {
-  const u=k.W(b,a),
-  v=k.W(d,c),
-  w=k.W(c,a),
-  den=k.cross(u,v),
-  inside=t=>k.G(t)>=0&&k.C(t,k.O)<=0;
+  const ux=k.S(b[0],a[0]),uy=k.S(b[1],a[1]),
+  vx=k.S(d[0],c[0]),vy=k.S(d[1],c[1]),
+  wx=k.S(c[0],a[0]),wy=k.S(c[1],a[1]),
+  cross=(ax,ay,bx,by)=>k.S(k.M(ax,by),k.M(ay,bx)),
+  den=cross(ux,uy,vx,vy),inside=t=>k.G(t)>=0&&k.C(t,k.O)<=0;
   if(k.G(den)){
-    const t=k.F.div(k.cross(w,v),den),
-    s=k.F.div(k.cross(w,u),den);
+    const t=k.F.div(cross(wx,wy,vx,vy),den),s=k.F.div(cross(wx,wy,ux,uy),den);
     return inside(t)&&inside(s)?[t]:[];
   }
-  if(k.G(k.cross(w,u)))return [];
-  const i=k.G(u[0])?0:1;
-  if(!k.G(u[i]))return [];
-  return [k.F.div(k.S(c[i],a[i]),u[i]),k.F.div(k.S(d[i],a[i]),u[i])].filter(inside);
+  if(k.G(cross(wx,wy,ux,uy)))return [];
+  const i=k.G(ux)?0:1,u=i?uy:ux;
+  if(!k.G(u))return [];
+  return [k.F.div(k.S(c[i],a[i]),u),k.F.div(k.S(d[i],a[i]),u)].filter(inside);
 }
 function ringsFromEdges(k,edges) {
   const outgoing=new Map(),
@@ -1844,7 +1868,7 @@ function traceSurfaceBandAttempt({
     if(physicalDomain)patches.push({capEdges:finitePlaneSourceCaps(k,polygons,axis,patches,original.pieces)});
     const guard=boundaryGuards(k,polygons,patches,boundaryGuardM,{preserveSourceCapGaps:allowPlaneBoundaryTangents&&!!sourceGuardVariant,anisotropic:allowPlaneBoundaryTangents&&!!sourceGuardVariant,preservePhysicalSourceCaps:axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION}),
     epsg=Number((domain.crs??'EPSG:32632').split(':')[1]);
-    const finiteCapCasting=[],castingMaxQ=axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION?exact.faces.reduce((a,f)=>cmp(a,f.q)>0?a:f.q,ZERO):ZERO;
+    const finiteCapCasting=[],capRepresentatives=finiteCapConstraintRepresentatives(k,patches),castingMaxQ=axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION?exact.faces.reduce((a,f)=>cmp(a,f.q)>0?a:f.q,ZERO):ZERO;
     const geometry={
       type:'MultiPolygon',
       coordinates:guard.polygons.map((rings,polygonIndex)=>rings.map((ring,ringIndex)=>{
@@ -1852,7 +1876,7 @@ function traceSurfaceBandAttempt({
           budget.check(2);
           let coordinate=fromUTM(k.xy(p),epsg);
           if(axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION){
-            const cast=castFinitePhysicalCapCorner(k,p,polygons[polygonIndex][ringIndex][pointIndex],coordinate,patches,epsg,castingMaxQ);
+            const cast=castFinitePhysicalCapCorner(k,p,polygons[polygonIndex][ringIndex][pointIndex],coordinate,patches,epsg,castingMaxQ,capRepresentatives);
             coordinate=cast.coordinate;
             if(cast.provenance){budget.check(1);finiteCapCasting.push({polygonIndex,ringIndex,pointIndex,...cast.provenance});}
           }

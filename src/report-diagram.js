@@ -1,5 +1,5 @@
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.2';
-import {reportExclusionGeometry} from './report-satellite.js?v=1.3.2';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.3';
+import {reportExclusionGeometry} from './report-satellite.js?v=1.3.3';
 
 function pathFromPoints(points) {
   if (!Array.isArray(points) || !points.length) return '';

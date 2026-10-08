@@ -1,6 +1,6 @@
 // Exact rational constructions on frozen IEEE inputs. No tolerance predicates.
 // Geometry stays rational; lengths are finite sums of square roots of rationals.
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
 const abs=n=>n<0n?-n:n;
 function gcd(a, b){
   a=abs(a);
@@ -37,14 +37,30 @@ export function Q(x){
   shift=(exponent||1)-1075;
   return rational((bits>>63n?-1n:1n)*mantissa*(shift>0?1n<<BigInt(shift):1n), shift<0?1n<<BigInt(-shift):1n);
 }
-export const add=(a, b)=>rational(a.n*b.d+b.n*a.d, a.d*b.d);
+export const add=(a,b)=>{
+  if(!a.n)return b;if(!b.n)return a;
+  if(a.d===b.d)return rational(a.n+b.n,a.d);
+  // Reduced inputs can share factors only through the original denominator
+  // gcd. Cancel that factor before constructing an otherwise giant product.
+  const g=gcd(a.d,b.d),ad=a.d/g,bd=b.d/g,n=a.n*bd+b.n*ad,h=gcd(n,g);
+  return {n:n/h,d:ad*(b.d/h)};
+};
 export const neg=a=>({
   n:-a.n,
   d:a.d
 });
 export const sub=(a, b)=>add(a, neg(b));
-export const mul=(a, b)=>rational(a.n*b.n, a.d*b.d);
-export const div=(a, b)=>rational(a.n*b.d, a.d*b.n);
+export const mul=(a,b)=>{
+  if(!a.n||!b.n)return ZERO;
+  const x=gcd(a.n,b.d),y=gcd(b.n,a.d);
+  return {n:(a.n/x)*(b.n/y),d:(a.d/y)*(b.d/x)};
+};
+export const div=(a,b)=>{
+  if(!b.n)throw new RangeError('Zero exact denominator');
+  if(!a.n)return ZERO;
+  const x=gcd(a.n,b.n),y=gcd(a.d,b.d),direction=b.n<0n?-1n:1n;
+  return {n:direction*(a.n/x)*(b.d/y),d:direction*(a.d/y)*(b.n/x)};
+};
 export const cmp=(a, b)=>{
   const x=a.n*b.d-b.n*a.d;
   return x<0n?-1:x>0n?1:0;

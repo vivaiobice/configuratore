@@ -8,7 +8,8 @@ const sceneAPI=await import('../src/terrain-scene-view.js').catch(error=>{
  if(error.code==='ERR_MODULE_NOT_FOUND')return {};
  throw error;
 });
-function createView(options){assert.equal(typeof sceneAPI.createTerrainSceneView,'function','native custom scene view is required');return sceneAPI.createTerrainSceneView(options);}
+function fixtureImagery({scene}){return {ready:Promise.resolve({image:{width:256,height:256},width:256,height:256,zoom:17,coverage:[scene.reference.anchor[0],scene.reference.anchor[1],scene.reference.anchor[0]+1e-6,scene.reference.anchor[1]+1e-6],attribution:'Imagery fixture'}),destroy(){}};}
+function createView(options){assert.equal(typeof sceneAPI.createTerrainSceneView,'function','native custom scene view is required');return sceneAPI.createTerrainSceneView({imageryClientFactory:fixtureImagery,...options});}
 function createClient(options){assert.equal(typeof sceneAPI.createTerrainSceneClient,'function','native scene worker client is required');return sceneAPI.createTerrainSceneClient(options);}
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
 const geo=([x,y])=>fromUTM([500000+x,5000000+y],32632);
@@ -19,20 +20,21 @@ function sceneFor(model){
  return {positions:new Float32Array([0,0,0,1e-6,0,0,0,1e-6,1e-7]),normals:new Float32Array([0,0,1,0,0,1,0,0,1]),indices:new Uint32Array([0,1,2]),linePositions:new Float32Array(24),lineColors:new Float32Array(24).fill(.8),lineRanges:[{kind:'field',id:'field',offset:0,count:2},{kind:'rows',id:'row',offset:2,count:2},{kind:'exclusions',id:'area',offset:4,count:2},{kind:'portions',id:'portion',offset:6,count:2}],reference:{coordinate,height:115,anchor,metersToMercator},bounds:[8.99,45.1,9.01,45.2],modelHash:model.contentHash,nativeVertexCount:3,nativeTriangleCount:1};
 }
 function graphics({webgl2=true,uint32=true,compile=true}={}){
- let serial=0;const owned=new Set(),deleted=[],uploads=[],draws=[],matrices=[],depth=[];
+ let serial=0;const owned=new Set(),deleted=[],uploads=[],draws=[],matrices=[],depth=[],textures=[],shaderSources=[];
  const allocate=kind=>{const value={kind,id:++serial};owned.add(value);return value;};
  const dispose=value=>{if(value){assert.ok(owned.delete(value),'GPU resource must be released once');deleted.push(value);}};
- const gl={VERTEX_SHADER:1,FRAGMENT_SHADER:2,COMPILE_STATUS:3,LINK_STATUS:4,ARRAY_BUFFER:5,ELEMENT_ARRAY_BUFFER:6,STATIC_DRAW:7,FLOAT:8,UNSIGNED_INT:9,TRIANGLES:10,LINES:11,DEPTH_TEST:12,BLEND:13,CULL_FACE:14,POLYGON_OFFSET_FILL:15,LEQUAL:16,DEPTH_BUFFER_BIT:17,
-  createShader:()=>allocate('shader'),shaderSource(){},compileShader(){},getShaderParameter:()=>compile,getShaderInfoLog:()=> 'shader failure',deleteShader:dispose,
+ const gl={VERTEX_SHADER:1,FRAGMENT_SHADER:2,COMPILE_STATUS:3,LINK_STATUS:4,ARRAY_BUFFER:5,ELEMENT_ARRAY_BUFFER:6,STATIC_DRAW:7,FLOAT:8,UNSIGNED_INT:9,TRIANGLES:10,LINES:11,DEPTH_TEST:12,BLEND:13,CULL_FACE:14,POLYGON_OFFSET_FILL:15,LEQUAL:16,DEPTH_BUFFER_BIT:17,TEXTURE_2D:18,TEXTURE0:19,TEXTURE_BINDING_2D:20,ACTIVE_TEXTURE:21,RGBA:22,UNSIGNED_BYTE:23,UNPACK_FLIP_Y_WEBGL:24,UNPACK_ALIGNMENT:25,TEXTURE_WRAP_S:26,TEXTURE_WRAP_T:27,CLAMP_TO_EDGE:28,TEXTURE_MIN_FILTER:29,TEXTURE_MAG_FILTER:30,LINEAR:31,MAX_TEXTURE_SIZE:32,
+  createShader:()=>allocate('shader'),shaderSource(_shader,source){shaderSources.push(source);},compileShader(){},getShaderParameter:()=>compile,getShaderInfoLog:()=> 'shader failure',deleteShader:dispose,
   createProgram:()=>allocate('program'),attachShader(){},detachShader(){},linkProgram(){},getProgramParameter:()=>true,getProgramInfoLog:()=>'',deleteProgram:dispose,
   createBuffer:()=>allocate('buffer'),bindBuffer(){},bufferData(target,data){uploads.push({target,data:Array.from(data),constructor:data.constructor.name});},deleteBuffer:dispose,
   getAttribLocation:(_program,name)=>({a_position:0,a_normal:1,a_color:1}[name]??2),getUniformLocation:(_program,name)=>name,useProgram(){},enableVertexAttribArray(){},disableVertexAttribArray(){},vertexAttribPointer(){},uniformMatrix4fv(_location,_transpose,matrix){matrices.push(Array.from(matrix));},uniform3f(){},uniform1f(){},
   enable(){},disable(){},depthFunc(){},depthMask(){},clearDepth(){},clear(bits){depth.push(bits);},polygonOffset(){},lineWidth(){},
   drawElements(mode,count,type,offset){draws.push({mode,count,type,offset});},drawArrays(mode,offset,count){draws.push({mode,count,offset});},
+  createTexture:()=>allocate('texture'),deleteTexture:dispose,activeTexture(){},bindTexture(){},pixelStorei(){},texParameteri(){},texImage2D(...args){textures.push(args);},uniform1i(){},getParameter:name=>name===32?4096:null,
   getExtension:name=>name==='OES_element_index_uint'&&uint32?{}:null
  };
  if(webgl2){gl.createVertexArray=()=>allocate('vao');gl.bindVertexArray=()=>{};gl.deleteVertexArray=dispose;}
- return {gl,owned,deleted,uploads,draws,matrices,depth};
+ return {gl,owned,deleted,uploads,draws,matrices,depth,textures,shaderSources};
 }
 function mapFixture(options){
  const gpu=graphics(options),layers=new Map(),listeners=new Map(),container=new EventTarget();
@@ -146,4 +148,49 @@ test('worker cancellation rejects ready and terminates once while worker failure
  const data=input(),cancelled=new SceneWorker(),first=createClient({...data,workerFactory:()=>cancelled});first.destroy();first.destroy();await assert.rejects(first.ready,{name:'AbortError'});assert.equal(cancelled.terminated,1);
  const failed=new SceneWorker(),second=createClient({...data,workerFactory:()=>failed});const id=failed.messages[0].message.id;
  failed.reply({type:'error',id,message:'Native coverage incomplete'});await assert.rejects(second.ready,/Native coverage incomplete/);second.destroy();assert.equal(failed.terminated,1);
+});
+
+// Removing texture setup would leave the old opaque green mesh: capture the real
+// native layer upload boundary, not a substitute surface implementation.
+test('native layer uploads satellite pixels and Mercator UVs while retaining native triangle positions',async()=>{
+ const f=mapFixture(),data=input(),scene=sceneFor(data.model),before=structuredClone(scene);
+ const view=createView({...data,map:f.map,sceneClientFactory:()=>({ready:Promise.resolve(scene),destroy(){}})});await view.open();
+ assert.equal(f.gpu.textures.length,1,'satellite image must be uploaded to a native mesh texture');
+ assert.ok(f.gpu.uploads.some(upload=>upload.data.length===9&&Math.abs(upload.data[3]-1)<1e-5&&Math.abs(upload.data[7]-1)<1e-5),'native vertices need georeferenced satellite UVs');
+ assert.deepEqual(scene,before);view.destroy();assert.equal(f.gpu.owned.size,0);
+});
+
+test('imagery failure preserves the original 2D camera without activating misleading terrain',async()=>{
+ const f=mapFixture(),data=input(),plane=structuredClone(f.camera());let destroyed=0;const events=[];
+ const view=createView({...data,map:f.map,imageryClientFactory:()=>({ready:Promise.reject(new Error('Satellite unavailable')),destroy(){destroyed++;}}),sceneClientFactory:()=>({ready:Promise.resolve(sceneFor(data.model)),destroy(){}}),onSceneActive:active=>events.push(active)});
+ await assert.rejects(view.open(),/Satellite unavailable/);assert.equal(f.layers.size,0);assert.deepEqual(f.camera(),plane);assert.equal(destroyed,1);assert.deepEqual(events,[]);view.destroy();
+});
+
+test('closing while satellite imagery loads cancels the client and blocks a late native activation',async()=>{
+ const f=mapFixture(),data=input(),pending=deferred();let destroyed=0,started=false;
+ const view=createView({...data,map:f.map,imageryClientFactory:()=>{started=true;return {ready:pending.promise,destroy(){destroyed++;}};},sceneClientFactory:()=>({ready:Promise.resolve(sceneFor(data.model)),destroy(){}})});
+ const opening=view.open();for(let i=0;i<20&&!started;i++)await new Promise(resolve=>setImmediate(resolve));assert.equal(started,true);
+ view.close();pending.resolve((await fixtureImagery({scene:sceneFor(data.model)}).ready));await opening;assert.equal(f.layers.size,0);assert.equal(destroyed,1);view.destroy();
+});
+
+test('active native scene mounts field-centric camera controls and 2D button closes the lifecycle',async()=>{
+ const {parseHTML}=await import('linkedom'),{document}=parseHTML('<html><body><div id="map"></div></body></html>');
+ const f=mapFixture(),data=input(),scene=sceneFor(data.model),plane=structuredClone(f.camera());f.map.getContainer=()=>document.getElementById('map');let returned=0;
+ const view=createView({...data,map:f.map,onReturn2D:()=>returned++,sceneClientFactory:()=>({ready:Promise.resolve(scene),destroy(){}})});await view.open();
+ assert.deepEqual(f.camera().center,scene.reference.coordinate,'scene camera should initially pivot around field center');
+ const button=document.querySelector('[data-terrain-camera="return-2d"]');assert.ok(button,'native scene should expose return to 2D');button.click();
+ assert.equal(returned,1);assert.equal(f.layers.size,0);assert.deepEqual(f.camera(),plane);assert.equal(document.querySelector('.terrain-camera-controls'),null);view.destroy();
+});
+
+test('zoom imagery replacement is bounded, aborts obsolete requests and reuses the native GPU texture',async()=>{
+ const f=mapFixture(),data=input(),scene=sceneFor(data.model),clients=[];
+ const factory=options=>{const pending=deferred(),client={ready:pending.promise,destroyed:0,destroy(){this.destroyed++;},pending,zoom:Math.ceil(options.zoom)};clients.push(client);if(clients.length===1)pending.resolve({...awaitableAtlas(scene),zoom:client.zoom});return client;};
+ function awaitableAtlas(value){return {image:{width:256,height:256},width:256,height:256,coverage:[value.reference.anchor[0],value.reference.anchor[1],value.reference.anchor[0]+1e-6,value.reference.anchor[1]+1e-6],attribution:'Imagery fixture'};}
+ const view=createView({...data,map:f.map,imageryClientFactory:factory,sceneClientFactory:()=>({ready:Promise.resolve(scene),destroy(){}})});await view.open();
+ f.map.jumpTo({zoom:18});f.emit('moveend');f.emit('moveend');assert.equal(clients.length,2,'same pending resolution must reuse one request');
+ f.map.jumpTo({zoom:17});f.emit('moveend');assert.equal(clients[1].destroyed,1,'returning to current imagery cancels the obsolete load');
+ clients[1].pending.resolve({...awaitableAtlas(scene),zoom:18});await Promise.resolve();assert.equal(f.gpu.textures.length,1,'late cancelled request cannot replace the active texture');
+ f.map.jumpTo({zoom:19});f.emit('moveend');assert.equal(clients.length,3);clients[2].pending.resolve({...awaitableAtlas(scene),zoom:19});await Promise.resolve();
+ assert.equal(f.gpu.textures.length,2);assert.equal([...f.gpu.owned].filter(resource=>resource.kind==='texture').length,1);assert.equal(clients[0].destroyed,1);
+ view.destroy();assert.equal(clients[2].destroyed,1);assert.equal(f.gpu.owned.size,0);
 });

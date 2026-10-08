@@ -1,10 +1,10 @@
-import clipping from './vendor/polygon-clipping.js?v=1.3.2';
-import {toUTM} from './coordinate-system.js?v=1.3.2';
-import {getTerrainMesh,validateTerrainModel,terrainInputHash,MAX_TERRAIN_CELLS} from './terrain-model.js?v=1.3.2';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.2';
-import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.2';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
+import clipping from './vendor/polygon-clipping.js?v=1.3.3';
+import {toUTM} from './coordinate-system.js?v=1.3.3';
+import {getTerrainMesh,validateTerrainModel,terrainInputHash,MAX_TERRAIN_CELLS} from './terrain-model.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
+import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.3';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
 
 // Both modules only call each other's APIs after ESM initialization.
 const cache=new Map();
@@ -109,7 +109,7 @@ function elevationIndex(faces){
  * still requires intersection with its clip; affine extrema are summary only.
  * Cache entries are immutable and bounded by four entries/500000 created nodes.
  * Every hit charges its retained node count to the caller's cumulative budget.
- * @returns {import('./terrain-contour-contracts.js?v=1.3.1-prova.1').ContourDomain}
+ * @returns {import('./terrain-contour-contracts.js?v=1.3.3').ContourDomain}
  */
 export function createContourDomain({model,geometry,budget=createTerrainBudget({kind:'measure'})}={}){
  budget.check();

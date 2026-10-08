@@ -1,3 +1,4 @@
+import {releaseQuery} from './helpers/release-query.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -49,9 +50,9 @@ test('startup downloads the signed-in owner archive before creating the sync coo
 
 test('release cache-busts changed authentication and sync modules',()=>{
   const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
-  assert.match(app,/from '\.\/project-sync\.js\?v=1\.3\.1-prova\.1'/);
-  assert.match(app,/from '\.\/backend\.js\?v=1\.3\.1-prova\.1'/);
-  assert.match(app,/from '\.\/cloud\.js\?v=1\.3\.1-prova\.1'/);
-  assert.match(app,/from '\.\/local-projects\.js\?v=1\.3\.1-prova\.1'/);
+  assert.match(app,new RegExp(`from '${releaseQuery('./project-sync.js').source}'`));
+  assert.match(app,new RegExp(`from '${releaseQuery('./backend.js').source}'`));
+  assert.match(app,new RegExp(`from '${releaseQuery('./cloud.js').source}'`));
+  assert.match(app,new RegExp(`from '${releaseQuery('./local-projects.js').source}'`));
   assert.match(app,/from '\.\/auth-service\.js\?v=1\.2\.4'/);
 });

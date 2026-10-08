@@ -1,4 +1,4 @@
-import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.2';
+import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.3';
 
 function comparable(value) {
   if (Array.isArray(value)) return value.map(comparable);

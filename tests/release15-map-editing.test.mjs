@@ -1,3 +1,4 @@
+import {releaseQuery} from './helpers/release-query.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ const map = fs.readFileSync(new URL('../src/map.js', import.meta.url), 'utf8');
 
 test('release 15 cache-busts changed application assets', () => {
   assert.match(html, /styles\.css\?v=18/);
-  assert.match(html, /src\/app\.js\?v=1\.3\.1-prova\.1/);
+  assert.match(html, releaseQuery('src/app.js'));
 });
 
 test('map toolbar exposes an explicit perimeter vertex editing control', () => {

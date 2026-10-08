@@ -37,3 +37,12 @@ test('an exact kernel charges retained nodes once per budget, including a new-bu
  assert.equal(exactDomain(domain,second),kernel);assert.equal(second.nodes,7);
  assert.equal(exactDomain(domain,second),kernel);assert.equal(second.nodes,7);
 });
+
+test('normalized arithmetic preserves exact cross cancellation across large coprime and shared denominators',()=>{
+ const raw=(n,d)=>rational(n,d),aValues=[ZERO,ONE,Q(-.2),raw((1n<<257n)+1n,(1n<<129n)+3n),raw(23n,45n),raw(-17n,75n)];
+ for(const a of aValues)for(const b of aValues){
+  assert.deepEqual(add(a,b),raw(a.n*b.d+b.n*a.d,a.d*b.d));
+  assert.deepEqual(mul(a,b),raw(a.n*b.n,a.d*b.d));
+  if(b.n)assert.deepEqual(div(a,b),raw(a.n*b.d,a.d*b.n));
+ }
+});
