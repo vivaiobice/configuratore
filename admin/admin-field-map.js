@@ -1,7 +1,7 @@
 import {createFieldNameMarkers} from '../src/field-name-markers.js';
 import {satelliteStyle} from '../src/satellite-style.js?v=51';
-import {buildAdminFieldPreviewData} from './admin-map-data.js?v=1.3.1-prova.1';
-import {mountAdminCadastre} from './admin-cadastre.js?v=1.3.1-prova.1';
+import {buildAdminFieldPreviewData} from './admin-map-data.js?v=1.3.1';
+import {mountAdminCadastre} from './admin-cadastre.js?v=1.3.1';
 
 function validRing(ring){return Array.isArray(ring)&&ring.length>=4&&ring.every(point=>Array.isArray(point)&&Number.isFinite(Number(point[0]))&&Number.isFinite(Number(point[1])));}
 function collection(features=[]){return {type:'FeatureCollection',features};}

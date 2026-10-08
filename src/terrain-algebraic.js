@@ -1,4 +1,4 @@
-import {Q,ZERO,ONE,add,mul,div,neg,sign,rational,radicalBounds,numberBounds} from './terrain-exact.js?v=1.3.1-prova.1';
+import {Q,ZERO,ONE,add,mul,div,neg,sign,rational,radicalBounds,numberBounds} from './terrain-exact.js?v=1.3.1';
 
 const unresolved=detail=>Object.assign(new Error(detail),{status:'numeric-unresolved',detail});
 function integerSqrt(n) {

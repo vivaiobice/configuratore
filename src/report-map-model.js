@@ -1,4 +1,5 @@
-import {layoutSatelliteAnnotations} from './report-satellite.js?v=1.3.1-prova.1';
+import {layoutSatelliteAnnotations,projectReportExclusion,createReportExclusionSource} from './report-satellite.js?v=1.3.1';
+import {resolveTerrainExclusionPresentation,terrainExclusionPresentationVerified} from './terrain-exclusion-groups.js?v=1.3.1';
 import { sideMeasurements as measureSides } from './geometry.js?v=45';
 
 const MAX_MERCATOR_LAT = 85.05112878;
@@ -46,6 +47,9 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
   const viewportHeight = Math.max(1, Number(height) || 360);
   const safePadding = Math.max(0, Math.min(Number(padding) || 0, Math.min(viewportWidth, viewportHeight) / 2 - 1));
   const ring = normalizeRing(polygon);
+  // Recognize/validate group markers before the legacy permissive ring filter.
+  const items=Array.isArray(exclusions)?exclusions:[];
+  const views=resolveTerrainExclusionPresentation({exclusions:items,field:polygon});
   if (!ring.length) return invalidModel(viewportWidth, viewportHeight);
 
   const mercatorRing = ring.map(mercator);
@@ -76,7 +80,8 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
       const projected=coordinates.map(project);
       return {...row,coordinates:projected,start:projected[0],end:projected.at(-1)};
     });
-  const sourceExclusions = (Array.isArray(exclusions) ? exclusions : []).map((item, index) => {
+  const sourceExclusions = items.map((item, index) => {
+    if(item&&!Array.isArray(item)&&Object.hasOwn(item,'surfaceGroupVersion'))return null;
     const geometry = normalizeRing(Array.isArray(item) ? item : item?.geometry);
     if (!geometry.length) return null;
     return {
@@ -87,7 +92,12 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
       points: geometry
     };
   }).filter(Boolean);
-  const projectedExclusions = sourceExclusions.map((item) => ({...item,points:item.points.map(project)}));
+  for(const view of views){
+    if(!terrainExclusionPresentationVerified(view))throw Object.assign(new Error('Anteprima del gruppo di esclusione non verificata.'),{status:'invalid-surface-group'});
+    const owner=items.find(item=>item?.surfaceGroupOwner===true&&item?.id===view.ownerId&&item?.passageGroupId===view.groupId);
+    sourceExclusions.push(createReportExclusionSource(view,{type:owner.type,label:owner.label,widthM:owner.widthM}));
+  }
+  const projectedExclusions = sourceExclusions.map((item) => projectReportExclusion(item,project));
   const projectedSides = measureSides(ring).map((side) => ({
     ...side,
     point: project(side.midpoint),
@@ -116,7 +126,7 @@ export function buildReportMapModel({ polygon, rows = [], exclusions = [], width
 function refitTechnicalVectors(model,transform){
   return {...model,polygon:model.polygon.map(transform),
     rows:model.rows.map(row=>{const coordinates=row.coordinates.map(transform);return {...row,coordinates,start:coordinates[0],end:coordinates.at(-1)};}),
-    exclusions:model.exclusions.map(area=>({...area,points:area.points.map(transform)})),
+    exclusions:model.exclusions.map(area=>projectReportExclusion(area,transform)),
     sideMeasurements:model.sideMeasurements.map(side=>({...side,point:transform(side.point)}))};
 }
 

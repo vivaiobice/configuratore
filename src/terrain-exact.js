@@ -1,5 +1,6 @@
 // Exact rational constructions on frozen IEEE inputs. No tolerance predicates.
 // Geometry stays rational; lengths are finite sums of square roots of rationals.
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.1';
 const abs=n=>n<0n?-n:n;
 function gcd(a, b){
   a=abs(a);
@@ -255,9 +256,10 @@ export function exactDomain(domain, budget) {
       nativeBounds
     };
   });
-  const boundaries = domain.boundaries.map(boundary => ({
+  const canonical=canonicalCutDomainScope(domain);
+  const boundaries = (canonical?.boundaries??domain.boundaries).map(boundary => ({
     ...boundary,
-    coordinates:boundary.coordinatesXY.map(point=>{
+    coordinates:(canonical?boundary.coordinates:boundary.coordinatesXY).map(point=>{
       retain();
       return point.map(Q);
     })

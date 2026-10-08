@@ -14,17 +14,34 @@
  * @typedef {'adapt'|'measure'|'cut'|'restore'} TerrainOperationKind
  * @typedef {{phase:string,elapsedMs:number,remainingMs:number,nodeCount:number}} TerrainProgress
  * @typedef {{check:(nodeDelta?:number)=>void,phase:(name:string)=>void,
- * remainingMs:()=>number,timings:()=>Object<string,number>}} TerrainBudget
+ * remainingMs:()=>number,timings:()=>Object<string,number>,
+ * usage:()=>Readonly<{nodeCount:number,elapsedMs:number,remainingMs:number}>}} TerrainBudget
  * check() counts no nodes by default: nodeDelta counts generated or retained
  * geometry nodes, never CPU visits to faces. Nodes and deadlines are cumulative
  * across phases and candidates. timings() returns milliseconds by phase name;
  * onProgress receives TerrainProgress on phase changes.
+ * initialNodeCount carries already charged nodes without granting a new cap.
+ * usage() is an immutable copy for diagnostics/accounting only, never native
+ * validity evidence, persisted proposal data or geometry registration.
  * @typedef {{modelHash:string,crs:string,faces:Object[],boundaries:Object[],
  * spatialIndex:Object,elevationIndex:Object,geometry:Polygon|MultiPolygon}} ContourDomain
  * Faces contain XYZ vertices, an affine plane, adjacency and clipped portions.
  * @typedef {{axisId:string,portionId:string,levelM:number,ordinal:number,
  * components:Array<{faceIds:number[],coordinatesXY:XY[]}>}} ContourAxis
  * Components are continuous at a single level; clipping produces physical rows.
+ * New automatic certified-plane axes may explicitly use
+ * axisGeometryConvention:'source-domain-intersection-1'. The saved finite
+ * binary64 two-point source is authoritative; physical geometry is its exact
+ * intersection with axisGeometryBinding scope/model/CRS. Original scope is
+ * separately bound for perimeter ground trim. Complete bbox span/native plane
+ * support are proved at resolution, never trusted from submitted faceIds.
+ * Optional axisOperation:{kind:'source-parameter-intervals-1',intervals:XY[]}
+ * contains numeric source parameters only. Exact rational coordinates remain
+ * transient. Actual conservative ground trim excess is at most 1e-6 m.
+ * Rows with coordinateRole:'render-export-preview' bind sourceHash and operation;
+ * their coordinates are render/export approximations, never metric operands.
+ * Saved terrainDesign stores axisScopeGeometry/originalAxisScopeGeometry once.
+ * Absent markers retain literal semantics; unknown markers fail closed.
  * @typedef {{valid:boolean,lowerM:number,upperM:number,errorBoundM:number,
  * spans:Object[],exceptions:Object[],critical:Object[],unresolved:Object[]}} SpacingCertificate
  * Spans identify axis, direction, initial interval and face itinerary. An
@@ -87,9 +104,11 @@ export const TERRAIN_OPERATION_CAP_MS=Object.freeze({adapt:30000,measure:30000,r
  */
 export const TERRAIN_PORTION_GEOMETRY_KEYS=Object.freeze([
  'id','geometry','anchor','mode','orientationDeg','rowCurvePoints',
- 'maintainRowEquidistance','inheritedDesign','terrainDesign'
+ 'maintainRowEquidistance','inheritedDesign','terrainDesign','terrainScopeRecipe'
 ]);
 export const TERRAIN_EXCLUSION_GEOMETRY_KEYS=Object.freeze([
  'geometry','id','type','sourceAxis','widthM','widthBasis','modelHash',
- 'scopePortionId','scopeGeometry','passageGroupId'
+ 'scopePortionId','scopeGeometry','passageGroupId',
+ 'surfaceGroupVersion','surfaceGroupOwner','surfaceGeometry',
+ 'surfaceGeometryConvention','surfaceConstructionPolicy'
 ]);

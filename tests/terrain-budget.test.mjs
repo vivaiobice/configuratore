@@ -28,3 +28,25 @@ test('invalid budget configuration and node deltas cannot bypass limits',()=>{
  for(const options of [{kind:'unknown'},{kind:'adapt',deadlineMs:-1},{kind:'adapt',deadlineMs:NaN},{kind:'adapt',deadlineMs:Infinity}])assert.throws(()=>create({...options,clock:()=>0}),RangeError);
  const budget=create({kind:'adapt',clock:()=>0});for(const delta of [-1,.5,NaN,Infinity])assert.throws(()=>budget.check(delta),RangeError);
 });
+test('carried node count preserves the shared ceiling without granting a new allowance',()=>{
+ const budget=create({kind:'cut',initialNodeCount:499999,clock:()=>0});
+ budget.phase('continued-replay');budget.check(1);
+ assert.throws(()=>budget.check(1),{status:'budget-exceeded'});
+ const full=create({kind:'measure',initialNodeCount:500000,clock:()=>0});
+ full.check();assert.throws(()=>full.check(1),{status:'budget-exceeded'});
+});
+test('invalid carried counts are rejected before they can weaken cumulative accounting',()=>{
+ for(const initialNodeCount of [-1,.5,NaN,Infinity,500001,Number.MAX_SAFE_INTEGER,'1',null]){
+  assert.throws(()=>create({kind:'cut',initialNodeCount,clock:()=>0}),RangeError);
+ }
+});
+test('usage snapshots are immutable diagnostics and retain the actual reduced deadline',()=>{
+ let now=10;const budget=create({kind:'cut',deadlineMs:12,initialNodeCount:7,clock:()=>now});
+ assert.equal(typeof budget.usage,'function');
+ const first=budget.usage();assert.deepEqual(first,{nodeCount:7,elapsedMs:0,remainingMs:12});
+ assert.ok(Object.isFrozen(first));assert.throws(()=>{first.nodeCount=0;},TypeError);
+ now=15;budget.check(3);assert.deepEqual(budget.usage(),{nodeCount:10,elapsedMs:5,remainingMs:7});
+ assert.deepEqual(first,{nodeCount:7,elapsedMs:0,remainingMs:12});
+ now=22;assert.throws(()=>budget.check(),{status:'budget-exceeded'});
+ assert.deepEqual(budget.usage(),{nodeCount:10,elapsedMs:12,remainingMs:0});
+});

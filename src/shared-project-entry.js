@@ -1,6 +1,6 @@
-import { APP_CONFIG } from './config.js?v=1.3.1-prova.1';
-import { connectSupabase, createBackend } from './backend.js?v=1.3.1-prova.1';
-import { bootSharedProjectPage } from './shared-project.js?v=1.3.1-prova.1';
+import { APP_CONFIG } from './config.js?v=1.3.1';
+import { connectSupabase, createBackend } from './backend.js?v=1.3.1';
+import { bootSharedProjectPage } from './shared-project.js?v=1.3.1';
 import { createAuthService } from './auth-service.js?v=45';
 
 const client=await connectSupabase({url:APP_CONFIG.supabaseUrl,publishableKey:APP_CONFIG.supabasePublishableKey});

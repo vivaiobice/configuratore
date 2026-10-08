@@ -5,7 +5,8 @@ import vm from 'node:vm';
 
 // Execute the actual fullscreen controller with a small DOM boundary double.
 const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
-const controller=app.slice(app.indexOf("const mapWrap = document.querySelector"), app.indexOf("mobileUi = createMobileUI("));
+// Stop at the next controller boundary, before unrelated mobile project/release setup.
+const controller=app.slice(app.indexOf("const mapWrap = document.querySelector"), app.indexOf("function snapshotMobileTransaction()"));
 function setup(){
  class Node {
   constructor(){this.classes=new Set();this.attrs={};this.handlers={};this.classList={contains:c=>this.classes.has(c),toggle:(c,on)=>on?this.classes.add(c):this.classes.delete(c)};}

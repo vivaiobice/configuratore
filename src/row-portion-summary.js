@@ -1,5 +1,5 @@
-import {resolveRowPortions} from './row-portions.js?v=1.3.1-prova.1';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.1-prova.1';
+import {resolveRowPortions} from './row-portions.js?v=1.3.1';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.1';
 
 // Report only effective designs: saved controls may still use the inherited base.
 export function rowPortionDescriptors(field={},metrics={}){
@@ -17,7 +17,8 @@ export function rowPortionDescriptors(field={},metrics={}){
     const design=designs.get(portion.id)??saved.get(portion.id)??portion.terrainDesign;
     // followTerrain records the latest action; a retained automatic guide can
     // have followTerrain:false after another portion is recalculated.
-    const terrainGuide=applied&&(design?.guide==='native-contour-distance-family'||Array.isArray(design?.guideCoordinates)&&design.guideCoordinates.length>=2);
+    const terrainGuide=applied&&(design?.guide==='native-contour-distance-family'||Array.isArray(design?.guideCoordinates)&&design.guideCoordinates.length>=2
+      ||design?.algorithmVersion==='terrain-contour-family-1'&&design.mode==='adapt'&&Array.isArray(design.axes)&&design.axes.length>0);
     return {id:portion.id,label:portion.label||`Porzione ${index+1}`,
       mode:portion.mode,orientationDeg:terrainGuide?null:Number(portion.orientationDeg)||0,
       curved:terrainGuide?null:normalizeRowCurvePoints(portion.rowCurvePoints).some(point=>Math.abs(point.offsetM)>0),

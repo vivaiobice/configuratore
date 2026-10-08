@@ -1,8 +1,8 @@
-import {terrainReportMetadata} from './terrain-report-summary.js?v=1.3.1-prova.1';
-import {rowPortionDescriptors,hasTerrainGuide} from './row-portion-summary.js?v=1.3.1-prova.1';
+import {terrainReportMetadata,terrainReportMetricMetadata} from './terrain-report-summary.js?v=1.3.1';
+import {rowPortionDescriptors,hasTerrainGuide} from './row-portion-summary.js?v=1.3.1';
 import {soilProfileIsCurrent} from './soil.js';
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
-import { ensureProjectFields } from './fields.js?v=1.3.1-prova.1';
+import { ensureProjectFields } from './fields.js?v=1.3.1';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',
@@ -16,7 +16,7 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
   const contact = state?.contact ?? null;
   const contextType = project.projectContextType || '';
   const terrain=terrainReportMetadata(metrics);
-  const metric=value=>value??(terrain?.status==='invalid'?null:0);
+  const metric=value=>terrain?.status==='invalid'?null:value??(terrain?null:0);
   const portions=rowPortionDescriptors(project,metrics);
 
   return {
@@ -46,7 +46,7 @@ export function projectToPdfModel({ state, metrics = {}, publicCode = '', genera
     } : null,
     geometry: {
       areaM2: metric(metrics.areaM2),
-      netAreaM2: metric(metrics.netAreaM2 ?? metrics.areaM2),
+      netAreaM2: metric(terrain?metrics.netAreaM2:metrics.netAreaM2 ?? metrics.areaM2),
       headlandAreaM2: metric(metrics.headlandAreaM2),
       perimeterM: metric(metrics.perimeterM),
       vertexCount: metric(metrics.vertexCount),
@@ -99,7 +99,7 @@ const COMPANY={
 };
 
 function n(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);}
-function total(fields,path){return fields.some(field=>field.terrain?.status==='invalid')?null:fields.reduce((sum,field)=>sum+(n(path(field))??0),0);}
+function total(fields,path){return fields.some(field=>field.terrain?.status==='invalid'||n(path(field))===null)?null:fields.reduce((sum,field)=>sum+n(path(field)),0);}
 function closedRing(value){
   if(!Array.isArray(value)||value.length<4)return false;
   const first=value[0],last=value.at(-1);
@@ -111,7 +111,7 @@ function unique(values){return [...new Set(values.map(value=>String(value??'').t
 function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=null){
   const geometryValid=closedRing(field.geometry);
   const terrain=terrainReportMetadata(metrics);
-  const metric=value=>n(value)??(terrain?.status==='invalid'?null:0);
+  const metric=value=>terrain?.status==='invalid'?null:n(value)??(terrain?null:0);
   const portions=rowPortionDescriptors(field,metrics);
   return {
     id:String(field.id||field.clientFieldId||`field-${index+1}`),
@@ -145,8 +145,8 @@ function reportField(field,index,metrics={},mapAssets={},projectCampaignYear=nul
     context:{type:field.projectContextType||'',label:CONTEXT_LABELS[field.projectContextType]||'',note:field.projectContextNote||''},
     notes:field.materialRequestNote||'',
     metrics:{
-      ...(terrain?{terrainStatus:terrain.status,terrainSource:terrain.source,quantityBasis:terrain.quantityBasis,surfaceRowLinearM:terrain.surfaceRowLinearM,horizontalRowLinearM:terrain.horizontalRowLinearM,surfaceAreaM2:terrain.surfaceAreaM2,surfaceNetAreaM2:terrain.surfaceNetAreaM2,surfaceHeadlandAreaM2:terrain.surfaceHeadlandAreaM2}:{}),
-      grossAreaM2:metric(metrics.areaM2),netAreaM2:metric(metrics.netAreaM2??metrics.areaM2),
+      ...terrainReportMetricMetadata(metrics),
+      grossAreaM2:metric(metrics.areaM2),netAreaM2:metric(terrain?metrics.netAreaM2:metrics.netAreaM2??metrics.areaM2),
       headlandAreaM2:metric(metrics.headlandAreaM2),perimeterM:metric(metrics.perimeterM),
       vertexCount:metric(metrics.vertexCount),rowCount:metric(metrics.rowCount),
       rowLinearM:metric(metrics.rowLinearM),theoreticalPlants:metric(metrics.theoreticalPlants),

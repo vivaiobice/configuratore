@@ -1,17 +1,20 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
 import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.4';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.1-prova.1';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.1-prova.1';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.1';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.1';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
-import { installTrackpadRotation } from './map-gestures.js?v=49';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.1-prova.1';
+import {installTrackpadRotation,createMapGesturePolicy} from './map-gestures.js?v=1.3.1';
+import {createMapTerrainControl} from './map-terrain-control.js?v=1.3.1';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.1';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
-import {portionAtCoordinate} from './row-portions.js?v=1.3.1-prova.1';
-import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.1-prova.1';
-import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.1-prova.1';
-import {regeneratePassage,reshapeExclusion} from './passage-coordinates.js?v=1.3.1-prova.1';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.1';
+import {portionAtCoordinate} from './row-portions.js?v=1.3.1';
+import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.1';
+import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.1';
+import {regeneratePassage,reshapeExclusion,nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.1';
+import {mapTerrainExclusionFeatures} from './map-terrain-exclusions.js?v=1.3.1';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.1';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
@@ -34,6 +37,11 @@ const OTHER_FIELDS_LINE_ID = 'other-project-fields-line';
 const OTHER_ROWS_SOURCE_ID = 'other-project-rows';
 const OTHER_ROWS_LAYER_ID = 'other-project-rows-line';
 const PORTIONS_SOURCE_ID='row-portions';
+const TERRAIN_PREVIEW_ROWS_SOURCE_ID='terrain-proposal-rows';
+const TERRAIN_PREVIEW_ROWS_LAYER_ID='terrain-proposal-rows-line';
+const TERRAIN_PREVIEW_CUT_SOURCE_ID='terrain-proposal-cut';
+const TERRAIN_PREVIEW_CUT_FILL_ID='terrain-proposal-cut-fill';
+const TERRAIN_PREVIEW_CUT_LINE_ID='terrain-proposal-cut-line';
 
 function baseStyle() {
   return {
@@ -55,7 +63,7 @@ function baseStyle() {
   };
 }
 
-export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onExclusionsReplace = () => {}, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, onDraftChange = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {} }) {
+export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd = () => {}, onExclusionChange = () => {}, onExclusionsReplace = () => {}, onNativePassageEndpointRequest = null, getNativePassageEditContext = () => null, onRowCurvePointsChange = () => {}, onCadastralState = () => {}, onCadastralIdentifyState = () => {}, onStatus = () => {}, onReady = () => {}, onDrawingState = () => {}, onEditingState = () => {}, onVertexRemovalState = () => {}, onDraftChange = () => {}, requiresLinearConfirmation = () => false, enableTouchRotation = () => false, allowPanWhileEditing = () => false, onFieldSelect = () => {}, onTerrainToggle = () => {} }) {
   if (!globalThis.maplibregl) throw new Error('MapLibre GL non disponibile');
 
   const map = new globalThis.maplibregl.Map({
@@ -63,7 +71,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     style: baseStyle(),
     center: [8.225, 44.709],
     zoom: 12.8,
-    pitchWithRotate: false,
+    pitchWithRotate: true,
     dragRotate: false,
     attributionControl: true
   });
@@ -81,16 +89,26 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   map.dragRotate.disable?.();
   map.touchZoomRotate.enable();
   map.touchPitch?.disable?.();
-  installTrackpadRotation(map, { touchRotation:enableTouchRotation() });
+  const wheelPolicy=installTrackpadRotation(map,{touchRotation:enableTouchRotation()});
+  const gesturePolicy=createMapGesturePolicy({map,touchRotation:wheelPolicy});
+  const terrainControl=createMapTerrainControl({map,onToggle:onTerrainToggle});
+  map.on('remove',()=>{gesturePolicy.destroy();wheelPolicy();terrainControl.destroy();});
 
   let draw = null;
   let searchMarker = null;
   let gpsMarker = null;
   let sideMeasurementMarkers = [];
+  let publishedProjectGeometrySource = null;
+  let publishedProjectGeometry = null;
+  let projectGeometryPublished = false;
+  let measuredGeometry = null;
+  let measurementsPublished = false;
   let manualDrawing = false;
   let manualMode = 'perimeter';
   let committedGeometry = null;
   let currentExclusions = [];
+  let savedRows = [];
+  let terrainProposalPreview = null;
   let currentOtherFields = [];
   let manualVertices = [];
   let manualHover = null;
@@ -106,17 +124,22 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let editableFeatureId = null;
   let vertexEditing = false;
   let editingExclusionId = null;
+  let nativePassageEdit = null;
   let editRing = null;
   let editMarkers = [];
   const coordinateEditor=createCoordinateEditor({document:globalThis.document});
   let coordinateAction=null,coordinateVersion=0;
   function closeCoordinates(){coordinateAction?.remove?.();coordinateAction=null;coordinateEditor.close();}
-  function offerCoordinates(element,coordinate,title,onApply){
+  function offerCoordinates(element,coordinate,title,onApply,contextCurrent=()=>true,nativeDialog=false){
     closeCoordinates();const version=coordinateVersion;
-    const isCurrent=()=>vertexEditing&&version===coordinateVersion;
+    const isCurrent=()=>vertexEditing&&version===coordinateVersion&&contextCurrent();
     const action=document.createElement('button');action.type='button';action.className='vertex-coordinate-action';action.textContent='Coordinate';
     const rect=element.getBoundingClientRect?.();if(rect){action.style.left=`${Math.max(8,Math.min(rect.left,globalThis.innerWidth-120))}px`;action.style.top=`${Math.max(8,Math.min(rect.bottom+5,globalThis.innerHeight-52))}px`;}
-    action.addEventListener('click',event=>{event.stopPropagation?.();if(!isCurrent()){closeCoordinates();return;}action.remove();coordinateAction=null;coordinateEditor.open({coordinate,title,isCurrent,onApply,trigger:element});});
+    action.addEventListener('click',event=>{
+      event.stopPropagation?.();if(!isCurrent()){closeCoordinates();return;}action.remove();coordinateAction=null;
+      const dismissal=nativeDialog?new AbortController():null;
+      coordinateEditor.open({coordinate,title,isCurrent,trigger:element,onApply:dismissal?(point,control)=>onApply(point,{...control,dismissSignal:dismissal.signal}):onApply,...(dismissal?{onClose:()=>dismissal.abort()}:{})});
+    });
     document.body.append(action);coordinateAction=action;action.focus?.();
   }
   let linearFinishPending = false;
@@ -210,11 +233,28 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       : null;
   }
 
+  function sameCoordinateRing(first, second) {
+    if (first === null || second === null) return first === second;
+    return Array.isArray(first) && Array.isArray(second) && first.length === second.length
+      && first.every((point, index) => Array.isArray(point) && Array.isArray(second[index])
+        && point.length === second[index].length
+        && point.every((value, axis) => Object.is(value, second[index][axis])));
+  }
+
+  function copyCoordinateRing(coords) {
+    return Array.isArray(coords) ? coords.map(point => Array.isArray(point) ? [...point] : point) : null;
+  }
+
   function updateProjectGeometrySource(coords) {
     const source = map.getSource(PROJECT_GEOMETRY_SOURCE_ID);
     if (!source) return;
     const feature = projectFeature(coords);
+    const geometry = feature ? coords : null;
+    if (projectGeometryPublished && source === publishedProjectGeometrySource && sameCoordinateRing(geometry, publishedProjectGeometry)) return;
     source.setData(feature ? { type:'FeatureCollection', features:[feature] } : emptyCollection());
+    publishedProjectGeometrySource = source;
+    publishedProjectGeometry = copyCoordinateRing(geometry);
+    projectGeometryPublished = true;
   }
 
   function manualDraftCollection() {
@@ -522,6 +562,11 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     map.addSource(EXCLUSIONS_SOURCE_ID, { type:'geojson', data:emptyCollection() });
     map.addLayer({ id:EXCLUSIONS_FILL_ID, type:'fill', source:EXCLUSIONS_SOURCE_ID, paint:{ 'fill-color':'#8a3f32', 'fill-opacity':0.22 } });
     map.addLayer({ id:EXCLUSIONS_LINE_ID, type:'line', source:EXCLUSIONS_SOURCE_ID, paint:{ 'line-color':'#fff1e7', 'line-width':2.5, 'line-dasharray':[1.5,1] } });
+    map.addSource(TERRAIN_PREVIEW_ROWS_SOURCE_ID,{type:'geojson',data:emptyCollection()});
+    map.addLayer({id:TERRAIN_PREVIEW_ROWS_LAYER_ID,type:'line',source:TERRAIN_PREVIEW_ROWS_SOURCE_ID,paint:{'line-color':'#ffe18c','line-width':2,'line-opacity':.95}});
+    map.addSource(TERRAIN_PREVIEW_CUT_SOURCE_ID,{type:'geojson',data:emptyCollection()});
+    map.addLayer({id:TERRAIN_PREVIEW_CUT_FILL_ID,type:'fill',source:TERRAIN_PREVIEW_CUT_SOURCE_ID,paint:{'fill-color':'#f0bb5b','fill-opacity':.25}});
+    map.addLayer({id:TERRAIN_PREVIEW_CUT_LINE_ID,type:'line',source:TERRAIN_PREVIEW_CUT_SOURCE_ID,paint:{'line-color':'#ffe18c','line-width':3}});
     map.addSource(MANUAL_DRAW_SOURCE_ID, { type:'geojson', data:emptyCollection() });
     map.addLayer({ id:MANUAL_DRAW_FILL_ID, type:'fill', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'fill'], paint:{ 'fill-color':'#d5e5c5', 'fill-opacity':0.22 } });
     map.addLayer({ id:MANUAL_DRAW_LINE_ID, type:'line', source:MANUAL_DRAW_SOURCE_ID, filter:['==', ['get','kind'], 'line'], layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':3, 'line-dasharray':[1,1] } });
@@ -530,12 +575,18 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     for(const callback of [...editorReadyTasks]){editorReadyTasks.delete(callback);callback();}
     renderOtherFieldLabels();
     overlayVisibility.refresh();
+    refreshTerrainPreviewVisibility();
     cadastralOverlay.refresh();
     onReady();
   });
 
 
   function updateSideMeasurements(coords) {
+    const geometry = Array.isArray(coords) ? coords : null;
+    if (measurementsPublished && sameCoordinateRing(geometry, measuredGeometry)) {
+      overlayVisibility.refresh();
+      return;
+    }
     const measurements = sideMeasurements(coords);
     for (const marker of sideMeasurementMarkers) marker.remove();
     sideMeasurementMarkers = [];
@@ -550,15 +601,15 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
         .addTo(map);
       sideMeasurementMarkers.push(marker);
     }
+    measuredGeometry = copyCoordinateRing(geometry);
+    measurementsPublished = true;
     overlayVisibility.refresh();
   }
 
   function exclusionFeatureCollection(exclusions = currentExclusions) {
-    return { type:'FeatureCollection', features:(exclusions ?? []).map((item, index) => {
-      const geometry = Array.isArray(item) ? item : item?.geometry;
-      if (!Array.isArray(geometry) || geometry.length < 4) return null;
-      return { type:'Feature', id:item?.id ?? index, properties:{ label:item?.label ?? `Area esclusa ${index + 1}` }, geometry:{ type:'Polygon', coordinates:[geometry] } };
-    }).filter(Boolean) };
+    const result=mapTerrainExclusionFeatures({exclusions,field:committedGeometry});
+    if(result.status!=='ready')onStatus('Alcuni passaggi non possono essere verificati e non sono mostrati sulla mappa.');
+    return result.featureCollection;
   }
 
   function setExclusions(exclusions = []) {
@@ -566,8 +617,16 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     const after=exclusions?.find?.(item=>item.id===editingExclusionId);
     const changed=vertexEditing&&editingExclusionId!==null&&JSON.stringify(before)!==JSON.stringify(after);
     currentExclusions = Array.isArray(exclusions) ? exclusions : [];
-    map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());
+    whenEditorReady(()=>map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection()));
+    if(nativePassageEdit){if(!nativePassageEditCurrent())stopVertexEditing();return;}
     if(changed){if(after?.geometry){editRing=after.geometry.map(p=>[...p]);renderEditHandles();}else stopVertexEditing();}
+  }
+
+  function nativePassageEditFingerprint(){
+    return JSON.stringify({exclusions:currentExclusions,field:committedGeometry,context:getNativePassageEditContext()});
+  }
+  function nativePassageEditCurrent(){
+    try{return !!nativePassageEdit&&nativePassageEdit.fingerprint===nativePassageEditFingerprint();}catch{return false;}
   }
 
   function otherFieldsFeatureCollection(fields = currentOtherFields) {
@@ -648,7 +707,12 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     updateSideMeasurements(committedGeometry);
     if (map.getLayer(PROJECT_GEOMETRY_LINE_ID)) {
       overlayVisibility.refresh();
-      try { map.moveLayer?.(PROJECT_GEOMETRY_LINE_ID); } catch {}
+      // Moving an already-last layer still emits styledata in MapLibre 4.7.1.
+      // Inspect public order so this repair does not invalidate itself forever.
+      const order = map.getLayersOrder?.() ?? map.getStyle?.()?.layers?.map(layer => layer.id);
+      if (Array.isArray(order) && order.at(-1) !== PROJECT_GEOMETRY_LINE_ID) {
+        try { map.moveLayer?.(PROJECT_GEOMETRY_LINE_ID); } catch {}
+      }
     }
   }
 
@@ -735,6 +799,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     committedGeometry = coords;
     const apply = () => {
       updateProjectGeometrySource(coords);
+      map.getSource(EXCLUSIONS_SOURCE_ID)?.setData(exclusionFeatureCollection());
       if (draw && !drawEditingSuspended) {
         try { draw.deleteAll({ silent:true }); } catch { draw.deleteAll(); }
         const ids = draw.add({
@@ -803,6 +868,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     const wasEditing = vertexEditing;
     vertexEditing = false;
     editingExclusionId = null;
+    nativePassageEdit = null;
     editRing = null;
     if (wasEditing) { map.dragPan.enable(); onEditingState({active:false}); }
   }
@@ -810,22 +876,37 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function beginExclusionEditing(id) {
     const item = currentExclusions.find(x=>x.id===id);
     if (!item?.geometry) return false;
+    let nativeGroup=null,nativeFingerprint=null;
+    if(nativePassageFamilyPresent(currentExclusions,id)){
+      try{
+        if(currentExclusions.filter(member=>member?.id===id).length!==1)throw new Error('Identità del passaggio ambigua.');
+        nativeGroup=resolveTerrainExclusionGroups({exclusions:currentExclusions,field:committedGeometry}).groups.find(group=>group.members.some(member=>member.id===id));
+        if(!nativeGroup||nativeGroup.owner.surfaceGeometryConvention!=='domain-intersection')throw new Error('Estremi originali del passaggio non disponibili.');
+        nativeFingerprint=nativePassageEditFingerprint();
+      }catch{onStatus('Il passaggio sul terreno non è verificabile. Ripristina il progetto prima di modificarlo.');return false;}
+    }
     if (manualDrawing) cancelManualDrawing();
     stopVertexEditing();
     clearVertexRemovalMarkers();
     editingExclusionId = id;
-    editRing = item.geometry.map(p=>[...p]);
+    editRing = nativeGroup?null:item.geometry.map(p=>[...p]);
+    if(nativeGroup)nativePassageEdit={group:nativeGroup,fingerprint:nativeFingerprint};
     vertexEditing = true;
     draw?.deleteAll({silent:true});
     if (allowPanWhileEditing()) map.dragPan.enable();
     else map.dragPan.disable();
     onEditingState({active:true, exclusionId:id});
     renderEditHandles();
-    onStatus('Modifica zona esclusa: trascina i vertici o aggiungi punti con +. Poi “Fine modifica”.');
+    onStatus(nativeGroup?'Modifica gli estremi A e B del passaggio sul terreno.':'Modifica zona esclusa: trascina i vertici o aggiungi punti con +. Poi “Fine modifica”.');
     return true;
   }
 
   function publishEditRing() {
+    if(editingExclusionId!==null&&nativePassageFamilyPresent(currentExclusions,editingExclusionId)){
+      const target=currentExclusions.find(item=>item.id===editingExclusionId);
+      if(JSON.stringify(editRing)!==JSON.stringify(target?.geometry))onStatus('Modifica il passaggio sul terreno tramite gli estremi A e B.');
+      return;
+    }
     const ring = editRing.map(p=>[...p]);
     if (editingExclusionId !== null) {
       const target=currentExclusions.find(item=>item.id===editingExclusionId);
@@ -846,6 +927,26 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     coordinateVersion++;closeCoordinates();
     for (const marker of editMarkers) marker.remove();
     editMarkers = [];
+    if(vertexEditing&&nativePassageEdit){
+      if(!nativePassageEditCurrent()){stopVertexEditing();return;}
+      const editingId=editingExclusionId,baseline=nativePassageEdit;
+      baseline.group.owner.sourceAxis.forEach((point,index)=>{
+        const element=document.createElement('button');element.type='button';element.className='passage-endpoint-handle';element.textContent=index===0?'A':'B';element.setAttribute('aria-label',`Coordinate estremo ${index===0?'iniziale':'finale'} del passaggio`);
+        element.addEventListener('click',event=>{
+          event.preventDefault?.();event.stopPropagation?.();
+          if(nativePassageEdit!==baseline||!nativePassageEditCurrent()){stopVertexEditing();return;}
+          offerCoordinates(element,point,`Coordinate estremo ${index===0?'A':'B'}`,async(coordinate,{signal,dismissSignal})=>{
+            if(signal.aborted||nativePassageEdit!==baseline||!nativePassageEditCurrent())throw new Error('Il contesto del passaggio è cambiato.');
+            if(typeof onNativePassageEndpointRequest!=='function')throw new Error('Il ricalcolo del passaggio non è disponibile.');
+            const result=await onNativePassageEndpointRequest({exclusionId:editingId,endpointIndex:index,coordinate:[...coordinate]},{signal,dismissSignal});
+            if(result!==true&&result?.ok!==true)throw new Error('Non è stato possibile aggiornare il passaggio sul terreno.');
+            return result;
+          },()=>nativePassageEdit===baseline&&nativePassageEditCurrent(),true);
+        });
+        editMarkers.push(new globalThis.maplibregl.Marker({element}).setLngLat(point).addTo(map));
+      });
+      return;
+    }
     if (!vertexEditing || !editRing) return;
     const points = editRing.slice(0,-1);
     points.forEach((point,index)=>{
@@ -1019,8 +1120,43 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   function setRows(rows) {
+    savedRows=Array.isArray(rows)?rows:[];
     const source = map.getSource(ROWS_SOURCE_ID);
-    source?.setData(rowsToFeatureCollection(rows));
+    source?.setData(rowsToFeatureCollection(terrainProposalPreview?[]:savedRows));
+  }
+
+  function refreshTerrainPreviewVisibility(){
+    const visibility=overlayVisibility.state();
+    for(const [id,key] of [[TERRAIN_PREVIEW_ROWS_LAYER_ID,'schema'],[TERRAIN_PREVIEW_CUT_FILL_ID,'field'],[TERRAIN_PREVIEW_CUT_LINE_ID,'field']]){
+      const layer=map.getLayer(id);if(!layer)continue;
+      const value=visibility[key]?'visible':'none',current=map.getLayoutProperty?.(id,'visibility')??layer.layout?.visibility??'visible';
+      if(current!==value)map.setLayoutProperty?.(id,'visibility',value);
+    }
+  }
+  function setTerrainProposalPreview(proposal){
+    if(proposal==null&&terrainProposalPreview===null)return true;
+    let candidate=null;
+    if(proposal!=null){
+      if(proposal.ok!==true||!Array.isArray(proposal.result?.rows))return false;
+      let cut=emptyCollection();
+      if(proposal.kind==='cut'){
+        const exclusions=proposal.projectPatch?.exclusions,groupId=proposal.cutOperation?.groupId;
+        if(!Array.isArray(exclusions)||typeof groupId!=='string')return false;
+        const resolved=mapTerrainExclusionFeatures({exclusions,field:committedGeometry});
+        if(resolved.status!=='ready')return false;
+        cut={type:'FeatureCollection',features:resolved.featureCollection.features.filter(feature=>feature.properties.groupId===groupId)};
+        if(!cut.features.length)return false;
+      }
+      candidate={rows:rowsToFeatureCollection(proposal.result.rows),cut};
+    }
+    terrainProposalPreview=candidate;
+    whenEditorReady(()=>{
+      map.getSource(ROWS_SOURCE_ID)?.setData(rowsToFeatureCollection(terrainProposalPreview?[]:savedRows));
+      map.getSource(TERRAIN_PREVIEW_ROWS_SOURCE_ID)?.setData(terrainProposalPreview?.rows??emptyCollection());
+      map.getSource(TERRAIN_PREVIEW_CUT_SOURCE_ID)?.setData(terrainProposalPreview?.cut??emptyCollection());
+      refreshTerrainPreviewVisibility();
+    });
+    return true;
   }
 
   function showSearchResult(result){
@@ -1081,6 +1217,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   map.on('moveend', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals();onDraftChange(); });
   map.on('resize', () => { const policy=cadastralOverlay.refresh();syncCadastralIdentifier(policy);ensureCommittedVisuals(); });
   map.on('styledata', ensureCommittedVisuals);
+  map.on('styledata',refreshTerrainPreviewVisibility);
   map.on('idle', ensureCommittedVisuals);
 
   function locate() {
@@ -1131,7 +1268,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   function capturePendingEdit(){
     const center=map.getCenter?.();
     return {drawing:manualDrawing,mode:manualMode,vertices:manualVertices.map(point=>[...point]),previousPerimeter:previousPerimeter?.map(point=>[...point])??null,
-      vertexEditing,editingExclusionId,editRing:editRing?.map(point=>[...point])??null,vertexRemovalActive,curveEditing:rowCurveEditor.active,
+      vertexEditing,editingExclusionId,editRing:editRing?.map(point=>[...point])??null,...(nativePassageEdit?{nativePassageEditing:true}:{}),vertexRemovalActive,curveEditing:rowCurveEditor.active,
       camera:center&&Number.isFinite(map.getZoom?.())?{center:[center.lng,center.lat],zoom:map.getZoom(),bearing:map.getBearing?.()??0}:null};
   }
   function restorePendingEdit(snapshot){
@@ -1143,6 +1280,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       manualMode=snapshot.mode;previousPerimeter=snapshot.previousPerimeter??null;
       if(manualMode==='perimeter'){committedGeometry=null;updateProjectGeometrySource(null);updateSideMeasurements(null);}
       manualVertices=snapshot.vertices.map(point=>[...point]);manualHover=null;suspendDrawEditing();renderManualDraft();setDrawingActive(true);
+    }else if(snapshot.vertexEditing&&snapshot.editingExclusionId&&nativePassageFamilyPresent(currentExclusions,snapshot.editingExclusionId)){
+      if(snapshot.nativePassageEditing!==true||snapshot.editRing!==null)return false;
+      if(!beginExclusionEditing(snapshot.editingExclusionId))return false;
     }else if(snapshot.vertexEditing&&Array.isArray(snapshot.editRing)&&snapshot.editRing.length>=4){
       const started=snapshot.editingExclusionId?beginExclusionEditing(snapshot.editingExclusionId):beginVertexEditing();
       if(started){editRing=snapshot.editRing.map(point=>[...point]);renderEditHandles();}
@@ -1152,5 +1292,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
     return true;
   }
-  return { map, draw, setOverlayVisibility:overlayVisibility.set, getOverlayVisibility:overlayVisibility.state, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
+  return { map, draw, gesturePolicy, terrainControl, setOverlayVisibility:next=>{const state=overlayVisibility.set(next);refreshTerrainPreviewVisibility();return state;}, getOverlayVisibility:overlayVisibility.state, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, setTerrainProposalPreview, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
 }

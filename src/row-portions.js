@@ -1,5 +1,7 @@
-import clipping from './vendor/polygon-clipping.js?v=1.3.1-prova.1';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.1-prova.1';
+import clipping from './vendor/polygon-clipping.js?v=1.3.1';
+import {terrainSurfaceGroupsPresent,resolveTerrainUsablePresentation,rankTerrainUsablePortionOverlaps} from './terrain-exclusion-groups.js?v=1.3.1';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.1';
 
 const clone=value=>JSON.parse(JSON.stringify(value));
 const topologyCache=new Map();
@@ -113,14 +115,16 @@ function design(p,fallback){
   return {mode:inherited?'inherited':'local',...result,...(inherited?{inheritedDesign:clone(result)}:{})};
 }
 
-export function resolveRowPortions({polygon,exclusions=[],rowPortions=[],orientationDeg=0,rowCurvePoints=[],maintainRowEquidistance=true}={}){
-  const geometries=topology(polygon,exclusions);
+export function resolveRowPortions({polygon,exclusions=[],rowPortions=[],orientationDeg=0,rowCurvePoints=[],maintainRowEquidistance=true,budget}={}){
+  const strict=terrainSurfaceGroupsPresent(exclusions),operationBudget=strict?(budget??createTerrainBudget({kind:'cut'})):budget;
+  const usable=strict?resolveTerrainUsablePresentation({exclusions,field:polygon,budget:operationBudget}):null;
+  const geometries=strict?usable.geometry.coordinates:topology(polygon,exclusions);
   if(!geometries.length)return [];
   const fallback={orientationDeg:Number(orientationDeg)||0,rowCurvePoints:normalizeRowCurvePoints(rowCurvePoints),maintainRowEquidistance:maintainRowEquidistance!==false};
   const saved=(Array.isArray(rowPortions)?rowPortions:[]).filter(p=>p&&typeof p.id==='string'&&Array.isArray(p.geometry)&&p.geometry.length&&p.geometry.every(r=>ring(r)));
-  const overlaps=geometries.map(g=>saved.map(p=>{try{return clipping.intersection(g,p.geometry).reduce((sum,component)=>sum+area(component),0);}catch{return 0;}}));
+  const overlaps=strict?null:geometries.map(g=>saved.map(p=>{try{return clipping.intersection(g,p.geometry).reduce((sum,component)=>sum+area(component),0);}catch{return 0;}}));
   // Match the largest overlaps globally; array order never transfers an identity.
-  const pairs=overlaps.flatMap((scores,i)=>scores.map((score,j)=>({i,j,score}))).filter(p=>p.score>1e-18).sort((a,b)=>b.score-a.score||saved[a.j].id.localeCompare(saved[b.j].id)||a.i-b.i);
+  const pairs=strict?rankTerrainUsablePortionOverlaps(usable,saved,{budget:operationBudget}):overlaps.flatMap((scores,i)=>scores.map((score,j)=>({i,j,score}))).filter(p=>p.score>1e-18).sort((a,b)=>b.score-a.score||saved[a.j].id.localeCompare(saved[b.j].id)||a.i-b.i);
   const assigned=new Map(),used=new Set();
   for(const p of pairs)if(!assigned.has(p.i)&&!used.has(p.j)){assigned.set(p.i,p.j);used.add(p.j);}
   const ids=new Set(saved.map(p=>p.id));
@@ -133,7 +137,7 @@ export function resolveRowPortions({polygon,exclusions=[],rowPortions=[],orienta
     const chosen=design(source,fallback);
     const signatures=new Set(matches.map(p=>JSON.stringify(design(saved[p.j],fallback))));
     const conflict=signatures.size>1?{type:'merged-layouts',portionIds:matches.map(p=>saved[p.j].id).sort(),selectedPortionId:source.id}:source?.conflict;
-    return {id,label:(assigned.has(index)&&source?.label)||newLabel(),geometry,anchor:interiorAnchor(geometry),...chosen,...(source?.terrainDesign?{terrainDesign:clone(source.terrainDesign)}:{}),...(conflict?{conflict:clone(conflict)}:{})};
+    return {id,label:(assigned.has(index)&&source?.label)||newLabel(),geometry,anchor:interiorAnchor(geometry),...chosen,...(source?.terrainDesign?{terrainDesign:clone(source.terrainDesign)}:{}),...(strict&&source&&Object.hasOwn(source,'terrainScopeRecipe')?{terrainScopeRecipe:clone(source.terrainScopeRecipe)}:{}),...(conflict?{conflict:clone(conflict)}:{})};
   });
 }
 

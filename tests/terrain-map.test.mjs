@@ -1,5 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {encodeTerrainHeight,buildTerrainTilePixels,createTerrainMapView} from '../src/terrain-map.js';
+import {encodeTerrainHeight,buildTerrainTilePixels,createTerrainMapView as realCreateTerrainMapView} from '../src/terrain-map.js';
+// This fixture replaces only the browser worker boundary; production has no main-thread tile path.
+function createTerrainMapView(options){return realCreateTerrainMapView({...options,tileClientFactory:options.tileClientFactory??(()=>({ready:Promise.resolve({bounds:options.bounds}),tile:coordinates=>options.encodePNG(buildTerrainTilePixels(coordinates,options.heightAt),coordinates.size),destroy(){}}))});}
 test('local DEM tiles encode heights from the supplied frozen surface only',()=>{
  const pixels=buildTerrainTilePixels({z:0,x:0,y:0,size:2},coordinate=>coordinate[0]<0?120.25:321.5);
  assert.equal(pixels.length,16);const decode=i=>(pixels[i]*256+pixels[i+1]+pixels[i+2]/256)-32768;
@@ -25,4 +27,17 @@ test('opening failure releases the registered protocol without changing the save
 });
 test('closing an in-flight local tile prevents its late data from being published',async()=>{
  const f=mock();let resolve;const pending=new Promise(done=>resolve=done);const view=createTerrainMapView({map:f.map,model:{},library:f.library,heightAt:()=>42,bounds:[6,44,8,46],encodePNG:()=>pending});await view.open();const [name,handler]=[...f.protocols][0];const response=handler({url:`${name}://tiles/0/0/0.png`},{signal:new AbortController().signal});view.close();resolve(new Uint8Array([1]).buffer);await assert.rejects(response,{name:'AbortError'});assert.equal(f.protocols.size,0);assert.equal(f.sources.size,0);
+});
+
+test('a delayed initialization cannot add a source after close and the next generation can open',async()=>{
+ const f=mock();let resolve,destroys=0,clients=0;const delayed=new Promise(done=>resolve=done);
+ const view=createTerrainMapView({map:f.map,library:f.library,model:{},tileClientFactory:()=>({ready:++clients===1?delayed:Promise.resolve({bounds:[6,44,8,46]}),tile:async()=>new ArrayBuffer(1),destroy(){destroys++;}})});
+ const opening=view.open();view.close();await view.open();const [scheme,handler]=[...f.protocols][0];resolve({bounds:[6,44,8,46]});await opening;assert.equal(f.sources.size,1);assert.equal((await handler({url:`${scheme}://tiles/0/0/0.png`})).data.byteLength,1);view.destroy();assert.equal(destroys,2);
+});
+test('failed source creation releases 3D gesture state and prior terrain after capture',async()=>{
+ const f=mock();const prior={source:'prior',exaggeration:2};f.map.setTerrain(prior);f.map.addSource=()=>{throw new Error('source failed');};let releases=0,enters=0,stops=0;f.map.stop=()=>stops++;
+ const view=createTerrainMapView({map:f.map,library:f.library,model:{},heightAt:()=>42,bounds:[6,44,8,46],gesturePolicy:{enter3D(){enters++;return ()=>releases++;}}});await assert.rejects(view.open(),/source failed/);assert.equal(enters,1);assert.equal(releases,1);assert.deepEqual(f.map.getTerrain(),prior);assert.equal(stops,2);view.close();assert.equal(releases,1);
+});
+test('closed and reopened source cannot receive an old generation PNG with the same scheme',async()=>{
+ const f=mock();let resolve,first=true;const late=new Promise(done=>resolve=done);const view=createTerrainMapView({map:f.map,library:f.library,model:{},heightAt:()=>42,bounds:[6,44,8,46],encodePNG:()=>first?(first=false,late):Promise.resolve(new ArrayBuffer(2))});await view.open();const [scheme,old]=[...f.protocols][0];const oldTile=old({url:`${scheme}://tiles/0/0/0.png`});view.close();await view.open();resolve(new ArrayBuffer(1));await assert.rejects(oldTile,{name:'AbortError'});const handler=[...f.protocols][0][1];assert.equal((await handler({url:`${scheme}://tiles/0/0/0.png`})).data.byteLength,2);view.destroy();
 });

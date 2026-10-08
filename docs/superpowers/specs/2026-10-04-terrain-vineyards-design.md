@@ -180,7 +180,7 @@ Prima validare acquisizione e round-trip; poi piano analitico e metrica; poi ter
 11. Zoom, pitch, caricamento tile e amplificazione del 3D non cambiano le quantità. Touch e chiusura del 3D ripristinano editor/gesti.
 12. 5 m e 10 m restano le risoluzioni dichiarate anche con interpolazione più fitta. Fonte aggiornata non cambia un progetto già applicato senza nuova proposta.
 
-Caso pilota proposto: Cascina Elena, Chardonnay — 775P, campo a L con strada e due porzioni, dopo disponibilità autorizzata della geometria effettiva. Nel frattempo usare fixture anonime; non inventare risultati sul campo reale.
+Caso pilota proposto: campo reale a L indicato dall’utente, con strada e due porzioni, dopo disponibilità autorizzata della geometria effettiva. Nel frattempo usare fixture anonime; non inventare risultati sul campo reale.
 
 ## Fonti primarie consultate
 

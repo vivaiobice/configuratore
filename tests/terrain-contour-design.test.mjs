@@ -95,8 +95,8 @@ test('automatic coverage ranks the actual ground-head-trimmed service union',()=
  assert.equal(r.result.coverage.referenceAreaM2,r.result.surfaceAreaM2);
  assert.equal(r.result.headPosts,r.result.rows.length*2);
  const subset=r.terrain.applied.portionResults[0].validation.headlandSubset;
- assert.equal(subset.valid,true);assert.equal(subset.method,'exact-rational-segment-subset');
- assert.ok(subset.rows.every(r=>r.segments.every(s=>s.rowParameterInterval.every(v=>/^[-0-9]+\/[0-9]+$/.test(v)))));
+ assert.equal(subset.valid,true);assert.equal(subset.method,'exact-source-parameter-subset');
+ assert.ok(subset.rows.every(r=>r.axisOperation.intervals.every(pair=>pair.every(Number.isFinite))));
  assert.ok(subset.trimRecords.every(r=>r.requestedWidthM===2));
 });
 

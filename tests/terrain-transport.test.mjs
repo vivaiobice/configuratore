@@ -168,3 +168,42 @@ test('real report popup stores the original raw JSON for a no-terrain context',(
  const state=projectState([{id:'legacy',geometry:small.field.geometry,terrain:null}]),harness=reportHarness(state);harness.open();
  assert.equal(harness.store.getItem(REPORT_CONTEXT_KEY('report')),JSON.stringify(prepareReportContext(state,{ownerId:'owner'})));
 });
+
+test('real attached history counts toward inclusive UTF-8 field and snapshot ceilings and report handoffs',async()=>{
+ const {attachTerrainRestore}=await import('../src/terrain-history.js');
+ const before={...structuredClone(small.field),rowPortions:[]};delete before.terrain;
+ const attached=attachTerrainRestore({project:before,proposal:small.proposal,operationId:'quota-history'});
+ const original={...before,rowPortions:attached.rowPortions,terrain:attached.terrain};
+ const field=exactSizeField(ensureProjectFields(projectState([original]).project).fields[0],TERRAIN_FIELD_MAX_BYTES);
+ assert.doesNotThrow(()=>serializeTerrainSnapshot({fields:[field]}));
+ assert.throws(()=>serializeTerrainSnapshot({fields:[{...field,materialRequestNote:field.materialRequestNote+'x'}]}),/1 MiB/);
+ assert.throws(()=>serializeTerrainSnapshot({fields:[{...field,materialRequestNote:field.materialRequestNote.slice(0,-1)+'é'}]}),/1 MiB/);
+ const snapshot={fields:[field],transportNote:''};snapshot.transportNote='x'.repeat(TERRAIN_SNAPSHOT_MAX_BYTES-byteLength(snapshot));
+ assert.equal(byteLength(snapshot),TERRAIN_SNAPSHOT_MAX_BYTES);assert.doesNotThrow(()=>serializeTerrainSnapshot(snapshot));
+ assert.throws(()=>serializeTerrainSnapshot({...snapshot,transportNote:snapshot.transportNote+'x'}),/4 MiB/);
+ const harness=reportHarness(projectState([original]));harness.open();
+ const report=readReportContext(harness.store,'report');assert.deepEqual(report.project.fields[0].terrain.history,attached.terrain.history);
+ assert.equal(harness.store.getItem(REPORT_CONTEXT_KEY('report')).match(/valuesBase64/g).length,1);
+ assert.deepEqual(fieldSummaryMetrics(report.project.fields[0]),small.result);
+});
+
+test('serialization rejection leaves a real saved restore entry and live baseline unconsumed',async()=>{
+ const {attachTerrainRestore,buildTerrainRestoreProposal,assertTerrainRestoreHistory}=await import('../src/terrain-history.js');
+ const {checkpointTerrainProposal,terrainContextKey}=await import('../src/terrain-controller.js');
+ const before={...structuredClone(small.field),rowPortions:[]};delete before.terrain;
+ const attached=attachTerrainRestore({project:before,proposal:small.proposal,operationId:'saved'});
+ const field={...before,rowPortions:attached.rowPortions,terrain:attached.terrain};
+ const {mergeProjectState}=await import('../src/state.js');
+ const state=projectState([field]);state.project=ensureProjectFields(state.project);const original=structuredClone(state),store=storage();saveDraft(store,state);
+ const raw=store.getItem(store.writes[0].key),baseline=structuredClone(field.terrain.history);
+ const restore=buildTerrainRestoreProposal({project:field,portionId:attached.rowPortions[0].id,model:field.terrain.model});assert.equal(restore.ok,true,restore.message);
+ restore.projectPatch={...restore.projectPatch,materialRequestNote:'x'.repeat(TERRAIN_FIELD_MAX_BYTES)};
+ const currentContext={account:'owner',field:field.id},context={terrainContextKey:terrainContextKey(currentContext,state.project),terrainHistoryFingerprint:assertTerrainRestoreHistory({project:state.project})};
+ const mergeState=mergeProjectState;
+ assert.throws(()=>checkpointTerrainProposal({state,proposal:restore,context,currentContext,mergeState,saveCheckpoint:candidate=>{saveDraft(store,candidate);return candidate;}}),/1 MiB/);
+ assert.equal(store.getItem(store.writes[0].key),raw);assert.deepEqual(state,original);assert.deepEqual(field.terrain.history,baseline);
+ assert.equal(restore.terrain.history.entries.length,0,'only the rejected candidate consumes history');
+ const oversizedBefore={...before,materialRequestNote:'x'.repeat(TERRAIN_FIELD_MAX_BYTES)};
+ assert.throws(()=>attachTerrainRestore({project:oversizedBefore,proposal:small.proposal,operationId:'not-saved'}),/1 MiB/);
+ assert.deepEqual(small.proposal.terrain.history,undefined);assert.deepEqual(field.terrain.history,baseline);
+});

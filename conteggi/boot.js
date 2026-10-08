@@ -1,5 +1,6 @@
-import {COUNTS_CONFIG} from './config.js?v=1.3.1-prova.1';
-import {createCountsRuntime} from './runtime.js?v=1.3.1-prova.1';
+import {mountReleaseVersion} from '../src/release-version.js?v=1.3.1';
+import {COUNTS_CONFIG} from './config.js?v=1.3.1';
+import {createCountsRuntime} from './runtime.js?v=1.3.1';
 import {mountCountsUI} from './ui.js?v=1.2.4';
 import {parseCountsUrl,buildCountsUrl} from './navigation.js';
 import {createCountsFeedback} from './feedback.js?v=1.2.4';
@@ -7,7 +8,7 @@ import {createProfileUI} from '../src/profile-ui.js?v=1.2.4';
 import {listVarieties} from '../src/plant-catalog.js';
 import {readPendingFieldContext,clearPendingFieldContext} from '../src/field-directory.js';
 let ui,runtime,profile;
-document.querySelector('#platform-release').textContent=`${COUNTS_CONFIG.version} · ${COUNTS_CONFIG.environment}`;
+mountReleaseVersion();
 document.querySelector('#copyright').textContent=`© ${new Date().getFullYear()} Vivai Obice. Tutti i diritti riservati.`;
 document.querySelector('[data-tool="configurator"]').href=COUNTS_CONFIG.configuratorBaseUrl;
 if('serviceWorker' in navigator){

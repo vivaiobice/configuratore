@@ -1,5 +1,45 @@
-import {buildCadastralWmsUrl} from './cadastre.js?v=1.3.1-prova.1';
+import {buildCadastralWmsUrl} from './cadastre.js?v=1.3.1';
 import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=51';
+import {terrainExclusionPresentationVerified} from './terrain-exclusion-groups.js?v=1.3.1';
+
+const projectedExclusionProofs=new WeakMap();
+const geographicExclusionProofs=new WeakMap();
+const previewKeys=['polygons','presentationView','groupId','coordinateRole','expressionHash'];
+const invalidExclusionPreview=()=>Object.assign(new Error('Anteprima del gruppo di esclusione non verificata.'),{status:'invalid-surface-group'});
+
+// Accept display metadata only: source geometry always comes from the actual
+// centrally verified view, and only this factory registers geographic DTOs.
+export function createReportExclusionSource(view,{type,label,widthM}={}){
+  if(!terrainExclusionPresentationVerified(view))throw invalidExclusionPreview();
+  const source={id:view.ownerId,groupId:view.groupId,type:type==='linear'?'linear':'area',label:label??'',widthM:widthM??null,
+    polygons:view.geometry.coordinates,presentationView:view,coordinateRole:view.coordinateRole,expressionHash:view.expressionHash};
+  geographicExclusionProofs.set(source,{view,fingerprint:JSON.stringify(source.polygons)});
+  return source;
+}
+
+// These coordinates are render/export projections, never metric operands.
+export function reportExclusionGeometry(area){
+  const projected=projectedExclusionProofs.get(area),geographic=geographicExclusionProofs.get(area);
+  if(projected||geographic||previewKeys.some(key=>Object.hasOwn(area,key))){
+    const view=area.presentationView,proof=projected??geographic;
+    if(!proof||proof.view!==view||!terrainExclusionPresentationVerified(view)||proof.fingerprint!==JSON.stringify(area.polygons)
+      ||geographic&&area.polygons!==view.geometry.coordinates)throw invalidExclusionPreview();
+    return {type:'MultiPolygon',coordinates:area.polygons};
+  }
+  return {type:'Polygon',coordinates:[area.points]};
+}
+
+export function projectReportExclusion(area,project){
+  const geometry=reportExclusionGeometry(area);
+  if(geometry.type==='Polygon')return {...area,points:area.points.map(project)};
+  const projected={...area,polygons:geometry.coordinates.map(polygon=>polygon.map(ring=>ring.map(project)))};
+  projectedExclusionProofs.set(projected,{view:area.presentationView,fingerprint:JSON.stringify(projected.polygons)});
+  return projected;
+}
+
+function validateReportExclusionPreviews(model){
+  for(const area of [...model.exclusions??[],...model.geo?.exclusions??[],...(model.geo?.fields??[]).flatMap(field=>field.exclusions??[])])reportExclusionGeometry(area);
+}
 
 const ATTRIBUTION = SATELLITE_ATTRIBUTION;
 
@@ -156,7 +196,7 @@ function overlayForCapture(map, model, width, height) {
     valid:true,width,height,
     polygon:model.geo.polygon.map(pixel),
     rows:model.geo.rows.map((row)=>({...row,coordinates:row.coordinates.map(pixel)})),
-    exclusions:model.geo.exclusions.map((area)=>({...area,points:area.points.map(pixel)})),
+    exclusions:model.geo.exclusions.map((area)=>projectReportExclusion(area,pixel)),
     sideMeasurements:model.geo.sideMeasurements.map((side)=>({...side,point:pixel(side.point)}))
   };
 }
@@ -173,7 +213,7 @@ function addGeoreferencedDesign(map, model) {
   const rows=geo.rows.filter(row=>row.coordinates.length>=2).map(row=>feature({type:'LineString',coordinates:row.coordinates}));
   map.addSource('project-rows', {type:'geojson',data:collection(rows)});
   map.addLayer({id:'project-rows-line',type:'line',source:'project-rows',paint:{'line-color':'#fffbd4','line-width':1.65,'line-opacity':.96}});
-  const exclusions=geo.exclusions.filter(area=>area.points.length>=4).map(area=>feature({type:'Polygon',coordinates:[area.points]}));
+  const exclusions=geo.exclusions.filter(area=>area.polygons||area.points.length>=4).map(area=>feature(reportExclusionGeometry(area)));
   if(exclusions.length){
     map.addSource('project-exclusions',{type:'geojson',data:collection(exclusions)});
     map.addLayer({id:'project-exclusions-fill',type:'fill',source:'project-exclusions',paint:{'fill-color':'#bc6c56','fill-opacity':.22}});
@@ -189,7 +229,7 @@ function addOverviewField(map,field,index){
  map.addLayer({id:`${prefix}-line`,type:'line',source:prefix,paint:{'line-color':field.color,'line-width':3}});
  map.addSource(`${prefix}-rows`,{type:'geojson',data:{type:'FeatureCollection',features:field.rows.map(row=>feature({type:'LineString',coordinates:row.coordinates}))}});
  map.addLayer({id:`${prefix}-rows`,type:'line',source:`${prefix}-rows`,paint:{'line-color':field.color,'line-width':1.5}});
- if(field.exclusions.length){map.addSource(`${prefix}-exclusions`,{type:'geojson',data:{type:'FeatureCollection',features:field.exclusions.map(area=>feature({type:'Polygon',coordinates:[area.points]}))}});map.addLayer({id:`${prefix}-exclusions`,type:'fill',source:`${prefix}-exclusions`,paint:{'fill-color':'#bc6c56','fill-opacity':.4}});}
+ if(field.exclusions.length){map.addSource(`${prefix}-exclusions`,{type:'geojson',data:{type:'FeatureCollection',features:field.exclusions.map(area=>feature(reportExclusionGeometry(area)))}});map.addLayer({id:`${prefix}-exclusions`,type:'fill',source:`${prefix}-exclusions`,paint:{'fill-color':'#bc6c56','fill-opacity':.4}});}
 }
 
 async function addCadastralImage(map,model,width,height,timeoutMs){
@@ -255,6 +295,7 @@ export async function captureSatelliteImage({ container, maplibregl, mapModel, c
   }
   const { width, height } = sizeOf(container);
   if (!(width > 0) || !(height > 0)) throw new SatelliteCaptureError('empty', 'Lo spazio destinato alla mappa satellitare è vuoto.');
+  validateReportExclusionPreviews(mapModel);
 
   let map,cadastralObjectUrl;
   try {

@@ -1,4 +1,5 @@
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.1-prova.1';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.1';
+import {reportExclusionGeometry} from './report-satellite.js?v=1.3.1';
 
 function pathFromPoints(points) {
   if (!Array.isArray(points) || !points.length) return '';
@@ -32,7 +33,13 @@ export function renderProjectDiagramSvg({ mapModel, polygon, rows = [], exclusio
   const defs = '<defs><pattern id="excluded-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#8f5a49" stroke-width="3" opacity=".5"/></pattern></defs>';
   const parcel = `<path class="parcel" d="${pathFromPoints(model.polygon)}"/>`;
   const rowLines = model.rows.map((row) => `<polyline class="vine-row" points="${polylinePoints(row)}" fill="none"/>`).join('');
-  const exclusionShapes = model.exclusions.map((item) => `<path class="${item.type === 'linear' ? 'linear-passage' : 'excluded-area'}" d="${pathFromPoints(item.points)}"/>`).join('');
+  const exclusionShapes = model.exclusions.map((item) => {
+    const geometry=reportExclusionGeometry(item),grouped=geometry.type==='MultiPolygon';
+    // Retain full projected numbers for opted-in cycles; fixed decimal rounding
+    // could collapse a small physical hole or component into its neighbour.
+    const path=grouped?geometry.coordinates.flat().map(ring=>`${ring.map(([x,y],i)=>`${i?'L':'M'}${x} ${y}`).join(' ')} Z`).join(' '):pathFromPoints(item.points);
+    return `<path class="${item.type === 'linear' ? 'linear-passage' : 'excluded-area'}" d="${path}"${grouped?' fill-rule="evenodd"':''}/>`;
+  }).join('');
   const annotations=model.annotations??model.sideMeasurements.map(side=>({point:side.point,label:side.label,fontSize:13,box:{width:Math.max(44,String(side.label).length*8.3+18),height:26}}));
   const leaders=annotations.filter(item=>item.leader).map(({leader:[a,b]})=>`<line class="side-leader" x1="${a[0].toFixed(2)}" y1="${a[1].toFixed(2)}" x2="${b[0].toFixed(2)}" y2="${b[1].toFixed(2)}"/>`).join('');
   const labels = annotations.map(({point:[x,y],label,box,fontSize}) => {

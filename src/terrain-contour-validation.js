@@ -1,15 +1,16 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.1-prova.1';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
 import {
   Q, ZERO, ONE, number, add, sub, mul, div, neg, cmp, sign, sq, min, max, key, vsub, dot,
   cross, mid, xy, numberBounds, exactDomain, height, splitSegment,
   segmentDistanceSquared, radical, radicalCompare, lengthBounds, radd, rscale,
   radicalBounds
-} from './terrain-exact.js?v=1.3.1-prova.1';
-import {axisPieces,coalescePlanePieces,traceNormalBundles} from './terrain-surface-flow.js?v=1.3.1-prova.1';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.1-prova.1';
+} from './terrain-exact.js?v=1.3.1';
+import {axisPieces,coalescePlanePieces,traceNormalBundles} from './terrain-surface-flow.js?v=1.3.1';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.1';
 /** Check every affine face-contained subsegment, including internal native
  * edge/vertex crossings. Extrema of affine elevation error occur at endpoints. */
 export function certifyContourElevation(domain, axes, {
+  originalDomain=domain,
   budget=createTerrainBudget({
     kind:'measure'
   })
@@ -33,7 +34,7 @@ export function certifyContourElevation(domain, axes, {
       pieces,
       uncovered
     }
-    =axisPieces(k, axis, budget);
+    =axisPieces(k, axis, budget,{originalDomain});
     if(!pieces.length)critical.push({
       reason:'uncovered',
       axisId:axis.axisId
@@ -256,7 +257,7 @@ function violationWitness(expressions, comparisons, lo, hi, point, L, U, budget)
 /** Ordinals assert chosen-family membership. They are never synthesized by
  * a certificate: known gaps fail even when a real boundary interrupts flow.
  * Multiple physical components at one asserted level/ordinal form one row. */
-function organizeFamily(kernel, axes, flat, budget, critical, unresolved) {
+function organizeFamily(kernel, axes, flat, budget, critical, unresolved,originalDomain=kernel.domain) {
   const groups=[],
   ids=new Set();
   for (const axis of axes) {
@@ -287,7 +288,7 @@ function organizeFamily(kernel, axes, flat, budget, critical, unresolved) {
       groups.push(group);
     }
     group.axis.axisIds.push(axis.axisId);
-    const parts=axisPieces(kernel, axis, budget);
+    const parts=axisPieces(kernel, axis, budget,{originalDomain});
     group.pieces.push(...parts.pieces.map(p=>({
       ...p,
       rowId:group.rowId,
@@ -350,6 +351,7 @@ function organizeFamily(kernel, axes, flat, budget, critical, unresolved) {
 export function certifyContourSpacing(domain, axes, {
   spacingM,
   toleranceM=.20,
+  originalDomain=domain,
   budget=createTerrainBudget({
     kind:'measure'
   })
@@ -365,7 +367,7 @@ export function certifyContourSpacing(domain, axes, {
   critical=[],
   unresolved=[],
   flat=k.faces.every(f=>!sign(f.q)&&cmp(f.vertices[0][2], k.faces[0].vertices[0][2])===0),
-  groups=organizeFamily(k, axes, flat, budget, critical, unresolved);
+  groups=organizeFamily(k, axes, flat, budget, critical, unresolved,originalDomain);
   for (const g of groups)for(const p of g.uncovered)unresolved.push({
     reason:'uncovered',
     axisId:g.axis.axisId,
@@ -375,7 +377,7 @@ export function certifyContourSpacing(domain, axes, {
     xy:xy(p.a)
   });
   const elevation=certifyContourElevation(domain, axes, {
-    budget
+    budget,originalDomain
   });
   critical.push(...elevation.critical);
   const planeSupport=certifyUniformPlaneSupport(domain,budget);

@@ -63,3 +63,22 @@ test('trackpad pinch remains available for native zoom while editor drag-pan is 
   wheelHandler({deltaMode:0,deltaX:0,deltaY:18,preventDefault(){prevented=true;},stopImmediatePropagation(){stopped=true;}});
   assert.equal(prevented,true);assert.equal(stopped,true);assert.deepEqual(pans,[[0,18]]);
 });
+
+function policyFixture(){
+ const listeners=new Set();const states={dragRotate:false,touchPitch:false,touchZoomRotate:false,scrollZoom:false,dragPan:false};let camera={center:[7,45],zoom:16,pitch:12,bearing:19,padding:{top:3,bottom:4,left:5,right:6}},stops=0;
+ const map={getCanvasContainer:()=>({addEventListener:(_type,fn)=>listeners.add(fn),removeEventListener:(_type,fn)=>listeners.delete(fn)}),stop(){stops++;},getCenter:()=>({lng:camera.center[0],lat:camera.center[1]}),getZoom:()=>camera.zoom,getPitch:()=>camera.pitch,getBearing:()=>camera.bearing,getPadding:()=>camera.padding,jumpTo(value){camera={...camera,...value};},panBy(){},setBearing(value){camera.bearing=value;}};
+ for(const key of Object.keys(states))map[key]={isEnabled:()=>states[key],enable:()=>states[key]=true,disable:()=>states[key]=false};map.touchZoomRotate.enableRotation=()=>{};map.touchZoomRotate.disableRotation=()=>{};
+ return {map,states,listeners,camera:()=>camera,stops:()=>stops};
+}
+test('3D release restores individual disabled handlers, owned touch rotation, suspended wheel and camera once',()=>{
+ assert.equal(typeof gestureApi.createMapGesturePolicy,'function');const f=policyFixture();const wheel=installTrackpadRotation(f.map,{touchRotation:false});wheel.setEnabled(false);f.map.touchZoomRotate.disable();const before={...f.states},camera=structuredClone(f.camera());
+ const policy=gestureApi.createMapGesturePolicy({map:f.map,touchRotation:wheel});const release=policy.enter3D();assert.ok(Object.values(f.states).every(Boolean));assert.equal(wheel.isTouchRotationEnabled(),true);assert.equal(f.listeners.size,1);
+ f.map.jumpTo({pitch:60,bearing:80});release();release();assert.deepEqual(f.states,before);assert.deepEqual(f.camera(),camera);assert.equal(wheel.isTouchRotationEnabled(),false);assert.equal(wheel.isEnabled(),false);assert.equal(f.listeners.size,0);assert.equal(f.stops(),2);policy.destroy();wheel();
+});
+test('3D destroy resumes exactly one prior wheel callback and cannot enter after destruction',()=>{
+ assert.equal(typeof gestureApi.createMapGesturePolicy,'function');const f=policyFixture();const wheel=installTrackpadRotation(f.map,{touchRotation:true});const original=[...f.listeners][0];const policy=gestureApi.createMapGesturePolicy({map:f.map,touchRotation:wheel});policy.enter3D();assert.equal(f.listeners.has(original),false);policy.destroy();assert.deepEqual([...f.listeners],[original]);assert.equal(wheel.isTouchRotationEnabled(),true);assert.throws(()=>policy.enter3D(),/chius/);wheel();
+});
+test('release cancels an active public drag handler before restoring its previously enabled policy',()=>{
+ const f=policyFixture();let active=false;f.states.dragPan=true;f.map.dragPan.isActive=()=>active;f.map.dragPan.disable=()=>{f.states.dragPan=false;active=false;};
+ const wheel=installTrackpadRotation(f.map);const policy=gestureApi.createMapGesturePolicy({map:f.map,touchRotation:wheel});const release=policy.enter3D();active=true;release();assert.equal(f.map.dragPan.isActive(),false);assert.equal(f.map.dragPan.isEnabled(),true);wheel();policy.destroy();
+});

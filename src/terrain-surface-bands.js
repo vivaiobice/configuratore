@@ -1,12 +1,12 @@
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.1-prova.1';
+from './terrain-budget.js?v=1.3.1';
 import {
   fromUTM,
   toUTM
 }
-from './coordinate-system.js?v=1.3.1-prova.1';
+from './coordinate-system.js?v=1.3.1';
 import {
   Q,
   rationalSquareRoot,
@@ -28,26 +28,31 @@ import {
   pointKey,
   exactDomain,
   sqrtBounds,
-  numberBounds
+  numberBounds,
+  nextUp,
+  nextDown
 }
-from './terrain-exact.js?v=1.3.1-prova.1';
+from './terrain-exact.js?v=1.3.1';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.1';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.1';
 import {
   axisPieces
 }
-from './terrain-surface-flow.js?v=1.3.1-prova.1';
+from './terrain-surface-flow.js?v=1.3.1';
 import {
   certifyContourElevation
 }
-from './terrain-contour-validation.js?v=1.3.1-prova.1';
+from './terrain-contour-validation.js?v=1.3.1';
 import {
   createAlgebraicField
 }
-from './terrain-algebraic.js?v=1.3.1-prova.1';
+from './terrain-algebraic.js?v=1.3.1';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.1';
 import {
   createBandKernel,
   traceBandBundles
 }
-from './terrain-geodesic-flow.js?v=1.3.1-prova.1';
+from './terrain-geodesic-flow.js?v=1.3.1';
 /** Compare an outward binary64 enclosure to exact binary-input thresholds.
  * Adding the ceiling in floating point first could admit an extra ULP. */
 export function widthBoundsWithin(bounds,centerM) {
@@ -201,7 +206,34 @@ function unitePatches(k,patches) {
 // A construction vertex can move outward only on a positive-length edge
 // already certified as a real clip. The physical geometry is the intersection
 // with that same domain, so these guards never supply exterior surface area.
-function boundaryGuards(k,polygons,patches,boundaryGuardM) {
+// Existing plane patch union has exact finite butt caps. Their metric-normal
+// edges are derived from the submitted endpoint, never rounded tiny seed axes.
+function finitePlaneSourceCaps(k,polygons,axis,patches,seeds) {
+  if(axis.components.length!==1)return [];
+  const points=axis.components[0].coordinatesXY;
+  if(points.length!==2)return [];
+  const ends=points.map(p=>p.map(k.F.q)),tangent=k.W(ends[1],ends[0]),caps=[];
+  const local=k.uniformPlane?[{rings:polygons.flat(),gradient:k.faces[0].g,seed:null}]:patches.filter(patch=>patch.polygon).map(patch=>{
+    const face=k.byId.get(patch.faceId??patch.nativeFaceIds?.[0]),seed=seeds[patch.seedIndex];
+    const samePatch=face&&seed?.faces.some(source=>k.patchFor(k.byId.get(source.id))?.id===patch.patchId);
+    return {rings:[patch.polygon],gradient:face?.g,seed,samePatch};
+  });
+  for(let endpoint=0;endpoint<2;endpoint++){
+    const source=ends[endpoint];
+    for(const part of local){
+      if(!part.gradient||part.seed&&(!part.samePatch||!k.onSegment(source,part.seed.a.map(k.F.q),part.seed.b.map(k.F.q))))continue;
+      const gradient=part.gradient,along=p=>{const delta=k.W(p,source);return k.A(k.dot(delta,tangent),k.M(k.dot(delta,gradient),k.dot(tangent,gradient)));};
+      for(const ring of part.rings)for(let i=0;i<ring.length;i++){
+      k.budget.check();const a=ring[i],b=ring[(i+1)%ring.length];
+      if(!k.G(along(a))&&!k.G(along(b))&&k.pointKey(a)!==k.pointKey(b)){
+        k.budget.check(3);caps.push({a,b,source,outward:k.K(tangent,k.F.q(endpoint?1:-1)),kind:'finite-original-source-cap'});
+      }
+      }
+    }
+  }
+  return caps;
+}
+function boundaryGuards(k,polygons,patches,boundaryGuardM,{preserveSourceCapGaps=false,anisotropic=false,preservePhysicalSourceCaps=false}={}) {
   const shifts=new Map(),
   provenance=[];
   for(const rings of polygons)for(const ring of rings)for(let i=0;i<ring.length;i++){
@@ -216,11 +248,47 @@ function boundaryGuards(k,polygons,patches,boundaryGuardM) {
       let normal=[k.F.neg(edge[1]),edge[0]];
       if(k.after(mid,normal)>=0)normal=k.K(normal,k.F.q(-1));
       const magnitude=normal.map(x=>k.G(x)<0?k.F.neg(x):x).reduce((a,b)=>k.C(a,b)>0?a:b),
-      delta=k.K(normal,k.F.div(k.F.q(boundaryGuardM),magnitude));
+      gradient=k.faces[0].g,
+      alongFlow=k.dot(edge,gradient),
+      acrossFlow=k.cross(edge,gradient),
+      absolute=x=>k.G(x)<0?k.F.neg(x):x,
+      guardM=anisotropic&&k.C(absolute(alongFlow),absolute(acrossFlow))<=0?2**-22:boundaryGuardM,
+      delta=k.K(normal,k.F.div(k.F.q(guardM),magnitude));
       for(const p of [a,b]){
+        let actualDelta=delta;
+        if(preservePhysicalSourceCaps){
+          let constraint=null;
+          for(const patch of patches)for(const cap of patch.physicalSourceCaps??[]){
+            k.budget?.check(1);
+            if(!k.onSegment(p,cap.a,cap.b))continue;
+            k.budget?.check(3);
+            const direction=k.W(cap.b,cap.a),denominator=k.cross(direction,edge),capSide=k.G(k.cross(direction,cap.outward)),shiftSide=k.G(k.cross(direction,delta));
+            let constrained;
+            if(capSide*shiftSide>0){
+              if(!k.G(denominator)&&(k.G(k.cross(direction,k.W(u,cap.a)))||k.G(k.cross(direction,k.W(v,cap.a)))))throw numericFailure('physical-source-cap-guard-parallel-boundary');
+              // Initial emitted corners may move strictly into the actual
+              // outward cap half-plane. This exact sign rule also avoids an
+              // unbounded intersection of nearly parallel lines, with no
+              // proximity threshold or change to source/cap operands.
+              constrained=delta;
+              k.budget?.check(1);
+              provenance.push({kind:k.G(denominator)?'physical-source-cap-outward-boundary-guard':'physical-source-cap-outward-collinear-boundary-guard',boundaryId:boundary.id,boundarySegmentIndex:j-1,cornerXY:k.xy(p),nativeCapSide:capSide,nativeShiftSide:shiftSide});
+            }else{
+              if(!k.G(denominator))throw numericFailure('physical-source-cap-guard-parallel-boundary');
+              constrained=k.K(direction,k.F.div(k.cross(delta,edge),denominator));
+            }
+            if(constraint&&k.pointKey(constraint)!==k.pointKey(constrained))throw numericFailure('ambiguous-physical-source-cap-guard');
+            constraint=constrained;
+          }
+          if(constraint){
+            actualDelta=constraint;
+            k.budget?.check(2);
+            provenance.push({kind:'physical-source-cap-constrained-boundary-guard',boundaryId:boundary.id,boundarySegmentIndex:j-1,cornerXY:k.xy(p)});
+          }
+        }
         const key=k.pointKey(p),
         old=shifts.get(key)??new Map();
-        old.set(`${boundary.id}:${j}`,delta);
+        old.set(`${boundary.id}:${j}`,actualDelta);
         shifts.set(key,old);
       }
       provenance.push({
@@ -230,7 +298,10 @@ function boundaryGuards(k,polygons,patches,boundaryGuardM) {
       });
     }
   }
-  for(const cap of patches.flatMap(p=>p.capEdges??[])){
+  // Complete source-domain carriers already end at exact physical caps.
+  // Moving a butt cap outward can reach an untouched boundary vertex across a
+  // positive wedge. Keep that gap, while real boundary-edge shifts remain.
+  for(const cap of preserveSourceCapGaps?[]:patches.flatMap(p=>p.capEdges??[])){
     const magnitude=cap.outward.map(x=>k.G(x)<0?k.F.neg(x):x).reduce((a,b)=>k.C(a,b)>0?a:b);
     if(!k.G(magnitude))continue;
     const delta=k.K(cap.outward,k.F.div(k.F.q(boundaryGuardM),magnitude));
@@ -242,7 +313,7 @@ function boundaryGuards(k,polygons,patches,boundaryGuardM) {
       shifts.set(key,old);
     }
     provenance.push({
-      kind:'clipped-source-cap',
+      kind:cap.kind??'clipped-source-cap',
       sourceXY:k.xy(cap.source),
       edgeXY:[k.xy(cap.a),k.xy(cap.b)]
     });
@@ -262,6 +333,46 @@ function boundaryGuards(k,polygons,patches,boundaryGuardM) {
     provenance,
     maxDistanceSquared:maxDistance
   };
+}
+/** Initial emitted-corner casting only. The original source and nominal
+ * butt-cap lines remain immutable. Both native and geographic half-planes
+ * must independently face outward; all actual corridor checks follow. */
+function castFinitePhysicalCapCorner(k,point,originalPoint,coordinate,patches,epsg,maxQ) {
+  const constraints=[];
+  for(const patch of patches)for(const cap of patch.physicalSourceCaps??[]){
+    k.budget?.check();
+    if(!k.onSegment(originalPoint,cap.a,cap.b))continue;
+    k.budget?.check(17);
+    const direction=k.W(cap.b,cap.a),nativeSide=k.G(k.cross(direction,cap.outward));
+    if(!nativeSide)throw numericFailure('unresolved-finite-cap-outward-side');
+    const geographicA=fromUTM(k.xy(cap.a),epsg).map(Q),geographicB=fromUTM(k.xy(cap.b),epsg).map(Q),geographicOut=fromUTM(k.xy(k.V(cap.a,cap.outward)),epsg).map(Q);
+    const geographicDirection=vsub(geographicB,geographicA),geographicSide=sign(cross(geographicDirection,vsub(geographicOut,geographicA)));
+    if(!geographicSide)throw numericFailure('unresolved-finite-cap-geographic-side');
+    constraints.push({cap,direction,nativeSide,geographicA,geographicDirection,geographicSide});
+  }
+  if(!constraints.length)return {coordinate};
+  // A fixed 5 by 5 binary64 neighborhood is an initial deterministic cast,
+  // never an unbounded repair of a failed band or a changed source operand.
+  k.budget?.check(10);
+  const nearby=value=>[value,nextDown(value),nextUp(value),nextDown(nextDown(value)),nextUp(nextUp(value))];
+  const longitude=nearby(coordinate[0]),latitude=nearby(coordinate[1]),factor=add(ONE,maxQ),ceiling=k.F.q(Q(1e-5)),ceilingSquared=k.M(ceiling,ceiling);
+  let best=null,attempted=0;
+  for(const x of longitude)for(const y of latitude){
+    k.budget?.check(5);attempted++;
+    const candidate=[x,y],geographic=candidate.map(Q),projected=toUTM(candidate,epsg).map(k.F.q);
+    let outward=true;
+    for(const constraint of constraints){
+      k.budget?.check();
+      if(constraint.nativeSide*k.G(k.cross(constraint.direction,k.W(projected,constraint.cap.a)))<0||constraint.geographicSide*sign(cross(constraint.geographicDirection,vsub(geographic,constraint.geographicA)))<0){outward=false;break;}
+    }
+    if(!outward)continue;
+    const delta=k.W(projected,point),groundSquared=k.M(k.dot(delta,delta),k.F.q(factor));
+    if(k.C(groundSquared,ceilingSquared)>0)continue;
+    if(!best||k.C(groundSquared,best.groundSquared)<0){k.budget?.check(1);best={coordinate:candidate,groundSquared};}
+  }
+  if(!best)throw numericFailure('finite-cap-conservative-casting-exhausted');
+  k.budget?.check(1);
+  return {coordinate:best.coordinate,provenance:{method:'initial-finite-cap-outward-half-planes',candidateCount:attempted,nativeOutward:true,geographicOutward:true,displacementUpperM:k.F.bounds(k.F.sqrt(k.F.rationalBounds(best.groundSquared)[1]))[1]}};
 }
 function lineIntersections(k,a,b,c,d) {
   const u=k.W(b,a),
@@ -388,7 +499,7 @@ function intersectRegions(k,left,right,operation='intersection') {
   collect(b,a,left,operation==='union');
   return ringsFromEdges(k,[...kept.values()]);
 }
-function topologyContacts(k,ideal,actual,boundaries=k.boundaries) {
+function topologyContacts(k,ideal,actual,boundaries=k.boundaries,diagnosticContacts=false) {
   const contactSignature=(rings,a,b)=>{
     const roots=[k.Z,k.O],
     v=k.W(b,a);
@@ -410,16 +521,91 @@ function topologyContacts(k,ideal,actual,boundaries=k.boundaries) {
     b=boundary.coordinates[i];
     const before=contactSignature(ideal,a,b),
     after=contactSignature(actual,a,b);
-    if(before!==after)throw numericFailure('serialization-changed-boundary-contact-topology',{
-      boundaryId:boundary.id,
-      boundarySegmentIndex:i-1,
-      xy:k.xy(a),
-      contactBefore:before,
-      contactAfter:after
-    });
+    if(before!==after){
+      const detail={boundaryId:boundary.id,boundarySegmentIndex:i-1,xy:k.xy(a),contactBefore:before,contactAfter:after};
+      if(diagnosticContacts){
+        const endpoint=(k.location(a,ideal)>=0)!==(k.location(a,actual)>=0)?a:b;
+        const nearest=rings=>{
+          let best=null;
+          for(const ring of rings)for(let index=0;index<ring.coordinates.length-1;index++){
+            k.budget?.check();
+            const delta=k.W(ring.coordinates[index],endpoint),distance=k.dot(delta,delta);
+            if(!best||k.C(distance,best.distance)<0)best={ring,index,distance};
+          }
+          return best;
+        };
+        const idealVertex=nearest(ideal),actualVertex=nearest(actual);
+        k.budget?.check(14);
+        const neighbors=record=>{
+          if(!record)return [];
+          const count=record.ring.coordinates.length-1;
+          return [-1,0,1].map(offset=>k.xy(record.ring.coordinates[(record.index+offset+count)%count]));
+        };
+        detail.boundaryEndpointsXY=[k.xy(a),k.xy(b)];
+        detail.nearestIdealVertexNeighborsXY=neighbors(idealVertex);
+        detail.nearestActualVertexNeighborsXY=neighbors(actualVertex);
+        detail.changedEndpointLocations=[k.location(endpoint,ideal),k.location(endpoint,actual)];
+        if(idealVertex){
+          detail.idealVertexDeltaFromEndpointBounds=k.W(idealVertex.ring.coordinates[idealVertex.index],endpoint).map(value=>k.F.bounds(value));
+          detail.idealVertexDistanceSquaredBounds=k.F.bounds(idealVertex.distance);
+          if(typeof diagnosticContacts==='object'){
+            const {patches,domain,epsg,guardPolygons,axis}=diagnosticContacts;
+            const originalPoint=idealVertex.ring.coordinates[idealVertex.index];
+            let relevantCap=null;
+            for(const patch of patches)for(const cap of patch.physicalSourceCaps??[]){
+              k.budget?.check();
+              if(!relevantCap&&k.onSegment(originalPoint,cap.a,cap.b))relevantCap=cap;
+            }
+            if(relevantCap){
+              // Read-only, error-only evidence. These offers are the existing
+              // initial finite pool; they confer no geometry validity.
+              const scope=geographicScope(k,domain,epsg);
+              const pairedPoint=point=>{
+                for(const native of k.boundaries){
+                  const geographic=scope.rings.find(ring=>ring.polygonIndex===native.polygonIndex&&ring.ringIndex===native.ringIndex);
+                  for(let edge=1;edge<native.coordinates.length;edge++){
+                    k.budget?.check();
+                    const start=native.coordinates[edge-1],end=native.coordinates[edge];
+                    if(!k.onSegment(point,start,end))continue;
+                    const delta=k.W(end,start),coordinate=k.G(delta[0])?0:1,t=k.F.div(k.S(point[coordinate],start[coordinate]),delta[coordinate]);
+                    return k.V(geographic.coordinates[edge-1],k.K(k.W(geographic.coordinates[edge],geographic.coordinates[edge-1]),t));
+                  }
+                }
+                k.budget?.check(1);return fromUTM(k.xy(point),epsg).map(k.F.q);
+              };
+              k.budget?.check(140);
+              const exactPoint=point=>point.map(value=>{
+                const exact=k.F.rational(value),bounds=k.F.rationalBounds(value);
+                return {rational:exact?`${exact.n}/${exact.d}`:null,rationalBounds:bounds.map(bound=>`${bound.n}/${bound.d}`),numberBounds:k.F.bounds(value)};
+              });
+              const component=axis.components[relevantCap.componentIndex],segment=relevantCap.segmentIndex;
+              const nativeSourceDirection=k.W(component.coordinatesXY[segment+1].map(k.F.q),component.coordinatesXY[segment].map(k.F.q));
+              const outwardSign=k.G(k.dot(relevantCap.outward,nativeSourceDirection));
+              const geographicOutward=k.K(k.W(component.coordinates[segment+1].map(k.F.q),component.coordinates[segment].map(k.F.q)),k.F.q(outwardSign));
+              const nearby=value=>[value,nextDown(value),nextUp(value),nextDown(nextDown(value)),nextUp(nextUp(value))];
+              const count=idealVertex.ring.coordinates.length-1;
+              const offers=[idealVertex.index,(idealVertex.index+1)%count].map(pointIndex=>{
+                const guarded=guardPolygons[idealVertex.ring.polygonIndex][idealVertex.ring.ringIndex][pointIndex],coordinate=fromUTM(k.xy(guarded),epsg),pool=[];
+                for(const longitude of nearby(coordinate[0]))for(const latitude of nearby(coordinate[1])){
+                  k.budget?.check();const geographic=[longitude,latitude],native=toUTM(geographic,epsg);pool.push({geographic,native});
+                }
+                return {pointIndex,guarded:exactPoint(guarded),offers:pool};
+              });
+              detail.finiteCapEmissionEvidence={
+                cap:{a:exactPoint(relevantCap.a),b:exactPoint(relevantCap.b),outward:exactPoint(relevantCap.outward),componentIndex:relevantCap.componentIndex,segmentIndex:relevantCap.segmentIndex},
+                pairedGeographicCap:{a:exactPoint(pairedPoint(relevantCap.a)),b:exactPoint(pairedPoint(relevantCap.b)),outward:exactPoint(geographicOutward)},
+                castingGeographicCap:{a:fromUTM(k.xy(relevantCap.a),epsg),b:fromUTM(k.xy(relevantCap.b),epsg),outwardPoint:fromUTM(k.xy(k.V(relevantCap.a,relevantCap.outward)),epsg)},
+                boundaryEndpoint:{native:exactPoint(endpoint),pairedGeographic:exactPoint(pairedPoint(endpoint))},cornerOffers:offers
+              };
+            }
+          }
+        }
+      }
+      throw numericFailure('serialization-changed-boundary-contact-topology',detail);
+    }
   }
 }
-function assertSimpleRings(k,rings) {
+function assertSimpleRings(k,rings,diagnosticEdges=false) {
   const edges=rings.flatMap((ring,ringIndex)=>ring.coordinates.slice(1).map((b,i)=>({
     a:ring.coordinates[i],
     b,
@@ -434,9 +620,15 @@ function assertSimpleRings(k,rings) {
     b=edges[j];
     if(a.ringIndex===b.ringIndex&&(Math.abs(a.index-b.index)===1||Math.abs(a.index-b.index)===a.count-1))continue;
     if(!overlap(a.bounds,b.bounds))continue;
-    if(lineIntersections(k,a.a,a.b,b.a,b.b).length)throw numericFailure('serialized-self-intersection',{
-      xy:k.xy(a.a)
-    });
+    if(lineIntersections(k,a.a,a.b,b.a,b.b).length){
+      const detail={xy:k.xy(a.a)};
+      if(diagnosticEdges){
+        k.budget?.check(6);
+        detail.edgeIndices=[[a.ringIndex,a.index],[b.ringIndex,b.index]];
+        detail.edgeCoordinatesXY=[[k.xy(a.a),k.xy(a.b)],[k.xy(b.a),k.xy(b.b)]];
+      }
+      throw numericFailure('serialized-self-intersection',detail);
+    }
   }
   for(const ring of rings){
     const expected=ring.ringIndex===0?1:-1;
@@ -446,6 +638,15 @@ function assertSimpleRings(k,rings) {
   }
 }
 function geographicScope(k,domain,epsg) {
+  const canonical=canonicalCutDomainScope(domain);
+  if(canonical){
+    const rings=canonical.geographicBoundaries.map((ring,index)=>{
+      const native=canonical.boundaries[index],boundary=k.boundaries.find(b=>b.id===native.id);
+      if(!boundary||ring.coordinates.length!==native.coordinates.length||boundary.coordinates.length!==native.coordinates.length)throw numericFailure('canonical-paired-scope-correspondence');
+      return {polygonIndex:ring.polygonIndex,ringIndex:ring.ringIndex,coordinates:ring.coordinates.map(p=>{k.budget.check(1);return p.map(k.F.q);})};
+    });
+    return {geometry:canonical.recipe.kind==='canonical-cut-physical-1'?canonical.sourceScopeGeometry:domain.geometry,rings};
+  }
   const geometry=domain.geometry??{
     type:'MultiPolygon',
     coordinates:[...new Set(k.boundaries.map(b=>b.polygonIndex))].map(id=>k.boundaries.filter(b=>b.polygonIndex===id).map(b=>b.coordinates.map(p=>fromUTM(k.xy(p),epsg))))
@@ -476,7 +677,9 @@ function certifyScopedTopology(k,ideal,actual,scoped,geometry,domain,epsg) {
     coordinates:ring.map(p=>p.map(k.F.q))
   })));
   // The geographic reference retains intended real-boundary incidence by its
-  // exact original segment parameter. This is a topology reference, never a
+  // paired subedge parameter. Canonical children retain independent native and
+  // geographic source-edge parameters with matched endpoint ancestry; only the
+  // local parameter along that proven pair is shared. This is a reference, never a
   // claim that an inverse-projected XY segment is a straight WGS segment.
   const geoReference=p=>{
     for(const boundary of k.boundaries){
@@ -526,6 +729,210 @@ function serializedRings(k,geometry,epsg) {
       return toUTM(p,epsg).map(x=>k.F.q(x));
     })
   })));
+}
+// A finite geographic preview is permitted only through a certified boundary
+// isotopy. Moving vertices retain their exact cyclic identities. Every possible
+// contact is either excluded over the complete homotopy by a strict certificate,
+// or checked at all quadratic/linear events and intervening open strata.
+function certifyPreviewHomotopy(k,rings,actual) {
+  const moved=rings.map((ring,index)=>({ring,points:ring.coordinates.slice(0,-1).map((point,i)=>{
+    k.budget.check(2);return {a:point,b:actual[index].coordinates[i]};
+  })}));
+  const at=(p,t)=>k.V(p.a,k.K(k.W(p.b,p.a),t));
+  const polynomial=(a,b,c)=>{
+    const u=k.W(b.a,a.a),v=k.W(c.a,a.a),du=k.W(k.W(b.b,b.a),k.W(a.b,a.a)),dv=k.W(k.W(c.b,c.a),k.W(a.b,a.a));
+    return [k.cross(u,v),k.A(k.cross(du,v),k.cross(u,dv)),k.cross(du,dv)];
+  };
+  const fixedSign=p=>{
+    const signs=[p[0],k.A(p[0],k.F.div(p[1],k.F.q(2))),k.A(k.A(p[0],p[1]),p[2])].map(k.G);
+    return signs.every(sign=>sign===signs[0])?signs[0]:0;
+  };
+  const roots=p=>{
+    k.budget.check();const [c,b,a]=p;
+    if(!k.G(a))return k.G(b)?[k.F.div(k.F.neg(c),b)]:[];
+    const disc=k.S(k.M(b,b),k.M(k.F.q(4),k.M(a,c))),rational=k.F.rational(disc);
+    if(!rational)throw numericFailure('preview-event-not-rational');
+    if(sign(rational)<0)return [];
+    const d=k.F.sqrt(rational),den=k.M(k.F.q(2),a);
+    return [k.F.div(k.S(k.F.neg(b),d),den),k.F.div(k.A(k.F.neg(b),d),den)];
+  };
+  const inRange=t=>k.C(t,k.Z)>=0&&k.C(t,k.O)<=0;
+  const edges=moved.flatMap(({ring,points},ringId)=>points.map((a,index)=>({a,b:points[(index+1)%points.length],ringId,index,count:points.length})));
+  // All edge collapse candidates are linear endpoint-coordinate events.
+  for(const edge of edges){
+    const d0=k.W(edge.b.a,edge.a.a),d1=k.W(edge.b.b,edge.a.b),change=k.W(d1,d0);
+    const candidate=[k.Z,k.O];
+    for(let coordinate=0;coordinate<2;coordinate++)if(k.G(change[coordinate]))candidate.push(k.F.div(k.F.neg(d0[coordinate]),change[coordinate]));
+    for(const t of candidate.filter(inRange)){
+      k.budget.check();if(!k.G(k.A(d0[0],k.M(change[0],t)))&&!k.G(k.A(d0[1],k.M(change[1],t))))throw numericFailure('preview-edge-collapse');
+    }
+  }
+  const separated=(left,right)=>{
+    for(let coordinate=0;coordinate<2;coordinate++){
+      const a=[left.a.a,left.a.b,left.b.a,left.b.b].map(p=>p[coordinate]).sort(k.C),b=[right.a.a,right.a.b,right.b.a,right.b.b].map(p=>p[coordinate]).sort(k.C);
+      if(k.C(a.at(-1),b[0])<0||k.C(b.at(-1),a[0])<0)return true;
+    }
+    return false;
+  };
+  for(let i=0;i<edges.length;i++)for(let j=0;j<i;j++){
+    k.budget.check();const left=edges[i],right=edges[j],adjacent=left.ringId===right.ringId&&(Math.abs(left.index-right.index)===1||Math.abs(left.index-right.index)===left.count-1);
+    if(!adjacent&&separated(left,right))continue;
+    k.budget.check(12);const polynomials=[polynomial(left.a,left.b,right.a),polynomial(left.a,left.b,right.b),polynomial(right.a,right.b,left.a),polynomial(right.a,right.b,left.b)];
+    const signs=polynomials.map(fixedSign);
+    if(!adjacent&&(signs[0]&&signs[0]===signs[1]||signs[2]&&signs[2]===signs[3]))continue;
+    // A shared vertex has a zero orientation identically; the other endpoint's
+    // strict sign proves that adjacent edges meet only at this vertex.
+    if(adjacent&&signs.some(Boolean))continue;
+    const times=[k.Z,k.O,...polynomials.flatMap(roots).filter(inRange)];
+    // Identically collinear intervals can change order only at linear endpoint
+    // coordinate coincidences. Include both coordinates and all four pairings.
+    for(const a of [left.a,left.b])for(const b of [right.a,right.b])for(let coordinate=0;coordinate<2;coordinate++){
+      const d0=k.S(a.a[coordinate],b.a[coordinate]),d1=k.S(a.b[coordinate],b.b[coordinate]),delta=k.S(d1,d0);
+      if(k.G(delta)){const t=k.F.div(k.F.neg(d0),delta);if(inRange(t))times.push(t);}
+    }
+    const events=k.roots(times),checks=[...events];
+    for(let n=1;n<events.length;n++)checks.push(k.F.div(k.A(events[n-1],events[n]),k.F.q(2)));
+    k.budget.check(checks.length);
+    for(const t of checks){
+      k.budget.check();const a=at(left.a,t),b=at(left.b,t),c=at(right.a,t),d=at(right.b,t);
+      if(adjacent){
+        const shared=left.a===right.b?left.a:left.b,one=left.a===shared?b:a,two=right.a===shared?d:c,p=at(shared,t);
+        if(k.onSegment(one,p,two)||k.onSegment(two,p,one))throw numericFailure('preview-adjacent-overlap');
+      }else{
+        const s=[k.G(k.orient(a,b,c)),k.G(k.orient(a,b,d)),k.G(k.orient(c,d,a)),k.G(k.orient(c,d,b))];
+        if(!s[0]&&k.onSegment(c,a,b)||!s[1]&&k.onSegment(d,a,b)||!s[2]&&k.onSegment(a,c,d)||!s[3]&&k.onSegment(b,c,d)||s[0]*s[1]<0&&s[2]*s[3]<0)throw numericFailure('preview-nonadjacent-contact');
+      }
+    }
+  }
+}
+/** Bounded regular Boolean adapter. Returned exact operands are transient;
+ * they are not domain/support certificates or serialization authority. */
+export function createRegularTerrainRegionOperations({budget=createTerrainBudget({kind:'cut'})}={}) {
+  const exact={faces:[],boundaries:[],querySegment:()=>[]};
+  const k=createBandKernel(exact,createAlgebraicField(budget),budget);
+  const sourceEdges=[];
+  const read=(geometry,operandId)=>{
+    if(!geometry||!['Polygon','MultiPolygon'].includes(geometry.type))throw numericFailure('invalid-region-geometry');
+    const polygons=geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;
+    const rings=polygons.flatMap((polygon,polygonIndex)=>polygon.map((ring,ringIndex)=>{
+      if(!Array.isArray(ring)||ring.length<4||ring.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v))))throw numericFailure('invalid-region-ring');
+      if(ring[0].some((v,i)=>v!==ring.at(-1)[i]))throw numericFailure('open-region-ring');
+      if(ring.slice(1).some((p,i)=>p.every((v,j)=>v===ring[i][j])))throw numericFailure('zero-region-edge');
+      let coordinates=ring.map(p=>{budget.check(1);return p.map(k.F.q);});
+      if(operandId!==undefined){
+        if(typeof operandId!=='string'||!operandId)throw new RangeError('Explicit operand identity required');
+        coordinates.slice(1).forEach((b,edgeIndex)=>{
+          budget.check(2);
+          sourceEdges.push({operandId,polygonIndex,ringIndex,edgeIndex,a:coordinates[edgeIndex],b});
+        });
+      }
+      if(k.G(polygonArea(k,coordinates.slice(0,-1)))!==(ringIndex? -1:1))coordinates=coordinates.toReversed();
+      return {polygonIndex,ringIndex,hole:ringIndex>0,coordinates};
+    }));
+    assertSimpleRings(k,rings);
+    // Every hole must have this specific containing exterior, not merely one
+    // of the other components. Nested/overlapping components are unsupported.
+    for(const ring of rings.filter(r=>r.ringIndex)){
+      const outer=rings.find(r=>r.polygonIndex===ring.polygonIndex&&!r.ringIndex);
+      if(k.location(ring.coordinates[0],[outer])!==1)throw numericFailure('invalid-region-hole');
+      for(const other of rings.filter(r=>r.polygonIndex===ring.polygonIndex&&r.ringIndex&&r!==ring)){
+        budget.check();if(k.location(ring.coordinates[0],[{...other,ringIndex:0}])>=0)throw numericFailure('nested-region-holes');
+      }
+    }
+    for(const ring of rings.filter(r=>!r.ringIndex))for(const other of rings.filter(r=>!r.ringIndex&&r!==ring)){
+      if(k.location(ring.coordinates[0],[other])>=0)throw numericFailure('overlapping-region-components');
+    }
+    return rings;
+  };
+  // Only an owner-derived immutable domain may supply rational operands.
+  // This reads its saved snapshot; the caller separately proves live-project
+  // coherence. No renderer DTO or caller boundaries can acquire authority here.
+  const readCanonicalDomain=(domain,{coordinateRole}={})=>{
+    budget.check();
+    if(!['native','geographic'].includes(coordinateRole))throw numericFailure('invalid-canonical-coordinate-role');
+    const scope=canonicalCutDomainScope(domain);
+    if(!scope)throw numericFailure('canonical-domain-identity-required');
+    const boundaries=coordinateRole==='native'?scope.boundaries:scope.geographicBoundaries;
+    let count=0;
+    for(const boundary of boundaries)count+=boundary.coordinates.length;
+    // Charge all actual coordinate copies before allocating arrays or field Maps.
+    budget.check(count);
+    return boundaries.map(boundary=>({
+      polygonIndex:boundary.polygonIndex,
+      ringIndex:boundary.ringIndex,
+      hole:boundary.ringIndex>0,
+      coordinates:boundary.coordinates.map(point=>point.map(k.F.q))
+    }));
+  };
+  const operation=(left,right,kind='intersection')=>{
+    if(!['intersection','difference','union'].includes(kind))throw new RangeError('Unknown regular Boolean operation');
+    if(!left.length)return kind==='union'?right:[];
+    if(!right.length)return kind==='intersection'?[]:left;
+    return intersectRegions(k,left,right,kind);
+  };
+  return {
+    read,readCanonicalDomain,operation,
+    compareAreas:(left,right)=>k.C(left.reduce((sum,r)=>k.A(sum,polygonArea(k,r.coordinates.slice(0,-1))),k.Z),right.reduce((sum,r)=>k.A(sum,polygonArea(k,r.coordinates.slice(0,-1))),k.Z)),
+    contains:(rings,point)=>k.location(point.map(k.F.q),rings)>=0,
+    sameSet:(left,right)=>!operation(left,right,'difference').length&&!operation(right,left,'difference').length,
+    hasInterior:rings=>rings.length&&k.G(rings.reduce((sum,r)=>k.A(sum,polygonArea(k,r.coordinates.slice(0,-1))),k.Z))>0,
+    exactBoundaries:rings=>rings.map(r=>({...r,coordinates:r.coordinates.map(p=>{budget.check(1);return p.map(k.F.rational);})})),
+    preview:rings=>({type:'MultiPolygon',coordinates:ringPolygons(k,rings)}),
+    provenance:rings=>{
+      const sourceAt=(edge,p)=>{
+        const delta=k.W(edge.b,edge.a),coordinate=k.G(delta[0])?0:1;
+        if(!k.G(delta[coordinate]))throw numericFailure('zero-provenance-source-edge');
+        return {operandId:edge.operandId,polygonIndex:edge.polygonIndex,ringIndex:edge.ringIndex,edgeIndex:edge.edgeIndex,parameter:k.F.rational(k.F.div(k.S(p[coordinate],edge.a[coordinate]),delta[coordinate]))};
+      };
+      return rings.map(ring=>({
+        polygonIndex:ring.polygonIndex,ringIndex:ring.ringIndex,
+        vertices:ring.coordinates.slice(0,-1).map(point=>{
+          const incidentEdges=sourceEdges.filter(edge=>{budget.check();return k.onSegment(point,edge.a,edge.b);}).map(edge=>sourceAt(edge,point));
+          if(!incidentEdges.length)throw numericFailure('missing-boundary-vertex-provenance');
+          budget.check(incidentEdges.length);
+          return {incidentEdges};
+        }),
+        edges:ring.coordinates.slice(1).map((b,index)=>{
+          const a=ring.coordinates[index];
+          const sources=sourceEdges.filter(edge=>{budget.check();return k.onSegment(a,edge.a,edge.b)&&k.onSegment(b,edge.a,edge.b);}).map(edge=>({
+            ...sourceAt(edge,a),endParameter:sourceAt(edge,b).parameter
+          }));
+          if(!sources.length)throw numericFailure('missing-boundary-edge-provenance');
+          budget.check(sources.length);
+          return {sources};
+        })
+      }));
+    },
+    serializeTopology:rings=>{
+      const coordinates=[];
+      for(const ring of rings){
+        coordinates[ring.polygonIndex]??=[];
+        coordinates[ring.polygonIndex][ring.ringIndex]=ring.coordinates.map(p=>{budget.check(1);return k.xy(p);});
+      }
+      const geometry={type:'MultiPolygon',coordinates},emitted=read(geometry),actual=rings.map(ring=>emitted.find(r=>r.polygonIndex===ring.polygonIndex&&r.ringIndex===ring.ringIndex));
+      if(emitted.length!==rings.length||actual.some(ring=>!ring)||actual.length!==rings.length||actual.some((ring,index)=>ring.polygonIndex!==rings[index].polygonIndex||ring.ringIndex!==rings[index].ringIndex||ring.coordinates.length!==rings[index].coordinates.length||ring.coordinates.some((p,i)=>p.some((v,j)=>k.C(v,k.F.q(coordinates[ring.polygonIndex][ring.ringIndex][i][j]))))||k.G(polygonArea(k,ring.coordinates.slice(0,-1)))!==k.G(polygonArea(k,rings[index].coordinates.slice(0,-1)))))throw numericFailure('preview-cycle-correspondence');
+      certifyPreviewHomotopy(k,rings,actual);
+      budget.check();return geometry;
+    },
+    serializeExact:rings=>{
+      // Initial conservative presentation route: only exact dyadic vertices.
+      // A topology-certified approximation can be added separately; rounded
+      // crossings are never silently promoted to physical set authority.
+      const coordinates=[];
+      for(const ring of rings){
+        coordinates[ring.polygonIndex]??=[];
+        coordinates[ring.polygonIndex][ring.ringIndex]=ring.coordinates.map(p=>{
+          const preview=k.xy(p);budget.check(1);
+          if(p.some((v,i)=>k.C(v,k.F.q(preview[i]))))throw numericFailure('presentation-rational-crossing-unrepresentable');
+          return preview;
+        });
+      }
+      const geometry={type:'MultiPolygon',coordinates};
+      if(!(!rings.length&&!coordinates.length)&&!operation(rings,read(geometry),'difference').length&&!operation(read(geometry),rings,'difference').length)return geometry;
+      if(!rings.length)return geometry;
+      throw numericFailure('presentation-topology-unproved');
+    }
+  };
 }
 const planeSupport=new WeakMap();
 function completePlaneSupport(k) {
@@ -738,6 +1145,31 @@ const unresolvedAreaOrder=detail=>Object.assign(new Error(`area-order-unresolved
   status:'area-order-unresolved',
   detail
 });
+/** Exact sum, not a geometric union claim. The scoped caller must separately
+ * prove disjoint physical child regions before using it as served union area.
+ * Only current process-local measurements carry the required evidence. */
+export function sumMeasuredSurfaceAreas(measurements,{budget}={}) {
+  budget?.check();
+  if(!Array.isArray(measurements)||!measurements.length)throw unresolvedAreaOrder('empty-measured-area-sum');
+  const terms=[];
+  let lower=ZERO,upper=ZERO;
+  for(const measurement of measurements){
+    budget?.check();
+    const evidence=measuredAreaEvidence.get(measurement);
+    if(!evidence||evidence.fingerprint!==JSON.stringify(measurement))throw unresolvedAreaOrder('missing-or-changed-measured-area-evidence');
+    for(const [coefficient,radicand] of evidence.terms){
+      budget?.check(1);
+      const bounds=sqrtBounds(radicand);
+      const negative=sign(coefficient)<0;
+      lower=add(lower,mul(coefficient,bounds[negative?1:0]));
+      upper=add(upper,mul(coefficient,bounds[negative?0:1]));
+      terms.push([coefficient,radicand]);
+    }
+  }
+  const result=measuredAreaResult([lower,upper],terms,{areaOperation:'sum-of-measured-areas',measurementCount:measurements.length});
+  budget?.check();
+  return result;
+}
 /** Return the proved sign of a-b. Bounds are refined as exact rationals;
  * overlapping binary64 enclosures never authorize a secondary-score tie. */
 export function compareMeasuredSurfaceAreas(a,b,{
@@ -958,6 +1390,16 @@ function actualArea(k,rings,areaMode='per-face') {
 /** Integrate a literal XY footprint intersected with the bound domain. Area
  * roots are enclosed independently of trajectory algebra. This does not
  * certify a width or a source axis. */
+/** Integrate the actual bound native region directly. Canonical children use
+ * owner-derived exact boundaries; their finite summaries are never operands. */
+export function measureDomainSurfaceArea({domain,areaMode='per-face',budget=createTerrainBudget({kind:'measure'})}={}) {
+  budget.check();
+  canonicalCutDomainScope(domain);
+  if(!Object.isFrozen(domain)||!Object.isFrozen(domain.faces)||!Object.isFrozen(domain.boundaries))throw numericFailure('unbound-domain-area');
+  const exact=exactDomain(domain,budget),k=createBandKernel(exact,createAlgebraicField(budget),budget);
+  const measured=actualArea(k,k.boundaries,areaMode);
+  budget.check();return measured;
+}
 export function measureSurfaceFootprint({
   domain,
   geometryXY,
@@ -1073,7 +1515,67 @@ function corners(axis) {
   }
   return null;
 }
-function guardSeeds(exact,axis,budget) {
+function guardSeeds(exact,axis,budget,{originalDomain=exact.domain}={}) {
+  if(axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION){
+    const seeds=[],unresolved=[],seen=new Set();
+    let maxDistanceSquared=ZERO;
+    const original=axisPieces(exact,axis,budget,{originalDomain});
+    if(original.uncovered.length)return {seeds,unresolved:[{reason:'cap-topology',detail:'unresolved-finite-source'}],maxDistanceSquared};
+    for(const piece of original.pieces)for(let endpoint=0;endpoint<2;endpoint++){
+      budget.check();
+      const cap=endpoint?piece.endCap:piece.startCap,direction=endpoint?1:-1;
+      if(cap?.kind!=='retained-source-cap')continue;
+      const capKey=`${cap.componentIndex}:${cap.segmentIndex}:${cap.parameter}:${direction}`;
+      if(seen.has(capKey))continue;
+      seen.add(capKey);
+      budget.check(6);
+      const points=axis.components[cap.componentIndex].coordinatesXY,
+      a=points[cap.segmentIndex].map(Q),b=points[cap.segmentIndex+1].map(Q),v=vsub(b,a);
+      let size=0;
+      for(const q of v){budget.check(2);const bounds=numberBounds(q);size=Math.max(size,Math.abs(bounds[0]),Math.abs(bounds[1]));}
+      const outside=cap.parameter+direction*2**-22/size;
+      if(!(size>0&&Number.isFinite(outside)&&outside>=0&&outside<=1&&outside!==cap.parameter)){
+        unresolved.push({reason:'cap-topology',detail:'guard-crosses-source-knot-or-unrepresentable',axisId:axis.axisId});continue;
+      }
+      budget.check(13);
+      const interval={componentIndex:cap.componentIndex,segmentIndex:cap.segmentIndex,lo:Math.min(cap.parameter,outside),hi:Math.max(cap.parameter,outside)},
+      guard={...axis,axisOperation:{kind:POLYLINE_SOURCE_PARAMETER_OPERATION,intervals:[interval]}},
+      resolved=axisPieces(exact,guard,budget,{originalDomain});
+      if(resolved.uncovered.length||resolved.outside.length||!resolved.pieces.length){
+        unresolved.push({reason:'cap-topology',detail:'guard-would-touch-real-boundary-or-support',axisId:axis.axisId});continue;
+      }
+      const parameter=sub(Q(outside),Q(cap.parameter)),squared=mul(mul(parameter,parameter),dot(v,v));
+      if(cmp(squared,maxDistanceSquared)>0)maxDistanceSquared=squared;
+      budget.check(resolved.pieces.length);
+      seeds.push(...resolved.pieces.map(part=>({...part,guard:true})));
+    }
+    return {seeds,unresolved,maxDistanceSquared};
+  }
+  if(axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION){
+    const seeds=[],unresolved=[];
+    if(!axis.axisOperation)return {seeds,unresolved,maxDistanceSquared:ZERO};
+    const [a,b]=axis.components[0].coordinatesXY.map(p=>p.map(Q)),v=vsub(b,a);
+    const size=Math.max(...v.map(q=>Math.abs(numberBounds(q)[1])));
+    const delta=2**-22/size;
+    let maxDistanceSquared=ZERO;
+    for(const [lo,hi] of axis.axisOperation.intervals)for(const [endpoint,direction] of [[lo,-1],[hi,1]]){
+      const outside=endpoint+direction*delta;
+      if(!(outside>=0&&outside<=1&&outside!==endpoint)){
+        unresolved.push({reason:'cap-topology',detail:'unrepresentable-parameter-guard',axisId:axis.axisId});continue;
+      }
+      const interval=[endpoint,outside].sort((x,y)=>x-y);
+      const guard={...axis,axisOperation:{kind:SOURCE_PARAMETER_OPERATION,intervals:[interval]}};
+      const resolved=resolveSourceAxis(exact,guard,budget);
+      if(resolved.uncovered.length||resolved.outside.length){
+        unresolved.push({reason:'cap-topology',detail:'guard-would-touch-real-boundary',axisId:axis.axisId});continue;
+      }
+      const parameter=Q(Math.abs(outside-endpoint));
+      const squared=mul(mul(parameter,parameter),dot(v,v));
+      if(cmp(squared,maxDistanceSquared)>0)maxDistanceSquared=squared;
+      seeds.push(...resolved.pieces.map(piece=>({...piece,guard:true})));
+    }
+    return {seeds,unresolved,maxDistanceSquared};
+  }
   const seeds=[],
   unresolved=[];
   let maxDistanceSquared=ZERO;
@@ -1137,6 +1639,7 @@ function mergePlaneSeeds(pieces,k=null) {
     };
     if(last&&patchId!==null&&patchId!==undefined&&last.patchId===patchId&&last.componentIndex===piece.componentIndex&&pointKey(last.b)===pointKey(piece.a)&&!sign(cross(vsub(last.b,last.a),vsub(piece.b,piece.a)))&&sign(dot(vsub(last.b,last.a),vsub(piece.b,piece.a)))>0){
       last.b=piece.b;
+      if(Object.hasOwn(piece,'endCap'))last.endCap=piece.endCap;
       last.faces=[...new Map([...last.faces,...piece.faces].map(f=>[f.id,f])).values()];
       last.sources.push(source);
     }else result.push({
@@ -1167,12 +1670,16 @@ function mergePlaneSeeds(pieces,k=null) {
  * results contain diagnostics only and no applicable geometry or area. */
 function traceSurfaceBandAttempt({
   domain,
+  originalDomain=domain,
   axisXY,
   widthM,
   policy:requestedPolicy='geodesic',
   areaMode='per-face',
   budget,
-  boundaryGuardM
+  boundaryGuardM,
+  sourceGuardVariant=null,
+  physicalDomain=null,
+  geographicSourceAxis=null
 }) {
   if(!domain||!Number.isFinite(widthM)||widthM<=0)throw new RangeError('Positive finite full surface width required');
   budget.check();
@@ -1180,8 +1687,21 @@ function traceSurfaceBandAttempt({
   const axis=originalAxis(axisXY);
   let policy=requestedPolicy==='contour-normal'?'contour-gradient':'metric-normal-geodesic';
   if(!axis?.components?.length||axis.components.some(c=>c.coordinatesXY.length<2||c.coordinatesXY.some(p=>p.length!==2||!p.every(Number.isFinite))))throw new RangeError('Finite source axis required');
-  const sourceAxis=Array.isArray(axisXY)?axisXY.map(p=>[...p]):structuredClone(axisXY);
-  budget.check(axis.components.reduce((s,c)=>s+c.coordinatesXY.length,0));
+  if(physicalDomain||geographicSourceAxis){
+    const native=axis.components[0]?.coordinatesXY;
+    if(!physicalDomain||requestedPolicy!=='geodesic'||!Array.isArray(axisXY)||axisXY.length!==2||axis.components.length!==1||native?.length!==2||!Array.isArray(geographicSourceAxis)||geographicSourceAxis.length!==2||geographicSourceAxis.some(p=>!Array.isArray(p)||p.length!==2||!p.every(Number.isFinite)||Math.abs(p[0])>180||Math.abs(p[1])>90)||geographicSourceAxis.some((p,i)=>toUTM(p,Number(domain.crs.split(':')[1])).some((v,j)=>v!==native[i][j])))throw new RangeError('Supported source geographic binding mismatch');
+    const scope=canonicalCutDomainScope(physicalDomain);
+    if(scope&&scope.recipe.kind!=='canonical-cut-physical-1')throw Object.assign(new Error('Supported passage requires original physical scope, not a canonical child'),{status:'cut-scope-unresolved'});
+  }
+  const finitePolyline=axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION;
+  if(finitePolyline){
+    if(!validFinitePolylineSourceAxisSchema(axis,budget))throw Object.assign(new Error('Malformed finite polyline source'),{status:'axis-geometry-unresolved'});
+    let copies=0;
+    for(const component of axis.components){budget.check();copies+=component.coordinatesXY.length+component.coordinates.length;}
+    budget.check(copies+(axis.axisOperation?.intervals.length??0)*4);
+  }
+  const sourceAxis=geographicSourceAxis?structuredClone(geographicSourceAxis):Array.isArray(axisXY)?axisXY.map(p=>[...p]):structuredClone(axisXY);
+  if(!finitePolyline)budget.check(axis.components.reduce((s,c)=>s+c.coordinatesXY.length,0));
   const validation={
     widthM,
     widthConvention:'full',
@@ -1217,7 +1737,7 @@ function traceSurfaceBandAttempt({
   }
   if(policy==='contour-gradient'){
     if(!Number.isFinite(axis.levelM)||!axis.axisId||!certifyContourElevation(domain,[axis],{
-      budget
+      budget,originalDomain
     }).valid){
       validation.unresolved.push({
         reason:'uncertified-contour-axis',
@@ -1227,6 +1747,7 @@ function traceSurfaceBandAttempt({
       return invalid();
     }
   }
+  budget.phase?.('surface-band');
   if(policy==='metric-normal-geodesic'){
     const corner=corners(axis);
     if(corner){
@@ -1234,8 +1755,10 @@ function traceSurfaceBandAttempt({
       return invalid();
     }
   }
+  if(physicalDomain&&(physicalDomain.modelHash!==domain.modelHash||physicalDomain.crs!==domain.crs))throw new RangeError('Supported strip physical model binding mismatch');
   const exact=exactDomain(domain,budget),
-  original=axisPieces(exact,axis,budget);
+  original=axisPieces(exact,axis,budget,{originalDomain});
+  if(physicalDomain&&original.uncovered.length){validation.unresolved.push({reason:'uncovered-source',detail:'supported-whole-axis-required'});return invalid();}
   validation.clippedSeedCount=original.uncovered.filter(p=>!p.inside).length;
   for(const p of original.uncovered.filter(p=>p.inside))validation.unresolved.push({
     reason:'uncovered-source',
@@ -1286,15 +1809,23 @@ function traceSurfaceBandAttempt({
     }));
   }else if(k.uniformPlane)original.pieces=mergePlaneSeeds(original.pieces);
   validation.constantPlane=k.uniformPlane;
+  const allowPlaneBoundaryTangents=axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION&&original.completeCarrier&&k.uniformPlane;
+  if(allowPlaneBoundaryTangents)validation.completeSourceCarrier=true;
   try {
-    const guarded=guardSeeds(exact,axis,budget);
+    // New finite-axis passages retain the exact submitted straight source.
+    // Source cap guards come from the existing original cap-edge construction;
+    // separately rounded tiny seed extensions are not original source strata.
+    const guarded=physicalDomain?{seeds:[],unresolved:[],maxDistanceSquared:ZERO}:guardSeeds(exact,axis,budget,{originalDomain});
     validation.unresolved.push(...guarded.unresolved);
     const originalFlows=[-1,1].map(side=>traceBandBundles(k,original.pieces,{
+      allowPlaneBoundaryTangents,
+      preservePhysicalSourceCaps:axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION,
       side,
       policy,
       halfWidth:half
     }));
     const guardFlows=[-1,1].map(side=>traceBandBundles(k,guarded.seeds,{
+      preservePhysicalSourceCaps:axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION,
       side,
       policy,
       halfWidth:half
@@ -1305,24 +1836,51 @@ function traceSurfaceBandAttempt({
       complete:originalFlows.every(f=>f.coverage.complete),
       seeds:originalFlows.flatMap(f=>f.coverage.seeds)
     };
+    if(physicalDomain&&[...originalFlows,...guardFlows].some(flow=>flow.exceptions.length))validation.unresolved.push({reason:'insufficient-support',detail:'premature-support-boundary'});
     if(validation.unresolved.length)return invalid();
     const unguardedPolygons=unitePatches(k,originalFlows.flatMap(f=>f.patches));
     const patches=[...originalFlows,...guardFlows].flatMap(f=>f.patches),
-    polygons=unitePatches(k,patches),
-    guard=boundaryGuards(k,polygons,patches,boundaryGuardM),
+    polygons=unitePatches(k,patches);
+    if(physicalDomain)patches.push({capEdges:finitePlaneSourceCaps(k,polygons,axis,patches,original.pieces)});
+    const guard=boundaryGuards(k,polygons,patches,boundaryGuardM,{preserveSourceCapGaps:allowPlaneBoundaryTangents&&!!sourceGuardVariant,anisotropic:allowPlaneBoundaryTangents&&!!sourceGuardVariant,preservePhysicalSourceCaps:axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION}),
     epsg=Number((domain.crs??'EPSG:32632').split(':')[1]);
+    const finiteCapCasting=[],castingMaxQ=axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION?exact.faces.reduce((a,f)=>cmp(a,f.q)>0?a:f.q,ZERO):ZERO;
     const geometry={
       type:'MultiPolygon',
-      coordinates:guard.polygons.map(rings=>rings.map(ring=>{
-        const out=ring.map(p=>{
+      coordinates:guard.polygons.map((rings,polygonIndex)=>rings.map((ring,ringIndex)=>{
+        const out=ring.map((p,pointIndex)=>{
           budget.check(2);
-          return fromUTM(k.xy(p),epsg);
+          let coordinate=fromUTM(k.xy(p),epsg);
+          if(axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION){
+            const cast=castFinitePhysicalCapCorner(k,p,polygons[polygonIndex][ringIndex][pointIndex],coordinate,patches,epsg,castingMaxQ);
+            coordinate=cast.coordinate;
+            if(cast.provenance){budget.check(1);finiteCapCasting.push({polygonIndex,ringIndex,pointIndex,...cast.provenance});}
+          }
+          if(allowPlaneBoundaryTangents&&sourceGuardVariant?.nudge){
+            const originalPoint=polygons[polygonIndex][ringIndex][pointIndex];
+            const cap=patches.flatMap(patch=>patch.capEdges??[]).find(cap=>k.onSegment(originalPoint,cap.a,cap.b));
+            if(cap){
+              const magnitude=cap.outward.map(x=>k.G(x)<0?k.F.neg(x):x).reduce((a,b)=>k.C(a,b)>0?a:b);
+              if(k.G(magnitude)){
+                const outwardPoint=k.V(p,k.K(cap.outward,k.F.div(k.F.q(1),magnitude)));
+                const outwardGeo=fromUTM(k.xy(outwardPoint),epsg);
+                for(const index of sourceGuardVariant.nudge){
+                  // One binary64 step toward the physical side of this butt cap.
+                  // Actual projected/raw-WGS topology and every width stratum
+                  // decide whether this candidate is usable.
+                  coordinate[index]=outwardGeo[index]>coordinate[index]?nextDown(coordinate[index]):nextUp(coordinate[index]);
+                }
+              }
+            }
+          }
+          return coordinate;
         });
         return [...out,out[0]];
       }))
     };
     const actual=serializedRings(k,geometry,epsg);
-    assertSimpleRings(k,actual);
+    assertSimpleRings(k,actual,axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION);
+    if(physicalDomain&&(intersectRegions(k,actual,k.boundaries,'difference').length||actual.some(r=>r.coordinates.some(p=>k.location(p,k.boundaries)!==1))))throw numericFailure('actual-strip-outside-acquired-support');
     const closed=polygons=>polygons.flatMap((rings,polygonIndex)=>rings.map((ring,ringIndex)=>({
       polygonIndex,
       ringIndex,
@@ -1330,8 +1888,9 @@ function traceSurfaceBandAttempt({
     })));
     const ideal=closed(unguardedPolygons),
     construction=closed(polygons);
-    topologyContacts(k,ideal,actual);
+    topologyContacts(k,ideal,actual,k.boundaries,axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION?{patches,domain,epsg,guardPolygons:guard.polygons,axis}:false);
     validation.boundaryGuards=guard.provenance;
+    if(axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION)validation.finiteCapCasting=finiteCapCasting;
     const maxQ=exact.faces.reduce((a,f)=>cmp(a,f.q)>0?a:f.q,ZERO),
     factor=add(ONE,maxQ);
     let maxMove=k.Z;
@@ -1344,12 +1903,18 @@ function traceSurfaceBandAttempt({
     validation.serializationDisplacementM=[0,k.F.bounds(k.F.sqrt(mul(moveUpper,factor)))[1]];
     validation.capEndpointErrorBoundM=k.F.bounds(k.F.add(k.F.q(validation.serializationDisplacementM[1]),k.F.sqrt(mul(guarded.maxDistanceSquared,factor))))[1];
     if(validation.capEndpointErrorBoundM>1e-5)throw numericFailure('serialization-displacement-ceiling');
-    const scoped=intersectRegions(k,actual,k.boundaries);
-    const topology=certifyScopedTopology(k,ideal,actual,scoped,geometry,domain,epsg),
+    // All construction and pre-mask width trajectories stay on S. The physical
+    // mask P shares this exact field, retains reentry, and never resets travel.
+    const physicalK=physicalDomain?createBandKernel(exactDomain(physicalDomain,budget),field,budget):k,physicalScope=physicalDomain??domain;
+    if(physicalDomain)topologyContacts(physicalK,ideal,actual);
+    const scoped=intersectRegions(physicalK,actual,physicalK.boundaries);
+    const topology=certifyScopedTopology(physicalK,ideal,actual,scoped,geometry,physicalScope,epsg),
     scopeGeometry=topology.scopeGeometry;
     delete topology.scopeGeometry;
     validation.topology=topology;
     const verified=[-1,1].map((side,i)=>traceBandBundles(k,original.pieces,{
+      allowPlaneBoundaryTangents,
+      preservePhysicalSourceCaps:axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION,
       side,
       policy,
       halfWidth:half,
@@ -1396,8 +1961,10 @@ function traceSurfaceBandAttempt({
         axisId:axis.axisId
       });
     }
+    if(physicalDomain&&(validation.exceptions.length||!halves.every(Boolean)||!validation.serializedWidthM))validation.unresolved.push({reason:'insufficient-support',detail:'incomplete-nominal-width'});
     if(validation.unresolved.length||!validation.coverage.complete)return invalid();
-    const area=actualArea(k,scoped,areaMode);
+    if(physicalDomain)validation.supportedWholeAxis=true;
+    const area=actualArea(physicalK,scoped,areaMode);
     validation.areaBoundsM2=area.areaBoundsM2;
     if(area.actualGeometry.representation==='constant-plane')area.actualGeometry.geometryXY={
       type:'MultiPolygon',
@@ -1410,6 +1977,7 @@ function traceSurfaceBandAttempt({
     return copyMeasuredAreaEvidence({
       valid:true,
       sourceAxis,
+      ...(physicalDomain?{surfaceConstructionPolicy:'native-supported-axis-clip-1'}:{}),
       scopeGeometry,
       modelHash:domain.modelHash,
       crs:domain.crs,
@@ -1445,7 +2013,8 @@ export function traceSurfaceBand(options={
     result=traceSurfaceBandAttempt({
       ...options,
       budget,
-      boundaryGuardM
+      boundaryGuardM,
+      sourceGuardVariant:null
     });
     attempts.push({
       boundaryGuardM,
@@ -1459,9 +2028,24 @@ export function traceSurfaceBand(options={
     result.validation.guardRefinement=attempts;
     if(result.valid)return copyMeasuredAreaEvidence(result,result);
     failures.push(...result.validation.unresolved);
-    if(!result.validation.unresolved.some(p=>p.detail?.startsWith('projection-readiness:'))){
+    const completeSource=options.axisXY?.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION&&!options.axisXY.axisOperation;
+    const finiteSource=options.axisXY?.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION&&result.validation.coverage.complete&&result.validation.topology?.geographicAgrees===true&&result.validation.capEndpointErrorBoundM<=1e-5;
+    const refinable=result.validation.unresolved.some(p=>p.detail?.startsWith('projection-readiness:')||completeSource&&['serialization-changed-boundary-contact-topology','source-outside-corridor','half-width-enclosure-exceeds-ceiling','real-clip-displacement-exceeds-ceiling','width-enclosure-exceeds-ceiling'].includes(p.detail)||finiteSource&&['half-width-enclosure-exceeds-ceiling','width-enclosure-exceeds-ceiling'].includes(p.detail));
+    if(!refinable){
       result.validation.unresolved=failures;
       return result;
+    }
+  }
+  const completeSource=options.axisXY?.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION&&!options.axisXY.axisOperation;
+  if(completeSource&&result?.validation.completeSourceCarrier){
+    // At most twelve further deterministic candidates; no deadline/node reset.
+    for(const exponent of [-19,-18,-17])for(const nudge of [null,[0],[1],[0,1]]){
+      const boundaryGuardM=2**exponent,sourceGuardVariant={anisotropic:true,nudge};
+      result=traceSurfaceBandAttempt({...options,budget,boundaryGuardM,sourceGuardVariant});
+      attempts.push({boundaryGuardM,sourceGuardVariant,valid:result.valid,...(result.valid?{}:{reasons:result.validation.unresolved.map(p=>p.detail??p.reason)})});
+      result.validation.guardRefinement=attempts;
+      if(result.valid)return copyMeasuredAreaEvidence(result,result);
+      failures.push(...result.validation.unresolved);
     }
   }
   if(result)result.validation.unresolved=failures;

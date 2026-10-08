@@ -1,7 +1,10 @@
-import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.1-prova.1';
+import {terrainReportMetricMetadata} from '../src/terrain-report-summary.js?v=1.3.1';
+import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.1';
 import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=55.7';
 function sumFields(fields,key){return fields.some(field=>field.terrainStatus==='invalid')?null:fields.reduce((sum,field)=>sum+field[key],0);}
 function text(value) { return String(value ?? '').trim().toLowerCase(); }
+
+function finiteOrNull(value){return value===null||value===undefined||value===''||!Number.isFinite(Number(value))?null:Number(value);}
 
 function finite(...values) {
   for (const value of values) {
@@ -30,6 +33,7 @@ function contactLabel(project) {
 
 function fieldMetric(field, project, ...names) {
   if(field?.metrics?.terrainStatus==='invalid')return null;
+  if(field?.metrics?.terrainStatus)return finiteOrNull(field.metrics[names[0]]);
   const snake = {
     areaM2:'gross_area_m2', netAreaM2:'net_area_m2', simulatedPlants:'simulated_plants',
     commercialPlants25:'commercial_plants_25', perimeterM:'perimeter_m', rowCount:'row_count',
@@ -105,8 +109,11 @@ export function expandProjectFields(projects = [],profiles = []) {
       const location = String(field?.locationLabel || municipality || project?.location_label || '').trim();
       const client = contactLabel(project);
       const userLabel=ownerLabel(project,byOwner.get(String(project.owner_user_id)));
+      // Preserve the historical administration shape: headland surface area
+      // has no detail consumer here, while optional native bases/counts do.
+      const {surfaceHeadlandAreaM2,...terrainMetadata}=terrainReportMetricMetadata(field?.metrics);
       const row = {
-        ...(field?.metrics?.terrainStatus?{terrainStatus:field.metrics.terrainStatus,terrainSource:field.metrics.terrainSource,quantityBasis:field.metrics.quantityBasis,surfaceRowLinearM:field.metrics.surfaceRowLinearM,horizontalRowLinearM:field.metrics.horizontalRowLinearM,surfaceAreaM2:field.metrics.surfaceAreaM2,surfaceNetAreaM2:field.metrics.surfaceNetAreaM2}:{}),
+        ...terrainMetadata,
         rowId:`${project.id}:${id}`, projectId:String(project.id), fieldId:id, index, project, field,
         projectDate:project.created_at ?? null, projectName:project.name ?? 'Progetto', projectCode:project.public_code ?? '',
         client, userLabel, location, municipality, province:field?.province ?? project?.province ?? '', year, plantingStatus,

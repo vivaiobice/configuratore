@@ -1,3 +1,26 @@
+# Piattaforma Vivai Obice — stato 1.3.1
+
+**Metadati coordinati: 1.3.1 — 6 ottobre 2026.** Ambiente configurato LIVE; preparazione del rilascio in corso. Questa nota non attesta pubblicazione, backend attivato o verifica completa dell'archivio finale.
+
+## Revisione in preparazione
+
+La curvatura raccoglie Manuale e Adatta al terreno, con anteprima e applicazione esplicita delle proposte. Il comando 3D usa la mappa comune e ripristina vista, padding, gesti e scelte di visibilità alla chiusura. La revisione dei filari di livello, dei tagli suggeriti, dei frammenti fisici e dei pali di testa richiede la chiusura dei controlli nativi e delle regressioni sul sorgente finale; la sola disponibilità dei comandi non la certifica.
+
+La versione pubblica è letta da APP_CONFIG e condivisa dai due strumenti. Comfortaa resta nell'interfaccia e il font precedente nei documenti. Conteggi rimane autonomo, locale sul dispositivo, con logo/selettore tool e ritorno al configuratore; i flag cloud restano disattivati. Le query dei moduli e la cache Conteggi saranno allineate dopo il congelamento degli algoritmi attualmente in lavorazione.
+
+## Evidenza disponibile e limiti
+
+- La correzione delle riparazioni ripetute della mappa ha 8 test mirati e 68 regressioni superati sulla snapshot `032b937`; la prova browser anonima non registra riscritture della geometria, riordini ripetuti o ricreazioni delle quote durante le finestre ferme. Queste verifiche circoscritte non sono la suite finale 1.3.1.
+- Comando 3D, gesti, camera e ciclo di chiusura hanno verifiche funzionali. Il controllo locale Chromium 153/SwiftShader dei frame resta fallito rispetto a 150 ms: la finestra caricata ha raggiunto 350 ms. Ridurre sperimentalmente il maxzoom DEM non ha risolto il problema e non è una modifica di produzione.
+- Il collaudo richiesto sui campi reali e sul DTM congelato è bloccato dalla disponibilità del campione e non è stato eseguito. Fixture anonime e dati sintetici non lo sostituiscono. Safari/iOS e dispositivi fisici restano non collaudati.
+- Offline riguarda soltanto `/conteggi/`, dopo apertura online e attivazione del worker. Il configuratore alla radice non ha questo contratto offline. Le prove UI con boot sostituito non attestano installazione reale del worker, riapertura a freddo e andata/ritorno tra i due strumenti.
+- Restano da registrare sul sorgente congelato la suite finale, i controlli numerici, le prove browser/PDF e della cache reale, la revisione conclusiva, il manifest e le verifiche sullo ZIP estratto. Nessun totale storico viene riutilizzato come risultato finale.
+
+Dettagli e procedura di riproduzione in [README_RELEASE_1.3.1.md](README_RELEASE_1.3.1.md); caricamento in [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Non sono stati eseguiti in questa preparazione deploy, migrazioni, modifiche account/secret o invii reali.
+
+<details>
+<summary>Cronologia conservata: stato originale della 1.2.6 e versioni precedenti</summary>
+
 # Piattaforma Vivai Obice — stato unico
 
 **Versione codice: 1.2.6 — 4 ottobre 2026.** Ambiente configurato: LIVE; pubblicazione non eseguita. Progetta impianto alla radice, Conteggi in `/conteggi/`; nessuna nuova migrazione SQL o scrittura sui progetti cloud.
@@ -102,3 +125,5 @@ Frontend statico; dipendenze cartografiche esistenti. Test con `npm ci`, `npm ci
 Le tre migrazioni additive e le funzioni `counts-api`, `counts-admin`, `submit-counts` sono consolidate in `supabase/`. `PUBBLICAZIONE.md` riporta installazione, flag, riuso dei secret, collaudo e rollback. Le note in `docs/conteggi/` e le altre release sono storiche; questo è il documento corrente.
 
 Pubblicare il pacchetto completo nel checkout esistente. Chiudere le vecchie schede e riaprire online per gli asset 1.2.6; mantenere origine HTTPS e archivi. Nessuna rimozione obbligatoria. Per il rollback disattivare i servizi nuovi e ripubblicare il pacchetto precedente, conservando tabelle, account, IndexedDB e localStorage. Non cancellare tutti i dati del sito.
+
+</details>

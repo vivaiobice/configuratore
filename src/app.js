@@ -1,50 +1,54 @@
-import {createTerrainController,checkpointTerrainProposal,terrainPortionEditorState} from './terrain-controller.js?v=1.3.1-prova.1';
-import {terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.1-prova.1';
-import {createCadastralCoordinator} from './cadastral-auto.js?v=1.3.1-prova.1';
-import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=1.3.1-prova.1';
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=1.3.1-prova.1';
-import { createMobileUI } from './mobile-ui.js?v=1.3.1-prova.1';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.3.1-prova.1&counts=1';
+import {mountReleaseVersion} from './release-version.js?v=1.3.1';
+import {createTerrainController,checkpointTerrainProposal,terrainPortionEditorState} from './terrain-controller.js?v=1.3.1';
+import {terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.1';
+import {createTerrainCoreMount} from './terrain-core-presentation.js?v=1.3.1';
+import {createCadastralCoordinator} from './cadastral-auto.js?v=1.3.1';
+import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=1.3.1';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=1.3.1';
+import { createMobileUI } from './mobile-ui.js?v=1.3.1';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.3.1&counts=1';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.3.1-prova.1';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=1.3.1-prova.1';
-import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=1.3.1-prova.1';
-import { initMap } from './map.js?v=1.3.1-prova.1';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.3.1-prova.1';
-import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=1.3.1-prova.1';
-import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.3.1-prova.1';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.3.1';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=1.3.1';
+import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=1.3.1';
+import { initMap } from './map.js?v=1.3.1';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.3.1';
+import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=1.3.1';
+import {migrateDraftEnvelope} from './local-migrations.js?v=55.6.1&counts=1';
+import {nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.1';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.3.1';
 import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
 import {mountToolMenu} from './tool-menu.js?v=1.2.4';
 import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=counts2';
 import {setLocalOwnerScope} from './local-owner-scope.js';
-import { APP_CONFIG } from './config.js?v=1.3.1-prova.1';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.3.1-prova.1';
+import { APP_CONFIG } from './config.js?v=1.3.1';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.3.1';
 import {rememberCountsOwner} from './counts-offline-owner.js';
 import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.2.4';
 import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.2.4';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.3.1-prova.1';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.3.1';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=1.3.1-prova.1';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=1.3.1';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=1.3.1-prova.1';
-import {ensureQuoteRevision} from './quote-sync.js?v=1.3.1-prova.1';
-import { buildCloudSnapshot } from './cloud-project-model.js?v=1.3.1-prova.1';
+import { createProjectSync } from './project-sync.js?v=1.3.1';
+import {ensureQuoteRevision} from './quote-sync.js?v=1.3.1';
+import { buildCloudSnapshot } from './cloud-project-model.js?v=1.3.1';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.3.1-prova.1';
+import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.3.1';
 import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=1.0.2';
 import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
 import {createViewMode} from './view-mode.js?v=55.4';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
-import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.3.1-prova.1';
-import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.1-prova.1';
-import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.3.1-prova.1';
+import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.3.1';
+import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.1';
+import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.3.1';
 import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
@@ -55,9 +59,9 @@ import { createProfileUI } from './profile-ui.js?v=1.2.4';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
-import { resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.1-prova.1';
+import { resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.1';
 import {curveControlRange,nextCurveControlPoint} from './row-curve-control-state.js';
-import {rowPortionEditorState,rowPortionDesignPatch,nextPortionCurvePoint,renderRowPortionPicker} from './row-portion-editor.js?v=1.3.1-prova.1';
+import {rowPortionEditorState,rowPortionDesignPatch,nextPortionCurvePoint,renderRowPortionPicker} from './row-portion-editor.js?v=1.3.1';
 import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=45';
 
 const $ = (selector) => document.querySelector(selector);
@@ -72,6 +76,7 @@ state = { ...state, project:updateActiveFieldProject(state.project, {
 }) };
 let mapApi = null;
 let terrainController=null;
+let pendingNativeEndpoint=null;
 let overviewMode=false;
 const viewMode=createViewMode();
 let mobileUi = null;
@@ -178,6 +183,8 @@ async function switchToCounts(view,params={}){
   if(switchingTool)return;
   switchingTool=true;
   try{
+    if(terrainController?.getState().proposal||terrainController?.getState().busy)terrainController.cancel();
+    mapApi?.setTerrainProposalPreview(null);
     const url=buildCountsUrl(countsConfig,view,params);
     if(view!=='new'||params.fieldId)clearPendingFieldContext(globalThis.sessionStorage);
     const ownerId=authBridge.getState()?.user?.id;
@@ -350,7 +357,7 @@ function selectRowPortion(id){
 }
 function patchRowDesign(patch,{extraPatch={}}={}){
  const projectPatch={...rowPortionDesignPatch(rowEditingProject(),activeRowPortionId,patch),...extraPatch};
- if(state.project.terrain){terrainController?.close3D();const candidate=mergeProjectState(state,projectPatch);void terrainController?.propose({project:candidate.project,projectPatch,followTerrain:false});return;}
+ if(state.project.terrain){terrainController?.close3D();const candidate=mergeProjectState(state,projectPatch);return terrainController?.propose({project:candidate.project,projectPatch,mode:'manual',followTerrain:false});}
  patchProject(projectPatch);
 }
 function curveContext(){return portionEditorState().context;}
@@ -412,6 +419,7 @@ function bindNumberInput(selector, key) { $(selector)?.addEventListener('input',
 
 try {
   mapApi = initMap({
+    onTerrainToggle:()=>void terrainController?.toggle3D(),
     container: 'map',
     requiresLinearConfirmation:isMobileMap,
     enableTouchRotation:isMobileMap,
@@ -443,6 +451,8 @@ try {
       renderExclusions();
     },
     onExclusionsReplace: (exclusions) => {patchProject({exclusions});renderExclusions();},
+    getNativePassageEditContext:nativePassageEditContext,
+    onNativePassageEndpointRequest:applyNativePassageEndpoint,
     onRowCurvePointsChange:(points)=>patchCurvePoints(points),
     onCadastralState:renderCadastralState,
     onCadastralIdentifyState:(next)=>renderCadastralParcelStatus(cadastralParcelStatusEl,next),
@@ -485,15 +495,46 @@ try {
 
 
 function terrainContext(){return {ownerId:identityFrozen?null:authBridge.getState()?.user?.id??null,projectId:state.project.localProjectId,fieldId:overviewMode?null:state.project.activeFieldId};}
-terrainController=createTerrainController({document,getProject:()=>overviewMode?{...state.project,geometry:null}:state.project,getContext:terrainContext,getPortionId:()=>activeRowPortionId,getMapApi:()=>mapApi,getResult:()=>latestMetrics,onStatus:setStatus,onProposalChange:()=>{renderCurveControls();syncCurveEditor();},
+function nativePassageEditContext(){
+ const controller=terrainController?.getState();
+ return {...terrainContext(),contextKey:controller?.contextKey??null,mode:controller?.mode??null,overviewMode,identityFrozen};
+}
+function clearPendingNativeEndpoint(){
+ pendingNativeEndpoint?.release?.();pendingNativeEndpoint=null;
+}
+async function applyNativePassageEndpoint(request,{signal,dismissSignal}={}){
+ if(!terrainController||identityFrozen||overviewMode||signal?.aborted||dismissSignal?.aborted)throw new Error('Il contesto del passaggio è cambiato.');
+ const context=JSON.stringify(nativePassageEditContext()),requestKey=JSON.stringify(request);
+ let ready;
+ if(pendingNativeEndpoint?.requestKey===requestKey&&pendingNativeEndpoint.context===context&&terrainController.getState().proposal===pendingNativeEndpoint.proposal){
+  ready=pendingNativeEndpoint.proposal;pendingNativeEndpoint.release();
+ }else{
+  clearPendingNativeEndpoint();
+  ready=await terrainController.propose({kind:'cut',cutRequest:{action:'endpoint',exclusionId:request.exclusionId,endpointIndex:request.endpointIndex,coordinate:request.coordinate}},{signal});
+ }
+ if(!ready||ready.ok!==true||signal?.aborted||dismissSignal?.aborted||context!==JSON.stringify(nativePassageEditContext()))throw new Error('Non è stato possibile ricalcolare il passaggio sul terreno.');
+ const signals=[...new Set([signal,dismissSignal].filter(Boolean))];
+ const pending={proposal:ready,requestKey,context,committed:false,release:()=>{for(const activeSignal of signals)activeSignal.removeEventListener('abort',cancel);}};
+ const cancel=()=>{if(!pending.committed&&terrainController.getState().proposal===ready)terrainController.cancel();};
+ pendingNativeEndpoint=pending;for(const activeSignal of signals)activeSignal.addEventListener('abort',cancel,{once:true});
+ if(signals.some(activeSignal=>activeSignal.aborted)){cancel();throw new Error('Modifica del passaggio annullata.');}
+ const applied=await terrainController.apply({signal});
+ if(applied!==true)throw new Error('Il salvataggio del passaggio non è riuscito. Riprova.');
+ if(pendingNativeEndpoint===pending)clearPendingNativeEndpoint();
+ return true;
+}
+const terrainCoreMount=createTerrainCoreMount({document,getController:()=>terrainController,getProject:()=>state.project,getMetrics:()=>latestMetrics,isEnabled:()=>!overviewMode&&!identityFrozen});
+terrainController=createTerrainController({document,getProject:()=>overviewMode||identityFrozen?{...state.project,geometry:null}:state.project,getContext:terrainContext,getPortionId:()=>activeRowPortionId,getMapApi:()=>mapApi,getResult:()=>latestMetrics,getCheckpointSnapshot:candidateProject=>migrateDraftEnvelope({version:3,savedAt:new Date().toISOString(),state:{...state,project:candidateProject},workspace:captureWorkspace()}),onStatus:setStatus,onStateChange:terrainState=>{mapApi?.terrainControl?.setState({available:terrainState.available,active:terrainState.in3D,busy:terrainState.busy||terrainState.viewOpening});terrainCoreMount.render(terrainState);mobileUi?.renderField();},onProposalChange:proposal=>{if(pendingNativeEndpoint&&pendingNativeEndpoint.proposal!==proposal)clearPendingNativeEndpoint();mapApi?.setTerrainProposalPreview(proposal);renderCurveControls();syncCurveEditor();},
  applyProposal:(proposal,context)=>{
   if(identityFrozen||overviewMode)throw new Error('Il contesto del progetto è cambiato.');
   const checkpoint=checkpointTerrainProposal({state,proposal,context,currentContext:terrainContext(),mergeState:mergeProjectState,saveCheckpoint:candidate=>saveDraft(globalThis.localStorage,candidate,captureWorkspace())});
+  if(pendingNativeEndpoint?.proposal===proposal){pendingNativeEndpoint.committed=true;pendingNativeEndpoint.release();}
+  if(Object.hasOwn(context,'terrainNextPortionId'))activeRowPortionId=context.terrainNextPortionId;
   state=checkpoint;summarySaveFeedback.dirty();calculateAndRender();projectSync?.schedule('terrain_applied');return true;
  }});
 // Every map-edit entry restores the 2D camera before installing edit handles.
 for(const method of ['beginDraw','beginExclusionDraw','beginLinearExclusionDraw','beginVertexEditing','beginExclusionEditing','beginVertexRemoval']){
- if(!mapApi?.[method])continue;const edit=mapApi[method];mapApi[method]=(...args)=>{terrainController.close3D();return edit(...args);};
+ if(!mapApi?.[method])continue;const edit=mapApi[method];mapApi[method]=(...args)=>{if(terrainController.getState().proposal||terrainController.getState().busy)terrainController.cancel();mapApi.setTerrainProposalPreview(null);terrainController.close3D();return edit(...args);};
 }
 if(mapApi?.setRowCurveEditor){const edit=mapApi.setRowCurveEditor;mapApi.setRowCurveEditor=options=>{if(options.active)terrainController.close3D();return edit(options);};}
 void terrainController.refresh();
@@ -616,6 +657,7 @@ function renderExclusions() {
     input.addEventListener('change', () => { const exclusions = (state.project.exclusions ?? []).map(x=>x.id===item.id?{...x,label:input.value.trim() || `Area esclusa ${index+1}`} : x); patchProject({exclusions}); });
     const edit = document.createElement('button'); edit.type='button'; edit.textContent='Modifica'; edit.addEventListener('click',()=>{ if (isMobileMap()) setMapFullscreen(true); mapApi?.beginExclusionEditing(item.id); });
     const remove = document.createElement('button'); remove.type='button'; remove.textContent='Elimina'; remove.title='Rimuovi area esclusa'; remove.addEventListener('click', () => {
+      if(nativePassageFamilyPresent(state.project.exclusions,item.id)){setStatus('Per rimuovere il passaggio sul terreno, ripristina il disegno della porzione.');return;}
       mapApi?.finishVertexEditing();
       const exclusions = (state.project.exclusions ?? []).filter(x=>x.id!==item.id);
       patchProject({exclusions}); renderExclusions();
@@ -643,12 +685,14 @@ function setOverviewControls(disabled){
  else{for(const [node,previous] of overviewDisabledControls)node.disabled=previous;overviewDisabledControls.clear();}
 }
 function enterOverviewMode(){
- mapApi?.stopTools?.();curveEditingActive=false;mapApi?.finishRowCurveEditing?.();mapApi?.clearGeometry();overviewMode=true;
+ overviewMode=true;terrainController?.close3D();
+ mapApi?.stopTools?.();curveEditingActive=false;mapApi?.finishRowCurveEditing?.();mapApi?.clearGeometry();
  activeRowPortionId=null;mapApi?.setRowPortions?.({portions:[]});renderRowPortionPicker($('#row-portion-picker'),{enabled:false},selectRowPortion);
  syncOtherFieldsOnMap();desktopFieldSelectors.render(state.project.fields??[],'');setOverviewControls(true);mapApi?.focusAllFields?.();setStatus('Vista generale: nessun campo selezionato. Seleziona un campo per modificarlo.');
 }
 
 function loadActiveFieldOnMap() {
+  terrainController?.close3D();
   overviewMode=false;setOverviewControls(false);
   curveEditingActive=false;
   activeRowPortionId=null;rowPortionFieldId=state.project.activeFieldId;
@@ -974,11 +1018,13 @@ async function moveArchivedField(sourceItem,targetItem,field){
   });
 }
 
+mountReleaseVersion();
 mobileUi = createMobileUI({
   countsEnabled:countsConfig.enabled,openCounts:switchToCounts,openCountsForField,
   auth:authBridge,
   getMap:()=>mapApi?.map,
   isMobile:isMobileMap, getField:()=>state.project, getFields:()=>state.project.fields ?? [], getMetrics:(field)=>calculateFieldProject(field ?? state.project),
+  getTerrainPresentation:field=>{if(overviewMode||identityFrozen||!(field===state.project||field?.id===state.project.activeFieldId))return null;const current=terrainController?.getState();return current?{proposal:current.proposal,model:current.proposal?.terrain?.model??(current.canAdapt===true?current.model:null),sourceAvailable:current.canAdapt===true}:null;},
   resizeMap:()=>requestAnimationFrame(()=>mapApi?.map?.resize?.()), focusAll:()=>mapApi?.focusAllFields?.(), focusField:()=>mapApi?.focusActiveField(),
   showSatellitePreview:()=>mapApi?.setBaseMap('satellite'), restoreBaseMap:()=>mapApi?.setBaseMap(state.map?.base ?? 'satellite'),
   stopTools:()=>mapApi?.stopTools(), finishEdit:()=>mapApi?.finishVertexEditing(), undoPoint:()=>mapApi?.undoDrawPoint(), finishDraw:()=>mapApi?.finishDraw(),

@@ -1,26 +1,26 @@
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.1-prova.1';
+from './terrain-budget.js?v=1.3.1';
 import {
   traceContourLevel
 }
-from './terrain-contours.js?v=1.3.1-prova.1';
+from './terrain-contours.js?v=1.3.1';
 import {
   certifyContourSpacing
 }
-from './terrain-contour-validation.js?v=1.3.1-prova.1';
+from './terrain-contour-validation.js?v=1.3.1';
 import {
   traceSurfaceBand,
   measureSurfaceUnion,
   compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.1-prova.1';
+from './terrain-surface-bands.js?v=1.3.1';
 import {
   toUTM,
   fromUTM
 }
-from './coordinate-system.js?v=1.3.1-prova.1';
+from './coordinate-system.js?v=1.3.1';
 import {
   exactDomain,
   Q,
@@ -44,7 +44,10 @@ import {
   ZERO,
   orient
 }
-from './terrain-exact.js?v=1.3.1-prova.1';
+from './terrain-exact.js?v=1.3.1';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.1';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.1';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.1';
 const failed=(status,diagnostics)=>({
   ok:false,
   status,
@@ -175,6 +178,95 @@ function pathIdentity(points,budget) {
   backward=[...simple].reverse().map(pointKey).join(';');
   return forward<backward?forward:backward;
 }
+function measureSourceAxes({domain,physicalDomain=domain,axes,headlandWidthM=0,budget}) {
+  const original=exactDomain(domain,budget),physical=exactDomain(physicalDomain,budget),epsg=Number(domain.crs.split(':')[1]),rows=[],trimRecords=[];
+  for(const axis of axes){
+    if(axis.axisOperation&&headlandWidthM)throw failure('axis-geometry-unresolved','A retained recipe cannot be trimmed a second time');
+    const resolved=resolveSourceAxis(original,axis,budget,{original:true});
+    if(resolved.uncovered.length)throw failure('uncovered','Uncovered original source geometry');
+    const retained=[];
+    for(const pieces of physicalFragments(resolved.pieces)){
+      if(!headlandWidthM){retained.push(axis.axisOperation??null);continue;}
+      const trim=trimSourceFragment(axis,pieces,headlandWidthM,budget);
+      trimRecords.push({axisId:axis.axisId,componentIndex:0,basis:'original-perimeter-ground-arclength',requestedWidthM:headlandWidthM,consumedByHeadlands:!!trim.consumed,retainedIntervalEmpty:!!trim.consumed,...trim});
+      if(!trim.consumed)retained.push({kind:SOURCE_PARAMETER_OPERATION,intervals:[trim.interval]});
+    }
+    // Without a trim the exact source intersection is resolved once, rather
+    // than duplicated for each original fragment (e.g. a perimeter hole).
+    const operations=headlandWidthM?retained:retained.length?[axis.axisOperation??null]:[];
+    let fragment=0;
+    for(const operation of operations){
+      const effective={...axis,...(operation?{axisOperation:operation}:{})};
+      const clipped=resolveSourceAxis(physical,effective,budget);
+      if(clipped.uncovered.length)throw failure('uncovered','Uncovered physical source geometry');
+      const physicalPieces=intersectSourceIntervals(axis,clipped.pieces,resolved.pieces,budget);
+      for(const pieces of physicalFragments(physicalPieces)){
+        const surfaceLengthBoundsM=exactPieceLengthBounds(pieces,budget),horizontalLengthBoundsM=exactPieceLengthBounds(pieces,budget,{horizontal:true});
+        if(!(surfaceLengthBoundsM[0]>0))throw failure('axis-geometry-unresolved','Positive source fragment ground length is unresolved');
+        const surfaceLengthM=(surfaceLengthBoundsM[0]+surfaceLengthBoundsM[1])/2;
+        const coordinatesXY=[xy(pieces[0].a),...pieces.map(p=>xy(p.b))];
+        const coordinates=coordinatesXY.map(p=>fromUTM(p,epsg));
+        budget.check(coordinatesXY.length+coordinates.length);
+        rows.push({
+          axisId:axis.axisId,
+          fragmentId:`${axis.axisId}:fragment:${fragment++}`,
+          portionId:axis.portionId,
+          ordinal:axis.ordinal,
+          coordinatesXY,coordinates,
+          start:coordinates[0],end:coordinates.at(-1),
+          horizontalLengthM:(horizontalLengthBoundsM[0]+horizontalLengthBoundsM[1])/2,
+          horizontalLengthBoundsM,surfaceLengthM,surfaceLengthBoundsM,
+          lengthM:surfaceLengthM,
+          quantityBasis:'model-surface',
+          coordinateRole:'render-export-preview',
+          axisOperation:{
+            kind:operation?.kind??SOURCE_DOMAIN_AXIS_CONVENTION,
+            ...(operation?{intervals:operation.intervals}:{}),
+            sourceHash:axisSourceHash(axis),
+            ...axis.axisGeometryBinding
+          },
+          ...(headlandWidthM?{headlandTrim:trimRecords.filter(r=>r.axisId===axis.axisId)}:{})
+        });
+      }
+    }
+  }
+  return {rows,trimRecords,rowAxisCount:new Set(rows.map(r=>r.axisId)).size,rowFragmentCount:rows.length};
+}
+function measurePolylineAxes({domain,physicalDomain=domain,axes,headlandWidthM=0,budget}) {
+  const original=exactDomain(domain,budget),physical=exactDomain(physicalDomain,budget),epsg=Number(domain.crs.split(':')[1]),rows=[],trimRecords=[];
+  for(const axis of axes){
+    if(axis.axisOperation&&headlandWidthM)throw failure('axis-geometry-unresolved','A retained recipe cannot be trimmed a second time');
+    const resolved=resolveFinitePolylineSourceAxis(original,axis,budget,{original:true,originalDomain:domain});
+    if(resolved.uncovered.length)throw failure('uncovered','Uncovered original finite source geometry');
+    const operations=[];
+    if(headlandWidthM){
+      for(const pieces of polylinePhysicalFragments(resolved.pieces,budget)){
+        const trim=trimPolylineSourceFragment(axis,pieces,headlandWidthM,budget);
+        budget.check(1);
+        trimRecords.push({axisId:axis.axisId,componentIndex:pieces[0].componentIndex,basis:'original-perimeter-ground-arclength',requestedWidthM:headlandWidthM,consumedByHeadlands:!!trim.consumed,retainedIntervalEmpty:!!trim.consumed,...trim});
+        if(!trim.consumed)operations.push(trim.operation);
+      }
+    }else if(resolved.pieces.length)operations.push(axis.axisOperation??null);
+    let fragment=0;
+    const sourceHash=finitePolylineSourceHash(axis,budget);
+    for(const operation of operations){
+      budget.check(1);
+      const effective={...axis,...(operation?{axisOperation:operation}:{})};
+      const clipped=resolveFinitePolylineSourceAxis(physical,effective,budget,{originalDomain:domain});
+      if(clipped.uncovered.length)throw failure('uncovered','Uncovered physical finite source geometry');
+      const pieces=intersectPolylineSourceIntervals(axis,clipped.pieces,resolved.pieces,budget);
+      for(const actual of polylinePhysicalFragments(pieces,budget)){
+        const surfaceLengthBoundsM=exactPieceLengthBounds(actual,budget),horizontalLengthBoundsM=exactPieceLengthBounds(actual,budget,{horizontal:true});
+        if(!(surfaceLengthBoundsM[0]>0))throw failure('axis-geometry-unresolved','Positive finite fragment ground length is unresolved');
+        budget.check(2*(actual.length+1)+1);
+        const coordinatesXY=[xy(actual[0].a),...actual.map(piece=>xy(piece.b))],coordinates=coordinatesXY.map(point=>fromUTM(point,epsg));
+        const surfaceLengthM=(surfaceLengthBoundsM[0]+surfaceLengthBoundsM[1])/2;
+        rows.push({axisId:axis.axisId,fragmentId:`${axis.axisId}:fragment:${fragment++}`,portionId:axis.portionId,ordinal:axis.ordinal,coordinatesXY,coordinates,start:coordinates[0],end:coordinates.at(-1),horizontalLengthM:(horizontalLengthBoundsM[0]+horizontalLengthBoundsM[1])/2,horizontalLengthBoundsM,surfaceLengthM,surfaceLengthBoundsM,lengthM:surfaceLengthM,quantityBasis:'model-surface',coordinateRole:'render-export-preview',axisOperation:{kind:operation?.kind??FINITE_POLYLINE_AXIS_CONVENTION,...(operation?{intervals:operation.intervals}:{}),sourceHash,...axis.axisGeometryBinding},...(headlandWidthM?{headlandTrim:trimRecords.filter(record=>record.axisId===axis.axisId)}:{})});
+      }
+    }
+  }
+  return {rows,trimRecords,rowAxisCount:new Set(rows.map(row=>row.axisId)).size,rowFragmentCount:rows.length};
+}
 /** Lift and ground-trim original-perimeter axes before physical clipping.
  * Native face knots are integration points, never physical row fragments. */
 export function measureContourAxes({
@@ -186,6 +278,11 @@ export function measureContourAxes({
     kind:'measure'
   })
 }) {
+  if(axes.some(axis=>Object.hasOwn(axis,'axisGeometryConvention'))){
+    if(axes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION))return measurePolylineAxes({domain,physicalDomain,axes,headlandWidthM,budget});
+    if(!axes.every(axis=>axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION))throw failure('axis-geometry-unresolved','Mixed or unknown axis geometry conventions');
+    return measureSourceAxes({domain,physicalDomain,axes,headlandWidthM,budget});
+  }
   const original=exactDomain(domain,budget),
   physical=exactDomain(physicalDomain,budget);
   const epsg=Number(domain.crs?.split(':')[1]??32632),
@@ -256,6 +353,23 @@ export function measureContourAxes({
   };
 }
 function certifiedSubset(sourceAxes,rows,budget) {
+  if(sourceAxes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION)){
+    const valid=rows.every(row=>{
+      budget.check();
+      const source=sourceAxes.find(axis=>axis.axisId===row.axisId),operation=row.axisOperation;
+      if(!source||operation?.sourceHash!==finitePolylineSourceHash(source,budget)||operation.kind!==POLYLINE_SOURCE_PARAMETER_OPERATION)return false;
+      return validFinitePolylineSourceAxisSchema({...source,axisOperation:{kind:operation.kind,intervals:operation.intervals}},budget);
+    });
+    return {valid,method:'exact-polyline-source-parameter-subset',rows:rows.map(row=>({fragmentId:row.fragmentId,axisId:row.axisId,axisOperation:row.axisOperation}))};
+  }
+  if(sourceAxes.every(axis=>axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION)){
+    const valid=rows.every(row=>{
+      budget.check();
+      const source=sourceAxes.find(axis=>axis.axisId===row.axisId),operation=row.axisOperation;
+      return source&&operation?.sourceHash===axisSourceHash(source)&&operation.kind===SOURCE_PARAMETER_OPERATION&&operation.intervals.every(([lo,hi])=>lo>=0&&lo<hi&&hi<=1);
+    });
+    return {valid,method:'exact-source-parameter-subset',rows:rows.map(row=>({fragmentId:row.fragmentId,axisId:row.axisId,axisOperation:row.axisOperation}))};
+  }
   const provenance=[];
   const fraction=q=>`${q.n}/${q.d}`;
   for(const row of rows){
@@ -405,6 +519,7 @@ function manualAxes(reference,portion,facts,budget) {
   });
 }
 function rowsFor(axes,domain,budget) {
+  if(axes.every(axis=>axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION))return measureSourceAxes({domain,axes,budget}).rows;
   const epsg=Number(domain.crs?.split(':')[1]??32632);
   return axes.flatMap(axis=>axis.components.map((component,index)=>{
     const coordinates=axis.manualRow?.coordinates??component.coordinatesXY.map(p=>fromUTM(p,epsg));
@@ -429,7 +544,21 @@ function rowsFor(axes,domain,budget) {
     };
   }));
 }
-function analyticPlaneCandidates(axes,facts,budget,diagnostics) {
+function analyticPlaneCandidates(axes,facts,budget,diagnostics,originalDomain=facts.k.domain) {
+  if(facts.plane&&certifyUniformPlaneSupport(facts.k.domain,budget)){
+    const face=facts.k.faces[0],g=face.g.map(number),q=number(face.q),base=face.vertices[0].map(number);
+    if(!q)return axes;
+    const tangent=[-g[1]/Math.sqrt(q),g[0]/Math.sqrt(q)];
+    const points=exactDomain(originalDomain,budget).boundaries.flatMap(b=>b.coordinates.map(xy));
+    const reach=4*Math.hypot(Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0])),Math.max(...points.map(p=>p[1]))-Math.min(...points.map(p=>p[1])))+1;
+    diagnostics.endpointConstruction={kind:SOURCE_DOMAIN_AXIS_CONVENTION,finiteSourceSpan:'exact-original-scope-bbox'};
+    return axes.map(axis=>{
+      const center=[0,1].map(i=>base[i]+g[i]*(axis.levelM-base[2])/q);
+      const coordinatesXY=[-reach,reach].map(t=>center.map((x,i)=>x+t*tangent[i]));
+      budget.check(2);
+      return {...axis,axisGeometryConvention:SOURCE_DOMAIN_AXIS_CONVENTION,axisGeometryBinding:axisBinding(facts.k.domain,originalDomain),components:[{coordinatesXY}]};
+    });
+  }
   if(facts.k.boundaries.length!==1||facts.k.boundaries[0].coordinates.length!==5||axes.some(a=>a.components.length!==1))return axes;
   const face=facts.k.faces[0],
   g=face.g.map(number),
@@ -498,6 +627,18 @@ function extrudedSchedule(facts,budget) {
   }
   return {
     lengthM,
+    coordinateAtLevel:level=>{
+      for(const strip of strips){
+        budget.check();
+        const point=strip.face.vertices[0].slice(0,2).map(number);
+        point[index]=strip.a;
+        const startLevel=number(height(strip.face,point.map(Q)));
+        point[index]=strip.b;
+        const endLevel=number(height(strip.face,point.map(Q)));
+        if(level>=startLevel&&level<=endLevel)return strip.start+(level-startLevel)/number(strip.face.g[index])*strip.speed;
+      }
+      return NaN;
+    },
     levelAt:r=>{
       const strip=strips.find(s=>r>=s.start&&r<=s.end);
       if(!strip)return NaN;
@@ -518,7 +659,10 @@ function completeCandidate({
   reference,
   areaMode
 }) {
+  const finiteSource=axes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION);
+  const originalDomain=reference.originalDomain??domain;
   const spacing=certifyContourSpacing(domain,axes,{
+    ...(finiteSource?{originalDomain}:{}),
     spacingM,
     toleranceM,
     budget
@@ -536,7 +680,7 @@ function completeCandidate({
     headlandWidthM,
     budget
   }):{
-    rows:rowsFor(axes,domain,budget),
+    rows:finiteSource?measurePolylineAxes({domain:originalDomain,physicalDomain:domain,axes,budget}).rows:axes.every(a=>a.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION)?measureSourceAxes({domain:reference.originalDomain??domain,physicalDomain:domain,axes,budget}).rows:rowsFor(axes,domain,budget),
     trimRecords:[]
   };
   const {
@@ -568,14 +712,17 @@ function completeCandidate({
   };
   const serviceAxes=headlandWidthM?axes.map(axis=>({
     ...axis,
-    components:rows.filter(r=>r.axisId===axis.axisId).map(row=>({
-      coordinatesXY:row.coordinatesXY
-    }))
-  })).filter(a=>a.components.length):axes;
+    ...(axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION?{
+      axisOperation:{kind:POLYLINE_SOURCE_PARAMETER_OPERATION,intervals:[...new Map(rows.filter(row=>row.axisId===axis.axisId).flatMap(row=>row.axisOperation.intervals).map(record=>[JSON.stringify(record),record])).values()].sort((a,b)=>a.componentIndex-b.componentIndex||a.segmentIndex-b.segmentIndex||a.lo-b.lo)}
+    }:axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION?{
+      axisOperation:{kind:SOURCE_PARAMETER_OPERATION,intervals:[...new Map(rows.filter(r=>r.axisId===axis.axisId).flatMap(row=>row.axisOperation.intervals).map(pair=>[JSON.stringify(pair),pair])).values()].sort((a,b)=>a[0]-b[0])}
+    }:{components:rows.filter(r=>r.axisId===axis.axisId).map(row=>({coordinatesXY:row.coordinatesXY}))})
+  })).filter(a=>rows.some(row=>row.axisId===a.axisId)):axes;
   const bands=[];
   for(const axis of serviceAxes){
     const band=traceSurfaceBand({
       domain,
+      ...(finiteSource?{originalDomain}:{}),
       axisXY:axis,
       widthM:spacingM,
       policy:'contour-normal',
@@ -637,7 +784,17 @@ function completeCandidate({
 function planeAreaUpper(axes,facts,spacingM,budget) {
   if(!facts.plane)return Infinity;
   let upper=Q(0);
-  for(const axis of axes)for(const component of axis.components){
+  for(const axis of axes){
+    if(axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION){
+      const physical=resolveSourceAxis(facts.k,axis,budget);
+      if(physical.uncovered.length)return Infinity;
+      for(const fragment of physicalFragments(physical.pieces)){
+        const lengthUpper=Q(exactPieceLengthBounds(fragment,budget)[1]);
+        upper=add(upper,mul(add(lengthUpper,Q(2e-5)),add(Q(spacingM),Q(2e-5))));
+      }
+      continue;
+    }
+    for(const component of axis.components){
     if(component.coordinatesXY.length!==2)return Infinity;
     budget.check();
     const [a,b]=component.coordinatesXY.map(p=>p.map(Q)),
@@ -646,6 +803,7 @@ function planeAreaUpper(axes,facts,spacingM,budget) {
     lengthUpper=sqrtBounds(add(dot(v,v),mul(dz,dz)))[1];
     upper=add(upper,mul(add(lengthUpper,Q(2e-5)),add(Q(spacingM),Q(2e-5))));
   }
+    }
   return numberBounds(upper)[1];
 }
 /** Finite deterministic phase/progression search. Exhaustion is not an
@@ -658,6 +816,8 @@ export function buildContourFamily({
   },
   spacingM,
   toleranceM=.20,
+  onSelectedAreaMeasurement,
+  candidateGeneration=null,
   budget=createTerrainBudget({
     kind:'adapt'
   }),
@@ -673,6 +833,12 @@ export function buildContourFamily({
   try {
     budget.check();
     if(!domain||!portion?.id||!(spacingM>0)||!Number.isFinite(spacingM)||!(toleranceM>=0)||toleranceM>=spacingM)throw new RangeError('Invalid contour family input');
+    if(candidateGeneration!==null){
+      const single=candidateGeneration?.kind==='scoped-single-level-1';
+      const allowed=single?['kind','singleLevelM']:['kind','singleLevelM','referenceLevelM','axisGeometryConvention'];
+      if(!candidateGeneration||typeof candidateGeneration!=='object'||Array.isArray(candidateGeneration)||!['scoped-cut-1','scoped-single-level-1'].includes(candidateGeneration.kind)||Object.keys(candidateGeneration).some(key=>!allowed.includes(key))||single&&!Number.isFinite(candidateGeneration.singleLevelM)||['singleLevelM','referenceLevelM'].some(key=>Object.hasOwn(candidateGeneration,key)&&!Number.isFinite(candidateGeneration[key]))||Object.hasOwn(candidateGeneration,'axisGeometryConvention')&&candidateGeneration.axisGeometryConvention!==FINITE_POLYLINE_AXIS_CONVENTION)throw new RangeError('Invalid scoped candidate generation');
+      diagnostics.searchScope=single?'one-explicit-complete-level':'scoped-cut:at-most-two-existing-one-anchored-one-single';
+    }
     const facts=nativeFacts(domain,budget);
     if(!(referenceAreaM2>0))referenceAreaM2=domain.surfaceAreaM2??domain.faces.reduce((s,f)=>s+(f.surfaceAreaM2??0),0);
     if(!(referenceAreaM2>0))throw new RangeError('Positive reference surface area required');
@@ -724,7 +890,12 @@ export function buildContourFamily({
       });
       if(candidate.valid)complete.push(candidate);
     };
-    if(facts.flat){
+    if(candidateGeneration?.kind==='scoped-single-level-1'){
+      const level=candidateGeneration.singleLevelM;
+      const traced=traceFinitePolylineContourLevel(domain,level,{originalDomain:reference.originalDomain??domain,portionId:portion.id,budget});
+      if(traced.diagnostics.length)diagnostics.frontiers.push({candidateId:'scoped-single:explicit-level',levelM:level,diagnostics:traced.diagnostics});
+      evaluate('scoped-single:explicit-level',traced.diagnostics.length?[]:traced.axes);
+    }else if(facts.flat){
       diagnostics.searchScope='unchanged-compatible-manual-family';
       evaluate('manual',manualAxes(reference,portion,facts,budget));
     }else{
@@ -748,23 +919,41 @@ export function buildContourFamily({
         phase:modulo((i%2?.25:.75)*step+phases[0],step),
         scale
       }));
+      if(candidateGeneration!==null)schedules.forEach((schedule,index)=>{schedule.id=`candidate:${index}`;});
       const cache=new Map();
+      const finiteSource=candidateGeneration?.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION;
+      const tracedAt=level=>{
+        if(!cache.has(level))cache.set(level,finiteSource?traceFinitePolylineContourLevel(domain,level,{originalDomain:reference.originalDomain??domain,portionId:portion.id,budget}):traceContourLevel(domain,level,{portionId:portion.id,budget}));
+        return cache.get(level);
+      };
+      if(candidateGeneration!==null){
+        // In the new finite route a singleton is an explicit offered level,
+        // never an implicit success hiding failed filled progressions.
+        if(!finiteSource||candidateGeneration.singleLevelM!==undefined||candidateGeneration.referenceLevelM!==undefined){
+          const level=candidateGeneration.singleLevelM??candidateGeneration.referenceLevelM??(facts.min+(facts.max-facts.min)/2);
+          const traced=tracedAt(level);
+          if(traced.diagnostics.length)diagnostics.frontiers.push({candidateId:'scoped-cut:single-level',levelM:level,diagnostics:traced.diagnostics});
+          evaluate('scoped-cut:single-level',traced.diagnostics.length?[]:(!finiteSource&&(facts.plane||profile)?analyticPlaneCandidates(traced.axes,facts,budget,diagnostics,reference.originalDomain??domain):traced.axes));
+        }
+        if(candidateGeneration.referenceLevelM!==undefined){
+          const coordinate=profile?profile.coordinateAtLevel(candidateGeneration.referenceLevelM):candidateGeneration.referenceLevelM-facts.min;
+          if(Number.isFinite(coordinate))schedules.unshift({phase:modulo(coordinate,step),scale:1,id:'scoped-cut:reference-anchored'});
+          else diagnostics.frontiers.push({candidateId:'scoped-cut:reference-anchored',reason:'reference-level-outside-profile'});
+        }
+      }
       for(let c=0;c<schedules.length;c++){
         const {
           phase,
           scale
         }
         =schedules[c],
+        candidateId=schedules[c].id??`candidate:${c}`,
         axes=[];
         for(let coordinate=phase,ordinal=0;coordinate<range;coordinate=phase+(++ordinal)*step*scale){
           budget.check();
           if(ordinal&&coordinate===phase+(ordinal-1)*step*scale)throw new RangeError('Unrepresentable level progression');
           const level=profile?profile.levelAt(coordinate):facts.min+coordinate;
-          if(!cache.has(level))cache.set(level,traceContourLevel(domain,level,{
-            portionId:portion.id,
-            budget
-          }));
-          const traced=cache.get(level);
+          const traced=tracedAt(level);
           if(traced.diagnostics.length){
             diagnostics.frontiers.push({
               levelM:level,
@@ -782,14 +971,14 @@ export function buildContourFamily({
           });
         }
         diagnostics.frontiers.push({
-          candidateId:`candidate:${c}`,
+          candidateId,
           lowerM:facts.min,
           upperM:facts.max,
           stepM:step*scale,
           phaseM:phase,
           kind:'scheduled-range-exhausted-not-impossibility'
         });
-        evaluate(`candidate:${c}`,facts.plane||profile?analyticPlaneCandidates(axes,facts,budget,diagnostics):axes);
+        evaluate(candidateId,!finiteSource&&(facts.plane||profile)?analyticPlaneCandidates(axes,facts,budget,diagnostics,reference.originalDomain??domain):axes);
       }
     }
     if(!complete.length)return failed('review-required',{
@@ -803,6 +992,12 @@ export function buildContourFamily({
     diagnostics.areaTies=complete.filter(c=>c!==best&&compareMeasuredSurfaceAreas(best.areaMeasurement,c.areaMeasurement,{
       budget
     })===0).map(c=>c.id);
+    if(onSelectedAreaMeasurement!==undefined){
+      if(typeof onSelectedAreaMeasurement!=='function')throw new RangeError('Selected area observer must be a function');
+      budget.check();
+      onSelectedAreaMeasurement(best.areaMeasurement);
+      budget.check();
+    }
     return {
       ok:true,
       axes:best.axes.map(({

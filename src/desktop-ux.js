@@ -1,4 +1,4 @@
-import {calculateManualArea} from './project-calculator.js?v=1.3.1-prova.1';
+import {calculateManualArea} from './project-calculator.js?v=1.3.1';
 
 function formatItalianInteger(value){
  const integer=Math.trunc(Number(value));

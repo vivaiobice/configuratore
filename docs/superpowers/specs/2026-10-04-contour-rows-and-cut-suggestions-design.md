@@ -108,7 +108,7 @@ Mantenere i tetti iniziali: 262.144 celle native, 500.000 nodi, 1 MiB per campo 
 - Errore di quota, limite di budget, cambio account/campo/input e annullamento: nessuna mutazione parziale o risposta tardiva applicata. Ripristino mantenuto dopo riapertura e trasferimento fra dispositivi.
 - 3D desktop/touch: gesture fluide, nessuna modifica alle quantità, ritorno 2D con camera/visibilità/gesti precedenti e strumenti utilizzabili. Interfaccia manuale e tool Conteggi conservati.
 - Suite completa, 144 confronti 1.2.6, replay dei risultati 1.3.0, PDF/font/quote/tag, verifiche di archivio/Admin/condivisione e ZIP unico.
-- Campioni reali indicati da Marco: Cascina Elena, Chardonnay - 775P (porzioni 1 e 2) e Pinot Nero. Geometrie, sesti e modello congelato non sono stati acquisiti in questa revisione: la riproduzione specifica del timeout e della curvatura resta subordinata alla disponibilità di questi dati. Le fixture anonime non sostituiscono questo collaudo.
+- Campioni reali indicati dall’utente: un campo con due porzioni e un secondo campo. Geometrie, sesti e modello congelato non sono stati acquisiti in questa revisione: la riproduzione specifica del timeout e della curvatura resta subordinata alla disponibilità di questi dati. Le fixture anonime non sostituiscono questo collaudo.
 
 ## Riferimenti
 

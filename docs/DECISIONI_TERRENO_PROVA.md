@@ -4,7 +4,7 @@ Registro cronologico delle scelte, con ragioni e costi. Le decisioni possono rif
 
 1. Use revision version 1.3.1 at packaging — this revises shipped1.3.0 and preserves1.2.6 behavior — costs renaming if Marco later prefers another number.
 
-2. No inferred real-field geometry — available fixtures are not Cascina Elena — costs an explicitly unexecuted specific pilot until its actual data are available.
+2. No inferred real-field geometry — available anonymous fixtures do not represent the requested real fields — costs an explicitly unexecuted specific pilot until its actual data are available.
 
 3. Continue Task1 while an independent read-only diagnosis resolves the pre-existing shared HTML fixture failure — git diff5011c7e..HEAD has no product/test changes and this isolated renderer check is outside Task1 APIs — costs tracking the failure explicitly until fixed before release; no passing full-suite claim while it remains.
 

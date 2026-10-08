@@ -1,13 +1,14 @@
-import {rowPortionDescriptors,hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.3.1-prova.1';
-import {projectSummaryText} from './project-summary.js?v=1.3.1-prova.1';
+import {rowPortionDescriptors,hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.3.1';
+import {projectSummaryText} from './project-summary.js?v=1.3.1';
 import {soilProfileIsCurrent,SOIL_DISCLAIMER,SOIL_SOURCE} from './soil.js?v=55.3';
-import {renderProjectDiagramSvg} from './report-diagram.js?v=1.3.1-prova.1';
-import {calculateManualPlants,calculateManualArea} from './project-calculator.js?v=1.3.1-prova.1';
+import {renderProjectDiagramSvg} from './report-diagram.js?v=1.3.1';
+import {calculateManualPlants,calculateManualArea} from './project-calculator.js?v=1.3.1';
 import {createMobileChoices,installMobileKeyboard} from './mobile-controls.js?v=26';
 import {getTheme,setTheme} from './theme.js';
 import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import {mobileUserProfileHtml,readMobileProfileForm} from './mobile-profile.js?v=55.2';
-import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.1-prova.1';
+import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.1';
+import {terrainFieldSummaryHtml} from './terrain-core-presentation.js?v=1.3.1';
 
 const icons={map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5zm6-2v16m6-14v16',fields:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',projects:'M3 7h7l2-3h9v16H3z',profile:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0',plus:'M12 4v16M4 12h16',refresh:'M20 11a8 8 0 1 1-2.5-5.7M20 4v6h-6',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',layers:'M2 7l10-5 10 5-10 5zm0 5l10 5 10-5M2 17l10 5 10-5',calc:'M5 2h14v20H5zM8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1',back:'M15 4l-8 8 8 8',north:'M12 2l4.2 8.1L12 8.4 7.8 10.1 12 2zm0 20V8.4',print:'M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6z',mail:'M2 5h20v14H2zM3 7l9 7 9-7',edit:'M4 16l-.8 4.8L8 20 19 9l-4-4L4 16zM13.5 6.5l4 4',save:'M4 3h14l3 3v15H3V3zm3 0v7h10V3M7 21v-8h10v8'};
 const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
@@ -156,9 +157,9 @@ export function createMobileUI(api){
   catch(error){showNotice(`Salvataggio non riuscito: ${error.message}`);}
   finally{saving=false;$('#mobile-save-field').disabled=false;$('#mobile-save-project').disabled=false;}
  }
- function metricsHtml(field){const m=api.getMetrics(field),invalid=m.terrainStatus==='invalid',separateGround=!invalid&&terrainUsesCertifiedQuantities(m),q=invalid?()=>'—':n;return `${invalid?'<p class="mobile-terrain-status" role="status">Da rivedere: ricalcola e applica il disegno sul terreno.</p>':''}${separateGround?`<p class="mobile-terrain-quantity-basis">${terrainQuantityBasisText(m)} · Lunghezze sul terreno misurate</p>`:''}<section class="mobile-vines-summary"><span>Quantità commerciale barbatelle</span><strong class="mobile-commercial-vines">${q(m.commercialPlants25)}</strong><small>Barbatelle calcolate: <b class="mobile-calculated-vines">${q(m.simulatedPlants)}</b></small></section><dl class="mobile-metrics">${[
-  ['Superficie',invalid?'—':area(m.areaM2)],['Superficie netta',invalid?'—':area(m.netAreaM2)],['Pali intermedi',q(m.intermediatePosts)],['Pali di testa',q(m.headPosts)],['Pali totali',q(m.totalPosts)],['Tratti di filare',q(m.rowCount)],[separateGround?'Metri per quantità':'Metri di filare',invalid?'—':`${n(m.rowLinearM)} m`],...(separateGround?[['Metri sul terreno',Number.isFinite(m.surfaceRowLinearM)?`${n(m.surfaceRowLinearM)} m`:'—']]:[]),['Perimetro',invalid?'—':`${n(m.perimeterM)} m`]
- ].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;}
+ function metricsHtml(field){const m=api.getMetrics(field),invalid=m.terrainStatus==='invalid',separateGround=!invalid&&terrainUsesCertifiedQuantities(m),native=m.terrainStatus==='applied'&&typeof m.quantityBasis==='string',unavailable=value=>invalid||(native&&!Number.isFinite(value)),q=value=>unavailable(value)?'—':n(value),a=value=>unavailable(value)?'—':area(value),metres=value=>unavailable(value)?'—':`${n(value)} m`,presentation=api.getTerrainPresentation?.(field);return `${invalid?'<p class="mobile-terrain-status" role="status">Da rivedere: ricalcola e applica il disegno sul terreno.</p>':''}${separateGround?`<p class="mobile-terrain-quantity-basis">${terrainQuantityBasisText(m)} · Lunghezze sul terreno misurate</p>`:''}<section class="mobile-vines-summary"><span>Quantità commerciale barbatelle</span><strong class="mobile-commercial-vines">${q(m.commercialPlants25)}</strong><small>Barbatelle calcolate: <b class="mobile-calculated-vines">${q(m.simulatedPlants)}</b></small></section><dl class="mobile-metrics">${[
+  ['Superficie',a(m.areaM2)],['Superficie netta',a(m.netAreaM2)],['Pali intermedi',q(m.intermediatePosts)],['Pali di testa',q(m.headPosts)],['Pali totali',q(m.totalPosts)],['Tratti di filare',q(m.rowCount)],[separateGround?'Metri per quantità':'Metri di filare',metres(m.rowLinearM)],...(separateGround?[['Metri sul terreno',metres(m.surfaceRowLinearM)]]:[]),['Perimetro',metres(m.perimeterM)]
+ ].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>${terrainFieldSummaryHtml({metrics:presentation?.proposal?.result??m,model:presentation?.model??field.terrain?.model,preview:Boolean(presentation?.proposal),sourceAvailable:presentation?.sourceAvailable===true})}`;}
  function preview(field){return renderProjectDiagramSvg({polygon:field.geometry,rows:api.getMetrics(field).rows});}
  function renderFields(){
   const fields=api.getFields().filter(f=>Array.isArray(f?.geometry)&&f.geometry.length>=4),metrics=fields.map(api.getMetrics);

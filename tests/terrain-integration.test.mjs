@@ -51,6 +51,26 @@ test('real applied proposal replays identical quantities across summary, Admin a
  const proposal=projectToPdfModel({state:{project:field},metrics:result});
  assert.equal(proposal.terrain.source.label,'DTM anonimo');
 });
+
+test('exact manual restore replays original rows and planar quantities across field callers',async()=>{
+ const {appliedTerrainField}=await import('./fixtures/terrain-field.mjs');
+ const {calculateProject}=await import('../src/project-calculator.js');
+ const {attachTerrainRestore,buildTerrainRestoreProposal}=await import('../src/terrain-history.js');
+ const {field,proposal}=appliedTerrainField();
+ const before={...structuredClone(field),rowPortions:[]};delete before.terrain;
+ const manual=calculateProject({...before,polygon:before.geometry,terrain:null});
+ const attached=attachTerrainRestore({project:before,proposal,operationId:'integration'});
+ const current={...before,rowPortions:attached.rowPortions,terrain:attached.terrain};
+ const restore=buildTerrainRestoreProposal({project:current,portionId:attached.rowPortions[0].id,model:field.terrain.model});assert.equal(restore.ok,true,restore.message);
+ const restored={...current,...restore.projectPatch,rowPortions:restore.rowPortions,terrain:restore.terrain};
+ const payload={projectName:'Restored',fields:[restored],createdAt:'2026-10-04T00:00:00Z'};
+ const metrics=[fieldSummaryMetrics(restored),buildAdminFieldPreviewData(restored).metrics];
+ for(const result of metrics){assert.equal(result.terrainStatus,'applied');assert.equal(result.quantityBasis,'legacy-planar');assert.deepEqual(result.rows,manual.rows);for(const key of ['rowCount','rowLinearM','simulatedPlants','theoreticalPlants','commercialPlants25','headPosts','intermediatePosts','totalPosts'])assert.equal(result[key],manual[key],key);}
+ for(const report of [buildSharedPrintModel(payload).fields[0],buildProjectReportModel({state:{project:{fields:[restored]}},getMetrics:fieldSummaryMetrics}).fields[0]]){
+  assert.deepEqual(report.rows,manual.rows);assert.equal(report.metrics.rowLinearM,manual.rowLinearM);assert.equal(report.metrics.calculatedPlants,manual.simulatedPlants);assert.equal(report.metrics.commercialPlants,manual.commercialPlants25);assert.equal(report.metrics.totalPosts,manual.totalPosts);assert.equal(report.terrain.quantityBasis,'legacy-planar');
+ }
+ assert.equal(restored.terrain.history.entries.length,0);
+});
 test('real report orchestrator uses applied rows and measures without external terrain fetch',async()=>{
  const {appliedTerrainField}=await import('./fixtures/terrain-field.mjs');
  const {createReportOrchestrator}=await import('../src/report.js');

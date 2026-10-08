@@ -1,14 +1,14 @@
-# Pubblicazione — piattaforma Vivai Obice 1.2.5
+# Pubblicazione — piattaforma Vivai Obice 1.3.1
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
-## Cosa è stato eseguito
+## Stato della preparazione e servizi
 
-Inventario e confronto del codice corrente, integrazione locale e prove automatiche. **Non** sono stati modificati GitHub remoto, database, Edge Functions, secret, DNS o account; nessuna email reale inviata. Il backend Supabase esistente è `lnclwslcjufwdbmsxljf`; la migrazione Conteggi non risultava installata al controllo del 2 ottobre 2026.
+I metadati sono coordinati a 1.3.1; il pacchetto finale deve ancora superare le verifiche del sorgente congelato e dell’estrazione. Le prove già disponibili e i limiti sono documentati in [README_RELEASE_1.3.1.md](README_RELEASE_1.3.1.md). La fluidità 3D, il pilot reale e il controllo della cache a freddo restano aperti. Non sono stati modificati GitHub remoto, database, Edge Functions, secret, DNS o account; nessuna email reale inviata. Il backend Supabase esistente è `lnclwslcjufwdbmsxljf`; la migrazione Conteggi non risultava installata al controllo del 2 ottobre 2026.
 
 Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consultazione admin, trasmissione e trasferimento verso un account già esistente hanno flag disattivati: caricare lo ZIP **non installa** questi servizi. I passaggi sotto sono da eseguire.
 
-La 1.2.5 aggiunge porzioni con direzione e curvatura indipendenti nello stesso campo e aggiorna i report: non richiede nuove migrazioni SQL. Prima di sostituire il pacchetto conservare la versione 1.2.4. Dopo il caricamento verificare la curvatura di un campo con passaggio trasversale da 1,50 m: un controllo per lato, indipendenza della modifica e due pali di testa per ciascun pezzo. Verificare Aggiorna progetto dalla pagina PDF e quote/nomi sulle sole immagini satellitari del documento.
+La 1.3.1 prepara la revisione di altimetria, filari di livello, porzioni e vista 3D, mantenendo coordinate precise, controlli occhio e percorso manuale precedente. Prima di sostituire il pacchetto conservare la versione pubblicata e i suoi archivi. Dopo il caricamento verificare Manuale/Adatta al terreno, anteprima/Applica/Annulla, passaggi da 1,50 m e pali di testa dei frammenti, ritorno 3D→2D e Aggiorna progetto dalla pagina PDF. Il collaudo locale su fixture non sostituisce i dispositivi reali e il terreno reale.
 
 Chiudere le precedenti schede Conteggi e riaprire online dopo l’aggiornamento, così il nuovo worker può attivarsi e precacheare i moduli con query esatta. Conservare IndexedDB e localStorage; non cancellare tutti i dati del sito. Verificare la riapertura offline soltanto dopo questa apertura online.
 
@@ -24,7 +24,7 @@ Chiudere le precedenti schede Conteggi e riaprire online dopo l’aggiornamento,
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.2.5 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.3.1 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 
@@ -85,6 +85,10 @@ Disattivare prima i flag Conteggi server/browser, conservando dati e tabelle. Ri
 
 Per togliere il worker durante un rollback, usare gli strumenti del browser e annullare soltanto la registrazione con scope `/conteggi/`; se necessario eliminare soltanto cache statiche `vivai-obice-counts-static-*`. **Non usare “cancella tutti i dati del sito”**, che eliminerebbe gli appunti locali. Conservare la stessa origine HTTPS: cambiare dominio separa gli archivi locali.
 
+## Cronologia: aggiornamenti delle versioni precedenti
+
+Le istruzioni seguenti documentano le consegne indicate e non fissano la versione da pubblicare oggi.
+
 ## Aggiornamento del contatore 1.2.0
 
 La lettura aperta si conserva localmente nello scope del proprietario e diventa una riga sincronizzabile soltanto con **Salva lettura**. Il titolo iniziale è Lettura; l’elenco automatico usa il giorno locale di apertura. Il salvataggio crea o riusa l’elenco aperto di quel giorno; i dettagli consentono poi di spostare la stessa riga in un altro elenco o in uno nuovo.
@@ -120,3 +124,7 @@ Collaudo dopo il caricamento:
 - Conteggi: logo/selettore in alto a sinistra e ritorno al configuratore, nome modificabile, `−1` sopra il `+` a tutta larghezza, watermark leggero, salvataggio e ripresa dopo ricarica. Archivio su una sola schermata con card e tre gruppi espandibili; popup per quantità, vitigno/portainnesto, tipo/materiale pali o componente personalizzato. Provare più elenchi, spostamento della lettura, nomi profilo lunghi e schermo 320 px.
 
 Le prove automatiche e Chromium locali sono passate. Hosting, Safari su dispositivi reali, audio/vibrazione fisici e backend di produzione restano da collaudare prima di dichiarare attivi quei servizi.
+
+## Nota storica della pubblicazione 1.2.5
+
+La 1.2.5 aggiunge porzioni con direzione e curvatura indipendenti nello stesso campo e aggiorna i report: non richiede nuove migrazioni SQL. Prima di sostituire il pacchetto conservare la versione 1.2.4. Dopo il caricamento verificare la curvatura di un campo con passaggio trasversale da 1,50 m: un controllo per lato, indipendenza della modifica e due pali di testa per ciascun pezzo. Verificare Aggiorna progetto dalla pagina PDF e quote/nomi sulle sole immagini satellitari del documento.

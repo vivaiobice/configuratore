@@ -67,3 +67,31 @@ test('a real applied model replays offline after draft archive cloud and revisio
  assert.deepEqual(fieldSummaryMetrics(old),result);
  const edited={...field,plantSpacingM:2};assert.equal(fieldSummaryMetrics(edited).terrainStatus,'invalid');
 });
+
+test('attached restore baseline persists through every existing field and snapshot transport with one grid',async()=>{
+ const {appliedTerrainField}=await import('./fixtures/terrain-field.mjs');
+ const {attachTerrainRestore,terrainRestoreAvailability}=await import('../src/terrain-history.js');
+ const {fieldSummaryMetrics}=await import('../src/project-summary.js');
+ const {field:after,proposal,result}=appliedTerrainField();
+ const before={...structuredClone(after),rowPortions:[]};delete before.terrain;
+ const attached=attachTerrainRestore({project:before,proposal,operationId:'transport-history'});
+ const field={...before,rowPortions:attached.rowPortions,terrain:attached.terrain};
+ const original=structuredClone(field),history=field.terrain.history;
+ const state={project:{localProjectId:'history',activeFieldId:field.id,fields:[field],terrain:field.terrain}};
+ const store=storage();saveDraft(store,state);writeLocalProject(store,state.project,'History');
+ for(const raw of store.data.values())assert.equal(raw.match(/valuesBase64/g).length,1);
+ const snapshot=JSON.parse(JSON.stringify(buildCloudSnapshot(state,fieldSummaryMetrics))),[row]=snapshotToFieldRows(snapshot,'cloud','owner');
+ const legacy=toProjectRow(state,{},{}),payload={...legacy,id:'cloud',client_project_id:'history'};
+ const migrated=migrateProjectArchive({version:1,projects:[{project:state.project}]},()=> 'history');
+ const paths=[loadDraft(store).project.fields[0],readLocalProjects(store)[0].project.fields[0],snapshot.fields[0],row.design_data,legacy.field_plans[0],projectPayloadToState(payload).project.fields[0],projectPayloadToArchiveItem(payload).project.fields[0],migrated.projects[0].project.fields[0]];
+ for(const replay of paths){
+  assert.deepEqual(replay.terrain.history,history);assert.deepEqual(fieldSummaryMetrics({...field,...replay}),result);
+  assert.equal(JSON.stringify(replay.terrain).match(/valuesBase64/g).length,1);
+  assert.equal(terrainRestoreAvailability({project:{...field,...replay},portionId:attached.rowPortions[0].id}).available,true);
+ }
+ let switched=ensureProjectFields({...state.project,fields:[field,{id:'other'}]});switched=switchProjectField(switched,'other');switched=switchProjectField(switched,field.id);
+ assert.deepEqual(switched.terrain.history,history);
+ const duplicated=duplicateProjectField(switched,field.id,()=> 'copy');assert.deepEqual(duplicated.fields.at(-1).terrain.history,history);
+ duplicated.fields.at(-1).terrain.history.entries[0].before.portions[0].rows[0].lengthM++;
+ assert.deepEqual(duplicated.fields[0].terrain.history,history);assert.deepEqual(field,original);
+});

@@ -12,7 +12,7 @@ import {
   orient as rorient,
   sign as rsign
 }
-from './terrain-exact.js?v=1.3.1-prova.1';
+from './terrain-exact.js?v=1.3.1';
 const facetCache=new WeakMap(),facetBudgets=new WeakMap();
 function cachedFacets(exact,budget) {
   if(facetCache.has(exact)){
@@ -537,7 +537,9 @@ export function traceBandBundles(k,seeds,{
   halfWidth,
   corridor=null,
   collectPatches=true,
-  reference=null
+  reference=null,
+  allowPlaneBoundaryTangents=false,
+  preservePhysicalSourceCaps=false
 }) {
   const {
     F,
@@ -759,7 +761,15 @@ export function traceBandBundles(k,seeds,{
               forward=continuation.v;
             }
             if(k.after(hp,forward,rings)>=0)continue;
-            if(G(scalar(e.lambda,t))>0&&k.after(hp,K(v,F.q(-1)),rings)!==1){
+            const backwardRegion=k.after(hp,K(v,F.q(-1)),rings);
+            const normal=[F.neg(v[1]),v[0]];
+            // Opted-in complete source carriers include exact boundary caps.
+            // A regular boundary point may travel tangentially to its first
+            // true exit. Only the real domain gate is broadened, never corridor
+            // membership/width; all event and endpoint strata stay partitioned.
+            const finitePhysicalCapPoint=preservePhysicalSourceCaps&&state.point&&(C(state.lo,Z)===0&&seed.startCap?.kind==='physical-boundary'||C(state.lo,O)===0&&seed.endCap?.kind==='physical-boundary');
+            const regularPlaneBoundaryPoint=(allowPlaneBoundaryTangents||finitePhysicalCapPoint)&&k.uniformPlane&&state.point&&e.kind==='boundary'&&backwardRegion===0&&k.after(at,normal)*k.after(at,K(normal,F.q(-1)))===-1;
+            if(G(scalar(e.lambda,t))>0&&backwardRegion!==1&&!regularPlaneBoundaryPoint){
               reject(state,'ambiguous-flow','boundary-without-interior-entry');
               chosen=false;
               break;
@@ -807,14 +817,28 @@ export function traceBandBundles(k,seeds,{
           if(cleaned.length>=3){
             const area=cleaned.reduce((s,p,i)=>A(s,cross(p,cleaned[(i+1)%cleaned.length])),Z);
             if(G(area)<0)cleaned.reverse();
-            const capEdges=[];
-            if(!C(state.lo,Z)&&k.location(p[0])===0)capEdges.push({
+            const capEdges=[],physicalSourceCaps=[];
+            // These actual flow edges keep the initial true-P butt cap fixed.
+            // They constrain only initial boundary-guard construction; every
+            // emitted corridor interval is still verified below unchanged.
+            if(preservePhysicalSourceCaps){
+              budget?.check(4);
+              for(const [parameter,cap] of [[Z,seed.startCap],[O,seed.endCap]]){
+                budget?.check(1);
+                if(cap?.kind!=='physical-boundary'||(C(parameter,Z)===0?C(state.lo,Z)!==0:C(state.hi,O)!==0))continue;
+                budget?.check(4);
+                const a=vector(state.p,parameter),b=vector(hit,parameter),outward=C(parameter,Z)===0?K(state.p[1],F.q(-1)):state.p[1];
+                if(k.pointKey(a)===k.pointKey(b))continue;
+                physicalSourceCaps.push({a,b,outward,source:cap,axisId:seed.axisId,componentIndex:seed.componentIndex,segmentIndex:seed.segmentIndex});
+              }
+            }
+            if(!C(state.lo,Z)&&k.location(p[0])===0&&!(preservePhysicalSourceCaps&&seed.startCap?.kind==='physical-boundary'))capEdges.push({
               a:vector(state.p,Z),
               b:vector(hit,Z),
               outward:K(p[1],F.q(-1)),
               source:p[0]
             });
-            if(!C(state.hi,O)&&k.location(V(...p))===0)capEdges.push({
+            if(!C(state.hi,O)&&k.location(V(...p))===0&&!(preservePhysicalSourceCaps&&seed.endCap?.kind==='physical-boundary'))capEdges.push({
               a:vector(state.p,O),
               b:vector(hit,O),
               outward:p[1],
@@ -831,7 +855,8 @@ export function traceBandBundles(k,seeds,{
               polygon:cleaned,
               seedIndex,
               side,
-              capEdges
+              capEdges,
+              ...(preservePhysicalSourceCaps?{physicalSourceCaps}:{})
             });
             budget?.check(cleaned.length);
           }

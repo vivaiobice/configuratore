@@ -53,9 +53,49 @@ export function installTrackpadRotation(map, { touchRotation = false } = {}) {
     map.panBy?.(pan,{duration:0});
   };
 
-  container.addEventListener('wheel', onWheel, { passive:false, capture:true });
+  let enabled=false,rotation=Boolean(touchRotation),disposed=false;
+  function setEnabled(value){
+    value=Boolean(value)&&!disposed;if(value===enabled)return;enabled=value;
+    if(value)container.addEventListener('wheel',onWheel,{passive:false,capture:true});
+    else container.removeEventListener('wheel',onWheel,true);
+  }
+  const cleanup=()=>{setEnabled(false);disposed=true;};
+  cleanup.setEnabled=setEnabled;cleanup.isEnabled=()=>enabled;
+  cleanup.isTouchRotationEnabled=()=>rotation;
+  cleanup.setTouchRotation=value=>{rotation=Boolean(value);if(rotation)map.touchZoomRotate?.enableRotation?.();else map.touchZoomRotate?.disableRotation?.();};
+  setEnabled(true);return cleanup;
+}
 
-  return () => {
-    container.removeEventListener('wheel', onWheel, true);
-  };
+
+function cameraSnapshot(map){
+ const center=map.getCenter();return {center:[center.lng,center.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing(),padding:map.getPadding?.()};
+}
+// Touch rotation has no public getter in MapLibre 4.7.1. Its policy belongs to
+// the wheel wrapper, never to an inferred/private MapLibre field.
+export function createMapGesturePolicy({map,touchRotation}){
+ let releaseCurrent=null,destroyed=false;
+ return {
+  enter3D(){
+   if(destroyed)throw new Error('Policy della mappa chiusa.');
+   if(releaseCurrent)return releaseCurrent;
+   map.stop?.();const camera=cameraSnapshot(map);
+   const handlers=['dragRotate','touchPitch','touchZoomRotate','scrollZoom','dragPan'].filter(name=>map[name]?.isEnabled);
+   const states=handlers.map(name=>[name,map[name].isEnabled()]);
+   const rotation=touchRotation?.isTouchRotationEnabled?.()??false,wheel=touchRotation?.isEnabled?.()??false;
+   touchRotation?.setEnabled?.(false);
+   // Retain the established pixel pan / modifier rotation / native pinch paths.
+   const temporaryWheel=installTrackpadRotation(map,{touchRotation:true});
+   for(const name of handlers)map[name].enable();touchRotation?.setTouchRotation?.(true);
+   let released=false;
+   releaseCurrent=()=>{
+    if(released)return;released=true;map.stop?.();temporaryWheel();
+    for(const name of handlers)map[name].disable();
+    touchRotation?.setTouchRotation?.(rotation);
+    for(const [name,enabled] of states)map[name][enabled?'enable':'disable']();
+    touchRotation?.setEnabled?.(wheel);map.jumpTo(camera);releaseCurrent=null;
+   };
+   return releaseCurrent;
+  },
+  destroy(){releaseCurrent?.();destroyed=true;}
+ };
 }

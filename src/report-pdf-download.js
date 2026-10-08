@@ -1,6 +1,7 @@
-import {terrainMeasureText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.1-prova.1';
-import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.1-prova.1';
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.1-prova.1';
+import {terrainMeasureText,terrainUsesCertifiedQuantities,terrainRowCountText} from './terrain-report-summary.js?v=1.3.1';
+import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.1';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.1';
+import {reportExclusionGeometry} from './report-satellite.js?v=1.3.1';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 
 const A4=[595.28,841.89];
@@ -87,8 +88,8 @@ function title(page,value,fonts,colors){
   return wrapped(page,value,{x:42,y:728,width:510,size:22,lineHeight:28,maxLines:3,font:fonts.bold,color:colors.green});
 }
 
-function technical(page,field,colors,fonts){
-  const model=buildTechnicalReportMapModel(buildReportMapModel({polygon:field.geometry,rows:field.rows,exclusions:field.exclusions,width:1000,height:650,padding:62}),{fontSize:22,measureText:(label,size)=>fonts.bold.widthOfTextAtSize(pdfText(label),8*size/22)*1000/350});
+function technical(page,field,colors,fonts,sourceModel){
+  const model=buildTechnicalReportMapModel(sourceModel,{fontSize:22,measureText:(label,size)=>fonts.bold.widthOfTextAtSize(pdfText(label),8*size/22)*1000/350});
   const box={x:122,y:69,w:350,h:227.5};
   page.drawRectangle({x:box.x,y:box.y,width:box.w,height:box.h,color:colors.soft});
   if(!model.valid)return;
@@ -96,7 +97,10 @@ function technical(page,field,colors,fonts){
   const drawPath=(coordinates,color,thickness)=>{for(let i=1;i<coordinates.length;i++)page.drawLine({start:point(coordinates[i-1]),end:point(coordinates[i]),color,thickness});};
   drawPath(model.polygon,colors.green,2);
   for(const row of model.rows)drawPath(row.coordinates,colors.gold,.8);
-  for(const area of model.exclusions)drawPath(area.points,colors.rust,1.3);
+  for(const area of model.exclusions){
+    const geometry=reportExclusionGeometry(area),rings=geometry.type==='MultiPolygon'?geometry.coordinates.flat():geometry.coordinates;
+    for(const ring of rings)drawPath(ring,colors.rust,1.3);
+  }
   for(const {leader} of model.annotations)drawPath(leader,colors.green,.5);
   for(const annotation of model.annotations){
     const {x,y}=point(annotation.point),label=pdfText(annotation.label),w=annotation.box.width*box.w/model.width,h=annotation.box.height*box.h/model.height,size=8*annotation.fontSize/22;
@@ -107,6 +111,8 @@ function technical(page,field,colors,fonts){
 
 export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,assetLoader=defaultAssetLoader,documentRef=globalThis.document}={}){
   if(!model?.fields?.length||!pdfLib?.PDFDocument)throw new TypeError('Modello PDF o motore di stampa non disponibile.');
+  // Validate grouped physical presentation before assets or any export work.
+  const mapModels=model.fields.map(field=>buildReportMapModel({polygon:field.geometry,rows:field.rows,exclusions:field.exclusions,width:1000,height:650,padding:62}));
   const pdf=await pdfLib.PDFDocument.create();
   pdf.setTitle(buildReportPdfFilename({code:model.project?.code,recipient:model.recipient}).replace(/\.pdf$/i,''));
   pdf.setAuthor('Vivai Obice S.S.A.');
@@ -147,7 +153,7 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
       const rowY=y-25-index*36;
       page.drawRectangle({x:42,y:rowY-11,width:490,height:33,color:colors.soft});
       wrapped(page,field.label,{x:53,y:rowY+4,width:254,size:10,font:fonts.bold,color:colors.green,maxLines:1});
-      const detail=field.terrain?.status==='invalid'?'Terreno non disponibile':`${Math.round(field.metrics?.netAreaM2||0)} m² · ${field.metrics?.commercialPlants||0} barbatelle`;
+      const detail=field.terrain?.status==='invalid'?'Terreno non disponibile':`${field.metrics?.netAreaM2==null?'Non disponibile':Math.round(field.metrics.netAreaM2)} m² · ${field.metrics?.commercialPlants??'Non disponibile'} barbatelle`;
       wrapped(page,detail,{x:323,y:rowY+4,width:197,size:9,font:fonts.regular,color:colors.ink,maxLines:1});
     });
     if(model.fields.length>listed)page.drawText(`Altri ${model.fields.length-listed} campi nelle pagine seguenti`,{x:48,y:y-29-listed*36,size:9,font:fonts.regular,color:colors.muted});
@@ -183,15 +189,15 @@ export async function buildProjectPdfBytes(model,{pdfLib=globalThis.PDFLib,asset
     }else page.drawText('Immagine satellitare non disponibile',{x:50,y:510,size:12,font:fonts.regular,color:colors.muted});
     page.drawText(pdfText(field.mapAttribution||'Imagery © Esri'),{x:50,y:333,size:8,font:fonts.regular,color:colors.muted});
     page.drawText('Schema tecnico',{x:50,y:315,size:12,font:fonts.bold,color:colors.ink});
-    technical(page,field,colors,fonts);
+    technical(page,field,colors,fonts,mapModels[fieldIndex]);
 
     page=add();y=title(page,`Dati - ${field.label}`,fonts,colors)-26;
     const m=field.metrics??{},l=field.layout??{},p=field.plantMaterial??{};
     const terrain=field.terrain,unavailable=terrain?.status==='invalid';
-    const measured=value=>unavailable?'Non disponibile':String(Math.round(value||0));
-    const count=value=>unavailable?'Non disponibile':String(value??0);
+    const measured=value=>unavailable||value===null||value===undefined?'Non disponibile':String(Math.round(value));
+    const count=value=>unavailable||value===null||value===undefined?'Non disponibile':String(value);
     if(terrain)y=wrapped(page,terrainMeasureText(terrain),{x:50,y,width:485,size:9,lineHeight:12,font:fonts.regular,color:colors.muted,maxLines:2})-12;
-    const left=[[terrain?'Sup. lorda orizzontale':'Superficie lorda',`${measured(m.grossAreaM2)} m²`],[terrain?'Sup. netta orizzontale':'Superficie netta',`${measured(m.netAreaM2)} m²`],...(terrain?.status==='applied'?[['Superficie sul terreno',`${measured(terrain.surfaceAreaM2)} m²`],['Sup. netta sul terreno',`${measured(terrain.surfaceNetAreaM2)} m²`]]:[]),['Perimetro',`${measured(m.perimeterM)} m`],['Distanza piante',`${l.plantSpacingM??'-'} m`],['Distanza filari',`${l.rowSpacingM??'-'} m`],...(!hasPortionDesign(l)?[['Orientamento',`${l.orientationDeg??'-'}°`],['Curvatura',l.portions?.[0]?.curved?'Curvi':'Rettilinei']]:[]),['Capezzagna',`${l.headlandWidthM??'-'} m`],['Filari',count(m.rowCount)],[terrain?.status==='applied'?(terrainUsesCertifiedQuantities(terrain)?'Metri per quantità':'Metri sul terreno'):'Metri lineari',`${measured(m.rowLinearM)} m`],...(terrain?.status==='applied'?[...(terrainUsesCertifiedQuantities(terrain)?[['Metri sul terreno',`${measured(terrain.surfaceRowLinearM)} m`]]:[]),['Metri orizzontali',`${measured(terrain.horizontalRowLinearM)} m`]]:[])];
+    const left=[[terrain?'Sup. lorda orizzontale':'Superficie lorda',`${measured(m.grossAreaM2)} m²`],[terrain?'Sup. netta orizzontale':'Superficie netta',`${measured(m.netAreaM2)} m²`],...(terrain?.status==='applied'?[['Superficie sul terreno',`${measured(terrain.surfaceAreaM2)} m²`],['Sup. netta sul terreno',`${measured(terrain.surfaceNetAreaM2)} m²`]]:[]),['Perimetro',`${measured(m.perimeterM)} m`],['Distanza piante',`${l.plantSpacingM??'-'} m`],['Distanza filari',`${l.rowSpacingM??'-'} m`],...(!hasPortionDesign(l)?[['Orientamento',`${l.orientationDeg??'-'}°`],['Curvatura',l.portions?.[0]?.curved?'Curvi':'Rettilinei']]:[]),['Capezzagna',`${l.headlandWidthM??'-'} m`],['Filari',terrainRowCountText(terrain,m.rowCount,count)],[terrain?.status==='applied'?(terrainUsesCertifiedQuantities(terrain)?'Metri per quantità':'Metri sul terreno'):'Metri lineari',`${measured(m.rowLinearM)} m`],...(terrain?.status==='applied'?[...(terrainUsesCertifiedQuantities(terrain)?[['Metri sul terreno',`${measured(terrain.surfaceRowLinearM)} m`]]:[]),['Metri orizzontali',`${measured(terrain.horizontalRowLinearM)} m`]]:[])];
     const right=[['Quantità commerciale',count(m.commercialPlants)],['Barbatelle calcolate',count(m.calculatedPlants)],['Pali intermedi',count(m.intermediatePosts)],['Pali di testa',count(m.headPosts)],['Pali totali',count(m.totalPosts)],['Vitigno',p.grapeVariety],['Clone / selezione',p.cloneSelection],['Portinnesto',p.rootstock],['Altezza barbatella',`${p.plantHeightCm===60?60:40} cm`],['Annata impianto',String(field.plantingYear??'-')],['Vendemmia meccanizzata',l.mechanizedHarvest?'Sì':'No']];
     page.drawText('Geometria e filari',{x:50,y,size:12,font:fonts.bold,color:colors.green});
     page.drawText('Materiale e quantità',{x:310,y,size:12,font:fonts.bold,color:colors.green});
