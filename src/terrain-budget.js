@@ -1,4 +1,4 @@
-import {TERRAIN_MAX_NODES,TERRAIN_OPERATION_CAP_MS} from './terrain-contour-contracts.js?v=1.3.1';
+import {TERRAIN_MAX_NODES,TERRAIN_OPERATION_CAP_MS} from './terrain-contour-contracts.js?v=1.3.2';
 
 /** @returns {import('./terrain-contour-contracts.js?v=1.3.1-prova.1').TerrainBudget} */
 export function createTerrainBudget({kind,deadlineMs,initialNodeCount=0,clock=()=>performance.now(),onProgress=()=>{}}={}){

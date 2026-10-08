@@ -1,14 +1,14 @@
-import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.1';
+import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.2';
 // Candidate acquisition and solver output never mutate the live project.
-import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.1';
-import {attachTerrainRestore,terrainRestoreAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.1';
-import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.1';
-import {terrainInputHash} from './terrain-model.js?v=1.3.1';
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.1';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
-import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.1';
-import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.1';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.1';
+import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.2';
+import {attachTerrainRestore,terrainRestoreAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.2';
+import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.2';
+import {terrainInputHash} from './terrain-model.js?v=1.3.2';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.2';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
+import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.2';
+import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.2';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.2';
 export function terrainPortionEditorState(project,activeId,result){
  return rowPortionEditorState(project,activeId,result?.terrainStatus==='invalid'?null:result?.portions);
 }
@@ -80,11 +80,11 @@ function validateCandidate(project,proposal){
  if(Object.hasOwn(proposal,'result')&&terrainInputHash(proposal.result)!==terrainInputHash(project.terrain.applied.result))throw new Error('Le quantità della proposta non corrispondono al disegno.');
  assertTerrainSerializationBudget(project);
 }
-const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.1')).loadTerrainForField(options);
-const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.1')).runTerrainProposal(options,control);
-const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.1')).terrainSummary(model);
-const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.1');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
-const defaultView=async options=>(await import('./terrain-map.js?v=1.3.1')).createTerrainMapView(options);
+const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.2')).loadTerrainForField(options);
+const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.2')).runTerrainProposal(options,control);
+const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.2')).terrainSummary(model);
+const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.2');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
+const defaultView=async options=>(await import('./terrain-map.js?v=1.3.2')).createTerrainMapView(options);
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
 export function createTerrainController({document,getProject,getContext,getPortionId=()=>null,getMapApi=()=>null,getResult=()=>null,getCheckpointSnapshot,applyProposal,onStatus=()=>{},onProposalChange=()=>{},onStateChange=()=>{},onBudgetUsage=()=>{},loadTerrain=defaultLoad,runProposal=defaultRun,summarize=defaultSummary,covers=defaultCoverage,createMapView=defaultView}){
  const card=document.querySelector('#terrain-card');
@@ -176,7 +176,7 @@ export function createTerrainController({document,getProject,getContext,getPorti
    // History and target are deliberately outside the model acquisition key.
    // Settle obsolete preview ownership without discarding a valid frozen model.
    proposalRequest++;operation++;abort?.abort();proposal=null;nativePreview=null;proposalKey=null;projectPatchDraft=null;progress=null;lastProposalOutcome=null;busy=false;
-   if(in3D)getMapApi()?.setRows?.(getResult()?.rows??[]);
+   close3D();
    onProposalChange(null);setStatus('Il contesto del progetto è cambiato.','unavailable');
   }
   if(!model&&!inflight){const task=acquire().finally(()=>{if(inflight===task)inflight=null;});inflight=task;}render();return inflight;
@@ -323,13 +323,15 @@ export function createTerrainController({document,getProject,getContext,getPorti
  }
  function cancel(){proposalRequest++;projectPatchDraft=null;progress=null;cutFailure=null;abort?.abort();inflight=null;operation++;proposal=null;nativePreview=null;proposalKey=null;busy=false;lastProposalOutcome={ok:false,status:'cancelled'};close3D();onProposalChange(null);setStatus('Proposta annullata. Il progetto salvato è conservato.','cancelled');}
  async function toggle3D(){
-  if(in3D){close3D();return;}if(viewOpening||!available())return;
+  if(in3D||viewOpening){close3D();return;}if(!available())return;
   const loading=refresh();const captured=currentKey(),opening=++viewOperation;viewOpening=true;render();let opened=null;
   const current=()=>!destroyed&&opening===viewOperation&&currentKey()===captured&&available();
   try{
    await loading;if(!current()||!model||busy)return;
    const api=getMapApi(),map=api?.map;if(!map){setStatus('Vista 3D non disponibile sulla mappa.');return;}
-   opened=await createMapView({map,model,gesturePolicy:api.gesturePolicy,onStatus,onError:error=>{if(current()){close3D();setStatus(`Vista 3D non disponibile. ${error.message??''}`);}}});if(!current()){opened.destroy();return;}
+   const candidate=visibleProposal();
+   const scene=api.getTerrainSceneSnapshot?.({exclusions:candidate?.projectPatch?.exclusions,rowPortions:candidate?.rowPortions??candidate?.result?.portions})??{geometry:getProject().geometry,exclusions:[],rowPortions:[]};
+   opened=await createMapView({map,model,...scene,rows:visibleProposal()?.result?.rows??getResult()?.rows??scene.rows??[],getVisibility:api.getOverlayVisibility,onSceneActive:api.setTerrainSceneActive,gesturePolicy:api.gesturePolicy,onStatus,onError:error=>{if(current()){close3D();setStatus(`Vista 3D non disponibile. ${error.message??''}`);}}});if(!current()){opened.destroy();return;}
    view=opened;api.stopTools?.();if(!current()){opened.destroy();return;}
    await opened.open();if(!current()){opened.destroy();return;}
    in3D=true;api.setRows?.(visibleProposal()?.result?.rows??getResult()?.rows??[]);

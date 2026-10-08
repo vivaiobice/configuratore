@@ -12,7 +12,7 @@ import {
   orient as rorient,
   sign as rsign
 }
-from './terrain-exact.js?v=1.3.1';
+from './terrain-exact.js?v=1.3.2';
 const facetCache=new WeakMap(),facetBudgets=new WeakMap();
 function cachedFacets(exact,budget) {
   if(facetCache.has(exact)){

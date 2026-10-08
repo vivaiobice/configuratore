@@ -1,10 +1,10 @@
-import clipping from './vendor/polygon-clipping.js?v=1.3.1';
-import {toUTM} from './coordinate-system.js?v=1.3.1';
-import {getTerrainMesh,validateTerrainModel,terrainInputHash,MAX_TERRAIN_CELLS} from './terrain-model.js?v=1.3.1';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.1';
-import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.1';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.1';
+import clipping from './vendor/polygon-clipping.js?v=1.3.2';
+import {toUTM} from './coordinate-system.js?v=1.3.2';
+import {getTerrainMesh,validateTerrainModel,terrainInputHash,MAX_TERRAIN_CELLS} from './terrain-model.js?v=1.3.2';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.2';
+import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.2';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
 
 // Both modules only call each other's APIs after ESM initialization.
 const cache=new Map();

@@ -5,8 +5,8 @@ import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {createContourDomain} from '../src/terrain-contour-domain.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {fromUTM,toUTM} from '../src/coordinate-system.js';
-import {resolveTerrainExclusionGroups} from '../src/terrain-exclusion-groups.js?v=1.3.1';
-import {sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas,traceSurfaceBand} from '../src/terrain-surface-bands.js?v=1.3.1';
+import {resolveTerrainExclusionGroups} from '../src/terrain-exclusion-groups.js?v=1.3.2';
+import {sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas,traceSurfaceBand} from '../src/terrain-surface-bands.js?v=1.3.2';
 const api=existsSync(new URL('../src/terrain-passage.js',import.meta.url))?await import('../src/terrain-passage.js'):{};
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
 function run({geometryXY,polygonsXY,axisXY,widthM=1.5,height}={}){

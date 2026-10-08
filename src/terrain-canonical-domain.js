@@ -1,12 +1,12 @@
-import {toUTM} from './coordinate-system.js?v=1.3.1';
-import {terrainInputHash} from './terrain-model.js?v=1.3.1';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
-import {TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.1';
-import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.1';
-import {createRegularTerrainRegionOperations} from './terrain-surface-bands.js?v=1.3.1';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.1';
-import {createContourDomain,readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.1';
-import {resolveRowPortions} from './row-portions.js?v=1.3.1';
+import {toUTM} from './coordinate-system.js?v=1.3.2';
+import {terrainInputHash} from './terrain-model.js?v=1.3.2';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
+import {TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.2';
+import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.2';
+import {createRegularTerrainRegionOperations} from './terrain-surface-bands.js?v=1.3.2';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.2';
+import {createContourDomain,readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.2';
+import {resolveRowPortions} from './row-portions.js?v=1.3.2';
 
 // A single queried URL is used by every parent module, including bare imports.
 // Only the owner-derived factories below register exact child authority.

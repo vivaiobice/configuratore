@@ -1,20 +1,20 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.2.4';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.1';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.1';
+import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.3.2';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.2';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.2';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
-import {installTrackpadRotation,createMapGesturePolicy} from './map-gestures.js?v=1.3.1';
-import {createMapTerrainControl} from './map-terrain-control.js?v=1.3.1';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.1';
+import {installTrackpadRotation,createMapGesturePolicy} from './map-gestures.js?v=1.3.2';
+import {createMapTerrainControl} from './map-terrain-control.js?v=1.3.2';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.2';
 import {satelliteSources,satelliteLayers} from './satellite-style.js?v=51';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.1';
-import {portionAtCoordinate} from './row-portions.js?v=1.3.1';
-import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.1';
-import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.1';
-import {regeneratePassage,reshapeExclusion,nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.1';
-import {mapTerrainExclusionFeatures} from './map-terrain-exclusions.js?v=1.3.1';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.1';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.2';
+import {portionAtCoordinate} from './row-portions.js?v=1.3.2';
+import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.2';
+import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.2';
+import {regeneratePassage,reshapeExclusion,nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.2';
+import {mapTerrainExclusionFeatures} from './map-terrain-exclusions.js?v=1.3.2';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.2';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
@@ -92,7 +92,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   const wheelPolicy=installTrackpadRotation(map,{touchRotation:enableTouchRotation()});
   const gesturePolicy=createMapGesturePolicy({map,touchRotation:wheelPolicy});
   const terrainControl=createMapTerrainControl({map,onToggle:onTerrainToggle});
-  map.on('remove',()=>{gesturePolicy.destroy();wheelPolicy();terrainControl.destroy();});
+  map.on('remove',()=>{gesturePolicy.destroy({restoreCamera:false});wheelPolicy();terrainControl.destroy();});
 
   let draw = null;
   let searchMarker = null;
@@ -109,6 +109,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let currentExclusions = [];
   let savedRows = [];
   let terrainProposalPreview = null;
+  let terrainSceneActive=false,terrainProjector=null;
   let currentOtherFields = [];
   let manualVertices = [];
   let manualHover = null;
@@ -1129,7 +1130,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     const visibility=overlayVisibility.state();
     for(const [id,key] of [[TERRAIN_PREVIEW_ROWS_LAYER_ID,'schema'],[TERRAIN_PREVIEW_CUT_FILL_ID,'field'],[TERRAIN_PREVIEW_CUT_LINE_ID,'field']]){
       const layer=map.getLayer(id);if(!layer)continue;
-      const value=visibility[key]?'visible':'none',current=map.getLayoutProperty?.(id,'visibility')??layer.layout?.visibility??'visible';
+      const value=!terrainSceneActive&&visibility[key]?'visible':'none',current=map.getLayoutProperty?.(id,'visibility')??layer.layout?.visibility??'visible';
       if(current!==value)map.setLayoutProperty?.(id,'visibility',value);
     }
   }
@@ -1265,11 +1266,40 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     manualVertices.pop(); manualHover=null; renderManualDraft(); emitDrawingState();onDraftChange();
     onStatus('Ultimo punto rimosso. Puoi continuare a disegnare.');
   }
+  function updateTerrainAnnotations(){
+    if(!terrainSceneActive||!terrainProjector)return;
+    fieldLabelOverlay?.update();
+    for(const marker of sideMeasurementMarkers){
+      const coordinate=marker.getLngLat(),point=[coordinate.lng,coordinate.lat],projected=terrainProjector(point),flat=map.project(point);
+      if(projected&&Number.isFinite(projected.x)&&Number.isFinite(projected.y))marker.setOffset?.([projected.x-flat.x,projected.y-flat.y]);
+      else marker.setOffset?.([0,0]);
+    }
+  }
+  map.on('render',updateTerrainAnnotations);
+  function setTerrainSceneActive(active,projector=null){
+    terrainSceneActive=Boolean(active);terrainProjector=terrainSceneActive?projector:null;
+    fieldLabelOverlay?.setProjector(terrainProjector);overlayVisibility.setSceneActive(terrainSceneActive);refreshTerrainPreviewVisibility();
+    if(!terrainSceneActive)for(const marker of sideMeasurementMarkers)marker.setOffset?.([0,0]);
+    else updateTerrainAnnotations();
+    map.triggerRepaint?.();
+  }
+  function getTerrainSceneSnapshot({exclusions=currentExclusions,rowPortions:portions=rowPortions.portions}={}){
+    // A drawn passage may extend beyond the acquired field. Clip only its
+    // presentation to the field; project inputs and verified calculations remain unchanged.
+    const collection=exclusionFeatureCollection(exclusions);
+    const features=collection.features.flatMap(feature=>{
+      if(!committedGeometry)return [];
+      const polygon=feature.geometry.type==='MultiPolygon'?feature.geometry.coordinates:[feature.geometry.coordinates];
+      const clipped=polygonClipping.intersection(polygon,[committedGeometry]);
+      return clipped.length?[{...feature,geometry:{type:'MultiPolygon',coordinates:clipped}}]:[];
+    });
+    return structuredClone({geometry:committedGeometry,rows:savedRows,exclusions:{type:'FeatureCollection',features},rowPortions:portions.map(({id,geometry})=>({id,geometry}))});
+  }
   function capturePendingEdit(){
-    const center=map.getCenter?.();
+    const camera=map.getCenter&&map.getZoom?gesturePolicy.cameraForCheckpoint():null;
     return {drawing:manualDrawing,mode:manualMode,vertices:manualVertices.map(point=>[...point]),previousPerimeter:previousPerimeter?.map(point=>[...point])??null,
       vertexEditing,editingExclusionId,editRing:editRing?.map(point=>[...point])??null,...(nativePassageEdit?{nativePassageEditing:true}:{}),vertexRemovalActive,curveEditing:rowCurveEditor.active,
-      camera:center&&Number.isFinite(map.getZoom?.())?{center:[center.lng,center.lat],zoom:map.getZoom(),bearing:map.getBearing?.()??0}:null};
+      camera:camera&&Number.isFinite(camera.zoom)?{center:[...camera.center],zoom:camera.zoom,bearing:camera.bearing??0}:null};
   }
   function restorePendingEdit(snapshot){
     if(!snapshot||typeof snapshot!=='object')return false;
@@ -1292,5 +1322,5 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
       map.jumpTo?.({center:snapshot.camera.center,zoom:snapshot.camera.zoom,bearing:snapshot.camera.bearing});
     return true;
   }
-  return { map, draw, gesturePolicy, terrainControl, setOverlayVisibility:next=>{const state=overlayVisibility.set(next);refreshTerrainPreviewVisibility();return state;}, getOverlayVisibility:overlayVisibility.state, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, setTerrainProposalPreview, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
+  return { map, draw, gesturePolicy, terrainControl, getTerrainSceneSnapshot,setTerrainSceneActive, setOverlayVisibility:next=>{const state=overlayVisibility.set(next);refreshTerrainPreviewVisibility();return state;}, getOverlayVisibility:overlayVisibility.state, whenEditorReady, stopTools, undoDrawPoint, beginDraw, beginExclusionDraw, beginLinearExclusionDraw, finishDraw:finishManualPolygon, clearGeometry, beginVertexEditing, finishVertexEditing, beginExclusionEditing, beginVertexRemoval, finishVertexRemoval, removeSelectedVertex, setGeometry, setExclusions, setOtherFields, setActiveFieldLabel, setRowPortions, setRowCurveEditor, finishRowCurveEditing, focusActiveField, focusAllFields, setBaseMap, setRows, setTerrainProposalPreview, search, searchSuggestion, suggest, locate, rotateBy, resetNorth, setCadastralVisible, setCadastralOpacity, capturePendingEdit, restorePendingEdit };
 }

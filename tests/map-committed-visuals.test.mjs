@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {parseHTML} from 'linkedom';
 import {initMap} from '../src/map.js';
 import {createTerrainMapView} from '../src/terrain-map.js';
+import {createTerrainModel} from '../src/terrain-model.js';
+import {toUTM} from '../src/coordinate-system.js';
 
 // Only the external WebGL surface is replaced. Production initMap callbacks,
 // visibility controls, editor and gesture/view lifecycles remain actual code.
@@ -38,6 +40,7 @@ class MapSurface {
  addSource(id,spec){this.sources.set(id,new Source(spec));}
  getSource(id){return this.sources.get(id);}
  removeSource(id){this.sources.delete(id);}
+ removeLayer(id){this.layers.delete(id);this.order.splice(this.order.indexOf(id),1);this.pendingStyle=true;}
  addLayer(spec,before){this.layers.set(spec.id,spec);const index=before?this.order.indexOf(before):-1;this.order.splice(index<0?this.order.length:index,0,spec.id);this.pendingStyle=true;}
  getLayer(id){return this.layers.get(id);}
  getLayersOrder(){return [...this.order];}
@@ -63,6 +66,7 @@ class Marker {
  constructor({element,draggable}={}){this.element=element;this.draggable=draggable;this.handlers={};this.removed=false;}
  setLngLat(coordinate){this.coordinate=[...coordinate];return this;}
  getLngLat(){return {lng:this.coordinate[0],lat:this.coordinate[1]};}
+ setOffset(value){this.offset=[...value];return this;}
  addTo(map){this.map=map;map.markers??=[];map.markers.push(this);map.host.append(this.element);return this;}
  remove(){this.removed=true;this.element.remove();}
  on(name,fn){this.handlers[name]=fn;return this;}
@@ -84,6 +88,29 @@ function establish(ctx,coordinates=ring()){
  ctx.api.setGeometry(coordinates);ctx.map.flushStyle();
  return coordinates;
 }
+test('3D presentation hides planar overlays but preserves eyes, labels and the 2D workspace camera',()=>{
+ const ctx=setup();try{
+  establish(ctx);ctx.api.setRows([{start:ring()[0],end:ring()[1]}]);const camera=ctx.api.capturePendingEdit().camera,eyes=ctx.api.getOverlayVisibility();
+  assert.equal(typeof ctx.api.setTerrainSceneActive,'function');assert.equal(typeof ctx.api.getTerrainSceneSnapshot,'function');
+  const snapshot=ctx.api.getTerrainSceneSnapshot();assert.deepEqual(snapshot.geometry,ring());assert.equal(snapshot.rows.length,1);
+  snapshot.geometry[0][0]=0;assert.equal(ctx.api.getTerrainSceneSnapshot().geometry[0][0],8);
+  const release=ctx.api.gesturePolicy.enter3D();ctx.api.setTerrainSceneActive(true,point=>ctx.map.project(point));ctx.map.jumpTo({center:[8.1,44.1],zoom:19,bearing:85,pitch:60});ctx.map.trigger('moveend');ctx.map.flushStyle();
+  assert.deepEqual(ctx.api.capturePendingEdit().camera,camera);assert.deepEqual(ctx.api.getOverlayVisibility(),eyes);
+  assert.equal(ctx.map.getLayoutProperty('project-geometry-line','visibility'),'none');assert.equal(ctx.map.getLayoutProperty('vineyard-rows-line','visibility'),'none');assert.notEqual(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
+  ctx.api.setOverlayVisibility({schema:false});ctx.api.setTerrainSceneActive(false,null);release();ctx.map.flushStyle();
+  assert.equal(ctx.map.getLayoutProperty('project-geometry-line','visibility'),'visible');assert.equal(ctx.map.getLayoutProperty('vineyard-rows-line','visibility'),'none');assert.deepEqual(ctx.api.capturePendingEdit().camera,camera);
+ }finally{ctx.restore();}
+});
+test('3D display clips long passage ends and resets unsupported annotation offsets without changing project inputs',()=>{
+ const ctx=setup();try{
+  establish(ctx);const long=[[7.99,44.0004],[8.01,44.0004],[8.01,44.0006],[7.99,44.0006],[7.99,44.0004]],saved=structuredClone(long);ctx.api.setExclusions([{id:'long',geometry:long}]);
+  const scene=ctx.api.getTerrainSceneSnapshot();assert.equal(scene.exclusions.features.length,1);assert.deepEqual(long,saved);
+  const clipped=scene.exclusions.features[0].geometry.coordinates.flat(2);assert.ok(clipped.every(([x,y])=>x>=8&&x<=8.001&&y>=44&&y<=44.001));
+  let covered=true;ctx.api.setTerrainSceneActive(true,point=>covered?{x:ctx.map.project(point).x+20,y:ctx.map.project(point).y-10}:null);ctx.map.trigger('render');
+  const markers=ctx.map.markers.filter(marker=>marker.element.className==='side-measurement-label');assert.ok(markers.every(marker=>marker.offset[0]===20&&marker.offset[1]===-10));
+  covered=false;ctx.map.trigger('render');assert.ok(markers.every(marker=>marker.offset[0]===0&&marker.offset[1]===0));ctx.api.setTerrainSceneActive(false);
+ }finally{ctx.restore();}
+});
 
 test('stationary committed repair settles without a self-generating styledata cycle',()=>{
  const ctx=setup();try{
@@ -161,7 +188,8 @@ test('quote and field eyes survive mobile reparenting and vertex edits retain ca
 test('committed repair keeps exact camera padding and individual handlers through 3D close',async()=>{
  const ctx=setup();let view;try{
   establish(ctx);ctx.map.touchZoomRotate.disable();ctx.map.scrollZoom.disable();const camera=structuredClone(ctx.map.camera),states=Object.fromEntries(['dragRotate','touchPitch','touchZoomRotate','scrollZoom','dragPan'].map(name=>[name,ctx.map[name].isEnabled()]));
-  view=createTerrainMapView({map:ctx.map,model:{},gesturePolicy:ctx.api.gesturePolicy,tileClientFactory:()=>({ready:Promise.resolve({bounds:[7.9,43.9,8.1,44.1]}),tile:async()=>new ArrayBuffer(0),destroy(){}})});
+  const [x,y]=toUTM([8,44],32632),model=createTerrainModel({source:{id:'camera-fixture',label:'Anonimo',resolutionM:125,url:'about:blank',license:'CC0',citation:'Anonimo'},grid:{width:5,height:5,origin:[x-250,y+250],step:[125,-125],values:Array(25).fill(100)}});
+  view=createTerrainMapView({map:ctx.map,model,gesturePolicy:ctx.api.gesturePolicy,sceneClientFactory:()=>({ready:Promise.resolve({modelHash:model.contentHash,reference:{anchor:[0,0,0],coordinate:[8,44],height:100,metersToMercator:1},positions:new Float32Array(9),indices:new Uint32Array([0,1,2]),normals:new Float32Array(9),linePositions:new Float32Array(),lineColors:new Float32Array(),lineRanges:[]}),destroy(){}})});
   await view.open();ctx.map.jumpTo({center:[8.01,44.01],pitch:60,bearing:80,padding:{top:10,bottom:12,left:15,right:20}});ctx.map.trigger('moveend');view.close();ctx.map.flushStyle();
   assert.deepEqual(ctx.map.camera,camera);assert.deepEqual(Object.fromEntries(Object.keys(states).map(name=>[name,ctx.map[name].isEnabled()])),states);assert.equal(ctx.map.getTerrain(),null);assert.equal(ctx.protocols.size,0);
  }finally{view?.destroy();ctx.restore();}

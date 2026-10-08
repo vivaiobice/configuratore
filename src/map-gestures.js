@@ -67,14 +67,19 @@ export function installTrackpadRotation(map, { touchRotation = false } = {}) {
 }
 
 
+function copyCamera(camera){
+ return {...camera,center:[...camera.center],padding:camera.padding==null?camera.padding:{...camera.padding}};
+}
 function cameraSnapshot(map){
- const center=map.getCenter();return {center:[center.lng,center.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing(),padding:map.getPadding?.()};
+ const center=map.getCenter();return copyCamera({center:[center.lng,center.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing(),padding:map.getPadding?.()});
 }
 // Touch rotation has no public getter in MapLibre 4.7.1. Its policy belongs to
 // the wheel wrapper, never to an inferred/private MapLibre field.
 export function createMapGesturePolicy({map,touchRotation}){
- let releaseCurrent=null,destroyed=false;
+ let releaseCurrent=null,checkpointCamera=null,destroyed=false;
  return {
+  // Save the owned 2D plane even when the live camera is navigating in 3D.
+  cameraForCheckpoint(){return checkpointCamera?copyCamera(checkpointCamera):cameraSnapshot(map);},
   enter3D(){
    if(destroyed)throw new Error('Policy della mappa chiusa.');
    if(releaseCurrent)return releaseCurrent;
@@ -86,16 +91,16 @@ export function createMapGesturePolicy({map,touchRotation}){
    // Retain the established pixel pan / modifier rotation / native pinch paths.
    const temporaryWheel=installTrackpadRotation(map,{touchRotation:true});
    for(const name of handlers)map[name].enable();touchRotation?.setTouchRotation?.(true);
-   let released=false;
-   releaseCurrent=()=>{
-    if(released)return;released=true;map.stop?.();temporaryWheel();
+   let released=false;checkpointCamera=camera;
+   releaseCurrent=({restoreCamera=true}={})=>{
+    if(released)return;released=true;if(restoreCamera)map.stop?.();temporaryWheel();
     for(const name of handlers)map[name].disable();
     touchRotation?.setTouchRotation?.(rotation);
     for(const [name,enabled] of states)map[name][enabled?'enable':'disable']();
-    touchRotation?.setEnabled?.(wheel);map.jumpTo(camera);releaseCurrent=null;
+    touchRotation?.setEnabled?.(wheel);if(restoreCamera)map.jumpTo(copyCamera(camera));releaseCurrent=null;checkpointCamera=null;
    };
    return releaseCurrent;
   },
-  destroy(){releaseCurrent?.();destroyed=true;}
+  destroy(options){releaseCurrent?.(options);destroyed=true;}
  };
 }

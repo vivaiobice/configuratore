@@ -1,10 +1,10 @@
-# Configuratore + Conteggi — caricamento unico 1.3.1
+# Configuratore + Conteggi — caricamento unico 1.3.2
 
-Usare questa procedura con il pacchetto completo 1.3.1 dopo la verifica del manifest e dei file estratti. La preparazione dei metadati non equivale alla consegna o alla pubblicazione dello ZIP; stato e limiti sono in [README_RELEASE_1.3.1.md](README_RELEASE_1.3.1.md).
+Usare questa procedura con il pacchetto completo 1.3.2 dopo la verifica del manifest e dei file estratti. Il pacchetto è statico e la consegna non esegue una pubblicazione remota; stato e limiti sono in [README_RELEASE_1.3.2.md](README_RELEASE_1.3.2.md).
 
 1. Conservare la versione pubblicata e lo ZIP precedente. Estrarre il nuovo archivio in una cartella separata: `index.html` e `conteggi/index.html` devono essere nella radice, insieme a `src/`, `admin/`, `assets/`, `tests/` e `supabase/`.
 2. Copiare tutto il contenuto estratto nella radice del repository `vivaiobice/configuratore` e controllare tutte le modifiche. Non caricare lo ZIP come file del repository e non aggiungere una cartella contenitore. La pubblicazione usa il ramo e le impostazioni Pages esistenti, con `CNAME` conservato.
-3. Dopo la pubblicazione aprire il Configuratore e `/conteggi/`, verificando **1.3.1 · LIVE** in entrambi. Provare selettore tool e Profilo su desktop e touch, ingresso diretto nel contatore e ritorno all'editor con la bozza conservata.
+3. Dopo la pubblicazione aprire il Configuratore e `/conteggi/`, verificando **1.3.2 · LIVE** in entrambi. Provare selettore tool e Profilo su desktop e touch, ingresso diretto nel contatore e ritorno all'editor con la bozza conservata.
 4. Chiudere le vecchie schede Conteggi e riaprire online per consentire l'attivazione del worker aggiornato. Soltanto dopo verificare la riapertura offline di Conteggi. Conservare IndexedDB/localStorage e la stessa origine HTTPS; non cancellare tutti i dati del sito.
 
 Il configuratore alla radice non è dichiarato offline. Sincronizzazione cloud Conteggi, invio a Vivai Obice e consultazione amministrativa restano disattivati e richiedono attivazione distinta. Il caricamento statico non esegue migrazioni o distribuzioni backend. I controlli della fluidità 3D e il pilot sul terreno reale restano aperti come descritto nella nota di release.

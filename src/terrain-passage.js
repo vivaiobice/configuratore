@@ -1,12 +1,12 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
-import {createContourDomain,createCanonicalCutPhysicalDomain,canonicalCutDomainScope} from './terrain-contour-domain.js?v=1.3.1';
-import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.1';
-import {traceSurfaceBand,certifyUniformPlaneSupport,compareMeasuredSurfaceAreas} from './terrain-surface-bands.js?v=1.3.1';
-import {exactDomain,Q,ZERO,add,mul,cmp,sign,cross,vsub,dot} from './terrain-exact.js?v=1.3.1';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
+import {createContourDomain,createCanonicalCutPhysicalDomain,canonicalCutDomainScope} from './terrain-contour-domain.js?v=1.3.2';
+import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.2';
+import {traceSurfaceBand,certifyUniformPlaneSupport,compareMeasuredSurfaceAreas} from './terrain-surface-bands.js?v=1.3.2';
+import {exactDomain,Q,ZERO,add,mul,cmp,sign,cross,vsub,dot} from './terrain-exact.js?v=1.3.2';
 
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.1';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.2';
 
-import {TERRAIN_FIELD_MAX_BYTES} from './terrain-serialization.js?v=1.3.1';
+import {TERRAIN_FIELD_MAX_BYTES} from './terrain-serialization.js?v=1.3.2';
 
 export const NATIVE_SUPPORTED_AXIS_POLICY='native-supported-axis-clip-1';
 const fail=(status,message)=>Object.assign(new Error(message),{status});

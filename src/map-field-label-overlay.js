@@ -55,15 +55,16 @@ export function createMapFieldLabelOverlay({map,documentRef=globalThis.document}
  const host=map?.getContainer?.();
  if(!host?.append||!documentRef?.createElement||!map?.project)return null;
  const layer=documentRef.createElement('div');layer.className='map-field-label-overlay';layer.setAttribute('aria-hidden','true');host.append(layer);
- let labels=[],destroyed=false;
+ let labels=[],destroyed=false,projector=null;
+ const project=point=>projector?.(point)??map.project(point);
  const update=()=>{
   if(destroyed)return;
   const width=host.clientWidth,height=host.clientHeight,placed=[];
   for(const {label,point,geometry} of labels){
-   const projected=map.project(point);
+   const projected=project(point);
    let anchor=Number.isFinite(projected?.x)&&Number.isFinite(projected?.y)?[projected.x,projected.y]:null;
    if(width>0&&height>0){
-    const ring=geometry.map(coordinate=>map.project(coordinate)).filter(p=>Number.isFinite(p?.x)&&Number.isFinite(p?.y)).map(p=>[p.x,p.y]);
+    const ring=geometry.map(coordinate=>project(coordinate)).filter(p=>Number.isFinite(p?.x)&&Number.isFinite(p?.y)).map(p=>[p.x,p.y]);
     const visible=clipToViewport(ring,width,height),inside=visibleInteriorPoint(visible);
     if(!inside)anchor=null;
     else if(!anchor||anchor[0]<0||anchor[0]>width||anchor[1]<0||anchor[1]>height)anchor=inside;
@@ -85,7 +86,7 @@ export function createMapFieldLabelOverlay({map,documentRef=globalThis.document}
  };
  for(const event of ['move','resize','load'])map.on?.(event,update);
  documentRef.fonts?.ready?.then(update);
- return {setFields(fields=[]){
+ return {setProjector(value){projector=typeof value==='function'?value:null;update();},update,setFields(fields=[]){
    labels=[];layer.replaceChildren();
    for(const field of fields){
     const point=interiorLabelPoint(field?.geometry);if(!point)continue;

@@ -1,3 +1,4 @@
+const SCENE_LAYERS=new Set(['project-geometry-fill','project-geometry-line','excluded-zones-fill','excluded-zones-line','row-portions-fill','row-portions-outline','vineyard-rows-line']);
 const GROUPS = [
  {key:'field',label:'Campo',layers:['project-geometry-fill','project-geometry-line','other-project-fields-fill','other-project-fields-line','excluded-zones-fill','excluded-zones-line','row-portions-fill','row-portions-outline'],selector:'.map-field-label-overlay, .field-label-marker'},
  {key:'schema',label:'Schema vigneto',layers:['vineyard-rows-line','other-project-rows-line'],selector:null},
@@ -11,15 +12,16 @@ export function createMapOverlayVisibility({map,documentRef=globalThis.document}
  const host=map.getContainer();
  const controlHost=host.closest?.('.map-wrap')??host;
  const state={field:true,schema:true,quotes:true};
- let control=null;
+ let control=null,sceneActive=false;
  function refresh(){
   for(const group of GROUPS){
    const visible=state[group.key],value=visible?'visible':'none';
    host.setAttribute?.(`data-map-${group.key}-visible`,String(visible));
    for(const id of group.layers){
     const layer=map.getLayer(id);if(!layer)continue;
+    const layerValue=sceneActive&&SCENE_LAYERS.has(id)?'none':value;
     const current=map.getLayoutProperty?.(id,'visibility')??layer.layout?.visibility??'visible';
-    if(current!==value)map.setLayoutProperty?.(id,'visibility',value);
+    if(current!==layerValue)map.setLayoutProperty?.(id,'visibility',layerValue);
    }
    if(group.selector){
     // Hide the HTML label overlay parent: its viewport updates can safely keep
@@ -36,7 +38,7 @@ export function createMapOverlayVisibility({map,documentRef=globalThis.document}
  }
  function set(next={}){
   for(const key of Object.keys(state))if(typeof next[key]==='boolean')state[key]=next[key];
-  refresh();return {...state};
+  refresh();map.triggerRepaint?.();return {...state};
  }
  if(host?.append&&documentRef?.createElement){
   control=documentRef.createElement('div');control.className='map-visibility-control';
@@ -59,5 +61,5 @@ export function createMapOverlayVisibility({map,documentRef=globalThis.document}
  }
  map.on?.('styledata',refresh);
  refresh();
- return {set,refresh,state:()=>({...state})};
+ return {set,refresh,setSceneActive(value){sceneActive=Boolean(value);refresh();},state:()=>({...state})};
 }

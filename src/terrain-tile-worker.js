@@ -1,4 +1,4 @@
-import {buildTerrainTilePixels,frozenSurface} from './terrain-map.js?v=1.3.1';
+import {buildTerrainTilePixels,frozenSurface} from './terrain-map.js?v=1.3.2';
 let surface=null;
 // Model validation and grid preparation run once in this production worker.
 self.onmessage=async({data:message})=>{

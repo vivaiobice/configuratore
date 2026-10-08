@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import * as design from '../src/terrain-contour-design.js?v=1.3.1';
-import {attachTerrainRestore} from '../src/terrain-history.js?v=1.3.1';
-import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.1';
+import * as design from '../src/terrain-contour-design.js?v=1.3.2';
+import {attachTerrainRestore} from '../src/terrain-history.js?v=1.3.2';
+import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.2';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 
 const clone=value=>structuredClone(value);

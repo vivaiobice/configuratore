@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {fromUTM,toUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes,canonicalCutDomainScope} from '../src/terrain-contour-domain.js?v=1.3.1';
-import {createRegularTerrainRegionOperations} from '../src/terrain-surface-bands.js?v=1.3.1';
-import {buildTerrainPassage} from '../src/terrain-passage.js?v=1.3.1';
+import {createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes,canonicalCutDomainScope} from '../src/terrain-contour-domain.js?v=1.3.2';
+import {createRegularTerrainRegionOperations} from '../src/terrain-surface-bands.js?v=1.3.2';
+import {buildTerrainPassage} from '../src/terrain-passage.js?v=1.3.2';
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
 function fixture(){
  const {project,model}=contourFixture({geometryXY:[[0,0],[10,0],[10,10],[0,10],[0,0]]});

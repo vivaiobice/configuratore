@@ -1,15 +1,15 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.1';
-import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.1';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.1';
-import {terrainInputHash} from './terrain-model.js?v=1.3.1';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.1';
-import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.1';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.2';
+import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.2';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
+import {terrainInputHash} from './terrain-model.js?v=1.3.2';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.2';
+import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.2';
 import {
  Q,ZERO,ONE,TWO,add,sub,mul,div,cmp,sign,min,max,sq,dot,cross,vsub,at,
  mid,key,pointKey,pointOnSegment,segmentIntersection,inRegion,
  unique,number,numberBounds,xy,exactDomain,splitSegment,height,radical,
  radd,radicalCompare,radicalBounds,lengthBounds,nextUp,nextDown
-} from './terrain-exact.js?v=1.3.1';
+} from './terrain-exact.js?v=1.3.2';
 
 export const FINITE_POLYLINE_AXIS_CONVENTION='finite-polyline-domain-intersection-1';
 export const POLYLINE_SOURCE_PARAMETER_OPERATION='polyline-source-parameter-intervals-1';

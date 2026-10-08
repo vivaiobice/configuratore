@@ -1,37 +1,10 @@
-# Vivai Obice — piattaforma unica 1.3.1
+# Vivai Obice — piattaforma unica 1.3.2
 
-Progetta impianto alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. La versione pubblica dei due strumenti è coordinata a **1.3.1 · LIVE**. Questo aggiornamento dei metadati e della documentazione prepara il rilascio: verifiche finali, manifest e ZIP devono ancora essere completati sul sorgente congelato.
+Configuratore alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. Entrambi mostrano **1.3.2 · LIVE**.
 
-La revisione terreno porta **Manuale / Adatta al terreno** nella curvatura filari e il comando **3D sulla mappa**. La proposta conserva il progetto precedente fino ad Applica; direzione, curva e passaggi rimangono riferiti alle porzioni del campo. Il disegno manuale della 1.2.6 e i dati precedenti restano il riferimento di compatibilità. I dettagli del calcolo e le condizioni di verifica sono in [README_RELEASE_1.3.1.md](README_RELEASE_1.3.1.md).
+La vista **3D sulla mappa** usa direttamente il modello altimetrico acquisito e i filari del progetto o della proposta corrente. La navigazione conserva il disegno, le quantità e la posizione da ritrovare tornando in 2D. Il disegno manuale 1.2.6 e i progetti 1.3.0 restano compatibili.
 
-L'interfaccia mantiene Comfortaa, il documento mantiene la tipografia precedente. I pulsanti ricevono un riscontro al passaggio del mouse; il contatore conserva la filigrana senza rotazione e il logo Vivai Obice nel footer. Conteggi continua a salvare sul dispositivo: i servizi cloud, amministrativi e di trasmissione restano disattivati nei flag del pacchetto.
-
-Le prove funzionali 3D e di ripristino della camera sono disponibili, ma **la fluidità richiesta non è ancora verificata**: il controllo locale Chromium/SwiftShader dei frame supera ancora 150 ms. La prova sui campi reali indicati e sul DTM congelato non è stata eseguita. I risultati storici riportati sotto non sono risultati della suite finale 1.3.1.
-
-- Stato e limiti correnti: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
-- Modifiche e verifiche della revisione: [README_RELEASE_1.3.1.md](README_RELEASE_1.3.1.md).
-- Caricamento completo: [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md).
-- Pubblicazione e conservazione degli archivi: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
-
-Per riprodurre i controlli usare le dipendenze bloccate con `npm ci` e `npm ci --prefix conteggi`, poi `node --test --test-concurrency=1 tests/*.test.mjs` e `npm run check`. I runner browser richiedono Playwright/Chromium e gli asset MapLibre/Draw locali; i controlli numerici e browser vanno eseguiti separatamente senza carichi concorrenti. `npm run offline:build` rigenera soltanto la cache statica Conteggi e va usato dopo l'allineamento finale delle query.
-
-<details>
-<summary>Cronologia conservata: documentazione originale della 1.2.6 e rilasci precedenti</summary>
-
-# Vivai Obice — piattaforma unica 1.2.6
-
-Progetta impianto alla radice; Conteggi in `/conteggi/`. Il pulsante occhio nelle mappe principale, Campi ed editor controlla separatamente Campo, Schema vigneto e Quote, su desktop e mobile. La scelta resta temporanea e non modifica geometria, progetto o quantità. Restano le porzioni indipendenti della 1.2.5, con direzione e curvatura locali in un solo campo.
-
-Lo schema tecnico stampato dispone le quote all’esterno e ingrandisce i campi ordinari dentro lo stesso riquadro; orientamento e curvatura sono sintetizzati in Geometria e filari, senza stampare lo stato dell’equidistanza. Il Profilo mobile compatto mostra tutti i campi e comandi nelle dimensioni verificate, compreso 320 × 568 pixel. L’interfaccia conserva Comfortaa e il documento il font precedente.
-
-**1004 test passati, 0 falliti, 0 saltati**, controllo sintattico e prove Chromium desktop/mobile con fixture anonime. Stampa HTML ed esportatore nativo verificati con sette fixture, comprese 60 porzioni, etichette molto lunghe, nomi su più righe e perimetri con 100/150 quote. Ambiente configurato: LIVE; pubblicazione non eseguita e servizi cloud Conteggi ancora disattivati.
-
-- Rilascio e verifiche: [README_RELEASE_1.2.6.md](README_RELEASE_1.2.6.md).
-- Stato corrente: [STATO_PIATTAFORMA.md](STATO_PIATTAFORMA.md).
-- Pubblicazione del pacchetto unico: [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
-- Riproduzione locale: `npm ci`, `npm ci --prefix conteggi`, `npm run offline:build`, `npm test`, `npm run check`.
-
-Le note che seguono descrivono rilasci storici del configuratore e non attestano la configurazione corrente.
+La revisione completa il rendering e i gesti 3D: prove locali con MapLibre reale, Worker e WebGL su desktop e touch emulato superano il limite di 150 ms fra fotogrammi. I dettagli, i comandi e i limiti del collaudo sono in [README_RELEASE_1.3.2.md](README_RELEASE_1.3.2.md). Le prove anonime non certificano i campi reali o i dispositivi fisici; il calcolo automatico dei filari conserva i propri controlli e rifiuti precedenti.
 
 ## V53.3 — stato attivo del selettore mappa in Dark Mode
 

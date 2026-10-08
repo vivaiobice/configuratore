@@ -1,26 +1,26 @@
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.1';
+from './terrain-budget.js?v=1.3.2';
 import {
   traceContourLevel
 }
-from './terrain-contours.js?v=1.3.1';
+from './terrain-contours.js?v=1.3.2';
 import {
   certifyContourSpacing
 }
-from './terrain-contour-validation.js?v=1.3.1';
+from './terrain-contour-validation.js?v=1.3.2';
 import {
   traceSurfaceBand,
   measureSurfaceUnion,
   compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.1';
+from './terrain-surface-bands.js?v=1.3.2';
 import {
   toUTM,
   fromUTM
 }
-from './coordinate-system.js?v=1.3.1';
+from './coordinate-system.js?v=1.3.2';
 import {
   exactDomain,
   Q,
@@ -44,10 +44,10 @@ import {
   ZERO,
   orient
 }
-from './terrain-exact.js?v=1.3.1';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.1';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.1';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.1';
+from './terrain-exact.js?v=1.3.2';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.2';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.2';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.2';
 const failed=(status,diagnostics)=>({
   ok:false,
   status,

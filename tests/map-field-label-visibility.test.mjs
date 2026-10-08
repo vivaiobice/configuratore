@@ -39,3 +39,9 @@ test('overlapping fields keep separate readable tags without hiding either name'
  assert.equal(first.hidden,false);assert.equal(second.hidden,false);
  assert.notEqual(first.style.top,second.style.top,'coincident parcels retain two visible names');
 });
+test('terrain projection positions the same tag and closing restores its 2D position',()=>{
+ const {host,overlay}=fixture();overlay.setFields([clippedField]);const label=host.querySelector('.field-label-marker'),before=[label.style.left,label.style.top];
+ assert.equal(typeof overlay.setProjector,'function');overlay.setProjector(([lon,lat])=>({x:(lon-8)*10000+80,y:(44.02-lat)*10000-20}));
+ assert.notDeepEqual([label.style.left,label.style.top],before);assert.equal(host.querySelector('.field-label-marker'),label);
+ overlay.setProjector(null);assert.deepEqual([label.style.left,label.style.top],before);
+});

@@ -1,12 +1,12 @@
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.1';
+from './terrain-budget.js?v=1.3.2';
 import {
   fromUTM,
   toUTM
 }
-from './coordinate-system.js?v=1.3.1';
+from './coordinate-system.js?v=1.3.2';
 import {
   Q,
   rationalSquareRoot,
@@ -32,27 +32,27 @@ import {
   nextUp,
   nextDown
 }
-from './terrain-exact.js?v=1.3.1';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.1';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.1';
+from './terrain-exact.js?v=1.3.2';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.2';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.2';
 import {
   axisPieces
 }
-from './terrain-surface-flow.js?v=1.3.1';
+from './terrain-surface-flow.js?v=1.3.2';
 import {
   certifyContourElevation
 }
-from './terrain-contour-validation.js?v=1.3.1';
+from './terrain-contour-validation.js?v=1.3.2';
 import {
   createAlgebraicField
 }
-from './terrain-algebraic.js?v=1.3.1';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.1';
+from './terrain-algebraic.js?v=1.3.2';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.2';
 import {
   createBandKernel,
   traceBandBundles
 }
-from './terrain-geodesic-flow.js?v=1.3.1';
+from './terrain-geodesic-flow.js?v=1.3.2';
 /** Compare an outward binary64 enclosure to exact binary-input thresholds.
  * Adding the ceiling in floating point first could admit an extra ULP. */
 export function widthBoundsWithin(bounds,centerM) {

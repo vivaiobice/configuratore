@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.1';
-import {toUTM} from '../src/coordinate-system.js?v=1.3.1';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.2';
+import {toUTM} from '../src/coordinate-system.js?v=1.3.2';
 
 const api=existsSync(new URL('../src/terrain-cut-suggestions.js',import.meta.url))
- ?await import('../src/terrain-cut-suggestions.js?v=1.3.1'):{};
+ ?await import('../src/terrain-cut-suggestions.js?v=1.3.2'):{};
 function search(options){
  assert.equal(typeof api.buildTerrainCutSuggestions,'function');
  return api.buildTerrainCutSuggestions(options);

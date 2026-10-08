@@ -11,3 +11,9 @@ test('busy control announces waiting and accepts a close while active',async()=>
 test('a non-DOM map adapter can still use editor initialization without an unusable visual control',async()=>{
  const {createMapTerrainControl}=await load();const control=createMapTerrainControl({map:{getContainer:()=>({addEventListener(){}})}});assert.doesNotThrow(()=>control.setState({available:true,active:false,busy:false}));assert.doesNotThrow(()=>control.destroy());
 });
+test('an opening view can be cancelled without enabling unrelated busy work',async()=>{
+ const {createMapTerrainControl}=await load();const {document}=parseHTML('<div class="map-wrap"><div id="map"></div></div>');let calls=0;
+ const control=createMapTerrainControl({map:{getContainer:()=>document.querySelector('#map')},onToggle:()=>calls++}),button=document.querySelector('[data-map-terrain]');
+ control.setState({available:true,busy:true,opening:true});assert.equal(button.disabled,false);assert.match(button.title,/Annulla/);button.click();assert.equal(calls,1);
+ control.setState({available:true,busy:true,opening:false});assert.equal(button.disabled,true);button.click();assert.equal(calls,1);control.destroy();
+});

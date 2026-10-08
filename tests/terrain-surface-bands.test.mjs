@@ -4,7 +4,7 @@ import {createContourDomain} from '../src/terrain-contour-domain.js';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {toUTM,fromUTM} from '../src/coordinate-system.js';
 import * as api from '../src/terrain-surface-flow.js';
-import {compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.1';
+import {compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.2';
 const make=(height=()=>0)=>{const f=contourFixture({height});return createContourDomain({model:f.model,geometry:{type:'Polygon',coordinates:[f.project.geometry]}});};
 const band=opts=>{assert.equal(typeof api.traceSurfaceBand,'function');return api.traceSurfaceBand(opts);};
 // Restored original stage-B cases: changing the metric or inventing a corner join fails these.
