@@ -18,7 +18,7 @@ begin
  select * into previous from public.counts_entries where id=entity;
  select * into parent from public.counts_lists where id=(clean->>'listId')::uuid;
  if parent.id is null or parent.owner_user_id<>p_owner or parent.environment<>p_environment or (parent.deleted_at is not null and not coalesce((clean->>'deleted')::boolean,false)) then raise exception 'NOT_FOUND_OR_FORBIDDEN';end if;
- if clean->'field'->>'associationStatus'='verified' and not exists(select 1 from public.project_fields f join public.projects p on p.id=f.project_id where p.id=(clean->'field'->>'projectId')::uuid and f.client_field_id=clean->'field'->>'fieldId' and p.owner_user_id=p_owner and f.owner_user_id=p_owner and p.environment=p_environment and p.deleted_at is null and f.deleted_at is null) then
+ if clean->'field'->>'associationStatus'='verified' and not exists(select 1 from public.project_fields f join public.projects p on p.id=f.project_id where p.id=(clean->'field'->>'projectId')::uuid and f.client_field_id=clean->'field'->>'fieldId' and p.owner_user_id=p_owner and f.owner_user_id=p_owner and p.environment::text=p_environment and p.deleted_at is null and f.deleted_at is null) then
  if previous.id is not null and previous.data->'field'->>'projectId'=clean->'field'->>'projectId' and previous.data->'field'->>'fieldId'=clean->'field'->>'fieldId' then clean:=jsonb_set(clean,'{field}',jsonb_build_object('projectId',clean->'field'->>'projectId','fieldId',clean->'field'->>'fieldId','projectLabel','','fieldLabel','','associationStatus','unavailable'));
  else raise exception 'FIELD_UNAVAILABLE';end if;end if;
  end if;

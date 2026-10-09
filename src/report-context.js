@@ -1,4 +1,4 @@
-import {createReportPreflight,updateReportPreflight,DISCLAIMER_VERSION} from './report-preflight.js?v=1.3.4';
+import {createReportPreflight,updateReportPreflight,DISCLAIMER_VERSION} from './report-preflight.js?v=1.3.5';
 
 const clone=value=>globalThis.structuredClone?globalThis.structuredClone(value):JSON.parse(JSON.stringify(value));
 export const REPORT_CONTEXT_KEY=requestId=>`vivai-obice:report-context:v1:${requestId}`;

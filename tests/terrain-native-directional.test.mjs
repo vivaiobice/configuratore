@@ -8,8 +8,8 @@ import {chargeTerrainOperationCopy} from '../src/terrain-worker-client.js';
 import {readTerrainEnvelope,hashTerrainEnvelope} from '../src/terrain-replay.js';
 import {terrainInputHash} from '../src/terrain-model.js';
 import {createContourDomain} from '../src/terrain-contour-domain.js';
-import {certifyNativeDirectionalFamily} from '../src/terrain-directional-certificate.js?v=1.3.4';
-import {measureNativeDirectionalService,measureDomainSurfaceArea,measuredSurfaceAreasComparable,compareMeasuredSurfaceAreas,sumMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.4';
+import {certifyNativeDirectionalFamily} from '../src/terrain-directional-certificate.js?v=1.3.5';
+import {measureNativeDirectionalService,measureDomainSurfaceArea,measuredSurfaceAreasComparable,compareMeasuredSurfaceAreas,sumMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.5';
 
 test('real Float32 native varied L and road completes filled family, transport and independent replay within one allowance',async t=>{
  const {model,project}=nativeDirectionalFixture(),modelBefore=JSON.stringify(model),projectBefore=JSON.stringify(project),budget=createTerrainBudget({kind:'adapt'});

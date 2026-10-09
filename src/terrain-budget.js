@@ -1,6 +1,6 @@
-import {TERRAIN_MAX_NODES,TERRAIN_OPERATION_CAP_MS} from './terrain-contour-contracts.js?v=1.3.4';
+import {TERRAIN_MAX_NODES,TERRAIN_OPERATION_CAP_MS} from './terrain-contour-contracts.js?v=1.3.5';
 
-/** @returns {import('./terrain-contour-contracts.js?v=1.3.4').TerrainBudget} */
+/** @returns {import('./terrain-contour-contracts.js?v=1.3.5').TerrainBudget} */
 export function createTerrainBudget({kind,deadlineMs,initialNodeCount=0,clock=()=>performance.now(),onProgress=()=>{}}={}){
  const cap=TERRAIN_OPERATION_CAP_MS[kind];
  if(!Object.hasOwn(TERRAIN_OPERATION_CAP_MS,kind)||deadlineMs!==undefined&&(!Number.isFinite(deadlineMs)||deadlineMs<0)||!Number.isSafeInteger(initialNodeCount)||initialNodeCount<0||initialNodeCount>TERRAIN_MAX_NODES)throw new RangeError('Budget terreno non valido.');

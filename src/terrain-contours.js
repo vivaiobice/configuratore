@@ -1,8 +1,8 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
 import {
   Q, ZERO, ONE, cmp, sign, sub, div, at, pointKey, xy, exactDomain, splitSegment,
   inRegion
-} from './terrain-exact.js?v=1.3.4';
+} from './terrain-exact.js?v=1.3.5';
 /** Deterministic native level graph. Exact constructions are transient: the
  * returned binary64 coordinates are the authoritative submitted axes in later
  * validation. No face clip polygon is treated as a physical row fragment. */

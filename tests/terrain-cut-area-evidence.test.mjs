@@ -6,7 +6,7 @@ import {createTerrainBudget} from '../src/terrain-budget.js';
 import {measureSurfaceFootprint,compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js';
 import * as bands from '../src/terrain-surface-bands.js';
 import {buildContourFamily} from '../src/terrain-contour-family.js';
-import {compareMeasuredSurfaceAreas as compareSelectedSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.4';
+import {compareMeasuredSurfaceAreas as compareSelectedSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.5';
 
 const geometry=(x0,y0,x1,y1)=>({type:'MultiPolygon',coordinates:[[[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]]]]});
 function measurements(){

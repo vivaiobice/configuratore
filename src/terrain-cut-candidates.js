@@ -1,8 +1,8 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
-import {validateTerrainModel} from './terrain-model.js?v=1.3.4';
-import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.4';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
+import {validateTerrainModel} from './terrain-model.js?v=1.3.5';
+import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.5';
 import {exactDomain,Q,ZERO,ONE,add,sub,mul,div,cmp,sign,pointKey,numberBounds,sqrtBounds,
- vsub,vadd,scale,dot,cross,mid,in01,inRegion,segmentIntersection,at,unique} from './terrain-exact.js?v=1.3.4';
+ vsub,vadd,scale,dot,cross,mid,in01,inRegion,segmentIntersection,at,unique} from './terrain-exact.js?v=1.3.5';
 
 const unsupported=reason=>Object.assign(new Error(reason),{status:'selection-unresolved',reason});
 const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};

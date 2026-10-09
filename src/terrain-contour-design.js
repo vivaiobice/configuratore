@@ -1,9 +1,9 @@
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.4';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.4';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.5';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.5';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.4';
+from './terrain-budget.js?v=1.3.5';
 import {
   exactDomain,
   Q,
@@ -18,35 +18,35 @@ import {
   cmp,
   sqrtBounds
 }
-from './terrain-exact.js?v=1.3.4';
+from './terrain-exact.js?v=1.3.5';
 import {
   toUTM
 }
-from './coordinate-system.js?v=1.3.4';
+from './coordinate-system.js?v=1.3.5';
 import {
   buildContourFamily,
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.4';
+from './terrain-contour-family.js?v=1.3.5';
 import {
   createContourDomain,createCanonicalCutChildDomain,createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes
 }
-from './terrain-contour-domain.js?v=1.3.4';
+from './terrain-contour-domain.js?v=1.3.5';
 import {
   legacyTerrainInputs,
   terrainGeometryInputHash,
   readTerrainEnvelope,
   createContourEnvelope
 }
-from './terrain-replay.js?v=1.3.4';
+from './terrain-replay.js?v=1.3.5';
 import {
   validateTerrainModel,terrainInputHash
 }
-from './terrain-model.js?v=1.3.4';
+from './terrain-model.js?v=1.3.5';
 import {
   resolveRowPortions
 }
-from './row-portions.js?v=1.3.4';
+from './row-portions.js?v=1.3.5';
 import {
   polygonMetrics,
   estimatePlantsFromRows,
@@ -56,31 +56,31 @@ from './geometry.js?v=45';
 import {
   calculateProject
 }
-from './project-calculator.js?v=1.3.4';
+from './project-calculator.js?v=1.3.5';
 import {
   assertTerrainSerializationBudget
 }
-from './terrain-serialization.js?v=1.3.4';
+from './terrain-serialization.js?v=1.3.5';
 import {
   certifyUniformPlaneSupport,
   measureSurfaceFootprint,
   measureSurfaceUnion,createRegularTerrainRegionOperations,sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas,measuredSurfaceAreasComparable
 }
-from './terrain-surface-bands.js?v=1.3.4';
-import {buildTerrainPassage} from './terrain-passage.js?v=1.3.4';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.4';
-import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.4';
-import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.4';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
-import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.4';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.4';
+from './terrain-surface-bands.js?v=1.3.5';
+import {buildTerrainPassage} from './terrain-passage.js?v=1.3.5';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.5';
+import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.5';
+import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.5';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.5';
+import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.5';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.5';
 const failure=(status,message)=>Object.assign(new Error(message),{
   status
 });
 export {
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.4';
+from './terrain-contour-family.js?v=1.3.5';
 function geometryNodes(value) {
   if(Array.isArray(value)){
     if((value.length===2||value.length===3)&&value.every(Number.isFinite))return 1;

@@ -22,10 +22,11 @@ export function fieldAssociation(value) {
   return result;
 }
 export function validateCountPatch(patch) {
-  keys(patch,['title','varietyLabel','rootstockLabel','postType','postMaterial','componentType','category','listId','quantity','notes','field']);const next={};
+  keys(patch,['title','titleMode','varietyLabel','rootstockLabel','postType','postMaterial','componentType','category','listId','quantity','notes','field']);const next={};
   if('category'in patch){if(!Object.hasOwn(CATEGORY_LABELS,patch.category))fail('Categoria non valida');next.category=patch.category;}
   if('listId'in patch)next.listId=id(patch.listId);
   if('title'in patch)next.title=text(patch.title,200,{required:true,trim:true});
+  if('titleMode'in patch){if(!['auto','manual'].includes(patch.titleMode))fail('Modalità del nome non valida');next.titleMode=patch.titleMode;}
   if('varietyLabel'in patch)next.varietyLabel=patch.varietyLabel===null?null:text(patch.varietyLabel,200,{required:true,trim:true});
   if('rootstockLabel'in patch)next.rootstockLabel=patch.rootstockLabel===null?null:text(patch.rootstockLabel,200,{required:true,trim:true});
   for(const key of ['postType','postMaterial','componentType'])if(key in patch)next[key]=patch[key]===null?null:text(patch[key],80,{required:true,trim:true});
@@ -35,9 +36,9 @@ export function validateCountPatch(patch) {
   return next;
 }
 export function validateListPatch(patch){keys(patch,['title','status']);const next={};if('title'in patch)next.title=text(patch.title,200,{required:true,trim:true});if('status'in patch){if(!['open','closed'].includes(patch.status))fail('Stato lista non valido');next.status=patch.status;}return next;}
-export function patchCount(record,patch,now=new Date().toISOString()){return {...record,...validateCountPatch(patch),localRevision:record.localRevision+1,updatedAt:now};}
+export function patchCount(record,patch,now=new Date().toISOString()){const clean=validateCountPatch(patch);if('title'in clean&&!('titleMode'in clean))clean.titleMode='manual';return {...record,...clean,localRevision:record.localRevision+1,updatedAt:now};}
 export function newCount(input,now=new Date().toISOString()){
-  keys(input,['countId','listId','category','title','varietyLabel','rootstockLabel','postType','postMaterial','componentType','quantity','notes','field']);id(input.countId);id(input.listId);
+  keys(input,['countId','listId','category','title','titleMode','varietyLabel','rootstockLabel','postType','postMaterial','componentType','quantity','notes','field']);id(input.countId);id(input.listId);
   if(!Object.hasOwn(CATEGORY_LABELS,input.category))fail('Categoria non valida');
   const {countId,listId,category,...patch}=input;
   return {countId,listId,category,title:CATEGORY_LABELS[category],varietyLabel:null,quantity:0,notes:'',field:null,...validateCountPatch(patch),revision:0,localRevision:0,syncState:'local',updatedAt:now,deleted:false};

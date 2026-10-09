@@ -1,6 +1,6 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
-import {createRegularTerrainRegionOperations} from './terrain-surface-bands.js?v=1.3.4';
-import {terrainInputHash} from './terrain-model.js?v=1.3.4';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
+import {createRegularTerrainRegionOperations} from './terrain-surface-bands.js?v=1.3.5';
+import {terrainInputHash} from './terrain-model.js?v=1.3.5';
 
 const fail=detail=>Object.assign(new Error(`Invalid surface group: ${detail}`),{status:'invalid-surface-group',detail});
 const proofs=new WeakMap();

@@ -1,14 +1,14 @@
-import { APP_CONFIG } from '../src/config.js?v=1.3.4';
-import { COUNTS_CONFIG } from '../conteggi/config.js?v=1.3.4';
+import { APP_CONFIG } from '../src/config.js?v=1.3.5';
+import { COUNTS_CONFIG } from '../conteggi/config.js?v=1.3.5';
 import {resolveIntegrationConfig,buildCountsUrl} from '../src/counts-routes.js?v=counts1';
-import { connectSupabase } from '../src/backend.js?v=1.3.4';
+import { connectSupabase } from '../src/backend.js?v=1.3.5';
 import { resolveFieldLocation } from '../src/field-location.js?v=51';
-import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=1.3.4';
-import { initAdminMap } from './admin-map.js?v=1.3.4';
-import { mountAdminFieldMap } from './admin-field-map.js?v=1.3.4';
+import { buildAdminClients, buildAdminProjects, expandProjectFields, filterAdminRows, filterProjects, isAdminUser, patchAdminFieldLocation, projectsToFeatureCollection, summarizeAdministration } from './admin-model.js?v=1.3.5';
+import { initAdminMap } from './admin-map.js?v=1.3.5';
+import { mountAdminFieldMap } from './admin-field-map.js?v=1.3.5';
 import { createAdminLocationManager } from './admin-location.js?v=51';
-import { createAdminService } from './admin-service.js?v=1.3.4';
-import { createAdminViews } from './admin-views.js?v=1.3.4';
+import { createAdminService } from './admin-service.js?v=1.3.5';
+import { createAdminViews } from './admin-views.js?v=1.3.5';
 
 const $=selector=>document.querySelector(selector);
 let client=null,service=null,currentUser=null,projects=[],profiles=[],adminMap=null,locationManager=null;

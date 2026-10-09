@@ -1,15 +1,15 @@
-# Configuratore + Conteggi — caricamento unico 1.3.4
+# Configuratore + Conteggi — caricamento unico 1.3.5
 
-Usare questa procedura con il pacchetto completo 1.3.4 dopo la verifica del manifest e dei file estratti. Il pacchetto è statico e la consegna non esegue una pubblicazione remota; stato e limiti sono in [README_RELEASE_1.3.4.md](README_RELEASE_1.3.4.md).
+Usare il pacchetto completo 1.3.5. La consegna non pubblica il sito; stato e limiti sono in [README_RELEASE_1.3.5.md](README_RELEASE_1.3.5.md).
 
 1. Conservare la versione pubblicata e lo ZIP precedente. Estrarre il nuovo archivio in una cartella separata: `index.html` e `conteggi/index.html` devono essere nella radice, insieme a `src/`, `admin/`, `assets/`, `tests/` e `supabase/`.
-2. Copiare tutto il contenuto estratto nella radice del repository `vivaiobice/configuratore` e controllare tutte le modifiche. Non caricare lo ZIP come file del repository e non aggiungere una cartella contenitore. La pubblicazione usa il ramo e le impostazioni Pages esistenti, con `CNAME` conservato.
-3. Dopo la pubblicazione aprire il Configuratore e `/conteggi/`, verificando **1.3.4 · LIVE** in entrambi. Provare selettore tool e Profilo su desktop e touch, ingresso diretto nel contatore e ritorno all'editor con la bozza conservata.
-4. Chiudere le vecchie schede Conteggi e riaprire online per consentire l'attivazione del worker aggiornato. Soltanto dopo verificare la riapertura offline di Conteggi. Conservare IndexedDB/localStorage e la stessa origine HTTPS; non cancellare tutti i dati del sito.
+2. Copiare tutto il contenuto estratto nella radice del repository `vivaiobice/configuratore`. Non caricare lo ZIP come file del repository e non aggiungere una cartella contenitore. Conservare `CNAME` e impostazioni Pages.
+3. Dopo la pubblicazione verificare **1.3.5 · LIVE** nel Configuratore e in `/conteggi/`. Provare selettore tool, Profilo, ingresso diretto nel contatore e ritorno all’editor con bozza conservata.
+4. Chiudere le vecchie schede Conteggi e riaprire online per attivare il worker aggiornato; poi provare la riapertura offline. Conservare IndexedDB/localStorage e la stessa origine HTTPS; non cancellare tutti i dati del sito.
 
-Il configuratore alla radice non è dichiarato offline. Sincronizzazione cloud Conteggi, invio a Vivai Obice e consultazione amministrativa restano disattivati e richiedono attivazione distinta. Il caricamento statico non esegue migrazioni o distribuzioni backend. Gli esiti del collaudo locale sono nella nota di release e nel manifest. La prova sul terreno reale e sui dispositivi fisici resta da eseguire.
+**Profilo e trasmissione richiedono ancora l’attivazione server.** Il codice browser è già predisposto, ma le migrazioni e le due funzioni Conteggi non sono installate. L’installazione tramite il collegamento Supabase è fallita con `Invalid or expired requestState`. Il solo caricamento dello ZIP non risolve questo blocco; il salvataggio locale rimane disponibile. Admin resta disabilitato.
 
-Per procedura completa, controlli dopo il caricamento e ripristino leggere [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
+«Adatta al terreno» e il funzionamento 3D non cambiano. Il configuratore alla radice non è dichiarato offline. Procedura di attivazione e ripristino in [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
 
 <details>
 <summary>Istruzioni storiche conservate della consegna 1.2.5</summary>

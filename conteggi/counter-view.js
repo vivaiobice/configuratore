@@ -1,3 +1,4 @@
+import {selectedDetailLines} from './reading-title.js?v=1.3.5';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths={
  reset:'<path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/>',
@@ -30,8 +31,10 @@ export function counterView(count,feedback){
    <button type="button" class="icon-button" data-action="back" aria-label="Elenco letture" title="Elenco letture">${icon('archive')}</button>
    <button type="button" class="icon-button" data-tool="configurator" aria-label="Torna al configuratore" title="Torna al configuratore">${icon('back')}</button>
   </div>
+  <div class="type-switch" role="group" aria-label="Cosa stai contando">${[['plants','Viti'],['posts','Pali'],['other','Altro']].map(([category,label])=>`<button type="button" data-action="category" data-category="${category}" aria-pressed="${count.category===category}" aria-label="${label}">${icon(category)}<span>${label}</span></button>`).join('')}</div>
   <label class="reading-title"><span class="sr-only">Nome lettura</span><input name="title" value="${esc(count.title)}" maxlength="200" required aria-label="Nome lettura" aria-describedby="reading-title-hint">${icon('edit')}</label><p id="reading-title-hint" class="reading-title-hint">Tocca il nome per modificarlo</p>
-  <div class="type-switch" role="group" aria-label="Cosa stai contando">${[['plants','Barbatelle / Viti'],['posts','Pali'],['other','Altro']].map(([category,label])=>`<button type="button" data-action="category" data-category="${category}" aria-pressed="${count.category===category}" aria-label="${label}">${icon(category)}<span>${label}</span></button>`).join('')}</div>
+  <button type="button" class="counter-details-trigger" data-action="counter-details" aria-haspopup="dialog">${icon('plus')}<span>Aggiungi dettagli</span></button>
+  <p class="counter-detail-summary" aria-label="Dettagli selezionati" ${selectedDetailLines(count).length?'':'hidden'}>${selectedDetailLines(count).map(line=>`<span>${esc(line)}</span>`).join('')}</p>
   <div class="number-stage"><output id="quantity-display" aria-label="Quantità" aria-live="off" style="--digits:${String(count.quantity).length}">${count.quantity}</output><span class="number-unit">${count.category==='plants'?'Barbatelle / Viti':count.category==='posts'?'Pali':'Elementi'}</span>${count.field?`<span class="counter-field">${esc(count.field.fieldLabel)}${count.field.associationStatus==='pending'?' · bozza':''}</span>`:''}</div>
   <div class="impulse-controls"><button type="button" data-action="decrement" class="decrement" aria-label="Togli uno" ${count.quantity===0?'disabled':''}>−1</button><button type="button" data-action="increment" class="increment" aria-label="Aggiungi uno">${icon('plus')}<span class="sr-only">+1</span></button></div>
   <button type="button" data-action="confirm-count" class="save-reading">${icon('save')}<span>Salva lettura</span></button>

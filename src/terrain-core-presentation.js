@@ -1,5 +1,5 @@
-import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.4';
-import {createTerrainControls} from './terrain-controls.js?v=1.3.4';
+import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.5';
+import {createTerrainControls} from './terrain-controls.js?v=1.3.5';
 
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';

@@ -1,6 +1,6 @@
-import {createContourDomain} from './terrain-contour-domain.js?v=1.3.4';
-import { toUTM, fromUTM } from './coordinate-system.js?v=1.3.4';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.4';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.5';
+import { toUTM, fromUTM } from './coordinate-system.js?v=1.3.5';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.5';
 export const MAX_TERRAIN_CELLS = 262144;
 export const MAX_TERRAIN_FIELD_BYTES = 1024 * 1024;
 export class TerrainModelError extends Error {

@@ -1,4 +1,4 @@
-import {createDisplayTerrainSampler,createContextDEMClient,composeDisplayTile,terrainMercator,canPassContextTile,displayTerrainAttribution} from './terrain-context-dem.js?v=1.3.4';
+import {createDisplayTerrainSampler,createContextDEMClient,composeDisplayTile,terrainMercator,canPassContextTile,displayTerrainAttribution} from './terrain-context-dem.js?v=1.3.5';
 let display=null,context=null,contextMaxzoom=15;const cancelled=new Set(),jobs=new Map(),cache=new Map();
 async function decodePixels(bytes){const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}),{premultiplyAlpha:'none',colorSpaceConversion:'none'});try{if(bitmap.width!==256||bitmap.height!==256)throw new Error('Dimensioni del contesto non valide.');const canvas=new OffscreenCanvas(256,256),ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0);return ctx.getImageData(0,0,256,256).data;}finally{bitmap.close();}}
 self.addEventListener('message',async({data})=>{

@@ -1,4 +1,4 @@
-import {keys,fail,id,text} from './model.js?v=1.2.4';
+import {keys,fail,id,text} from './model.js?v=1.3.5';
 const allowed=['integrationVersion','view','listId','countId','projectId','fieldId'];
 const views=['resume','lists','new','list','counter','admin'];
 function validate(route){keys(route,allowed);if(!views.includes(route.view))fail('Destinazione non valida');if(route.integrationVersion!==undefined&&String(route.integrationVersion)!=='1')fail('Versione integrazione non supportata');for(const key of ['listId','countId','projectId'])if(route[key])id(route[key]);if(['list','counter'].includes(route.view)&&!route.listId)fail('Lista richiesta');if(route.view==='counter'&&!route.countId)fail('Conteggio richiesto');if(route.fieldId){text(route.fieldId,200,{required:true});if(!route.projectId)fail('Progetto richiesto');}return route;}

@@ -21,7 +21,7 @@ test('direct entry is ready to count and save finishes into one daily list',asyn
  t.after(async()=>{await s.ui.destroy();await s.gateway.destroy();await s.store.close();});await s.ui.ready;
  assert.ok(s.document.querySelector('[data-action="increment"]'));
  assert.equal(s.document.querySelector('#quantity-display').textContent,'0');
- assert.equal(s.document.querySelector('[name="title"]').value,'Lettura');
+ assert.equal(s.document.querySelector('[name="title"]').value,'Conteggio barbatelle');
  assert.equal(s.document.querySelector('select'),null);
  for(let i=0;i<17;i++)s.document.querySelector('[data-action="increment"]').click();await s.ui.whenIdle();
  await click(s,'confirm-count');assert.ok(s.document.querySelector('[data-action="open-count"]'));

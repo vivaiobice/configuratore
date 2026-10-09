@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initMap} from '../src/map.js';
-import {mapTerrainExclusionFeatures} from '../src/map-terrain-exclusions.js?v=1.3.4';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.4';
+import {mapTerrainExclusionFeatures} from '../src/map-terrain-exclusions.js?v=1.3.5';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.5';
 
 const ring=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]];
 const field=ring(0,0,10,10);

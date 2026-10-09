@@ -54,5 +54,5 @@ test('release cache-busts changed authentication and sync modules',()=>{
   assert.match(app,new RegExp(`from '${releaseQuery('./backend.js').source}'`));
   assert.match(app,new RegExp(`from '${releaseQuery('./cloud.js').source}'`));
   assert.match(app,new RegExp(`from '${releaseQuery('./local-projects.js').source}'`));
-  assert.match(app,/from '\.\/auth-service\.js\?v=1\.2\.4'/);
+  assert.match(app,new RegExp(`from '${releaseQuery('./auth-service.js').source}'`));
 });

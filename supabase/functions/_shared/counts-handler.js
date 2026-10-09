@@ -3,6 +3,7 @@ import {validateSubmission} from '../../../conteggi/submission.js';
 import {validateQuoteContact} from './quote-request.js';
 import {composeCountsEmail} from './counts-email.js';
 const status={AUTH_REQUIRED:401,NOT_FOUND_OR_FORBIDDEN:404,VERSION_CONFLICT:409,FIELD_UNAVAILABLE:409,NOTICE_REQUIRED:403,ADMIN_REQUIRED:403,SERVICE_DISABLED:503,SYNC_UNAVAILABLE:503,VALIDATION_ERROR:400};
+export function verifiedCountsIdentity(user){return user?.id?{id:user.id,isAnonymous:user.is_anonymous!==false,isAdmin:user.app_metadata?.role==='admin'}:null;}
 /** @param {{flags:any, authenticate:(header:string|null)=>Promise<any>, repository:any, deliver?:((body:any,key:string)=>Promise<any>)|null, composeEmail?:typeof composeCountsEmail}} options */
 export function createCountsHandler({flags,authenticate,repository,deliver=null,composeEmail=composeCountsEmail},mode='api'){
  return async request=>{
@@ -21,8 +22,9 @@ export function createCountsHandler({flags,authenticate,repository,deliver=null,
    let body;try{body=JSON.parse(raw);}catch{throw new CountsError('VALIDATION_ERROR');}keys(body,['action','input','environment']);if(body.environment!==flags.environment)throw new CountsError('VALIDATION_ERROR','Ambiente non valido');
    const context={owner:user.id,environment:flags.environment};const {action,input={}}=body;
    if(mode==='admin')return respond(await repository.admin(action,input,context));
+   if(mode==='api'&&action==='capabilities'){keys(input,[]);return respond({sync:Boolean(flags.sync),submit:Boolean(flags.submit),emailReady:Boolean(flags.emailEnabled&&deliver),noticeVersion:flags.noticeVersion,environment:flags.environment});}
    if(mode==='api'&&action==='notice'){keys(input,['version']);if(input.version!==flags.noticeVersion)throw new CountsError('VALIDATION_ERROR','Avviso non aggiornato');await repository.notice({...context,version:input.version});return respond({acknowledged:true});}
-   if(!await repository.hasNotice({...context,version:flags.noticeVersion}))throw new CountsError('NOTICE_REQUIRED','Leggi l’avviso prima della sincronizzazione');
+   if(user.isAnonymous!==false&&!await repository.hasNotice({...context,version:flags.noticeVersion}))throw new CountsError('NOTICE_REQUIRED','Leggi l’avviso prima della sincronizzazione');
    if(mode==='submit'){
     validateSubmission(input);
     let contact;try{contact=validateQuoteContact(input.contact);}catch(error){throw new CountsError('VALIDATION_ERROR',error.message);}for(const key of Object.keys(contact))if(contact[key]!==String(input.contact[key]??'').trim()&&(key!=='email'||contact[key]!==input.contact[key].trim().toLowerCase()))throw new CountsError('VALIDATION_ERROR','Recapito fuori limite');
@@ -38,7 +40,7 @@ export function createCountsHandler({flags,authenticate,repository,deliver=null,
     keys(input,['operationId','kind','entityId','expectedRevision','value','blocked']);id(input.operationId);id(input.entityId);if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)throw new CountsError('VALIDATION_ERROR');
     const v=input.value;let value;
     if(input.kind==='list'){keys(v,['listId','title','status','deleted','revision','localRevision','syncState','updatedAt']);newList(v);value={listId:id(v.listId),...validateListPatch({title:v.title,status:v.status}),deleted:v.deleted??false};}
-    else if(input.kind==='count'){keys(v,['countId','listId','category','title','varietyLabel','rootstockLabel','postType','postMaterial','componentType','quantity','notes','field','deleted','revision','localRevision','syncState','updatedAt']);const {revision,localRevision,syncState,updatedAt,deleted,...inputCount}=v;const created=newCount(inputCount);const {revision:r,localRevision:l,syncState:s,updatedAt:u,...clean}=created;value={...clean,deleted:deleted??false};if(value.field&&repository.validateField)value.field=await repository.validateField({...context,value});}
+    else if(input.kind==='count'){keys(v,['countId','listId','category','title','titleMode','varietyLabel','rootstockLabel','postType','postMaterial','componentType','quantity','notes','field','deleted','revision','localRevision','syncState','updatedAt']);const {revision,localRevision,syncState,updatedAt,deleted,...inputCount}=v;const created=newCount(inputCount);const {revision:r,localRevision:l,syncState:s,updatedAt:u,...clean}=created;value={...clean,deleted:deleted??false};if(value.field&&repository.validateField)value.field=await repository.validateField({...context,value});}
     else throw new CountsError('VALIDATION_ERROR');
     if(typeof value.deleted!=='boolean'||(value.countId??value.listId)!==input.entityId)throw new CountsError('VALIDATION_ERROR');
     return respond(await repository.apply({...context,kind:input.kind,operationId:input.operationId,expectedRevision:input.expectedRevision,value}));

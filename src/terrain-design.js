@@ -1,15 +1,15 @@
-import {legacyTerrainInputs as inputs,legacyTerrainDesignInputHash as terrainDesignInputHash,readTerrainEnvelope,hashTerrainEnvelope as snapshotHash} from './terrain-replay.js?v=1.3.4';
+import {legacyTerrainInputs as inputs,legacyTerrainDesignInputHash as terrainDesignInputHash,readTerrainEnvelope,hashTerrainEnvelope as snapshotHash} from './terrain-replay.js?v=1.3.5';
 export {terrainDesignInputHash};
-import {FIELD_KEYS} from './fields.js?v=1.3.4';
-import clipping from './vendor/polygon-clipping.js?v=1.3.4';
-import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.4';
-import {getTerrainMesh,validateTerrainModel,terrainPolylineLength,terrainSurfaceArea,terrainInputHash,sampleTerrain} from './terrain-model.js?v=1.3.4';
+import {FIELD_KEYS} from './fields.js?v=1.3.5';
+import clipping from './vendor/polygon-clipping.js?v=1.3.5';
+import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.5';
+import {getTerrainMesh,validateTerrainModel,terrainPolylineLength,terrainSurfaceArea,terrainInputHash,sampleTerrain} from './terrain-model.js?v=1.3.5';
 import {polygonMetrics,estimatePlantsFromRows,roundUpTo25,generateRows} from './geometry.js?v=45';
-import {resolveRowPortions} from './row-portions.js?v=1.3.4';
-import {rowOwnerId,generateCurvedRows} from './row-curves.js?v=1.3.4';
-import {calculateProject} from './project-calculator.js?v=1.3.4';
-import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.4';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {resolveRowPortions} from './row-portions.js?v=1.3.5';
+import {rowOwnerId,generateCurvedRows} from './row-curves.js?v=1.3.5';
+import {calculateProject} from './project-calculator.js?v=1.3.5';
+import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.5';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
 
 const VERSION='terrain-face-chart-1', MAX_NODES=500000, ERROR_TARGET=.01;
 const clone=v=>JSON.parse(JSON.stringify(v));

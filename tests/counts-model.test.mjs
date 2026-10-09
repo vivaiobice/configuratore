@@ -28,3 +28,12 @@ test('summary keeps independent rows and categories rather than a mixed total',(
 test('empty title defaults to category without requiring an online variety catalog',()=>{
  const v=model.newCount?.({countId:uid,listId,category:'other'});assert.equal(v?.title,'Altro');assert.equal(v?.quantity,0);assert.equal(v?.field,null);
 });
+test('optional persisted title authorship validates its enum and title edits mark manual atomically',()=>{
+ const created=model.newCount({countId:uid,listId,category:'plants',title:'Conteggio barbatelle',titleMode:'auto'});
+ assert.equal(created.titleMode,'auto');
+ const authored=model.patchCount(created,{title:'Conteggio barbatelle'});assert.equal(authored.titleMode,'manual');assert.equal(authored.localRevision,1);
+ const generated=model.patchCount(created,{title:'Conteggio barbatelle · Barbera',titleMode:'auto',varietyLabel:'Barbera'});assert.equal(generated.titleMode,'auto');assert.equal(generated.varietyLabel,'Barbera');
+ assert.equal(model.patchCount(authored,{quantity:3}).titleMode,'manual');
+ const legacy=model.newCount({countId:uid,listId,category:'plants'});assert.equal(Object.hasOwn(legacy,'titleMode'),false);
+ for(const value of [null,'automatic','',1,{},true]){assert.throws(()=>model.validateCountPatch({titleMode:value}),/VALIDATION_ERROR/);assert.throws(()=>model.newCount({countId:uid,listId,category:'plants',titleMode:value}),/VALIDATION_ERROR/);}
+});

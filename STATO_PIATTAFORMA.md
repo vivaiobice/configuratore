@@ -1,26 +1,20 @@
-# Piattaforma Vivai Obice — stato 1.3.4
+# Piattaforma Vivai Obice — stato 1.3.5
 
-**Metadati coordinati: 1.3.4 — 8 ottobre 2026.** Ambiente configurato LIVE; consegna come pacchetto statico completo, senza pubblicazione remota o attivazione del backend.
+**Versione coordinata: 1.3.5 · LIVE — 9 ottobre 2026.** Pacchetto completo pronto per il caricamento; nessuna pubblicazione remota eseguita.
 
 ## Revisione corrente
 
-Una sola superficie altimetrica sostiene satellite, campo e filari anche fuori dal campo. Il DTM numerico resta quello acquisito; raccordo e ricampionamento riguardano soltanto la vista. Niente pulsanti manuali di navigazione: due dita sul trackpad spostano; Shift + verticale inclina e Shift + orizzontale ruota. Camera, gesti e visibilità 2D vengono ripristinati alla chiusura.
+Conteggi presenta prima il tipo, poi il titolo modificabile e «Aggiungi dettagli». I titoli si completano con le scelte finché non sono scritti manualmente. Riepilogo entro due righe, opzioni con iniziale maiuscola, salvataggio evidente e logo inferiore con contorno più morbido. I controlli del contatore restano visibili senza scorrimento nei formati collaudati. Aggiornamenti in background conservano focus, popup, errori e categorie aperte.
 
-Il nuovo certificato per terreni con variazioni compatibili verifica quota e distanza minima sul terreno senza aumentare i limiti originali. La superficie servita del nuovo metodo è un sottoinsieme conservativo, distinto dalla banda completa precedente. Il campo a L con strada da 1,50 m è verificato con replay indipendente; contatti non certificabili conservano il progetto precedente.
+Il codice per salvare nel profilo le letture concluse anche senza campo e per trasmetterle volontariamente a Vivai Obice è pronto. **L’attivazione server è pendente:** le tabelle Conteggi sono assenti e il collegamento Supabase rifiuta l’installazione con `Invalid or expired requestState`. Il caricamento statico non installa questi servizi. Consultazione Admin disabilitata; nessuna email reale inviata.
 
-Il logo lineare del contatore è centrato, trasparente e contornato in chiaro. Conteggi resta locale sul dispositivo; cache e versione pubblica sono coordinate. Comfortaa nell’interfaccia, font precedente nei documenti, quote, coordinate precise, porzioni manuali e strumenti occhio restano disponibili.
-
-La ricerca sulla mappa accetta DMS con N/S ed E/W o coppie decimali latitudine, longitudine. Le coordinate sono interpretate localmente, senza geocodifica e senza modificare i metadati di località del progetto.
+Vista e navigazione 3D sono state approvate dall’utente nella prova reale e restano funzionalmente invariate. Su richiesta esplicita, «Adatta al terreno» non viene modificato; il problema del limite di lavoro resta aperto. Nei moduli cartografici/terreno cambiano soltanto le query di versione. Coordinate precise, porzioni manuali, controlli occhio, font dei documenti e percorso del configuratore sono conservati.
 
 ## Evidenza e limiti
 
-**Fluidità 3D ancora irrisolta nel renderer software.** La matrice completa supera i 36 stati grafici e i controlli funzionali, ma conserva dieci fasi oltre la soglia 150 ms: massimo 366,6ms desktop e 366,5ms mobile. La consegna è un pacchetto per le prove; il superamento dei controlli funzionali non viene presentato come un superamento del controllo prestazionale.
+189/189 test mirati superati, senza test saltati; sintassi e whitespace verificati. Il collaudo browser usa il codice autentico con servizi cloud simulati. Offline riguarda soltanto `/conteggi/`, dopo una prima apertura online. Risultati conclusivi e inventario nel manifest; il backend LIVE e Safari/iOS fisici non sono dichiarati collaudati.
 
-Gli esiti conclusivi delle regressioni, delle prove browser desktop/mobile, dell’avvio offline a freddo e dell’archivio estratto sono registrati in `manifest-piattaforma.json`. La suite geometrica estesa comprende rifiuti già documentati nella 1.3.3; non è dichiarata interamente verde. Non sono accettati disegni parziali o prove alterate per far superare i controlli.
-
-Le prove usano l’app reale con fixture anonime locali. Il campo reale Cascina Elena e Safari/iOS su dispositivi fisici non sono collaudati. Il modello altimetrico conserva la precisione e risoluzione della fonte. Offline riguarda soltanto `/conteggi/`, dopo apertura online e attivazione del Service Worker; il configuratore alla radice non ha questo contratto.
-
-Dettagli in [README_RELEASE_1.3.4.md](README_RELEASE_1.3.4.md); caricamento in [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Nessun deploy, migrazione, modifica account/secret o invio reale eseguito.
+Dettagli in [README_RELEASE_1.3.5.md](README_RELEASE_1.3.5.md), [QA_RELEASE_1.3.5.md](QA_RELEASE_1.3.5.md) e [PUBBLICAZIONE.md](PUBBLICAZIONE.md). Per il caricamento usare [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Le note 1.3.4 conservano il precedente collaudo 3D e i limiti numerici.
 
 <details>
 <summary>Cronologia conservata: stato originale della 1.2.6 e versioni precedenti</summary>

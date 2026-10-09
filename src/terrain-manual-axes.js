@@ -1,6 +1,6 @@
 import {generateRows} from './geometry.js?v=45';
-import {generateCurvedRows,normalizeRowCurvePoints} from './row-curves.js?v=1.3.4';
-import {toUTM} from './coordinate-system.js?v=1.3.4';
+import {generateCurvedRows,normalizeRowCurvePoints} from './row-curves.js?v=1.3.5';
+import {toUTM} from './coordinate-system.js?v=1.3.5';
 
 export function manualStraightIntent(portion){
  const design=portion.mode==='local'?portion:portion.inheritedDesign??portion;

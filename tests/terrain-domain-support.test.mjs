@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as bare from '../src/terrain-contour-domain.js';
-import * as queried from '../src/terrain-contour-domain.js?v=1.3.4';
+import * as queried from '../src/terrain-contour-domain.js?v=1.3.5';
 import {createTerrainModel,getTerrainMesh} from '../src/terrain-model.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {fromUTM,toUTM} from '../src/coordinate-system.js';

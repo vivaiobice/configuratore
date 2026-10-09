@@ -20,7 +20,7 @@ test('independent native scopes share actual acquired support while fresh budget
 
 test('producer-owned actual finite source proof is reused only for identical bound inputs',async()=>{
  const {traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis}=await import('../src/terrain-polyline-source.js');
- const {exactDomain}=await import('../src/terrain-exact.js?v=1.3.4');
+ const {exactDomain}=await import('../src/terrain-exact.js?v=1.3.5');
  const n=9,model=createTerrainModel({acquiredAt:'2026-10-08T00:00:00.000Z',grid:{width:n,height:n,origin:[499990,5000030],step:[5,-5],values:Array.from({length:n*n},(_,i)=>Math.fround(120+.31*(30-Math.floor(i/n)*5)+.02*Math.sin(i*.37)))}});
  const geometry={type:'Polygon',coordinates:[[[500000.3,5000000.7],[500020.4,5000000.7],[500020.4,5000020.8],[500000.3,5000020.8],[500000.3,5000000.7]].map(p=>fromUTM(p,32632))]};
  const budget=createTerrainBudget({kind:'adapt'}),domain=createContourDomain({model,geometry,budget}),axis=traceFinitePolylineContourLevel(domain,123.7,{portionId:'one',ordinal:2,budget}).axes[0];

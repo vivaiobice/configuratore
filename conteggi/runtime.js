@@ -1,8 +1,8 @@
-import {APP_CONFIG} from '../src/config.js?v=1.3.4';
+import {APP_CONFIG} from '../src/config.js?v=1.3.5';
 import {createAuthService} from '../src/auth-service.js';
-import {createBackend,connectSupabase} from '../src/backend.js?v=1.3.4';
-import {createCountsGateway,createCountsTransport,createCountsAdmin} from '../src/counts-client.js?v=1.2.4';
-import {CountsError} from './model.js?v=1.2.4';
+import {createBackend,connectSupabase} from '../src/backend.js?v=1.3.5';
+import {createCountsGateway,createCountsTransport,createCountsAdmin} from '../src/counts-client.js?v=1.3.5';
+import {CountsError} from './model.js?v=1.3.5';
 import {createFieldDirectory} from '../src/field-directory.js';
 import {rememberCountsOwner,readCountsOfflineOwner,forgetCountsOwner,isCountsNetworkError} from '../src/counts-offline-owner.js';
 // This reuses the existing Auth service. The Configuratore Work may supply its lightweight bootstrap.
@@ -22,7 +22,7 @@ export async function createCountsRuntime({config,client=null,authFactory=create
  if(!existing?.data?.session?.user){forgetCountsOwner(storage,config);if(globalThis.navigator?.onLine===false)throw new CountsError('IDENTITY_UNRESOLVED','Apri Conteggi una prima volta con connessione, per riconoscere il tuo profilo.');await backend.ensureAnonymousSession();}
  let gateway;const getScope=async()=>{const result=await client.auth.getSession();const user=result.data?.session?.user;if(!user?.id)throw new CountsError('IDENTITY_UNRESOLVED','Identità non disponibile');return {backend:config.backendUrl,environment:config.environment,owner:user.id};};
  const transport=config.syncEnabled?createCountsTransport({client,environment:config.environment}):null;
- gateway=createCountsGateway({scope:await getScope(),transport});
+ gateway=createCountsGateway({scope:await getScope(),transport,noticeVersion:config.noticeVersion,canSyncWithoutNotice:async scope=>{const session=(await client.auth.getSession())?.data?.session;return session?.user?.id===scope.owner&&session.user.is_anonymous===false;}});
  const auth=authFactory({client,backend:{...backend,getProfile:async owner=>{try{return await backend.getProfile(owner);}catch(error){if(isCountsNetworkError(error))return null;throw error;}}},beforeIdentityChange:async context=>{
    if(context?.action==='login'&&(await client.auth.getSession())?.data?.session?.user?.is_anonymous===true&&(await gateway.hasLocalWork())&&!context.transferCounts)throw new CountsError('SERVICE_DISABLED',config.guestTransferEnabled?'Scegli di trasferire i conteggi ospite prima di accedere. Puoi anche creare un nuovo account mantenendo questa sessione.':'I tuoi conteggi ospite sono conservati. Il trasferimento a un account esistente richiede l’attivazione del servizio; puoi creare un nuovo account mantenendoli.');
    await beforeIdentityChange();

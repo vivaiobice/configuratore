@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as history from '../src/terrain-history.js?v=1.3.4';
-import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.4';
-import {createContourEnvelope,readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.4';
-import {axisSourceHash} from '../src/terrain-axis-geometry.js?v=1.3.4';
+import * as history from '../src/terrain-history.js?v=1.3.5';
+import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.5';
+import {createContourEnvelope,readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.5';
+import {axisSourceHash} from '../src/terrain-axis-geometry.js?v=1.3.5';
 import {terrainInputHash} from '../src/terrain-model.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {fromUTM} from '../src/coordinate-system.js';

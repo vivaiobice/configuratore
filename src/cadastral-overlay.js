@@ -1,4 +1,4 @@
-import { cadastralOverlayPolicy } from './cadastre.js?v=1.3.4';
+import { cadastralOverlayPolicy } from './cadastre.js?v=1.3.5';
 
 export const CADASTRAL_SOURCE_ID = 'cadastre-image';
 export const CADASTRAL_LAYER_ID = 'cadastre-image-layer';
