@@ -1,6 +1,0 @@
-.document-field-map .report-map-panel{width:min(100%,590px);margin:10px auto}
-@media print{
-  .document-field-map .report-map-panel{width:130mm;max-width:130mm;margin:3mm auto}
-}
-
-.document-portion-line{font-size:12px;line-height:18px;margin:0 0 6px;white-space:pre;overflow-wrap:normal}
