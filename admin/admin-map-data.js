@@ -1,4 +1,4 @@
-import {calculateProject} from '../src/project-calculator.js?v=1.3.5';
+import {calculateProject} from '../src/project-calculator.js?v=1.3.6';
 
 const collection=features=>({type:'FeatureCollection',features});
 const valid=ring=>Array.isArray(ring)&&ring.length>=4&&ring.every(point=>Array.isArray(point)&&Number.isFinite(Number(point[0]))&&Number.isFinite(Number(point[1])));

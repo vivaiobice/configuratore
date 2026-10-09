@@ -5,7 +5,7 @@ import {createContourDomain} from '../src/terrain-contour-domain.js';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {measureSurfaceFootprint} from '../src/terrain-surface-bands.js?v=1.3.5';
+import {measureSurfaceFootprint} from '../src/terrain-surface-bands.js?v=1.3.6';
 const api=existsSync(new URL('../src/terrain-contour-family.js',import.meta.url))?await import('../src/terrain-contour-family.js'):{};
 const make=(height,geometryXY)=>{const f=contourFixture({height,geometryXY});return {f,domain:createContourDomain({model:f.model,geometry:{type:'Polygon',coordinates:[f.project.geometry]}})};};
 const family=options=>{assert.equal(typeof api.buildContourFamily,'function');return api.buildContourFamily(options);};

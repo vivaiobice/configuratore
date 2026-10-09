@@ -1,7 +1,7 @@
-import clipping from './vendor/polygon-clipping.js?v=1.3.5';
-import {terrainSurfaceGroupsPresent,resolveTerrainUsablePresentation,rankTerrainUsablePortionOverlaps} from './terrain-exclusion-groups.js?v=1.3.5';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.5';
+import clipping from './vendor/polygon-clipping.js?v=1.3.6';
+import {terrainSurfaceGroupsPresent,resolveTerrainUsablePresentation,rankTerrainUsablePortionOverlaps} from './terrain-exclusion-groups.js?v=1.3.6';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.6';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.6';
 
 const clone=value=>JSON.parse(JSON.stringify(value));
 const topologyCache=new Map();

@@ -18,6 +18,13 @@ export function selectedDetailLines(record={}){
 }
 
 export function generatedReadingTitle(record={}){
+  const details=selectedDetailLines(record);
+  if(details.length)return limitTitle(['Conteggio',...details].join(' · '));
+  return record.category==='other'?'Conteggio di…':record.category==='posts'?'Conteggio pali':'Conteggio barbatelle';
+}
+
+// Recognize exact locally generated 1.3.5 names without claiming authored cloud titles.
+function legacyGeneratedReadingTitle(record={}){
   if(record.category==='other'){
     const component=clean(record.componentType),option=component.toLocaleLowerCase('it-IT');
     return limitTitle(component?`Conteggio di ${COMPONENT_OPTIONS.has(option)?option:component}`:'Conteggio di…');
@@ -59,7 +66,7 @@ export function createReadingTitleState({storage=browserStorage()}={}){
       // Unmarked cloud rows may contain an authored default; only local legacy
       // defaults can safely opt into automatic naming without recorded intent.
       if(Number(record?.revision)>0)return false;
-      return title===generatedReadingTitle(record)||title===LEGACY_TITLES[record?.category]||title==='Lettura';
+      return title===generatedReadingTitle(record)||title===legacyGeneratedReadingTitle(record)||title===LEGACY_TITLES[record?.category]||title==='Lettura';
     },
     markManual:(scope,record,title)=>mark(scope,record,false,title),
     markAutomatic:(scope,record,title)=>mark(scope,record,true,title)

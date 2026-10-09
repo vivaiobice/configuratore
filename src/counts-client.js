@@ -1,5 +1,5 @@
-import {CountsError,id,keys,newList,newCount,patchCount,validateListPatch,quantityAfter,summarizeCounts} from '../conteggi/model.js?v=1.3.5';
-import {createCountsStore,scopeKey} from '../conteggi/store.js?v=1.3.5';
+import {CountsError,id,keys,newList,newCount,patchCount,validateListPatch,quantityAfter,summarizeCounts} from '../conteggi/model.js?v=1.3.6';
+import {createCountsStore,scopeKey} from '../conteggi/store.js?v=1.3.6';
 const notFound=()=>{throw new CountsError('NOT_FOUND_OR_FORBIDDEN','Conteggio o lista non disponibile');};
 const alive=(map,key)=>{const value=map[key];if(!value||value.deleted)notFound();return value;};
 const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);

@@ -1,5 +1,5 @@
-import {resolveRowPortions} from './row-portions.js?v=1.3.5';
-import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.5';
+import {resolveRowPortions} from './row-portions.js?v=1.3.6';
+import {normalizeRowCurvePoints} from './row-curves.js?v=1.3.6';
 
 // Report only effective designs: saved controls may still use the inherited base.
 export function rowPortionDescriptors(field={},metrics={}){

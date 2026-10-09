@@ -1,5 +1,5 @@
-import {APP_CONFIG} from './config.js?v=1.3.5';
-import {connectSupabase,createBackend} from './backend.js?v=1.3.5';
+import {APP_CONFIG} from './config.js?v=1.3.6';
+import {connectSupabase,createBackend} from './backend.js?v=1.3.6';
 import {createAuthService} from './auth-service.js';
 import {createAuthBridge} from './auth-bridge.js';
 import {setLocalOwnerScope} from './local-owner-scope.js';

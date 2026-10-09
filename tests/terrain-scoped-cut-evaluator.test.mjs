@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as design from '../src/terrain-contour-design.js?v=1.3.5';
+import * as design from '../src/terrain-contour-design.js?v=1.3.6';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.5';
-import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.5';
+import {compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.6';
+import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.6';
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
 
 test('scoped evaluator retains a fresh native baseline and emits a complete atomic candidate with a fixed field reference',()=>{

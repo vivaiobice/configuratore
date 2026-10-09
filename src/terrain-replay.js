@@ -1,19 +1,19 @@
-import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.5';
-import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.5';
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.5';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.5';
+import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.6';
+import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.6';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.6';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.6';
 
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.5';
-import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.5';
-import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.5';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
-import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.5';
-import {createContourDomain} from './terrain-contour-domain.js?v=1.3.5';
-import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.5';
-import {resolveRowPortions} from './row-portions.js?v=1.3.5';
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.5';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.5';
-import {calculateProject} from './project-calculator.js?v=1.3.5';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.6';
+import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.6';
+import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.6';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.6';
+import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.6';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.6';
+import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.6';
+import {resolveRowPortions} from './row-portions.js?v=1.3.6';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.6';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.6';
+import {calculateProject} from './project-calculator.js?v=1.3.6';
 const clone=value=>JSON.parse(JSON.stringify(value));
 // Inspect the actual serialized payload without recursively walking the stack
 // or first allocating a flattened coordinate list. Aliases are visited once per
@@ -65,7 +65,7 @@ function envelopeHash(applied,budget){
  return checkedHash(Object.hasOwn(applied,'schemaVersion')?{schemaVersion:applied.schemaVersion,algorithmVersion:applied.algorithmVersion,...contents}:contents,budget);
 }
 export function hashTerrainEnvelope(applied){return envelopeHash(applied);}
-/** @returns {import('./terrain-contour-contracts.js?v=1.3.5').AppliedEnvelopeV2} */
+/** @returns {import('./terrain-contour-contracts.js?v=1.3.6').AppliedEnvelopeV2} */
 export function createContourEnvelope({project,model,result,portionResults,validation,budget}){
  budget?.check();
  const inputs=geometryInputs(project,budget);

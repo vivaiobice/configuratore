@@ -6,17 +6,24 @@ const record=(overrides={})=>({countId:crypto.randomUUID(),category:'plants',tit
 const scope=(owner='guest-a',environment='TEST',backend='https://backend.example')=>JSON.stringify([backend,environment,owner]);
 function memoryStorage(){const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};}
 
-test('automatic reading titles use only the active category details',()=>{
+test('populated automatic reading titles use the exact consistent detail names',()=>{
+  const details={varietyLabel:'barbera N.',rootstockLabel:'110 Richter',postType:'testa',postMaterial:'ferro',componentType:'molle'};
+  assert.equal(generatedReadingTitle({category:'plants',...details}),'Conteggio · Barbera N. · 110 Richter');
+  assert.equal(generatedReadingTitle({category:'posts',...details}),'Conteggio · Testa · Ferro');
+  assert.equal(generatedReadingTitle({category:'other',...details}),'Conteggio · Molle');
+  assert.equal(generatedReadingTitle({category:'other',componentType:'Tendifilo CVT'}),'Conteggio · Tendifilo CVT');
+  assert.equal(generatedReadingTitle({category:'other',componentType:'Molle'}),'Conteggio · Molle');
+  assert.equal(generatedReadingTitle({category:'plants',rootstockLabel:'  110 Richter  '}),'Conteggio · 110 Richter');
+  assert.equal(generatedReadingTitle({category:'posts',postMaterial:'ferro'}),'Conteggio · Ferro');
+});
+
+test('empty active categories retain their defaults and ignore inactive details',()=>{
   assert.equal(generatedReadingTitle({category:'plants'}),'Conteggio barbatelle');
   assert.equal(generatedReadingTitle({category:'posts'}),'Conteggio pali');
   assert.equal(generatedReadingTitle({category:'other'}),'Conteggio di…');
-  const details={varietyLabel:'barbera',rootstockLabel:'Kober 5 BB',postType:'testa',postMaterial:'ferro',componentType:'molle'};
-  assert.equal(generatedReadingTitle({category:'plants',...details}),'Conteggio barbatelle · Barbera · Kober 5 BB');
-  assert.equal(generatedReadingTitle({category:'posts',...details}),'Conteggio pali · Testa · Ferro');
-  assert.equal(generatedReadingTitle({category:'other',...details}),'Conteggio di molle');
-  assert.equal(generatedReadingTitle({category:'other',componentType:'Tendifilo CVT'}),'Conteggio di Tendifilo CVT');
-  assert.equal(generatedReadingTitle({category:'other',componentType:'Molle'}),'Conteggio di molle');
-  assert.equal(generatedReadingTitle({category:'plants',varietyLabel:'  ',rootstockLabel:null}),'Conteggio barbatelle');
+  assert.equal(generatedReadingTitle({category:'plants',varietyLabel:'  ',rootstockLabel:null,postType:'testa',componentType:'molle'}),'Conteggio barbatelle');
+  assert.equal(generatedReadingTitle({category:'posts',postType:' ',postMaterial:null,varietyLabel:'Barbera N.',componentType:'molle'}),'Conteggio pali');
+  assert.equal(generatedReadingTitle({category:'other',componentType:' ',varietyLabel:'Barbera N.',postMaterial:'ferro'}),'Conteggio di…');
 });
 
 test('titles stay within the model Unicode limit without splitting characters',()=>{
@@ -53,6 +60,42 @@ test('legacy defaults infer automatic status while custom saved titles remain ma
   assert.equal(state.isAutomatic(scope(),record({title:'Rimesse a mano'})),false);
   assert.equal(state.isAutomatic(scope(),record({title:'Conteggio barbatelle campo nord'})),false);
   assert.equal(state.isAutomatic(scope(),record({category:'posts',title:'Barbatelle / Viti'})),false);
+});
+
+test('exact locally generated 1.3.5 titles retain automatic capability',()=>{
+  const state=createReadingTitleState({storage:memoryStorage()});
+  const readings=[
+    record({varietyLabel:'barbera N.',rootstockLabel:'110 Richter',title:'Conteggio barbatelle · Barbera N. · 110 Richter'}),
+    record({category:'posts',postType:'testa',postMaterial:'ferro',title:'Conteggio pali · Testa · Ferro'}),
+    record({category:'other',componentType:'Molle',title:'Conteggio di molle'}),
+    record({category:'other',componentType:'Tendifilo CVT',title:'Conteggio di Tendifilo CVT'}),
+    record({varietyLabel:'🌱'.repeat(200),title:'Conteggio barbatelle · '+'🌱'.repeat(176)+'…'})
+  ];
+  for(const reading of readings){
+    assert.equal(state.isAutomatic(scope(),reading),true,reading.title);
+    assert.equal(state.isAutomatic(scope(),{...reading,revision:1}),false,reading.title);
+    assert.equal(state.isAutomatic(scope(),{...reading,titleMode:'manual'}),false,reading.title);
+  }
+  assert.equal(state.isAutomatic(scope(),record({category:'posts',postType:'testa',postMaterial:'ferro',title:'Conteggio pali · Testa · Ferro campo nord'})),false);
+});
+
+test('manual full generated titles stay manual across detail changes and stale automatic flags',()=>{
+  const storage=memoryStorage(),state=createReadingTitleState({storage});
+  for(const details of [
+    {category:'plants',varietyLabel:'Barbera N.',rootstockLabel:'110 Richter'},
+    {category:'posts',postType:'testa',postMaterial:'ferro'},
+    {category:'other',componentType:'molle'}
+  ]){
+    const reading=record({...details,titleMode:'manual'});reading.title=generatedReadingTitle(reading);
+    state.markAutomatic(scope(),reading);
+    assert.equal(state.isAutomatic(scope(),reading),false);
+    assert.equal(state.isAutomatic(scope(),{...reading,varietyLabel:'Nebbiolo',postMaterial:'castagno',componentType:'ancore'}),false);
+    const legacy=record({...details,title:reading.title});
+    state.markManual(scope(),legacy);
+    assert.equal(createReadingTitleState({storage}).isAutomatic(scope(),legacy),false);
+    const unmarkedCloud=record({...details,title:reading.title,revision:2});
+    assert.equal(state.isAutomatic(scope(),unmarkedCloud),false);
+  }
 });
 
 test('manual authorship survives reopening even when the saved title equals the generated title',()=>{

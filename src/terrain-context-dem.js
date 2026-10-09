@@ -1,5 +1,5 @@
-import {createTerrainSampler} from './terrain-model.js?v=1.3.5';
-import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.5';
+import {createTerrainSampler} from './terrain-model.js?v=1.3.6';
+import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.6';
 
 // Context and the composite pyramid are display data. Never return these heights
 // to the calculator, or mutate the frozen native grid to match a basemap.
@@ -102,7 +102,7 @@ export function createContextDEMClient({source=CONTEXT_DEM,fetchImpl=(...args)=>
  return {getTile,samplerFor,destroy(){if(destroyed)return;destroyed=true;clearTimeout(pumpTimer);pumpTimer=null;for(const entry of pending.values())retire(entry);cache.clear();queue.length=0;}};
 }
 
-export function createTerrainDisplayClient({model,geometry,source=CONTEXT_DEM,workerFactory=()=>typeof Worker==='function'?new Worker(new URL('./terrain-context-worker.js?v=1.3.5',import.meta.url),{type:'module'}):null}={}){
+export function createTerrainDisplayClient({model,geometry,source=CONTEXT_DEM,workerFactory=()=>typeof Worker==='function'?new Worker(new URL('./terrain-context-worker.js?v=1.3.6',import.meta.url),{type:'module'}):null}={}){
  let worker=null,destroyed=false,sequence=0,readyResolve,readyReject;const requests=new Map();
  const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});ready.catch(()=>{});
  const initTimer=setTimeout(()=>failure(new Error('Caricamento del terreno di contesto scaduto.')),20000);

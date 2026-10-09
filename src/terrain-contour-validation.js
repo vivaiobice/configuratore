@@ -1,12 +1,12 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.5';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.6';
 import {
   Q, ZERO, ONE, number, add, sub, mul, div, neg, cmp, sign, sq, min, max, key, vsub, dot,
   cross, mid, xy, numberBounds, exactDomain, height, splitSegment,
   segmentDistanceSquared, radical, radicalCompare, lengthBounds, radd, rscale,
   radicalBounds
-} from './terrain-exact.js?v=1.3.5';
-import {axisPieces,coalescePlanePieces,traceNormalBundles} from './terrain-surface-flow.js?v=1.3.5';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.5';
+} from './terrain-exact.js?v=1.3.6';
+import {axisPieces,coalescePlanePieces,traceNormalBundles} from './terrain-surface-flow.js?v=1.3.6';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.6';
 /** Check every affine face-contained subsegment, including internal native
  * edge/vertex crossings. Extrema of affine elevation error occur at endpoints. */
 export function certifyContourElevation(domain, axes, {

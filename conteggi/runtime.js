@@ -1,8 +1,8 @@
-import {APP_CONFIG} from '../src/config.js?v=1.3.5';
+import {APP_CONFIG} from '../src/config.js?v=1.3.6';
 import {createAuthService} from '../src/auth-service.js';
-import {createBackend,connectSupabase} from '../src/backend.js?v=1.3.5';
-import {createCountsGateway,createCountsTransport,createCountsAdmin} from '../src/counts-client.js?v=1.3.5';
-import {CountsError} from './model.js?v=1.3.5';
+import {createBackend,connectSupabase} from '../src/backend.js?v=1.3.6';
+import {createCountsGateway,createCountsTransport,createCountsAdmin} from '../src/counts-client.js?v=1.3.6';
+import {CountsError} from './model.js?v=1.3.6';
 import {createFieldDirectory} from '../src/field-directory.js';
 import {rememberCountsOwner,readCountsOfflineOwner,forgetCountsOwner,isCountsNetworkError} from '../src/counts-offline-owner.js';
 // This reuses the existing Auth service. The Configuratore Work may supply its lightweight bootstrap.

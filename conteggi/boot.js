@@ -1,12 +1,13 @@
-import {mountReleaseVersion} from '../src/release-version.js?v=1.3.5';
-import {COUNTS_CONFIG} from './config.js?v=1.3.5';
-import {createCountsRuntime} from './runtime.js?v=1.3.5';
-import {mountCountsUI} from './ui.js?v=1.3.5';
-import {parseCountsUrl,buildCountsUrl} from './navigation.js?v=1.3.5';
-import {createCountsFeedback} from './feedback.js?v=1.3.5';
-import {createProfileUI} from '../src/profile-ui.js?v=1.3.5';
+import {mountReleaseVersion} from '../src/release-version.js?v=1.3.6';
+import {COUNTS_CONFIG} from './config.js?v=1.3.6';
+import {createCountsRuntime} from './runtime.js?v=1.3.6';
+import {mountCountsUI} from './ui.js?v=1.3.6';
+import {parseCountsUrl,buildCountsUrl} from './navigation.js?v=1.3.6';
+import {createCountsFeedback} from './feedback.js?v=1.3.6';
+import {createProfileUI} from '../src/profile-ui.js?v=1.3.6';
 import {listVarieties} from '../src/plant-catalog.js';
 import {readPendingFieldContext,clearPendingFieldContext} from '../src/field-directory.js';
+import {storageBannerView} from './storage-banner.js?v=1.3.6';
 let ui,runtime,profile;
 mountReleaseVersion();
 document.querySelector('#copyright').textContent=`© ${new Date().getFullYear()} Vivai Obice. Tutti i diritti riservati.`;
@@ -28,10 +29,7 @@ try{
  let ready=false;
  runtime.auth.subscribe(state=>{
   const link=document.querySelector('#profile-menu a');if(link)link.href=buildCountsUrl(COUNTS_CONFIG.countsBaseUrl,{view:'admin'});document.body.dataset.ownerKind=state.kind==='guest'?'guest':'user';
-  if(!COUNTS_CONFIG.syncEnabled)banner.textContent='Salvataggio su questo dispositivo. Per un guest, gli appunti restano legati alla sessione di questo browser.';
-  else if(runtime.offlineIdentity)banner.textContent='Le letture sono salvate su questo dispositivo. Con connessione, le letture del tuo account vengono sincronizzate nel profilo; per un guest serve prima leggere l’avviso.';
-  else if(state.user?.is_anonymous===false)banner.innerHTML='<p>Le letture salvate vengono sincronizzate nel tuo profilo, anche senza un campo. Gli appunti sincronizzati sono consultabili dagli amministratori autorizzati Vivai Obice. La trasmissione di una richiesta richiede una tua scelta separata.</p><button type="button" data-action="notice">Avviso di salvataggio</button><button type="button" data-action="sync">Sincronizza</button>';
-  else banner.innerHTML='<p>Gli appunti guest sono conservati sul dispositivo. Prima di sincronizzarli, leggi l’avviso sulla conservazione e sulla consultazione da parte degli amministratori autorizzati Vivai Obice.</p><button type="button" data-action="notice">Leggi l’avviso e attiva la sincronizzazione</button><button type="button" data-action="sync">Sincronizza</button>';
+  banner.innerHTML=storageBannerView({syncEnabled:COUNTS_CONFIG.syncEnabled,offlineIdentity:runtime.offlineIdentity,registered:state.user?.is_anonymous===false});
   if(ready&&COUNTS_CONFIG.syncEnabled&&!runtime.offlineIdentity)void ui.refresh().catch(()=>{});
  });
  runtime.gateway.subscribe(({reason})=>{if(COUNTS_CONFIG.syncEnabled&&!runtime.offlineIdentity&&navigator.onLine!==false&&['change','notice'].includes(reason))queueMicrotask(()=>void runtime.gateway.sync().catch(()=>{}));});

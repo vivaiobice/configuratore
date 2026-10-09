@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTerrainModel} from '../src/terrain-model.js?v=1.3.5';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.5';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.5';
-import {fromUTM,toUTM} from '../src/coordinate-system.js?v=1.3.5';
-import {axisBinding,exactPieceLengthBounds} from '../src/terrain-axis-geometry.js?v=1.3.5';
-import {Q,ZERO,add,mul,div,cmp,sub,sign,height,pointKey,inRegion,exactDomain,radical,radd,radicalCompare,dot,vsub} from '../src/terrain-exact.js?v=1.3.5';
+import {createTerrainModel} from '../src/terrain-model.js?v=1.3.6';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.6';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.6';
+import {fromUTM,toUTM} from '../src/coordinate-system.js?v=1.3.6';
+import {axisBinding,exactPieceLengthBounds} from '../src/terrain-axis-geometry.js?v=1.3.6';
+import {Q,ZERO,add,mul,div,cmp,sub,sign,height,pointKey,inRegion,exactDomain,radical,radd,radicalCompare,dot,vsub} from '../src/terrain-exact.js?v=1.3.6';
 
 // A missing implementation is an explicit API assertion RED, not an import
 // failure. Unexpected dependency errors still fail the test module itself.

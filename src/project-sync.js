@@ -1,6 +1,6 @@
-import { buildCloudSnapshot } from './cloud-project-model.js?v=1.3.5';
+import { buildCloudSnapshot } from './cloud-project-model.js?v=1.3.6';
 import { createOperation } from './sync-queue.js';
-import { summarizeRevisionChanges } from './revision-summary.js?v=1.3.5';
+import { summarizeRevisionChanges } from './revision-summary.js?v=1.3.6';
 
 const SUCCESS = new Set(['applied','revision_created']);
 

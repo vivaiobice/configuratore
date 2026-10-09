@@ -1,11 +1,11 @@
-import {createTerrainCameraControls} from './terrain-camera-controls.js?v=1.3.5';
-import {createSatelliteImageryClient,satelliteAtlasPlan,satelliteUVs} from './terrain-satellite-imagery.js?v=1.3.5';
-import {satelliteSources} from './satellite-style.js?v=1.3.5';
+import {createTerrainCameraControls} from './terrain-camera-controls.js?v=1.3.6';
+import {createSatelliteImageryClient,satelliteAtlasPlan,satelliteUVs} from './terrain-satellite-imagery.js?v=1.3.6';
+import {satelliteSources} from './satellite-style.js?v=1.3.6';
 // Native scene presentation uses only MapLibre's public custom-layer contract.
 // The calculator's frozen vertices and lifted lines arrive from a separate worker.
 let viewSequence=0,requestSequence=0;
 const aborted=()=>new DOMException('Vista 3D chiusa.','AbortError');
-export function createTerrainSceneClient({model,geometry,rows=[],exclusions=[],rowPortions=[],workerFactory=()=>typeof Worker==='function'?new Worker(new URL('./terrain-scene-worker.js?v=1.3.5',import.meta.url),{type:'module'}):null}){
+export function createTerrainSceneClient({model,geometry,rows=[],exclusions=[],rowPortions=[],workerFactory=()=>typeof Worker==='function'?new Worker(new URL('./terrain-scene-worker.js?v=1.3.6',import.meta.url),{type:'module'}):null}){
  let worker=null,timer=null,settled=false,destroyed=false,resolveReady,rejectReady;
  const id=++requestSequence,ready=new Promise((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});ready.catch(()=>{});
  function retire(){
@@ -191,7 +191,7 @@ export function createTerrainMeshView({map,model,geometry,rows=[],exclusions=[],
   try{
    if(!map?.addLayer||!map?.removeLayer)throw new Error('Vista 3D nativa non supportata.');
    const graphics=sceneClientFactory({model,geometry,rows,exclusions,rowPortions});client=graphics;
-   const [scene,{createTerrainSampler}]=await Promise.all([graphics.ready,import('./terrain-model.js?v=1.3.5')]);if(disposed||sequence!==generation)return;
+   const [scene,{createTerrainSampler}]=await Promise.all([graphics.ready,import('./terrain-model.js?v=1.3.6')]);if(disposed||sequence!==generation)return;
    validateScene(scene,model);const sample=createTerrainSampler(model);
    const source=map.getStyle?.()?.sources?.satellite??satelliteSources().satellite;
    const canvas=map.getCanvas?.(),gl=canvas?.getContext?.('webgl2')??canvas?.getContext?.('webgl'),maxTextureSize=gl?.getParameter(gl.MAX_TEXTURE_SIZE)??4096;
@@ -222,4 +222,4 @@ export function createTerrainMeshView({map,model,geometry,rows=[],exclusions=[],
 }
 
 // Default presentation is one continuous native terrain surface.
-export {createTerrainNativeView as createTerrainSceneView} from './terrain-native-view.js?v=1.3.5';
+export {createTerrainNativeView as createTerrainSceneView} from './terrain-native-view.js?v=1.3.6';

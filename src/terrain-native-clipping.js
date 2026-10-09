@@ -19,7 +19,7 @@ import {
   height,
   xy
 }
-from './terrain-exact.js?v=1.3.5';
+from './terrain-exact.js?v=1.3.6';
 function signedArea(ring) {
   if(!ring.length)return ZERO;
   const origin=ring[0];

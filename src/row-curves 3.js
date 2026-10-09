@@ -1,0 +1,499 @@
+const EARTH_RADIUS_M=6371008.8;
+const DEG=Math.PI/180;
+const MAX_POINTS=8;
+const MIN_POSITION=.02;
+const MAX_POSITION=.98;
+const SEGMENT_POSITION_EPSILON=1e-8;
+const MAX_OFFSET_M=500;
+
+const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+
+function openRing(coords){
+  if(!Array.isArray(coords))return [];
+  const clean=coords.filter(point=>Array.isArray(point)&&Number.isFinite(Number(point[0]))&&Number.isFinite(Number(point[1]))).map(point=>[Number(point[0]),Number(point[1])]);
+  if(clean.length>1&&clean[0][0]===clean.at(-1)[0]&&clean[0][1]===clean.at(-1)[1])clean.pop();
+  return clean;
+}
+
+function referenceFor(coords){
+  const points=openRing(coords);
+  return points.length?{lon:points.reduce((sum,p)=>sum+p[0],0)/points.length,lat:points.reduce((sum,p)=>sum+p[1],0)/points.length}:{lon:0,lat:0};
+}
+
+function toXY(point,ref){return [(point[0]-ref.lon)*DEG*EARTH_RADIUS_M*Math.cos(ref.lat*DEG),(point[1]-ref.lat)*DEG*EARTH_RADIUS_M];}
+function toLonLat(point,ref){return [ref.lon+point[0]/(DEG*EARTH_RADIUS_M*Math.cos(ref.lat*DEG)),ref.lat+point[1]/(DEG*EARTH_RADIUS_M)];}
+function rotate([x,y],angle){const c=Math.cos(angle),s=Math.sin(angle);return [x*c-y*s,x*s+y*c];}
+
+function frameFor(polygon,orientationDeg=0,reference=null){
+  const raw=openRing(polygon);
+  if(raw.length<3)return null;
+  const ref=reference??referenceFor(raw);
+  const angle=-(Number(orientationDeg)||0)*DEG;
+  const points=raw.map(point=>rotate(toXY(point,ref),angle));
+  const xs=points.map(point=>point[0]),ys=points.map(point=>point[1]);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  return {ref,angle,points,minX,maxX,minY,maxY,centerX:(minX+maxX)/2,spanY:Math.max(.001,maxY-minY)};
+}
+
+export function normalizeRowCurvePoints(points){
+  const normalized=(Array.isArray(points)?points:[]).map((point,index)=>({
+    id:String(point?.id||`curve-${index+1}`),
+    position:clamp(Number(point?.position),point?.segmentId&&point.segmentId!=='whole'?SEGMENT_POSITION_EPSILON:MIN_POSITION,point?.segmentId&&point.segmentId!=='whole'?1-SEGMENT_POSITION_EPSILON:MAX_POSITION),
+    offsetM:clamp(Number.isFinite(Number(point?.offsetM))?Number(point.offsetM):0,-MAX_OFFSET_M,MAX_OFFSET_M),
+    ...(point?.segmentId?{segmentId:String(point.segmentId)}:{})
+  })).filter(point=>Number.isFinite(point.position));
+  normalized.sort((a,b)=>a.position-b.position||a.id.localeCompare(b.id));
+  const unique=[];
+  for(const point of normalized){
+    const previous=unique.findIndex(item=>item.segmentId===point.segmentId&&Math.abs(item.position-point.position)<.001);
+    if(previous>=0)unique[previous]=point;
+    else unique.push(point);
+  }
+  return unique.slice(0,MAX_POINTS);
+}
+
+function curveNodes(points){return [{position:0,offsetM:0},...points,{position:1,offsetM:0}];}
+
+function offsetAt(nodes,t){
+  const value=clamp(t,0,1);
+  let index=0;
+  while(index<nodes.length-2&&value>nodes[index+1].position)index++;
+  const a=nodes[index],b=nodes[index+1];
+  const span=Math.max(1e-6,b.position-a.position);
+  const u=clamp((value-a.position)/span,0,1);
+  const before=nodes[Math.max(0,index-1)],after=nodes[Math.min(nodes.length-1,index+2)];
+  const slopeA=(b.offsetM-before.offsetM)/Math.max(1e-6,b.position-before.position);
+  const slopeB=(after.offsetM-a.offsetM)/Math.max(1e-6,after.position-a.position);
+  const u2=u*u,u3=u2*u;
+  return (2*u3-3*u2+1)*a.offsetM+(u3-2*u2+u)*span*slopeA+(-2*u3+3*u2)*b.offsetM+(u3-u2)*span*slopeB;
+}
+
+function guideSample(nodes,frame,t){
+  const value=clamp(t,0,1),epsilon=.001;
+  const before=clamp(value-epsilon,0,1),after=clamp(value+epsilon,0,1);
+  const divisor=Math.max(1e-6,after-before);
+  const dx=t<0||t>1?0:(offsetAt(nodes,after)-offsetAt(nodes,before))/divisor;
+  const dy=frame.spanY;
+  const length=Math.max(1e-9,Math.hypot(dx,dy));
+  return {
+    point:[frame.centerX+offsetAt(nodes,value),frame.minY+t*frame.spanY],
+    tangent:[dx/length,dy/length],
+    normal:[dy/length,-dx/length]
+  };
+}
+
+function splitSafeParallel(candidate,guide){
+  if(candidate.length<2)return [];
+  const output=[];let current=[candidate[0]];
+  for(let index=1;index<candidate.length;index++){
+    const a=candidate[index-1],b=candidate[index],ga=guide[index-1].point,gb=guide[index].point;
+    const dx=b[0]-a[0],dy=b[1]-a[1],gdx=gb[0]-ga[0],gdy=gb[1]-ga[1];
+    const aligned=dx*gdx+dy*gdy>.02*Math.hypot(dx,dy)*Math.hypot(gdx,gdy);
+    if(aligned)current.push(b);
+    else{if(current.length>1)output.push(current);current=[b];}
+  }
+  if(current.length>1)output.push(current);
+  return output;
+}
+
+function close(points){return points.length?[...points,points[0]]:[];}
+
+function pointOnSegment(point,a,b,tolerance=1e-6){
+  const dx=b[0]-a[0],dy=b[1]-a[1],length2=dx*dx+dy*dy;
+  if(length2===0)return Math.hypot(point[0]-a[0],point[1]-a[1])<=tolerance;
+  const t=clamp(((point[0]-a[0])*dx+(point[1]-a[1])*dy)/length2,0,1);
+  return Math.hypot(point[0]-(a[0]+t*dx),point[1]-(a[1]+t*dy))<=tolerance;
+}
+
+function pointInRing(point,raw){
+  const ring=close(raw);
+  for(let i=0;i<ring.length-1;i++)if(pointOnSegment(point,ring[i],ring[i+1],1e-5))return true;
+  let inside=false;
+  for(let i=0,j=raw.length-1;i<raw.length;j=i++){
+    const [xi,yi]=raw[i],[xj,yj]=raw[j];
+    if(((yi>point[1])!==(yj>point[1]))&&(point[0]<((xj-xi)*(point[1]-yi))/((yj-yi)||Number.EPSILON)+xi))inside=!inside;
+  }
+  return inside;
+}
+
+const interpolate=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+
+function crossingParameters(a,b,c,d){
+  if(Math.max(a[0],b[0])<Math.min(c[0],d[0])-1e-8||Math.max(c[0],d[0])<Math.min(a[0],b[0])-1e-8
+    ||Math.max(a[1],b[1])<Math.min(c[1],d[1])-1e-8||Math.max(c[1],d[1])<Math.min(a[1],b[1])-1e-8)return [];
+  const dx=b[0]-a[0],dy=b[1]-a[1],sx=d[0]-c[0],sy=d[1]-c[1],cx=c[0]-a[0],cy=c[1]-a[1];
+  const denominator=dx*sy-dy*sx;
+  if(Math.abs(denominator)>1e-10){
+    const t=(cx*sy-cy*sx)/denominator,u=(cx*dy-cy*dx)/denominator;
+    return t>=-1e-9&&t<=1+1e-9&&u>=-1e-9&&u<=1+1e-9?[clamp(t,0,1)]:[];
+  }
+  const length2=dx*dx+dy*dy;
+  if(length2<1e-12||Math.abs(cx*dy-cy*dx)>1e-8)return [];
+  return [((c[0]-a[0])*dx+(c[1]-a[1])*dy)/length2,((d[0]-a[0])*dx+(d[1]-a[1])*dy)/length2]
+    .filter(t=>t>=-1e-9&&t<=1+1e-9).map(t=>clamp(t,0,1));
+}
+
+function clipPolyline(points,predicate,{rings=[],cuts=[]}={}){
+  if(points.length<2)return [];
+  const segments=[];
+  let current=[];
+  const finish=()=>{if(current.length>1)segments.push(current);current=[];};
+  for(let i=1;i<points.length;i++){
+    const a=points[i-1],b=points[i],parameters=[0,1];
+    for(const ring of rings)for(let edge=0;edge<ring.length;edge++)parameters.push(...crossingParameters(a,b,ring[edge],ring[(edge+1)%ring.length]));
+    for(const {normal,value} of cuts){
+      const av=projection(a,normal),bv=projection(b,normal);
+      if(Math.abs(bv-av)<1e-12)continue;
+      const t=(value-av)/(bv-av);
+      if(t>0&&t<1)parameters.push(t);
+    }
+    const ordered=parameters.sort((x,y)=>x-y).filter((t,index,all)=>index===0||t-all[index-1]>1e-9);
+    for(let interval=1;interval<ordered.length;interval++){
+      const start=ordered[interval-1],end=ordered[interval];
+      // Evaluate every interval bounded by real edges, including interruptions
+      // whose two ends fall between the same pair of curve samples.
+      if(!predicate(interpolate(a,b,(start+end)/2))){finish();continue;}
+      const from=start===0?a:interpolate(a,b,start),to=end===1?b:interpolate(a,b,end);
+      if(!current.length)current.push(from);
+      else if(Math.hypot(current.at(-1)[0]-from[0],current.at(-1)[1]-from[1])>1e-7){finish();current.push(from);}
+      if(Math.hypot(current.at(-1)[0]-to[0],current.at(-1)[1]-to[1])>1e-9)current.push(to);
+    }
+  }
+  finish();
+  return segments;
+}
+
+function polylineLength(points){let total=0;for(let i=1;i<points.length;i++)total+=Math.hypot(points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]);return total;}
+
+function pointAtDistance(points,distance){
+  let walked=0;
+  for(let i=1;i<points.length;i++){
+    const length=Math.hypot(points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]);
+    if(walked+length>=distance)return {point:interpolate(points[i-1],points[i],length?((distance-walked)/length):0),index:i};
+    walked+=length;
+  }
+  return {point:points.at(-1),index:points.length-1};
+}
+
+function trimPolyline(points,amount){
+  const length=polylineLength(points),trim=Math.max(0,Number(amount)||0);
+  if(trim===0)return points.slice();
+  if(length<=trim*2+.05)return [];
+  const start=pointAtDistance(points,trim),end=pointAtDistance(points,length-trim);
+  return [start.point,...points.slice(start.index,end.index),end.point];
+}
+
+function localToLonLat(point,frame){return toLonLat(rotate(point,-frame.angle),frame.ref);}
+
+const projection=(point,normal)=>point[0]*normal[0]+point[1]*normal[1];
+
+function passagesIntersectInside(a,b,field){
+  if(Math.abs(a.normal[0]*b.normal[1]-a.normal[1]*b.normal[0])<1e-6)return false;
+  if(a.ring.some(point=>pointInRing(point,b.ring)&&pointInRing(point,field))
+    ||b.ring.some(point=>pointInRing(point,a.ring)&&pointInRing(point,field))
+    ||field.some(point=>pointInRing(point,a.ring)&&pointInRing(point,b.ring)))return true;
+  for(let i=0;i<a.ring.length;i++)for(let j=0;j<b.ring.length;j++){
+    const p=a.ring[i],q=a.ring[(i+1)%a.ring.length],r=b.ring[j],s=b.ring[(j+1)%b.ring.length];
+    const dx=q[0]-p[0],dy=q[1]-p[1],sx=s[0]-r[0],sy=s[1]-r[1],denominator=dx*sy-dy*sx;
+    if(Math.abs(denominator)<1e-9)continue;
+    const t=((r[0]-p[0])*sy-(r[1]-p[1])*sx)/denominator;
+    const u=((r[0]-p[0])*dy-(r[1]-p[1])*dx)/denominator;
+    if(t>=0&&t<=1&&u>=0&&u<=1&&pointInRing(interpolate(p,q,t),field))return true;
+  }
+  return false;
+}
+
+function passageNormals(ring,widthM){
+  const edges=ring.map((a,index)=>{
+    const b=ring[(index+1)%ring.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
+    return {length,normal:length?[-dy/length,dx/length]:[0,0]};
+  }).filter(edge=>edge.length>=.05);
+  if(!edges.length)return [];
+  const width=Number(widthM),tolerance=Math.max(.05,width*.03);
+  const candidates=[];
+  if(Number.isFinite(width)&&width>0){
+    // Clipping can make a parcel cap longer than either corridor side. The saved
+    // passage width identifies the parallel sides that still bound the corridor.
+    for(const edge of edges){
+      const values=ring.map(point=>projection(point,edge.normal));
+      const widthError=Math.abs(Math.max(...values)-Math.min(...values)-width);
+      if(widthError>tolerance)continue;
+      const parallel=edges.filter(other=>Math.abs(edge.normal[0]*other.normal[0]+edge.normal[1]*other.normal[1])>1-1e-7);
+      if(parallel.length<2)continue;
+      const length=parallel.reduce((sum,other)=>sum+other.length,0);
+      if(!candidates.some(candidate=>Math.abs(candidate.normal[0]*edge.normal[0]+candidate.normal[1]*edge.normal[1])>1-1e-7))candidates.push({normal:edge.normal,length,widthError});
+    }
+  }
+  if(!candidates.length)candidates.push(edges.reduce((longest,edge)=>edge.length>longest.length?edge:longest,edges[0]));
+  candidates.sort((a,b)=>(a.widthError??Infinity)-(b.widthError??Infinity)||b.length-a.length);
+  return candidates.map(({normal})=>normal[1]<0?normal.map(value=>-value):normal);
+}
+
+function passageCuts(frame,exclusions){
+  const cuts=[];
+  for(const [index,item] of (Array.isArray(exclusions)?exclusions:[]).entries()){
+    if(item?.type!=='linear')continue;
+    const ring=openRing(item.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle));
+    if(ring.length<3)continue;
+    // Nearly square clipped rings can match the saved width on both axes. Check
+    // each candidate against the actual parcel before assigning a passage axis.
+    for(const normal of passageNormals(ring,item.widthM)){
+      // A passage along the rows, or ending inside the field, does not create independent tracts.
+      if(normal[1]<.1)continue;
+      const values=ring.map(point=>projection(point,normal));
+      const low=Math.min(...values),high=Math.max(...values),middle=(low+high)/2;
+      const tangent=[normal[1],-normal[0]],crossings=[];
+      for(let i=0;i<frame.points.length;i++){
+        const a=frame.points[i],b=frame.points[(i+1)%frame.points.length];
+        const av=projection(a,normal)-middle,bv=projection(b,normal)-middle;
+        if(av*bv<0||Math.abs(av)<1e-7){
+          const point=Math.abs(av)<1e-7?a:interpolate(a,b,av/(av-bv));
+          crossings.push(projection(point,tangent));
+        }
+      }
+      if(crossings.length<2)continue;
+      const along=ring.map(point=>projection(point,tangent));
+      if(Math.min(...along)>Math.min(...crossings)+.05||Math.max(...along)<Math.max(...crossings)-.05)continue;
+      const startPosition=((low-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
+      const endPosition=((high-normal[0]*frame.centerX)/normal[1]-frame.minY)/frame.spanY;
+      if(startPosition<=0||endPosition>=1)continue;
+      cuts.push({id:String(item.id||`passage-${index+1}`),normal,low,high,startPosition,endPosition,ring});
+      break;
+    }
+  }
+  // Intersecting passages need a topology with lateral wedges, beyond ordered guide intervals.
+  // Keep the original whole-field curve and clip every actual exclusion ring in this case.
+  for(let i=0;i<cuts.length;i++)for(let j=i+1;j<cuts.length;j++)if(passagesIntersectInside(cuts[i],cuts[j],frame.points))return [];
+  cuts.sort((a,b)=>a.startPosition-b.startPosition||a.id.localeCompare(b.id));
+  // Overlapping passages form one interruption along the reference guide.
+  const separated=[];
+  for(const cut of cuts){
+    if(separated.length&&cut.startPosition<=separated.at(-1).endPosition){
+      const previous=separated.at(-1);
+      if(cut.endPosition>previous.endPosition){previous.endPosition=cut.endPosition;previous.afterCut=cut;}
+    }else separated.push({...cut,afterCut:cut});
+  }
+  return separated;
+}
+
+function segmentsFor(frame,exclusions){
+  const cuts=passageCuts(frame,exclusions);
+  if(!cuts.length)return [{id:'whole',index:0,label:'Tratto 1',startPosition:0,endPosition:1,before:null,after:null}];
+  return Array.from({length:cuts.length+1},(_,index)=>{
+    const before=cuts[index-1]?.afterCut??null,after=cuts[index]??null;
+    return {id:`segment:${before?.id??'start'}:${after?.id??'end'}`,index,label:`Tratto ${index+1}`,startPosition:before?.endPosition??0,endPosition:after?.startPosition??1,before,after};
+  }).filter(segment=>segment.endPosition-segment.startPosition>1e-6);
+}
+
+export function getRowCurveSegments({polygon,orientationDeg=0,exclusions=[]}={}){
+  const frame=frameFor(polygon,orientationDeg);
+  return frame?segmentsFor(frame,exclusions).map(({before,after,...segment})=>segment):[];
+}
+
+function segmentContains(segment,point){
+  return (!segment.before||projection(point,segment.before.normal)>=segment.before.high-1e-7)
+    &&(!segment.after||projection(point,segment.after.normal)<=segment.after.low+1e-7);
+}
+
+function resolvedPoints(frame,segments,points){
+  if(segments.length===1&&segments[0].id==='whole')return normalizeRowCurvePoints(points).map(({segmentId,...point})=>point);
+  return normalizeRowCurvePoints(points).map(point=>{
+    const local=[frame.centerX+point.offsetM,frame.minY+point.position*frame.spanY];
+    const segment=segments.find(item=>item.id===point.segmentId)
+      ??segments.find(item=>segmentContains(item,local))
+      ??segments.reduce((nearest,item)=>{
+        const distance=Math.max(item.startPosition-point.position,0,point.position-item.endPosition);
+        const previous=Math.max(nearest.startPosition-point.position,0,point.position-nearest.endPosition);
+        return distance<previous?item:nearest;
+      },segments[0]);
+    const margin=(segment.endPosition-segment.startPosition)*.02;
+    const referenceStart=Math.max(SEGMENT_POSITION_EPSILON,segment.startPosition+margin);
+    const referenceEnd=Math.min(1-SEGMENT_POSITION_EPSILON,segment.endPosition-margin);
+    const boundsAt=offsetM=>{
+      const x=frame.centerX+offsetM;
+      const start=segment.before?((segment.before.high-segment.before.normal[0]*x)/segment.before.normal[1]-frame.minY)/frame.spanY+margin:referenceStart;
+      const end=segment.after?((segment.after.low-segment.after.normal[0]*x)/segment.after.normal[1]-frame.minY)/frame.spanY-margin:referenceEnd;
+      return {start:Math.max(referenceStart,start),end:Math.min(referenceEnd,end)};
+    };
+    let offsetM=point.offsetM,bounds=boundsAt(offsetM);
+    const minimumSpan=Math.min(.0001,Math.max(0,referenceEnd-referenceStart)/10);
+    if(bounds.end-bounds.start<minimumSpan){
+      // A large lateral move can leave no point in both the tract's guide interval and its physical side.
+      // Reduce that move toward the valid central guide while keeping the assigned tract.
+      let low=0,high=1;
+      for(let index=0;index<48;index++){
+        const middle=(low+high)/2,candidate=boundsAt(point.offsetM*middle);
+        if(candidate.end-candidate.start>=minimumSpan)low=middle;else high=middle;
+      }
+      offsetM=point.offsetM*low*.999999;
+      bounds=boundsAt(offsetM);
+    }
+    return {...point,offsetM,segmentId:segment.id,position:clamp(point.position,bounds.start,bounds.end)};
+  });
+}
+
+export function resolveRowCurvePoints({polygon,orientationDeg=0,exclusions=[],rowCurvePoints=[]}={}){
+  const frame=frameFor(polygon,orientationDeg);
+  return frame?normalizeRowCurvePoints(resolvedPoints(frame,segmentsFor(frame,exclusions),rowCurvePoints)):normalizeRowCurvePoints(rowCurvePoints);
+}
+
+function segmentGapSquared(a,b,c,d){
+  const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)return 0;
+  const gap=(point,start,end)=>{
+    const dx=end[0]-start[0],dy=end[1]-start[1],length2=dx*dx+dy*dy;
+    const t=length2?clamp(((point[0]-start[0])*dx+(point[1]-start[1])*dy)/length2,0,1):0;
+    return (point[0]-start[0]-t*dx)**2+(point[1]-start[1]-t*dy)**2;
+  };
+  return Math.min(gap(a,c,d),gap(b,c,d),gap(c,a,b),gap(d,a,b));
+}
+
+function unsafeRowSpacing(rows,minimum){
+  const tolerance2=minimum*minimum;
+  const boxes=rows.map(row=>{
+    const points=row.coordinates;
+    return {points,sourceDistance:row.sourceDistance,minX:Math.min(...points.map(p=>p[0])),maxX:Math.max(...points.map(p=>p[0])),minY:Math.min(...points.map(p=>p[1])),maxY:Math.max(...points.map(p=>p[1]))};
+  });
+  for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
+    const a=boxes[i],b=boxes[j];
+    if(a.sourceDistance===b.sourceDistance)continue;
+    if(a.minX>b.maxX+minimum||b.minX>a.maxX+minimum||a.minY>b.maxY+minimum||b.minY>a.maxY+minimum)continue;
+    for(let s=1;s<a.points.length;s++)for(let t=1;t<b.points.length;t++){
+      const u=a.points[s-1],v=a.points[s],w=b.points[t-1],z=b.points[t];
+      if(Math.min(u[0],v[0])>Math.max(w[0],z[0])+minimum||Math.min(w[0],z[0])>Math.max(u[0],v[0])+minimum)continue;
+      if(Math.min(u[1],v[1])>Math.max(w[1],z[1])+minimum||Math.min(w[1],z[1])>Math.max(u[1],v[1])+minimum)continue;
+      if(segmentGapSquared(u,v,w,z)<tolerance2)return true;
+    }
+  }
+  return false;
+}
+
+// Decide ownership of an already physically clipped fragment. Normalized
+// topology may contain tiny artificial gaps, so it must never cut this fragment.
+function ownerIdInFrame(coordinates,regions){
+  if(!regions.length)return null;
+  if(regions.length===1)return regions[0].id;
+  const ranked=regions.map(region=>{
+    const [outer,...holes]=region.rings;
+    const pieces=clipPolyline(coordinates,point=>pointInRing(point,outer)&&!holes.some(hole=>pointInRing(point,hole)),{rings:region.rings});
+    return {region,length:pieces.reduce((sum,piece)=>sum+polylineLength(piece),0)};
+  });
+  ranked.sort((a,b)=>Math.abs(b.length-a.length)>1e-7?b.length-a.length:a.region.id.localeCompare(b.region.id));
+  if(ranked[0].length>1e-7)return ranked[0].region.id;
+  // A whole short fragment can fall in a normalization-only strip. Assign its
+  // nearest component deterministically rather than deleting real row length.
+  const nearest=regions.map(region=>{
+    let distance=Infinity;
+    for(let i=1;i<coordinates.length;i++)for(const ring of region.rings)for(let j=0;j<ring.length;j++)distance=Math.min(distance,segmentGapSquared(coordinates[i-1],coordinates[i],ring[j],ring[(j+1)%ring.length]));
+    return {id:region.id,distance};
+  });
+  nearest.sort((a,b)=>Math.abs(a.distance-b.distance)>1e-10?a.distance-b.distance:a.id.localeCompare(b.id));
+  return nearest[0].id;
+}
+
+export function rowOwnerId({coordinates,portions=[]}={}){
+  if(!Array.isArray(coordinates)||coordinates.length<2)return null;
+  const ref=referenceFor(coordinates);
+  const regions=portions.map(p=>({id:p.id,rings:p.geometry.map(ring=>openRing(ring).map(point=>toXY(point,ref)))}));
+  return ownerIdInFrame(coordinates.map(point=>toXY(point,ref)),regions);
+}
+
+export function curvePointToLonLat({polygon,orientationDeg=0,point}={}){
+  const frame=frameFor(polygon,orientationDeg);
+  if(!frame)throw new TypeError('Perimetro non valido');
+  const normalized=normalizeRowCurvePoints([point])[0];
+  if(!normalized)throw new TypeError('Punto di curvatura non valido');
+  return localToLonLat([frame.centerX+normalized.offsetM,frame.minY+normalized.position*frame.spanY],frame);
+}
+
+export function lonLatToCurvePoint({polygon,orientationDeg=0,coordinate,id='curve',segmentId}={}){
+  const frame=frameFor(polygon,orientationDeg);
+  if(!frame||!Array.isArray(coordinate))throw new TypeError('Coordinate di curvatura non valide');
+  const local=rotate(toXY(coordinate,frame.ref),frame.angle);
+  return normalizeRowCurvePoints([{id,position:(local[1]-frame.minY)/frame.spanY,offsetM:local[0]-frame.centerX,...(segmentId?{segmentId}:{})}])[0];
+}
+
+export function generateCurvedRows({polygon,guidePolygon=null,clipRegion=null,rowOwnership=null,rowSpacingM,orientationDeg=0,rowCurvePoints=[],exclusions=[],headlandWidthM=0,sampleStepM=null,maintainEquidistance=true,normalBlend=0,includeTerrainAxes=false,onTerrainFamily=null}={}){
+  const frame=frameFor(polygon,orientationDeg,guidePolygon?referenceFor(guidePolygon):null);
+  const spacing=Number(rowSpacingM),points=normalizeRowCurvePoints(rowCurvePoints);
+  if(!frame||!Number.isFinite(spacing)||spacing<=0||(!points.length&&!guidePolygon))return [];
+  if(guidePolygon){
+    const guideFrame=frameFor(guidePolygon,orientationDeg,frame.ref);
+    if(!guideFrame)return [];
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes,onTerrainFamily,clipRegion:rowOwnership?null:(clipRegion??[guidePolygon]),rowOwnership},frame,guideFrame,null);
+  }
+  const segments=segmentsFor(frame,exclusions);
+  if(segments.length>1){
+    const resolved=resolvedPoints(frame,segments,points);
+    return segments.flatMap(segment=>{
+      const span=segment.endPosition-segment.startPosition;
+      const localPoints=resolved.filter(point=>point.segmentId===segment.id).map(point=>({...point,position:clamp((point.position-segment.startPosition)/span,.0001,.9999)}));
+      const curveFrame={...frame,minY:frame.minY+segment.startPosition*frame.spanY,spanY:span*frame.spanY};
+      return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:localPoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes,onTerrainFamily},frame,curveFrame,segment).map(row=>({...row,segmentId:segment.id}));
+    });
+  }
+  const wholePoints=normalizeRowCurvePoints(resolvedPoints(frame,segments,points));
+  return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:wholePoints,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes,onTerrainFamily},frame,frame,null);
+}
+
+function generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance,normalBlend,includeTerrainAxes=false,onTerrainFamily=null,clipRegion=null,rowOwnership=null},frame,curveFrame,segment){
+  const spacing=Number(rowSpacingM);
+  const nodes=curveNodes(points);
+  const exclusionRings=(Array.isArray(exclusions)?exclusions:[]).map(item=>openRing(Array.isArray(item)?item:item?.geometry).map(point=>rotate(toXY(point,frame.ref),frame.angle))).filter(ring=>ring.length>=3);
+  const regionRings=(clipRegion??[]).map(ring=>openRing(ring).map(point=>rotate(toXY(point,frame.ref),frame.angle)));
+  const ownershipRegions=(rowOwnership?.portions??[]).map(p=>({id:p.id,rings:p.geometry.map(ring=>openRing(ring).map(point=>rotate(toXY(point,frame.ref),frame.angle)))}));
+  const inRegion=point=>!regionRings.length||(pointInRing(point,regionRings[0])&&!regionRings.slice(1).some(ring=>pointInRing(point,ring)));
+  const step=clamp(Number(sampleStepM)||Math.min(1,spacing/3),.25,2);
+  const sampleCount=Math.max(2,Math.ceil(frame.spanY/step));
+  const maxOffset=Math.max(0,...points.map(point=>Math.abs(point.offsetM)));
+  const firstBase=frame.minX+spacing/2-Math.ceil(maxOffset/spacing)*spacing;
+  const lastBase=frame.maxX+maxOffset+spacing/2;
+  const output=[];
+  const axisFamily=segment?.id??'whole';
+  const candidates=[];
+  if(maintainEquidistance!==false){
+    const guide=Array.from({length:sampleCount+1},(_,index)=>guideSample(nodes,curveFrame,(frame.minY+index/sampleCount*frame.spanY-curveFrame.minY)/curveFrame.spanY));
+    const reach=Math.hypot(frame.maxX-frame.minX,frame.maxY-frame.minY)+maxOffset+spacing*2;
+    const firstDistance=-Math.ceil(reach/spacing)*spacing;
+    for(let distance=firstDistance;distance<=reach;distance+=spacing){
+      const blend=normalBlend*clamp((Math.abs(distance)-2*spacing)/Math.max(2*spacing,(frame.maxX-frame.minX)*.5),0,1);
+      const candidate=guide.map(sample=>[
+        sample.point[0]+(sample.normal[0]*(1-blend)+blend)*distance,
+        sample.point[1]+sample.normal[1]*(1-blend)*distance
+      ]);
+      candidates.push(...splitSafeParallel(candidate,guide).map(coordinates=>({coordinates,sourceDistance:distance,...(typeof onTerrainFamily==='function'?{terrainSampleStart:candidate.indexOf(coordinates[0])}:{})})));
+    }
+  }else{
+    for(let baseX=firstBase;baseX<lastBase;baseX+=spacing){
+      const candidate=[];
+      for(let index=0;index<=sampleCount;index++){
+        const t=index/sampleCount;
+        const localT=(frame.minY+t*frame.spanY-curveFrame.minY)/curveFrame.spanY;
+        candidate.push([baseX+offsetAt(nodes,localT),frame.minY+t*frame.spanY]);
+      }
+      candidates.push({coordinates:candidate,sourceDistance:baseX});
+    }
+  }
+  for(const candidate of candidates){
+    const outerSegments=clipPolyline(candidate.coordinates,point=>pointInRing(point,frame.points),{rings:[frame.points]});
+    for(const outer of outerSegments){
+      const trimmed=trimPolyline(outer,headlandWidthM);
+      if(trimmed.length<2)continue;
+      const cuts=[...(segment?.before?[{normal:segment.before.normal,value:segment.before.high}]:[]),...(segment?.after?[{normal:segment.after.normal,value:segment.after.low}]:[])];
+      const usable=exclusionRings.length||segment||regionRings.length?clipPolyline(trimmed,point=>inRegion(point)&&(!segment||segmentContains(segment,point))&&!exclusionRings.some(ring=>pointInRing(point,ring)),{rings:[...exclusionRings,...regionRings],cuts}):[trimmed];
+      for(const segment of usable){
+        const lengthM=polylineLength(segment);
+        if(lengthM<.05)continue;
+        if(rowOwnership&&ownerIdInFrame(segment,ownershipRegions)!==rowOwnership.portionId)continue;
+        const coordinates=segment.map(point=>localToLonLat(point,frame));
+        const start=coordinates[0],end=coordinates.at(-1);
+        output.push({coordinates,start,end,lengthM,localCoordinates:segment,sourceDistance:candidate.sourceDistance,...(includeTerrainAxes?{terrainAxisCoordinates:outer.map(point=>localToLonLat(point,frame)),terrainAxisDistance:candidate.sourceDistance,terrainAxisFamily:axisFamily}:{})});
+      }
+    }
+  }
+  if(maintainEquidistance!==false&&unsafeRowSpacing(output.map(row=>({coordinates:row.localCoordinates,sourceDistance:row.sourceDistance})),spacing*.45)){
+    return generateRowsInFrame({polygon,rowSpacingM,orientationDeg,rowCurvePoints:points,exclusions,headlandWidthM,sampleStepM,maintainEquidistance:normalBlend<.75,normalBlend:Math.min(1,normalBlend+.25),includeTerrainAxes,onTerrainFamily,clipRegion,rowOwnership},frame,curveFrame,segment);
+  }
+  if(typeof onTerrainFamily==='function')onTerrainFamily({id:axisFamily,candidates:candidates.map(candidate=>({distance:candidate.sourceDistance,sampleStart:candidate.terrainSampleStart??0,sampleCount:sampleCount+1,coordinates:candidate.coordinates.map(point=>localToLonLat(point,frame))}))});
+  return output.map(({localCoordinates,sourceDistance,...row})=>row);
+}

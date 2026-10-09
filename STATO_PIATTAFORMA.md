@@ -1,10 +1,10 @@
-# Piattaforma Vivai Obice — stato 1.3.5
+# Piattaforma Vivai Obice — stato 1.3.6
 
-**Versione coordinata: 1.3.5 · LIVE — 9 ottobre 2026.** Pacchetto completo pronto per il caricamento; nessuna pubblicazione remota eseguita.
+**Versione coordinata: 1.3.6 · LIVE — 9 ottobre 2026.** Pacchetto completo pronto per il caricamento; nessuna pubblicazione remota eseguita.
 
 ## Revisione corrente
 
-Conteggi presenta prima il tipo, poi il titolo modificabile e «Aggiungi dettagli». I titoli si completano con le scelte finché non sono scritti manualmente. Riepilogo entro due righe, opzioni con iniziale maiuscola, salvataggio evidente e logo inferiore con contorno più morbido. I controlli del contatore restano visibili senza scorrimento nei formati collaudati. Aggiornamenti in background conservano focus, popup, errori e categorie aperte.
+Conteggi presenta selettori più grandi, titolo leggermente più piccolo nella stessa larghezza e nomi automatici nel formato «Conteggio · Barbera N. · 110 Richter». I nomi manuali restano conservati. Cestino per eliminare gli elenchi e le letture; icona Sincronizza nell’intestazione accanto al salvataggio. Disclaimer registrati conservato senza popup duplicato; attivazione ospiti esplicita nel fondo. Un errore di sincronizzazione non viene più cancellato dagli aggiornamenti accodati, senza bloccare il salvataggio locale.
 
 Il codice per salvare nel profilo le letture concluse anche senza campo e per trasmetterle volontariamente a Vivai Obice è pronto. **L’attivazione server è pendente:** le tabelle Conteggi sono assenti e il collegamento Supabase rifiuta l’installazione con `Invalid or expired requestState`. Il caricamento statico non installa questi servizi. Consultazione Admin disabilitata; nessuna email reale inviata.
 
@@ -12,9 +12,9 @@ Vista e navigazione 3D sono state approvate dall’utente nella prova reale e re
 
 ## Evidenza e limiti
 
-189/189 test mirati superati, senza test saltati; sintassi e whitespace verificati. Il collaudo browser usa il codice autentico con servizi cloud simulati. Offline riguarda soltanto `/conteggi/`, dopo una prima apertura online. Risultati conclusivi e inventario nel manifest; il backend LIVE e Safari/iOS fisici non sono dichiarati collaudati.
+204/204 test mirati superati, senza test saltati; sintassi e whitespace verificati. Il collaudo browser usa il codice autentico con servizi cloud simulati. Offline riguarda soltanto `/conteggi/`, dopo una prima apertura online. Risultati conclusivi e inventario nel manifest; il backend LIVE e Safari/iOS fisici non sono dichiarati collaudati.
 
-Dettagli in [README_RELEASE_1.3.5.md](README_RELEASE_1.3.5.md), [QA_RELEASE_1.3.5.md](QA_RELEASE_1.3.5.md) e [PUBBLICAZIONE.md](PUBBLICAZIONE.md). Per il caricamento usare [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Le note 1.3.4 conservano il precedente collaudo 3D e i limiti numerici.
+Dettagli in [README_RELEASE_1.3.6.md](README_RELEASE_1.3.6.md), [QA_RELEASE_1.3.6.md](QA_RELEASE_1.3.6.md) e [PUBBLICAZIONE.md](PUBBLICAZIONE.md). Per il caricamento usare [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Le note 1.3.4 conservano il precedente collaudo 3D e i limiti numerici.
 
 <details>
 <summary>Cronologia conservata: stato originale della 1.2.6 e versioni precedenti</summary>

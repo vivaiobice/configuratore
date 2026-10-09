@@ -4,8 +4,8 @@ import {createTerrainModel} from '../src/terrain-model.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {createContourDomain} from '../src/terrain-contour-domain.js';
 import {fromUTM,toUTM} from '../src/coordinate-system.js';
-import {traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis} from '../src/terrain-polyline-source.js?v=1.3.5';
-import {exactDomain} from '../src/terrain-exact.js?v=1.3.5';
+import {traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis} from '../src/terrain-polyline-source.js?v=1.3.6';
+import {exactDomain} from '../src/terrain-exact.js?v=1.3.6';
 const ring=pts=>pts.map(([x,y])=>fromUTM([500000.37+x+.07*y,5000000.63+y]));
 function fixture(){
  const n=65,model=createTerrainModel({acquiredAt:'2026-10-08T00:00:00.000Z',grid:{width:n,height:n,origin:[499900,5000220],step:[5,-5],values:Array.from({length:n*n},(_,i)=>{const y=220-Math.floor(i/n)*5;return y<30?y/4:7.5+(y-30)/3;})}});
@@ -23,7 +23,7 @@ test('straight native contour geometry is serialized without redundant exact col
 });
 
 test('captured 1.3.2 dense source replays identical native fragments and ground length',async()=>{
- const {readFile}=await import('node:fs/promises'),{exactPieceLengthBounds}=await import('../src/terrain-axis-geometry.js?v=1.3.5');
+ const {readFile}=await import('node:fs/promises'),{exactPieceLengthBounds}=await import('../src/terrain-axis-geometry.js?v=1.3.6');
  const saved=JSON.parse(await readFile(new URL('./fixtures/terrain-dense-v132-source.json',import.meta.url),'utf8'));
  const model=createTerrainModel(saved.modelOptions),budget=createTerrainBudget({kind:'adapt'}),domain=createContourDomain({model,geometry:saved.geometry,budget});
  const before=JSON.stringify(saved.axis),resolved=resolveFinitePolylineSourceAxis(exactDomain(domain,budget),saved.axis,budget);

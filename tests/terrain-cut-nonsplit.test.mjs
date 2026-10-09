@@ -5,7 +5,7 @@ import {fromUTM} from '../src/coordinate-system.js';
 import {buildTerrainPassage} from '../src/terrain-passage.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {deriveCanonicalCutScopes,createCanonicalCutChildDomain,createCanonicalCutPhysicalDomain,canonicalCutDomainScope} from '../src/terrain-contour-domain.js';
-import {measureDomainSurfaceArea,compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.5';
+import {measureDomainSurfaceArea,compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.6';
 import {resolveRowPortions} from '../src/row-portions.js';
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
 

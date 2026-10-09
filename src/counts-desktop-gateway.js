@@ -1,5 +1,5 @@
-import {createCountsGateway,createCountsTransport} from './counts-client.js?v=1.3.5';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.3.5';
+import {createCountsGateway,createCountsTransport} from './counts-client.js?v=1.3.6';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.3.6';
 
 export function createDesktopCountsGateway({client,ownerId,environment,backendUrl,syncEnabled=false,noticeVersion=COUNTS_CONFIG.noticeVersion,store,channel}={}){
   if(!ownerId||!environment||!backendUrl)throw new TypeError('Identità e ambiente Conteggi richiesti.');

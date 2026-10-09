@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {createTerrainModel} from '../src/terrain-model.js';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.5';
-import {fromUTM,toUTM} from '../src/coordinate-system.js?v=1.3.5';
-import {traceContourLevel} from '../src/terrain-contours.js?v=1.3.5';
-import {certifyContourSpacing} from '../src/terrain-contour-validation.js?v=1.3.5';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.5';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.6';
+import {fromUTM,toUTM} from '../src/coordinate-system.js?v=1.3.6';
+import {traceContourLevel} from '../src/terrain-contours.js?v=1.3.6';
+import {certifyContourSpacing} from '../src/terrain-contour-validation.js?v=1.3.6';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.6';
 const api=existsSync(new URL('../src/terrain-cut-candidates.js',import.meta.url))?await import('../src/terrain-cut-candidates.js'):{};
 const geo=([x,y])=>fromUTM([500000+x,5000000+y],32632);
 function fixture(height,ring=[[-10,0],[10,0],[10,10],[-10,10],[-10,0]],supportRows=9){

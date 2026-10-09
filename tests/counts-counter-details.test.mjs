@@ -24,17 +24,17 @@ test('category precedes generated title and active details enrich the name witho
  const screen=f.document.querySelector('.impulse-counter');assert.ok(screen.innerHTML.indexOf('class="type-switch"')<screen.innerHTML.indexOf('class="reading-title"'));
  assert.equal(f.document.querySelector('[name="title"]').value,'Conteggio barbatelle');
  await click(f,'counter-details');assert.ok(f.document.querySelector('#counter-details-form'));assert.equal(f.document.querySelector('[name="quantity"]'),null);
- edit(f,'varietyLabel','Barbera N.');edit(f,'rootstockLabel','Kober 5 BB');await f.ui.whenIdle();await click(f,'close-modal');
- let count=await f.gateway.getReading();assert.equal(count.quantity,0);assert.match(count.title,/Barbera N\./);assert.match(count.title,/Kober 5 BB/);
+ edit(f,'varietyLabel','Barbera N.');edit(f,'rootstockLabel','110 Richter');await f.ui.whenIdle();await click(f,'close-modal');
+ let count=await f.gateway.getReading();assert.equal(count.quantity,0);assert.equal(count.title,'Conteggio · Barbera N. · 110 Richter');
  assert.equal((await f.gateway.listRecentLists()).length,0);assert.equal(f.document.querySelectorAll('.counter-detail-summary span').length,2);
  await click(f,'category','[data-category="posts"]');assert.equal(f.document.querySelector('[name="title"]').value,'Conteggio pali');
  await click(f,'counter-details');
  assert.deepEqual([...f.document.querySelectorAll('#reading-postType option')].map(option=>option.value),['Testa','Filare','Altro']);
- edit(f,'postType','Testa');edit(f,'postMaterial','Castagno');await f.ui.whenIdle();await click(f,'close-modal');
- count=await f.gateway.getReading();assert.match(count.title,/Testa/);assert.match(count.title,/Castagno/);
+ edit(f,'postType','Testa');edit(f,'postMaterial','Ferro');await f.ui.whenIdle();await click(f,'close-modal');
+ count=await f.gateway.getReading();assert.equal(count.title,'Conteggio · Testa · Ferro');
  await click(f,'category','[data-category="other"]');assert.equal(f.document.querySelector('[name="title"]').value,'Conteggio di…');
  await click(f,'counter-details');edit(f,'componentType','Molle');await f.ui.whenIdle();await click(f,'close-modal');
- assert.match(f.document.querySelector('[name="title"]').value,/^Conteggio di molle$/i);
+ assert.equal(f.document.querySelector('[name="title"]').value,'Conteggio · Molle');
 });
 
 test('manually edited name survives category/detail changes, saving and reopening',async t=>{

@@ -1,8 +1,8 @@
-import {terrainReportMetadata,terrainReportMetricMetadata} from './terrain-report-summary.js?v=1.3.5';
-import {rowPortionDescriptors,hasTerrainGuide} from './row-portion-summary.js?v=1.3.5';
+import {terrainReportMetadata,terrainReportMetricMetadata} from './terrain-report-summary.js?v=1.3.6';
+import {rowPortionDescriptors,hasTerrainGuide} from './row-portion-summary.js?v=1.3.6';
 import {soilProfileIsCurrent} from './soil.js';
 import { isOtherMaterialSelection } from './plant-catalog.js?v=45';
-import { ensureProjectFields } from './fields.js?v=1.3.5';
+import { ensureProjectFields } from './fields.js?v=1.3.6';
 
 const CONTEXT_LABELS = {
   application: 'Domanda',

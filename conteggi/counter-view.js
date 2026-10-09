@@ -1,7 +1,9 @@
-import {selectedDetailLines} from './reading-title.js?v=1.3.5';
+import {selectedDetailLines} from './reading-title.js?v=1.3.6';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths={
  reset:'<path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/>',
+ trash:'<path d="M3 6h18M9 6V4h6v2M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
+ sync:'<path d="M20 3v5h-5M4 21v-5h5M20 8a8 8 0 0 0-14-3M4 16a8 8 0 0 0 14 3"/>',
  sound:'<path d="M11 5 6 9H3v6h3l5 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
  mute:'<path d="M11 5 6 9H3v6h3l5 4V5Zm5 4 5 6m0-6-5 6"/>',
  haptic:'<rect x="8" y="3" width="8" height="18" rx="2"/><path d="m4 7-2 3 2 4-2 3m18-10-2 3 2 4-2 3M11 18h2"/>',

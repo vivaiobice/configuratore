@@ -1,4 +1,4 @@
-import {CountsError} from './model.js?v=1.3.5';
+import {CountsError} from './model.js?v=1.3.6';
 export function scopeKey(scope){if(!scope?.backend||!scope?.owner||!['LIVE','TEST'].includes(scope.environment))throw new CountsError('IDENTITY_UNRESOLVED','Identità non ancora disponibile');return JSON.stringify([new URL(scope.backend).origin,scope.environment,scope.owner]);}
 export const emptyState=()=>({lists:{},counts:{},outbox:[],commands:{},checkpoint:null,notice:null,submissions:{},submissionDraft:null});
 export function createCountsStore({indexedDB=globalThis.indexedDB,name='vivai-obice-counts-v1'}={}){
