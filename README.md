@@ -1,10 +1,14 @@
-# Vivai Obice — piattaforma unica 1.3.3
+# Vivai Obice — piattaforma unica 1.3.4
 
-Configuratore alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. Entrambi mostrano **1.3.3 · LIVE**.
+Configuratore alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. Entrambi mostrano **1.3.4 · LIVE**.
 
-La vista **3D sulla mappa** usa direttamente il modello altimetrico acquisito e i filari del progetto o della proposta corrente. La navigazione conserva il disegno, le quantità e la posizione da ritrovare tornando in 2D. Il disegno manuale 1.2.6 e i progetti 1.3.0 restano compatibili.
+La vista **3D sulla mappa** ricampiona per la visualizzazione il modello altimetrico acquisito, raccordandolo al terreno di contesto; campo e filari seguono la stessa superficie. Il calcolo conserva le quote originali. La navigazione conserva il disegno, le quantità e la posizione da ritrovare tornando in 2D. Il disegno manuale 1.2.6 e i progetti 1.3.0 restano compatibili.
 
-La revisione aggiunge il satellite sul rilievo, completa i gesti 3D e corregge le distanze misurate sul terreno: prove locali con MapLibre reale, Worker e WebGL su desktop e touch emulato superano il limite di 150 ms fra fotogrammi. I dettagli, i comandi e i limiti del collaudo sono in [README_RELEASE_1.3.3.md](README_RELEASE_1.3.3.md). Le prove anonime non certificano i campi reali o i dispositivi fisici; il calcolo automatico conserva i controlli sulle quote, sull’interfila e sui tratti effettivamente coltivabili.
+La revisione usa un terreno satellitare continuo, elimina i pulsanti manuali 3D e introduce Shift + trackpad per inclinazione e rotazione. Corregge il calcolo per modelli nativi con variazioni compatibili e centra il logo trasparente del contatore. I metodi, le prove e i limiti sono in [README_RELEASE_1.3.4.md](README_RELEASE_1.3.4.md); gli esiti conclusivi sono registrati nel manifest. Le prove anonime non certificano i campi reali o i dispositivi fisici.
+
+Il pacchetto è destinato alle prove: la soglia di fluidità 3D resta fallita nel rendering software, soprattutto durante il pinch mobile. Le verifiche funzionali e quelle prestazionali sono riportate separatamente.
+
+La ricerca sulla mappa riconosce anche coordinate in gradi/minuti/secondi (`44°58'20.5"N 7°57'49.3"E`) e coppie decimali latitudine, longitudine. La risoluzione è locale e conserva i dati del progetto.
 
 ## V53.3 — stato attivo del selettore mappa in Dark Mode
 

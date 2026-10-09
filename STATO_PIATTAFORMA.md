@@ -1,22 +1,26 @@
-# Piattaforma Vivai Obice — stato 1.3.1
+# Piattaforma Vivai Obice — stato 1.3.4
 
-**Metadati coordinati: 1.3.1 — 6 ottobre 2026.** Ambiente configurato LIVE; preparazione del rilascio in corso. Questa nota non attesta pubblicazione, backend attivato o verifica completa dell'archivio finale.
+**Metadati coordinati: 1.3.4 — 8 ottobre 2026.** Ambiente configurato LIVE; consegna come pacchetto statico completo, senza pubblicazione remota o attivazione del backend.
 
-## Revisione in preparazione
+## Revisione corrente
 
-La curvatura raccoglie Manuale e Adatta al terreno, con anteprima e applicazione esplicita delle proposte. Il comando 3D usa la mappa comune e ripristina vista, padding, gesti e scelte di visibilità alla chiusura. La revisione dei filari di livello, dei tagli suggeriti, dei frammenti fisici e dei pali di testa richiede la chiusura dei controlli nativi e delle regressioni sul sorgente finale; la sola disponibilità dei comandi non la certifica.
+Una sola superficie altimetrica sostiene satellite, campo e filari anche fuori dal campo. Il DTM numerico resta quello acquisito; raccordo e ricampionamento riguardano soltanto la vista. Niente pulsanti manuali di navigazione: due dita sul trackpad spostano; Shift + verticale inclina e Shift + orizzontale ruota. Camera, gesti e visibilità 2D vengono ripristinati alla chiusura.
 
-La versione pubblica è letta da APP_CONFIG e condivisa dai due strumenti. Comfortaa resta nell'interfaccia e il font precedente nei documenti. Conteggi rimane autonomo, locale sul dispositivo, con logo/selettore tool e ritorno al configuratore; i flag cloud restano disattivati. Le query dei moduli e la cache Conteggi saranno allineate dopo il congelamento degli algoritmi attualmente in lavorazione.
+Il nuovo certificato per terreni con variazioni compatibili verifica quota e distanza minima sul terreno senza aumentare i limiti originali. La superficie servita del nuovo metodo è un sottoinsieme conservativo, distinto dalla banda completa precedente. Il campo a L con strada da 1,50 m è verificato con replay indipendente; contatti non certificabili conservano il progetto precedente.
 
-## Evidenza disponibile e limiti
+Il logo lineare del contatore è centrato, trasparente e contornato in chiaro. Conteggi resta locale sul dispositivo; cache e versione pubblica sono coordinate. Comfortaa nell’interfaccia, font precedente nei documenti, quote, coordinate precise, porzioni manuali e strumenti occhio restano disponibili.
 
-- La correzione delle riparazioni ripetute della mappa ha 8 test mirati e 68 regressioni superati sulla snapshot `032b937`; la prova browser anonima non registra riscritture della geometria, riordini ripetuti o ricreazioni delle quote durante le finestre ferme. Queste verifiche circoscritte non sono la suite finale 1.3.1.
-- Comando 3D, gesti, camera e ciclo di chiusura hanno verifiche funzionali. Il controllo locale Chromium 153/SwiftShader dei frame resta fallito rispetto a 150 ms: la finestra caricata ha raggiunto 350 ms. Ridurre sperimentalmente il maxzoom DEM non ha risolto il problema e non è una modifica di produzione.
-- Il collaudo richiesto sui campi reali e sul DTM congelato è bloccato dalla disponibilità del campione e non è stato eseguito. Fixture anonime e dati sintetici non lo sostituiscono. Safari/iOS e dispositivi fisici restano non collaudati.
-- Offline riguarda soltanto `/conteggi/`, dopo apertura online e attivazione del worker. Il configuratore alla radice non ha questo contratto offline. Le prove UI con boot sostituito non attestano installazione reale del worker, riapertura a freddo e andata/ritorno tra i due strumenti.
-- Restano da registrare sul sorgente congelato la suite finale, i controlli numerici, le prove browser/PDF e della cache reale, la revisione conclusiva, il manifest e le verifiche sullo ZIP estratto. Nessun totale storico viene riutilizzato come risultato finale.
+La ricerca sulla mappa accetta DMS con N/S ed E/W o coppie decimali latitudine, longitudine. Le coordinate sono interpretate localmente, senza geocodifica e senza modificare i metadati di località del progetto.
 
-Dettagli e procedura di riproduzione in [README_RELEASE_1.3.1.md](README_RELEASE_1.3.1.md); caricamento in [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Non sono stati eseguiti in questa preparazione deploy, migrazioni, modifiche account/secret o invii reali.
+## Evidenza e limiti
+
+**Fluidità 3D ancora irrisolta nel renderer software.** La matrice completa supera i 36 stati grafici e i controlli funzionali, ma conserva dieci fasi oltre la soglia 150 ms: massimo 366,6ms desktop e 366,5ms mobile. La consegna è un pacchetto per le prove; il superamento dei controlli funzionali non viene presentato come un superamento del controllo prestazionale.
+
+Gli esiti conclusivi delle regressioni, delle prove browser desktop/mobile, dell’avvio offline a freddo e dell’archivio estratto sono registrati in `manifest-piattaforma.json`. La suite geometrica estesa comprende rifiuti già documentati nella 1.3.3; non è dichiarata interamente verde. Non sono accettati disegni parziali o prove alterate per far superare i controlli.
+
+Le prove usano l’app reale con fixture anonime locali. Il campo reale Cascina Elena e Safari/iOS su dispositivi fisici non sono collaudati. Il modello altimetrico conserva la precisione e risoluzione della fonte. Offline riguarda soltanto `/conteggi/`, dopo apertura online e attivazione del Service Worker; il configuratore alla radice non ha questo contratto.
+
+Dettagli in [README_RELEASE_1.3.4.md](README_RELEASE_1.3.4.md); caricamento in [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Nessun deploy, migrazione, modifica account/secret o invio reale eseguito.
 
 <details>
 <summary>Cronologia conservata: stato originale della 1.2.6 e versioni precedenti</summary>

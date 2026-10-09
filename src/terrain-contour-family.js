@@ -1,27 +1,29 @@
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
+import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.4';
+import {measureNativeDirectionalService,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.4';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.4';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.3';
+from './terrain-budget.js?v=1.3.4';
 import {
   traceContourLevel
 }
-from './terrain-contours.js?v=1.3.3';
+from './terrain-contours.js?v=1.3.4';
 import {
   certifyContourSpacing
 }
-from './terrain-contour-validation.js?v=1.3.3';
+from './terrain-contour-validation.js?v=1.3.4';
 import {
   traceSurfaceBand,
   measureSurfaceUnion,
   compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.3';
+from './terrain-surface-bands.js?v=1.3.4';
 import {
   toUTM,
   fromUTM
 }
-from './coordinate-system.js?v=1.3.3';
+from './coordinate-system.js?v=1.3.4';
 import {
   exactDomain,
   Q,
@@ -45,10 +47,10 @@ import {
   ZERO,
   orient
 }
-from './terrain-exact.js?v=1.3.3';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.3';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.3';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.3';
+from './terrain-exact.js?v=1.3.4';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.4';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.4';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.4';
 const failed=(status,diagnostics)=>({
   ok:false,
   status,
@@ -658,11 +660,17 @@ function completeCandidate({
   referenceAreaM2,
   budget,
   reference,
-  areaMode
+  areaMode,
+  legacyReplay=false
 }) {
   const finiteSource=axes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION);
   const originalDomain=reference.originalDomain??domain;
-  const spacing=certifyContourSpacing(domain,axes,{
+  const directionalCertificate=finiteSource&&!legacyReplay?certifyNativeDirectionalFamily(domain,axes,{originalDomain,spacingM,toleranceM,budget}):null;
+  // A failed sufficient proof is inconclusive. The global algebraic normal-band
+  // branch is predictably intractable for general two-dimensional Float32 mesh
+  // gradients, so leave the prior layout intact instead of consuming the cap.
+  if(!legacyReplay&&finiteSource&&axes.length>1&&!directionalCertificate&&hasVariedNativeDirectionalGeometry(domain,budget))return {id,valid:false,validation:{valid:false,unresolved:[{reason:'native-directional-proof-inconclusive'}]}};
+  const spacing=directionalCertificate??certifyContourSpacing(domain,axes,{
     ...(finiteSource?{originalDomain}:{}),
     spacingM,
     toleranceM,
@@ -719,6 +727,10 @@ function completeCandidate({
       axisOperation:{kind:SOURCE_PARAMETER_OPERATION,intervals:[...new Map(rows.filter(r=>r.axisId===axis.axisId).flatMap(row=>row.axisOperation.intervals).map(pair=>[JSON.stringify(pair),pair])).values()].sort((a,b)=>a[0]-b[0])}
     }:{components:rows.filter(r=>r.axisId===axis.axisId).map(row=>({coordinatesXY:row.coordinatesXY}))})
   })).filter(a=>rows.some(row=>row.axisId===a.axisId)):axes;
+  const directional=spacing.method===DIRECTIONAL_SPACING_METHOD;
+  let area;
+  if(directional)area=measureNativeDirectionalService({certificate:spacing,axes:serviceAxes,widthM:spacingM,budget});
+  else {
   const bands=[];
   for(const axis of serviceAxes){
     const band=traceSurfaceBand({
@@ -745,12 +757,13 @@ function completeCandidate({
       return toUTM(q,epsg);
     })))
   }));
-  const area=measureSurfaceUnion({
+  area=measureSurfaceUnion({
     domain,
     geometriesXY,
     areaMode,
     budget
   });
+  }
   return {
     id,
     valid:true,
@@ -767,9 +780,10 @@ function completeCandidate({
         sourceAxisIds:axes.map(a=>a.axisId),
         retainedAxisIds:serviceAxes.map(a=>a.axisId)
       },
-      method:'native-levels/continuous-bidirectional-spacing/actual-service-union'
+      method:directional?DIRECTIONAL_SPACING_METHOD:'native-levels/continuous-bidirectional-spacing/actual-service-union'
     },
     coverage:{
+      ...(directional?{serviceMethod:DIRECTIONAL_SERVICE_METHOD,serviceQualification:'certified-conservative-distance-to-row-subset'}:{}),
       servedAreaM2:area.areaM2,
       areaBoundsM2:area.areaBoundsM2,
       referenceAreaM2,
@@ -781,6 +795,11 @@ function completeCandidate({
       complexity:axes.reduce((s,a)=>s+a.components.reduce((n,c)=>n+c.coordinatesXY.length,0),0)
     }
   };
+}
+// Only replay uses this explicit legacy method. Submitted markers never grant
+// authority: spacing and actual normal-band area are reconstructed from sources.
+export function rebuildLegacyFiniteCandidate({domain,originalDomain,axes,spacingM,headlandWidthM,budget}){
+ return completeCandidate({id:'legacy-replay',axes,domain,spacingM,toleranceM:.20,referenceAreaM2:1,budget,reference:{originalDomain,headlandWidthM},legacyReplay:true});
 }
 function planeAreaUpper(axes,facts,spacingM,budget) {
   if(!facts.plane)return Infinity;
@@ -814,7 +833,8 @@ function completionReserveNodes(candidate,budget){
     return value&&typeof value==='object'?Object.values(value).reduce((sum,item)=>sum+count(item),0):0;
   };
   // Reserve the emitted family/envelope copies plus fixed model/input overhead.
-  return Math.max(20000,2*count({axes:candidate.axes,rows:candidate.rows,validation:candidate.validation}));
+  const copies=2*count({axes:candidate.axes,rows:candidate.rows,validation:candidate.validation});
+  return candidate.validation.method===DIRECTIONAL_SPACING_METHOD?Math.min(TERRAIN_MAX_NODES,Math.max(20000,copies)+(budget.usage?.().nodeCount??0)):Math.max(20000,copies);
 }
 /** Finite deterministic phase/progression search. Exhaustion is not an
  * impossibility proof. Every returned family has a complete fresh certificate;
@@ -900,7 +920,10 @@ export function buildContourFamily({
         valid:false,
         validation:candidate.validation
       });
-      if(candidate.valid)complete.push(candidate);
+      if(candidate.valid){
+        if(!incumbent||measuredSurfaceAreasComparable(candidate.areaMeasurement,incumbent.areaMeasurement,{budget}))complete.push(candidate);
+        else diagnostics.candidates.at(-1).selectionExclusion='different-certified-service-basis';
+      }
     };
     if(candidateGeneration?.kind==='scoped-single-level-1'){
       const level=candidateGeneration.singleLevelM;
@@ -934,8 +957,8 @@ export function buildContourFamily({
       if(candidateGeneration!==null)schedules.forEach((schedule,index)=>{schedule.id=`candidate:${index}`;});
       const cache=new Map();
       const finiteSource=candidateGeneration?.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION;
-      const tracedAt=level=>{
-        if(!cache.has(level))cache.set(level,finiteSource?traceFinitePolylineContourLevel(domain,level,{originalDomain:reference.originalDomain??domain,portionId:portion.id,budget}):traceContourLevel(domain,level,{portionId:portion.id,budget}));
+      const tracedAt=(level,ordinal=0)=>{
+        if(!cache.has(level))cache.set(level,finiteSource?traceFinitePolylineContourLevel(domain,level,{originalDomain:reference.originalDomain??domain,portionId:portion.id,ordinal,budget}):traceContourLevel(domain,level,{portionId:portion.id,budget}));
         return cache.get(level);
       };
       if(candidateGeneration!==null){
@@ -977,7 +1000,7 @@ export function buildContourFamily({
           budget.check();
           if(ordinal&&coordinate===phase+(ordinal-1)*step*scale)throw new RangeError('Unrepresentable level progression');
           const level=profile?profile.levelAt(coordinate):facts.min+coordinate;
-          const traced=tracedAt(level);
+          const traced=tracedAt(level,ordinal);
           if(traced.diagnostics.length){
             diagnostics.frontiers.push({
               levelM:level,

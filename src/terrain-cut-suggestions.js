@@ -1,9 +1,9 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
-import {createScopedTerrainCutEvaluator} from './terrain-contour-design.js?v=1.3.3';
-import {preselectTerrainPassageCandidates} from './terrain-cut-candidates.js?v=1.3.3';
-import {compareMeasuredSurfaceAreas} from './terrain-surface-bands.js?v=1.3.3';
-import {legacyTerrainInputs} from './terrain-replay.js?v=1.3.3';
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {createScopedTerrainCutEvaluator} from './terrain-contour-design.js?v=1.3.4';
+import {preselectTerrainPassageCandidates} from './terrain-cut-candidates.js?v=1.3.4';
+import {compareMeasuredSurfaceAreas,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.4';
+import {legacyTerrainInputs} from './terrain-replay.js?v=1.3.4';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.4';
 
 const failure=(status,message)=>Object.assign(new Error(message),{status});
 function geometryNodes(value,budget,path=new WeakSet()){
@@ -104,13 +104,13 @@ export function buildTerrainCutSuggestions({project,model,portionId,noCutProposa
    compareMeasuredSurfaceAreas(measurement,measurement,{budget});
    if(proposal.isSplit!==true||proposal.cutOperation.afterPortionIds.length<2){diagnostics.rejectedCandidates++;summary.reason='did-not-split';continue;}
    diagnostics.feasibleSplits++;
-   const gainOrder=baselineCertified?compareMeasuredSurfaceAreas(measurement,baselineMeasurement,{budget}):null;
+   const comparableBaseline=baselineCertified&&measuredSurfaceAreasComparable(measurement,baselineMeasurement,{budget}),gainOrder=comparableBaseline?compareMeasuredSurfaceAreas(measurement,baselineMeasurement,{budget}):null;
    summary.gainOrder=gainOrder;
    if(gainOrder!==null&&gainOrder<=0){diagnostics.rejectedCandidates++;summary.reason='no-served-area-gain';continue;}
    // Width-priority is an explicit finite search policy, not a claim about
    // unevaluated widths. Only a complete split and actual positive private
    // gain (or the separate uncertified-baseline branch) can stop the search.
-   best={proposal,measurement,index};
+   best={proposal,measurement,index,comparableBaseline};
    break;
   }
   diagnostics.skippedCandidates=diagnostics.offeredCandidates-diagnostics.evaluatedCandidates;
@@ -120,18 +120,18 @@ export function buildTerrainCutSuggestions({project,model,portionId,noCutProposa
   if(!best)return unsuccessful(diagnostics.feasibleSplits&&baselineCertified?'no-benefit':'no-viable-cut',
    diagnostics.feasibleSplits&&baselineCertified?'Nessun passaggio verificato migliora la superficie servita.':'Nessun passaggio completamente verificato divide questa porzione.');
   diagnostics.selectedCandidateIndex=best.index;
-  diagnostics.selectionReason=baselineCertified?'first-verified-positive-gain-in-width-order':'first-verified-split-in-width-order-no-certified-baseline';
+  diagnostics.selectionReason=best.comparableBaseline?'first-verified-positive-gain-in-width-order':'first-verified-split-in-width-order-no-certified-baseline';
   diagnostics.portions=best.proposal.diagnostics.portions;
-  diagnostics.baselineQualification=baselineCertified?'certified-no-cut-family':'saved-drawing-not-certified';
-  const comparison={...best.proposal.comparison,baselineCertified,
-   noCutServedAreaM2:baselineCertified?baselineMeasurement.areaM2:null,
+  diagnostics.baselineQualification=best.comparableBaseline?'certified-no-cut-family':baselineCertified?'different-certified-service-bases':'saved-drawing-not-certified';
+  const comparison={...best.proposal.comparison,baselineCertified:best.comparableBaseline,
+   noCutServedAreaM2:best.comparableBaseline?baselineMeasurement.areaM2:null,
    cutServedAreaM2:best.measurement.areaM2,
-   servedAreaGainM2:baselineCertified?best.measurement.areaM2-baselineMeasurement.areaM2:null,
-   improved:baselineCertified?true:null,
+   servedAreaGainM2:best.comparableBaseline?best.measurement.areaM2-baselineMeasurement.areaM2:null,
+   improved:best.comparableBaseline?true:null,
    referenceQualification:diagnostics.baselineQualification};
   budget.check();
   return {...best.proposal,comparison,diagnostics,
-   message:baselineCertified?'Passaggio verificato con maggiore superficie servita.':'Passaggio verificato. Confronto con il disegno precedente non certificato.',timings:budget.timings()};
+   message:best.comparableBaseline?'Passaggio verificato con maggiore superficie servita.':'Passaggio verificato. Confronto con il disegno precedente non certificato.',timings:budget.timings()};
  }catch(error){
   // The private comparator reports area-order-unresolved for its own exhausted
   // budget. Recheck the SAME ledger so a partial incumbent is never promoted.

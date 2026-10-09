@@ -8,14 +8,15 @@ import {initMap} from '../src/map.js';
 class MapSurface {
  constructor({container}) {
   this.host=document.getElementById(container);this.canvas=document.createElement('canvas');this.host.append(this.canvas);
-  this.handlers=new Map();this.sources=new Map();this.layers=new Map();
+  this.handlers=new Map();this.sources=new Map();this.layers=new Map();this.controls=[];this.markers=new Set();
   this.dragRotate={disable(){}};this.touchZoomRotate={enable(){},disableRotation(){}};this.touchPitch={disable(){}};
   this.dragPan={enabled:true,enable(){this.enabled=true;},disable(){this.enabled=false;}};this.doubleClickZoom={enable(){},disable(){}};
  }
  on(name,fn){this.handlers.set(name,[...(this.handlers.get(name)??[]),fn]);}
  off(name,fn){this.handlers.set(name,(this.handlers.get(name)??[]).filter(item=>item!==fn));}
  trigger(name,event={}){for(const fn of [...(this.handlers.get(name)??[])])fn(event);}
- addControl(){}
+ addControl(control){this.controls.push(control);}
+ removeControl(control){this.controls=this.controls.filter(item=>item!==control);}
  getContainer(){return this.host;}
  getCanvasContainer(){return this.host;}
  getCanvas(){return this.canvas;}
@@ -35,8 +36,10 @@ class MapSurface {
 class Marker {
  constructor({element,draggable}={}){this.element=element;this.draggable=draggable;this.events={};}
  setLngLat(coordinate){this.coordinate=coordinate;return this;}
- addTo(map){map.host.append(this.element);return this;}
- remove(){this.element.remove();}
+ getElement(){return this.element;}
+ getLngLat(){return {lng:this.coordinate[0],lat:this.coordinate[1]};}
+ addTo(map){this.map=map;map.markers.add(this);map.host.append(this.element);return this;}
+ remove(){this.map?.markers.delete(this);this.map=null;this.element.remove();}
  on(name,fn){this.events[name]=fn;return this;}
 }
 function setup({load=true,...callbacks}={}){
@@ -99,3 +102,21 @@ test('preferences chosen before map load apply when layers become ready and acti
   assert.equal(ctx.api.capturePendingEdit().drawing,true,'Escape in the visibility panel must not cancel the drawing');
  }finally{ctx.restore();}
 });
+
+test('native continuous terrain keeps native field and row layers draped with eye preferences intact',()=>{
+ const ctx=setup();try{ctx.api.setGeometry(ring);ctx.api.setOverlayVisibility({field:true,schema:false});ctx.api.setTerrainSceneActive(true,null,{nativeTerrain:true});assert.equal(visibility(ctx.map,'project-geometry-line'),'visible');assert.equal(visibility(ctx.map,'vineyard-rows-line'),'none');ctx.api.setOverlayVisibility({schema:true});assert.equal(visibility(ctx.map,'vineyard-rows-line'),'visible');ctx.api.setTerrainSceneActive(false);assert.equal(visibility(ctx.map,'project-geometry-line'),'visible');}finally{ctx.restore();}
+});
+
+test('native terrain suspends inactive editor point layers and restores their exact 2D visibility',()=>{
+ const ctx=setup();try{
+  const ids=['gl-draw-polygon-and-line-vertex-inactive.cold','gl-draw-polygon-and-line-vertex-inactive.hot','gl-draw-polygon-midpoint.cold','gl-draw-polygon-midpoint.hot'];
+  for(const [index,id]of ids.entries())ctx.map.addLayer({id,type:'circle',source:'manual-draw',...(index===0?{layout:{visibility:'none'}}:{})});
+  const before=ids.map(id=>ctx.map.getLayoutProperty(id,'visibility'));
+  ctx.api.setTerrainSceneActive(true,null,{nativeTerrain:true});assert.equal(visibility(ctx.map,'manual-draw-points'),'none');for(const id of ids)assert.equal(visibility(ctx.map,id),'none');assert.equal(visibility(ctx.map,'project-geometry-line'),'visible');
+  ctx.api.setTerrainSceneActive(false);assert.equal(visibility(ctx.map,'manual-draw-points'),'visible');for(const [index,id]of ids.entries())assert.equal(ctx.map.getLayoutProperty(id,'visibility')??undefined,before[index]);
+  ctx.api.beginDraw();ctx.map.trigger('click',{lngLat:{lng:8,lat:44},point:{x:80,y:440}});assert.equal(ctx.api.capturePendingEdit().vertices.length,1,'2D drawing remains usable after restoration');
+ }finally{ctx.restore();}
+});
+test('editor point layers added again during native terrain stay suspended until 2D restoration',()=>{const ctx=setup();try{const id='gl-draw-polygon-midpoint.hot';ctx.map.addLayer({id,type:'circle',source:'manual-draw'});ctx.api.setTerrainSceneActive(true,null,{nativeTerrain:true});ctx.map.layers.delete(id);ctx.map.addLayer({id,type:'circle',source:'manual-draw'});ctx.map.trigger('styledata');assert.equal(visibility(ctx.map,id),'none');ctx.api.setTerrainSceneActive(false);assert.equal(ctx.map.getLayoutProperty(id,'visibility')??undefined,undefined);}finally{ctx.restore();}});
+
+test('native quote presentation preserves eye choices and restores original 2D markers and scale',()=>{const ctx=setup();try{ctx.api.setGeometry(ring);const markers=[...ctx.map.markers].filter(marker=>marker.element.classList.contains('side-measurement-label')),controls=[...ctx.map.controls];assert.equal(markers.length,4);ctx.api.setOverlayVisibility({quotes:false});ctx.api.setTerrainSceneActive(true,null,{nativeTerrain:true});assert.ok(markers.every(marker=>!ctx.map.markers.has(marker)));assert.equal(ctx.document.querySelectorAll('.terrain-quote-overlay .side-measurement-label').length,4);assert.ok([...ctx.document.querySelectorAll('.terrain-quote-overlay .side-measurement-label')].every(label=>label.style.display==='none'));ctx.api.setOverlayVisibility({quotes:true});ctx.map.trigger('render');assert.ok([...ctx.document.querySelectorAll('.terrain-quote-overlay .side-measurement-label')].every(label=>label.style.display===''));ctx.api.setTerrainSceneActive(false);assert.ok(markers.every(marker=>ctx.map.markers.has(marker)));assert.equal(ctx.document.querySelectorAll('.terrain-quote-overlay').length,0);assert.equal(ctx.document.querySelectorAll('.side-measurement-label').length,4);assert.equal(ctx.map.controls.length,controls.length);assert.ok(controls.every(control=>ctx.map.controls.includes(control)));}finally{ctx.restore();}});

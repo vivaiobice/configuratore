@@ -1,7 +1,7 @@
-import {Q,ZERO,add,sub,mul,cmp,sign,min,max,dot,vsub,vadd,scale,pointKey,inRegion,splitSegment,number,numberBounds,sqrtBounds,nextUp,nextDown} from './terrain-exact.js?v=1.3.3';
-import {terrainInputHash} from './terrain-model.js?v=1.3.3';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.3';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
+import {Q,ZERO,add,sub,mul,cmp,sign,min,max,dot,vsub,vadd,scale,pointKey,inRegion,splitSegment,number,numberBounds,sqrtBounds,nextUp,nextDown} from './terrain-exact.js?v=1.3.4';
+import {terrainInputHash} from './terrain-model.js?v=1.3.4';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.4';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
 
 export const SOURCE_DOMAIN_AXIS_CONVENTION='source-domain-intersection-1';
 export const SOURCE_PARAMETER_OPERATION='source-parameter-intervals-1';

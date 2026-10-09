@@ -1,9 +1,9 @@
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.3';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.3';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.4';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.4';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.3';
+from './terrain-budget.js?v=1.3.4';
 import {
   exactDomain,
   Q,
@@ -18,35 +18,35 @@ import {
   cmp,
   sqrtBounds
 }
-from './terrain-exact.js?v=1.3.3';
+from './terrain-exact.js?v=1.3.4';
 import {
   toUTM
 }
-from './coordinate-system.js?v=1.3.3';
+from './coordinate-system.js?v=1.3.4';
 import {
   buildContourFamily,
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.3';
+from './terrain-contour-family.js?v=1.3.4';
 import {
   createContourDomain,createCanonicalCutChildDomain,createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes
 }
-from './terrain-contour-domain.js?v=1.3.3';
+from './terrain-contour-domain.js?v=1.3.4';
 import {
   legacyTerrainInputs,
   terrainGeometryInputHash,
   readTerrainEnvelope,
   createContourEnvelope
 }
-from './terrain-replay.js?v=1.3.3';
+from './terrain-replay.js?v=1.3.4';
 import {
   validateTerrainModel,terrainInputHash
 }
-from './terrain-model.js?v=1.3.3';
+from './terrain-model.js?v=1.3.4';
 import {
   resolveRowPortions
 }
-from './row-portions.js?v=1.3.3';
+from './row-portions.js?v=1.3.4';
 import {
   polygonMetrics,
   estimatePlantsFromRows,
@@ -56,31 +56,31 @@ from './geometry.js?v=45';
 import {
   calculateProject
 }
-from './project-calculator.js?v=1.3.3';
+from './project-calculator.js?v=1.3.4';
 import {
   assertTerrainSerializationBudget
 }
-from './terrain-serialization.js?v=1.3.3';
+from './terrain-serialization.js?v=1.3.4';
 import {
   certifyUniformPlaneSupport,
   measureSurfaceFootprint,
-  measureSurfaceUnion,createRegularTerrainRegionOperations,sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas
+  measureSurfaceUnion,createRegularTerrainRegionOperations,sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas,measuredSurfaceAreasComparable
 }
-from './terrain-surface-bands.js?v=1.3.3';
-import {buildTerrainPassage} from './terrain-passage.js?v=1.3.3';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
-import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.3';
-import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.3';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
-import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.3';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.3';
+from './terrain-surface-bands.js?v=1.3.4';
+import {buildTerrainPassage} from './terrain-passage.js?v=1.3.4';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.4';
+import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.4';
+import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.4';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
+import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.4';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.4';
 const failure=(status,message)=>Object.assign(new Error(message),{
   status
 });
 export {
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.3';
+from './terrain-contour-family.js?v=1.3.4';
 function geometryNodes(value) {
   if(Array.isArray(value)){
     if((value.length===2||value.length===3)&&value.every(Number.isFinite))return 1;
@@ -108,18 +108,9 @@ function totals(rows,postSpacingM,plantSpacingM) {
   };
 }
 function areaOf(domain,budget) {
-  if(canonicalCutDomainScope(domain))return measureDomainSurfaceArea({domain,budget,areaMode:certifyUniformPlaneSupport(domain,budget)?'constant-plane':'coplanar-patches'});
-  return measureSurfaceFootprint({
-    domain,
-    geometryXY:{
-      type:'MultiPolygon',
-      coordinates:
-      [...new Set(domain.boundaries.map(b=>b.polygonIndex))].map(id=>domain.boundaries.filter(b=>b.polygonIndex===id).map(b=>b.coordinatesXY))
-    },
-    areaMode:certifyUniformPlaneSupport(domain,budget)?'constant-plane':'coplanar-patches',
-    budget
-  });
+  return measureDomainSurfaceArea({domain,budget,areaMode:canonicalCutDomainScope(domain)?'coplanar-patches':'per-face'});
 }
+
 function headlandArea(original,physical,axes,width,budget) {
   if(!width)return {
     horizontal:0,
@@ -358,6 +349,7 @@ export function buildContourTerrainProposal({
           modelHash:model.contentHash,
           crs:domain.crs
         }:{}),
+        ...(validation.method==='native-directional-shortest-spacing-1'?{spacingCertificateMethod:validation.method,serviceMethod:'native-directional-conservative-ribbon-1'}:{}),
         followTerrain:true
       }
       :
@@ -697,7 +689,7 @@ function createScopedTerrainCutContext({project,model,portionId,groupId=null,ref
       // Factory-proved child partition and the pre-road foreign disjointness
       // make this arithmetic sum the actual selected child service union.
       const selectedMeasurement=sumMeasuredSurfaceAreas(childMeasurements,{budget}),selectedArea=selectedMeasurement.areaM2;
-      const improved=baselineMeasurement?compareMeasuredSurfaceAreas(selectedMeasurement,baselineMeasurement,{budget})>0:null;
+      const comparableBaseline=!!baselineMeasurement&&measuredSurfaceAreasComparable(selectedMeasurement,baselineMeasurement,{budget}),improved=comparableBaseline?compareMeasuredSurfaceAreas(selectedMeasurement,baselineMeasurement,{budget})>0:null;
       diagnostics.stage='envelope';
       const rowPortions=[];let inserted=false;
       for(const portion of portions){
@@ -730,7 +722,7 @@ function createScopedTerrainCutContext({project,model,portionId,groupId=null,ref
       const proposal={ok:true,status:'ready',kind:'cut',message:'Proposta di passaggio verificata.',cut:passage.cut,isSplit:scopes.isSplit,
         cutOperation:{schemaVersion:1,action:oldGroup?'replace':'create',groupId:candidateGroupId,scopePortionId:sourceId,beforePortionIds:beforeIds,afterPortionIds:afterIds},
         createdChildIds,affectedPortionIds,terrain,rowPortions,result,projectPatch:{exclusions:passage.exclusions,rowPortions,terrain},
-        comparison:{baselineCertified:!!baselineMeasurement,noCutServedAreaM2:baselineMeasurement?.areaM2??null,cutServedAreaM2:selectedArea,servedAreaGainM2:baselineMeasurement?selectedArea-baselineMeasurement.areaM2:null,improved,...(endpointReplacement?{referenceQualification:'not-evaluated-for-explicit-endpoint-replacement'}:{})},
+        comparison:{baselineCertified:comparableBaseline,noCutServedAreaM2:comparableBaseline?baselineMeasurement.areaM2:null,cutServedAreaM2:selectedArea,servedAreaGainM2:comparableBaseline?selectedArea-baselineMeasurement.areaM2:null,improved,...(selectedMeasurement.serviceMethod?{serviceMethod:selectedMeasurement.serviceMethod,serviceQualification:'certified-conservative-distance-to-row-subset'}:{}),...(!comparableBaseline&&baselineMeasurement?{referenceQualification:'different-certified-service-bases'}:{}),...(endpointReplacement?{referenceQualification:'not-evaluated-for-explicit-endpoint-replacement'}:{})},
         changes:portionResults.map(portion=>({portionId:portion.id,after:{rowCount:portion.rowCount,rowLinearM:portion.rowLinearM,simulatedPlants:portion.simulatedPlants,totalPosts:portion.totalPosts}})),diagnostics,timings:budget.timings()};
       if(scopedFingerprint(project,model,budget)!==fingerprint)throw failure('stale-context','Cut source changed during evaluation.');
       if(onSelectedAreaMeasurement){compareMeasuredSurfaceAreas(selectedMeasurement,selectedMeasurement,{budget});onSelectedAreaMeasurement(selectedMeasurement);compareMeasuredSurfaceAreas(selectedMeasurement,selectedMeasurement,{budget});}

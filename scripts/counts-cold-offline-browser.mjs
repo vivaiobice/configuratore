@@ -127,6 +127,21 @@ try{
     throw Error('RED: authentic cold launch failed because only the previous boot query was cached');
    }
    await readyCounter(30000);await waitQuantity(7);
+   const footerBrand=page.locator('.counts-footer-brand');
+   await footerBrand.scrollIntoViewIfNeeded();
+   await footerBrand.locator('img').evaluate(image=>image.decode());
+   report.footerBrand=await footerBrand.evaluate(link=>{
+    const image=link.querySelector('img'),footer=link.closest('footer'),a=image.getBoundingClientRect(),b=footer.getBoundingClientRect();
+    const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+    const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);
+    const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data;let transparentPixels=0;
+    for(let i=3;i<rgba.length;i+=4)if(rgba[i]===0)transparentPixels++;
+    return {centerError:Math.abs(a.left+a.width/2-b.left-b.width/2),background:getComputedStyle(link).backgroundColor,imageBackground:getComputedStyle(image).backgroundColor,outline:getComputedStyle(image).filter,transparentPixels};
+   });
+   assert.ok(report.footerBrand.centerError<1,'cold offline counter retains centered footer logo');
+   assert.equal(report.footerBrand.background,'rgba(0, 0, 0, 0)');assert.equal(report.footerBrand.imageBackground,'rgba(0, 0, 0, 0)');
+   assert.ok(report.footerBrand.transparentPixels>500000);assert.match(report.footerBrand.outline,/drop-shadow/);
+   await page.locator('#quantity-display').scrollIntoViewIfNeeded();
    assert.equal(await page.locator('[name="title"]').inputValue(),'Conteggio offline '+name);
    assert.equal(await page.evaluate(()=>navigator.onLine),false);assert.ok(await page.evaluate(()=>navigator.serviceWorker.controller));
    assert.deepEqual(await readDraft(),before,'cold Counts reopening preserves both configurator owners’ drafts');

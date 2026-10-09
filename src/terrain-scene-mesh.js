@@ -1,5 +1,5 @@
-import {getTerrainMesh,createTerrainSampler} from './terrain-model.js?v=1.3.3';
-import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.3';
+import {getTerrainMesh,createTerrainSampler} from './terrain-model.js?v=1.3.4';
+import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.4';
 
 // Display data only. Native model, project geometry, and calculated quantities
 // remain the authority; none of these buffers are read back by the calculator.

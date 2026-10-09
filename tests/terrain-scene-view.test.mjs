@@ -9,7 +9,7 @@ const sceneAPI=await import('../src/terrain-scene-view.js').catch(error=>{
  throw error;
 });
 function fixtureImagery({scene}){return {ready:Promise.resolve({image:{width:256,height:256},width:256,height:256,zoom:17,coverage:[scene.reference.anchor[0],scene.reference.anchor[1],scene.reference.anchor[0]+1e-6,scene.reference.anchor[1]+1e-6],attribution:'Imagery fixture'}),destroy(){}};}
-function createView(options){assert.equal(typeof sceneAPI.createTerrainSceneView,'function','native custom scene view is required');return sceneAPI.createTerrainSceneView({imageryClientFactory:fixtureImagery,...options});}
+function createView(options){assert.equal(typeof sceneAPI.createTerrainMeshView,'function','native custom scene view is required');return sceneAPI.createTerrainMeshView({imageryClientFactory:fixtureImagery,...options});}
 function createClient(options){assert.equal(typeof sceneAPI.createTerrainSceneClient,'function','native scene worker client is required');return sceneAPI.createTerrainSceneClient(options);}
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
 const geo=([x,y])=>fromUTM([500000+x,5000000+y],32632);
@@ -173,13 +173,13 @@ test('closing while satellite imagery loads cancels the client and blocks a late
  view.close();pending.resolve((await fixtureImagery({scene:sceneFor(data.model)}).ready));await opening;assert.equal(f.layers.size,0);assert.equal(destroyed,1);view.destroy();
 });
 
-test('active native scene mounts field-centric camera controls and 2D button closes the lifecycle',async()=>{
+test('legacy mesh retains its scene lifecycle without mounting a manual camera panel',async()=>{
  const {parseHTML}=await import('linkedom'),{document}=parseHTML('<html><body><div id="map"></div></body></html>');
  const f=mapFixture(),data=input(),scene=sceneFor(data.model),plane=structuredClone(f.camera());f.map.getContainer=()=>document.getElementById('map');let returned=0;
  const view=createView({...data,map:f.map,onReturn2D:()=>returned++,sceneClientFactory:()=>({ready:Promise.resolve(scene),destroy(){}})});await view.open();
  assert.deepEqual(f.camera().center,scene.reference.coordinate,'scene camera should initially pivot around field center');
- const button=document.querySelector('[data-terrain-camera="return-2d"]');assert.ok(button,'native scene should expose return to 2D');button.click();
- assert.equal(returned,1);assert.equal(f.layers.size,0);assert.deepEqual(f.camera(),plane);assert.equal(document.querySelector('.terrain-camera-controls'),null);view.destroy();
+ assert.equal(document.querySelector('[data-terrain-camera="return-2d"]'),null);view.close();
+ assert.equal(returned,0);assert.equal(f.layers.size,0);assert.deepEqual(f.camera(),plane);assert.equal(document.querySelector('.terrain-camera-controls'),null);view.destroy();
 });
 
 test('zoom imagery replacement is bounded, aborts obsolete requests and reuses the native GPU texture',async()=>{

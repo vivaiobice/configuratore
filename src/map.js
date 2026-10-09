@@ -1,20 +1,22 @@
 import { buildGeocodeUrl, buildSuggestionUrl, buildSuggestionPlaceUrl, normalizeGeocodeResults, normalizeSuggestionResults, normalizeSuggestionPlaces, coordinatesFromDrawEvent, GEOLOCATION_OPTIONS, configureDrawForMapLibre, closeManualPolygon, isManualCloseClick, removeClosedRingVertex } from './map-adapters.js?v=46';
 import { rowsToFeatureCollection, sideMeasurements, pointInPolygon, interiorLabelPoint, corridorPolygonFromLine, normalizeIntersectionRings } from './geometry.js?v=45';
-import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.3.3';
-import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.3';
-import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.3';
+import {createMapFieldLabelOverlay} from './map-field-label-overlay.js?v=1.3.4';
+import {createTerrainAnnotationPresentation} from './terrain-annotation-presentation.js?v=1.3.4';
+import { buildCadastralWmsUrl, buildCadastralIdentifyUrl, cadastralLayerMode } from './cadastre.js?v=1.3.4';
+import { createCadastralOverlay } from './cadastral-overlay.js?v=1.3.4';
 import { createCadastralDwellIdentifier } from './cadastral-identify.js?v=53.2';
-import {installTrackpadRotation,createMapGesturePolicy} from './map-gestures.js?v=1.3.3';
-import {createMapTerrainControl} from './map-terrain-control.js?v=1.3.3';
-import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.3';
-import {satelliteSources,satelliteLayers} from './satellite-style.js?v=1.3.3';
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.3';
-import {portionAtCoordinate} from './row-portions.js?v=1.3.3';
-import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.3';
-import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.3';
-import {regeneratePassage,reshapeExclusion,nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.3';
-import {mapTerrainExclusionFeatures} from './map-terrain-exclusions.js?v=1.3.3';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
+import {installTrackpadRotation,createMapGesturePolicy} from './map-gestures.js?v=1.3.4';
+import {createMapTerrainControl} from './map-terrain-control.js?v=1.3.4';
+import { curvePointToLonLat,lonLatToCurvePoint,normalizeRowCurvePoints,resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.4';
+import {satelliteSources,satelliteLayers} from './satellite-style.js?v=1.3.4';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.4';
+import {portionAtCoordinate} from './row-portions.js?v=1.3.4';
+import {createMapOverlayVisibility} from './map-overlay-visibility.js?v=1.3.4';
+import {createCoordinateEditor,replaceRingVertex} from './coordinate-editor.js?v=1.3.4';
+import {regeneratePassage,reshapeExclusion,nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.4';
+import {mapTerrainExclusionFeatures} from './map-terrain-exclusions.js?v=1.3.4';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.4';
+import {parseCoordinateSearch} from './coordinate-search.js?v=1.3.4';
 
 const SATELLITE_ID = 'base-satellite';
 const SATELLITE_REFERENCE_ID = 'base-satellite-reference';
@@ -85,7 +87,10 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   map.addControl(new globalThis.maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
-  map.addControl(new globalThis.maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+  const scaleControl=new globalThis.maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' });
+  map.addControl(scaleControl, 'bottom-left');
+  const terrainAnnotations=createTerrainAnnotationPresentation({map,scaleControl});
+  map.on('remove',()=>terrainAnnotations.destroy({removed:true}));
   map.dragRotate.disable?.();
   map.touchZoomRotate.enable();
   map.touchPitch?.disable?.();
@@ -109,7 +114,8 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   let currentExclusions = [];
   let savedRows = [];
   let terrainProposalPreview = null;
-  let terrainSceneActive=false,terrainProjector=null;
+  let terrainSceneActive=false,terrainNativeActive=false,terrainProjector=null;
+  const terrainEditorVisibility=new Map();
   let currentOtherFields = [];
   let manualVertices = [];
   let manualHover = null;
@@ -604,6 +610,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     }
     measuredGeometry = copyCoordinateRing(geometry);
     measurementsPublished = true;
+    terrainAnnotations.setMarkers(sideMeasurementMarkers);
     overlayVisibility.refresh();
   }
 
@@ -1130,7 +1137,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     const visibility=overlayVisibility.state();
     for(const [id,key] of [[TERRAIN_PREVIEW_ROWS_LAYER_ID,'schema'],[TERRAIN_PREVIEW_CUT_FILL_ID,'field'],[TERRAIN_PREVIEW_CUT_LINE_ID,'field']]){
       const layer=map.getLayer(id);if(!layer)continue;
-      const value=!terrainSceneActive&&visibility[key]?'visible':'none',current=map.getLayoutProperty?.(id,'visibility')??layer.layout?.visibility??'visible';
+      const value=(!terrainSceneActive||terrainNativeActive)&&visibility[key]?'visible':'none',current=map.getLayoutProperty?.(id,'visibility')??layer.layout?.visibility??'visible';
       if(current!==value)map.setLayoutProperty?.(id,'visibility',value);
     }
   }
@@ -1172,6 +1179,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   async function search(query) {
     const normalized = String(query ?? '').trim();
     if (!normalized) return null;
+    const coordinate=parseCoordinateSearch(normalized);
+    if(coordinate.kind==='coordinate')return showSearchResult(coordinate.result);
+    if(coordinate.kind==='invalid'){onStatus(coordinate.message);return null;}
     onStatus('Ricerca della zona…');
     const response = await fetch(buildGeocodeUrl(normalized), { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error(`Ricerca non disponibile (${response.status})`);
@@ -1184,6 +1194,7 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   }
 
   async function searchSuggestion(item){
+    if(parseCoordinateSearch(item?.label).kind!=='address')return search(item?.label);
     if(!item?.magicKey)return search(item?.label);
     onStatus('Ricerca della zona…');
     const response=await fetch(buildSuggestionPlaceUrl(item),{headers:{Accept:'application/json'}});
@@ -1196,6 +1207,9 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
   async function suggest(query) {
     const normalized = String(query ?? '').trim();
     if (normalized.length < 3) return [];
+    const coordinate=parseCoordinateSearch(normalized);
+    if(coordinate.kind==='coordinate')return [{label:coordinate.result.label}];
+    if(coordinate.kind==='invalid')return [];
     const response = await fetch(buildSuggestionUrl(normalized), { headers:{ Accept:'application/json' } });
     if (!response.ok) return [];
     return normalizeSuggestionResults(await response.json());
@@ -1276,10 +1290,30 @@ export function initMap({ container, onGeometryChange = () => {}, onExclusionAdd
     }
   }
   map.on('render',updateTerrainAnnotations);
-  function setTerrainSceneActive(active,projector=null){
-    terrainSceneActive=Boolean(active);terrainProjector=terrainSceneActive?projector:null;
-    fieldLabelOverlay?.setProjector(terrainProjector);overlayVisibility.setSceneActive(terrainSceneActive);refreshTerrainPreviewVisibility();
-    if(!terrainSceneActive)for(const marker of sideMeasurementMarkers)marker.setOffset?.([0,0]);
+  // Empty circle editing layers still split MapLibre 4.7.1 terrain RTT stacks,
+  // repeating the full terrain draw. Editing has been stopped before 3D opens;
+  // suspend only its point handles and restore their exact 2D visibility later.
+  function refreshTerrainEditorVisibility(){
+    const ids=[MANUAL_DRAW_POINTS_ID,...['gl-draw-polygon-and-line-vertex-inactive','gl-draw-polygon-midpoint'].flatMap(id=>[`${id}.cold`,`${id}.hot`])];
+    if(terrainNativeActive){
+      for(const id of ids){
+        if(!map.getLayer(id))continue;
+        const visibility=map.getLayoutProperty?.(id,'visibility');
+        if(!terrainEditorVisibility.has(id))terrainEditorVisibility.set(id,visibility??null);
+        if(visibility!=='none')map.setLayoutProperty(id,'visibility','none');
+      }
+    }else for(const [id,visibility]of [...terrainEditorVisibility]){
+      terrainEditorVisibility.delete(id);
+      if(map.getLayer(id))map.setLayoutProperty(id,'visibility',visibility);
+    }
+  }
+  map.on('styledata',refreshTerrainEditorVisibility);
+  map.on('remove',()=>{map.off?.('styledata',refreshTerrainEditorVisibility);terrainEditorVisibility.clear();});
+  function setTerrainSceneActive(active,projector=null,{nativeTerrain=false}={}){
+    terrainSceneActive=Boolean(active);terrainNativeActive=terrainSceneActive&&nativeTerrain;terrainProjector=terrainSceneActive&&!terrainNativeActive?projector:null;
+    terrainAnnotations.setActive(terrainNativeActive,sideMeasurementMarkers);
+    fieldLabelOverlay?.setProjector(terrainProjector);overlayVisibility.setSceneActive(terrainSceneActive&&!terrainNativeActive);refreshTerrainPreviewVisibility();refreshTerrainEditorVisibility();
+    if(!terrainSceneActive||terrainNativeActive)for(const marker of sideMeasurementMarkers)marker.setOffset?.([0,0]);
     else updateTerrainAnnotations();
     map.triggerRepaint?.();
   }

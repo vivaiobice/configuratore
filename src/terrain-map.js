@@ -1,4 +1,4 @@
-import {createTerrainSceneView} from './terrain-scene-view.js?v=1.3.3';
+import {createTerrainSceneView} from './terrain-scene-view.js?v=1.3.4';
 // Rendering-only adapter: never read renderer elevations back into the calculator.
 export function encodeTerrainHeight(height){
  if(!Number.isFinite(height)||height< -32768||height>=32768)throw new RangeError('Quota grafica non valida.');
@@ -11,7 +11,7 @@ export function buildTerrainTilePixels({z,x,y,size=256},heightAt){
  for(let row=0;row<size;row++)for(let column=0;column<size;column++){const rgba=encodeTerrainHeight(heightAt(tileCoordinate(z,x,y,column,row,size)));pixels.set(rgba,(row*size+column)*4);}return pixels;
 }
 export async function frozenSurface(model){
- const [{createTerrainSampler,validateTerrainModel},{toUTM,fromUTM}]=await Promise.all([import('./terrain-model.js?v=1.3.3'),import('./coordinate-system.js?v=1.3.3')]);
+ const [{createTerrainSampler,validateTerrainModel},{toUTM,fromUTM}]=await Promise.all([import('./terrain-model.js?v=1.3.4'),import('./coordinate-system.js?v=1.3.4')]);
  const validation=validateTerrainModel(model);if(!validation.valid&&!validation.ok)throw new Error('Modello del terreno non valido.');
  const {origin,step,width,height}=model.grid;const epsg=Number(model.crs.split(':')[1]);
  const xs=[origin[0],origin[0]+step[0]*(width-1)],ys=[origin[1],origin[1]+step[1]*(height-1)];const xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);

@@ -1,14 +1,14 @@
-import clipping from './vendor/polygon-clipping.js?v=1.3.3';
-import {toUTM} from './coordinate-system.js?v=1.3.3';
-import {getTerrainMesh,validateTerrainModel,terrainInputHash,MAX_TERRAIN_CELLS} from './terrain-model.js?v=1.3.3';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
-import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.3';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
+import clipping from './vendor/polygon-clipping.js?v=1.3.4';
+import {toUTM} from './coordinate-system.js?v=1.3.4';
+import {getTerrainMesh,validateTerrainModel,terrainInputHash,MAX_TERRAIN_CELLS} from './terrain-model.js?v=1.3.4';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.4';
+import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.4';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
 
 // Both modules only call each other's APIs after ESM initialization.
 const cache=new Map();
-const acquiredSupports=new WeakMap();
+const acquiredSupports=new WeakMap(),meshSupports=new WeakMap(),nativeAreaTerms=new WeakMap();
 let cachedNodes=0;
 const error=(status,message)=>Object.assign(new Error(message),{status});
 const overlap=(a,b)=>a[0]<=b[2]&&a[2]>=b[0]&&a[1]<=b[3]&&a[3]>=b[1];
@@ -50,6 +50,19 @@ export function readAcquiredNativeSupport(domain,{budget=createTerrainBudget({ki
  const parent=canonical?.acquiredSupportParent;
  if(!parent||domain.modelHash!==canonical.operands.modelHash||domain.crs!==canonical.operands.crs||domain.modelHash!==parent.modelHash||domain.crs!==parent.crs)throw error('domain-support-unresolved','Actual acquired native support identity is missing');
  return readAcquiredNativeSupport(parent,{budget});
+}
+function sharedAcquiredSupport(model,budget){
+ let entry=meshSupports.get(model);
+ const modelHash=model.contentHash;
+ if(entry?.value.modelHash!==modelHash)entry=null;
+ if(!entry){
+  const mesh=getTerrainMesh(model);
+  entry={value:Object.freeze({modelHash,crs:mesh.crs,mesh:freezeAcquiredMesh(mesh,budget)}),chargedBudgets:new WeakSet()};
+  meshSupports.set(model,entry);
+ }
+ if(entry.value.modelHash!==modelHash)throw error('domain-support-unresolved','Native mesh identity mismatch');
+ if(!entry.chargedBudgets.has(budget)){budget.check(entry.value.mesh.vertices.length);entry.chargedBudgets.add(budget);}
+ return entry;
 }
 function normalizeGeometry(geometry,retain){
  const source=geometry?.type==='Feature'?geometry.geometry:geometry;
@@ -109,7 +122,7 @@ function elevationIndex(faces){
  * still requires intersection with its clip; affine extrema are summary only.
  * Cache entries are immutable and bounded by four entries/500000 created nodes.
  * Every hit charges its retained node count to the caller's cumulative budget.
- * @returns {import('./terrain-contour-contracts.js?v=1.3.3').ContourDomain}
+ * @returns {import('./terrain-contour-contracts.js?v=1.3.4').ContourDomain}
  */
 export function createContourDomain({model,geometry,budget=createTerrainBudget({kind:'measure'})}={}){
  budget.check();
@@ -120,34 +133,45 @@ export function createContourDomain({model,geometry,budget=createTerrainBudget({
  const retain=n=>{nodeCount+=n;budget.check(n);};
  const canonical=normalizeGeometry(geometry,retain),key=terrainInputHash({modelHash:model.contentHash,geometry:canonical});
  if(cache.has(key)){
-  const hit=cache.get(key);budget.check(hit.nodeCount);acquiredSupports.get(hit).chargedBudgets.add(budget);cache.delete(key);cache.set(key,hit);return hit;
+  const hit=cache.get(key);budget.check(hit.nodeCount);readAcquiredNativeSupport(hit,{budget});cache.delete(key);cache.set(key,hit);return hit;
  }
  budget.phase('domain');
- retain(model.grid.width*model.grid.height);
- const mesh=getTerrainMesh(model),epsg=Number(model.crs.split(':')[1]),origin=mesh.origin;
+ const support=sharedAcquiredSupport(model,budget),mesh=support.value.mesh,epsg=Number(model.crs.split(':')[1]),origin=mesh.origin;
  const absolute=canonical.type==='Polygon'?[canonical.coordinates]:canonical.coordinates;
  const region=absolute.map(rings=>rings.map(ring=>ring.map(point=>{
   retain(1);const xy=toUTM(point,epsg).map((v,i)=>v-origin[i]);
   if(xy[0]<0||xy[0]>(mesh.width-1)*mesh.step[0]||xy[1]>0||xy[1]<(mesh.height-1)*mesh.step[1])throw error('uncovered','Regione fuori copertura terreno.');
   return xy;
  })));
- const regionBounds=boundsOf(region.flat(2)),faces=[],byId=new Map();
+ const regionBounds=boundsOf(region.flat(2)),absoluteRegionBounds=regionBounds.map((value,i)=>value+origin[i%2]),faces=[],byId=new Map(),areaTerms=[];
  const clipExact=createExactNativeClipper(region.map(p=>p.map(r=>r.map(v=>{budget.check(1);return [v[0]+origin[0],v[1]+origin[1]];}))),budget);
  let minM=Infinity,maxM=-Infinity,maxSlopePercent=0,areaM2=0,surfaceAreaM2=0;
- for(let id=0;id<mesh.triangles.length;id++){
-  budget.check(3);const vertexIds=mesh.triangles[id],vertices=vertexIds.map(i=>mesh.vertices[i]),xy=vertices.map(p=>[p[0]-origin[0],p[1]-origin[1]]);
-  if(!overlap(boundsOf(xy),regionBounds))continue;
+ // Restrict native cell candidates before creating per-face XY arrays. One
+ // extra cell includes every boundary/ULP tie; exact clipping still decides.
+ const loCol=Math.max(0,Math.floor(regionBounds[0]/mesh.step[0])-1),hiCol=Math.min(mesh.width-2,Math.floor(regionBounds[2]/mesh.step[0])+1);
+ const loRow=Math.max(0,Math.floor(regionBounds[3]/mesh.step[1])-1),hiRow=Math.min(mesh.height-2,Math.floor(regionBounds[1]/mesh.step[1])+1);
+ for(let row=loRow;row<=hiRow;row++)for(let col=loCol;col<=hiCol;col++)for(let half=0;half<2;half++){
+  const id=2*(row*(mesh.width-1)+col)+half;
+  budget.check();const vertexIds=mesh.triangles[id],vertices=vertexIds.map(i=>mesh.vertices[i]);
+  if(!overlap(boundsOf(vertices),absoluteRegionBounds))continue;
   const exact=clipExact({id,vertexIds,vertices});
   if(!exact)continue;
-  const pieces=clipping.intersection(region,[[...xy,xy[0]]]).filter(rings=>multiArea([rings])>0);
+  retain(1);areaTerms.push(Object.freeze([Object.freeze(exact.exactArea),Object.freeze(exact.surfaceFactorSquared)]));
+  // The exact classifier already proved the whole native triangle interior.
+  // Reusing its three raw XY coordinates avoids an unnecessary polygon Boolean
+  // plus two copies of every presentation vertex on the common interior case.
+  let pieces=null;
+  if(!exact.wholeNativeTriangle){budget.check(3);const xy=vertices.map(p=>[p[0]-origin[0],p[1]-origin[1]]);pieces=clipping.intersection(region,[[...xy,xy[0]]]).filter(rings=>multiArea([rings])>0);}
   const [a,b,c]=vertices,ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2],det=ux*vy-uy*vx;
   const gradient=[(uz*vy-uy*vz)/det,(ux*vz-uz*vx)/det],plane={origin:a,gradient};
-  const clipped=pieces.length?pieces.map(rings=>rings.map(ring=>ring.map(p=>{
+  let clipped;
+  if(exact.wholeNativeTriangle){const ring=vertices.map(p=>{retain(1);return [p[0],p[1]];});if(det<0)ring.reverse();clipped=[[[...ring,ring[0]]]];}
+  else clipped=pieces.length?pieces.map(rings=>rings.map(ring=>ring.map(p=>{
    retain(2);return [p[0]+origin[0],p[1]+origin[1]];
-  }))):exact.fallback;
+  }))):exact.fallback();
   // The helper already charged creation; record retained fallback points for
   // subsequent cache users without charging this operation twice.
-  if(!pieces.length)nodeCount+=clipped.flat(2).length;
+  if(pieces&&!pieces.length)nodeCount+=clipped.flat(2).length;
   const area=exact.areaM2,surface=exact.surfaceAreaM2;
   const face=freeze({id,vertexIds,vertices,edgeIds:vertexIds.map((v,i)=>[v,vertexIds[(i+1)%3]].sort((a,b)=>a-b).join(':')),neighbors:nativeNeighbors(id,mesh.width,mesh.height),plane,clipped,bounds:exact.bounds,minM:exact.minM,maxM:exact.maxM,areaM2:area,surfaceAreaM2:surface});
   faces.push(face);byId.set(id,face);minM=Math.min(minM,exact.minM);maxM=Math.max(maxM,exact.maxM);maxSlopePercent=Math.max(maxSlopePercent,exact.slopePercent);areaM2+=area;surfaceAreaM2+=surface;
@@ -157,8 +181,14 @@ export function createContourDomain({model,geometry,budget=createTerrainBudget({
  const faceById=Object.freeze({get:id=>byId.get(id),has:id=>byId.has(id)});
  const domain=Object.freeze({modelHash:model.contentHash,crs:model.crs,faces:Object.freeze(faces),boundaries:freeze(boundaries),faceById,spatialIndex:spatialIndex(faces,mesh,byId),elevationIndex:elevationIndex(faces),geometry:freeze(canonical),nodeCount,areaM2,surfaceAreaM2,minM,maxM,maxSlopePercent});
  budget.check();
- acquiredSupports.set(domain,{value:Object.freeze({modelHash:domain.modelHash,crs:domain.crs,mesh:freezeAcquiredMesh(mesh,budget)}),chargedBudgets:new WeakSet([budget])});
+ acquiredSupports.set(domain,support);nativeAreaTerms.set(domain,Object.freeze(areaTerms));
  while(cache.size&&(cache.size>=4||cachedNodes+nodeCount>TERRAIN_MAX_NODES)){const oldest=cache.keys().next().value;cachedNodes-=cache.get(oldest).nodeCount;cache.delete(oldest);}
  if(nodeCount<=TERRAIN_MAX_NODES){cache.set(key,domain);cachedNodes+=nodeCount;}
  return domain;
+}
+
+/** Only the actual frozen factory domain owns its exact native clip integrals. */
+export function readExactNativeDomainAreaTerms(domain,budget){
+ budget?.check();
+ return Object.isFrozen(domain)?nativeAreaTerms.get(domain)??null:null;
 }

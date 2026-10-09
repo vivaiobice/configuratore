@@ -14,35 +14,63 @@ function fixture(){
  return {document,window,map,wheel,policy,emit,camera:()=>structuredClone(camera),events};
 }
 const reference={coordinate:[8,44],height:731,anchor:[.5222,.3636,0],metersToMercator:1e-8};
-test('field orbit uses local datum and restores the exact planar camera and handler policy',()=>{
+for(const {name,dx,dy,pitch,bearing}of [
+ {name:'horizontal Shift wheel changes only bearing',dx:30,dy:0,pitch:55,bearing:24.4},
+ {name:'vertical Shift wheel changes only pitch',dx:0,dy:-30,pitch:49.6,bearing:19},
+ {name:'diagonal Shift wheel independently changes pitch and bearing',dx:-20,dy:30,pitch:60.4,bearing:15.4}
+])test(name,()=>{
+ const f=fixture(),controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
+ const event=f.emit('wheel',{deltaMode:0,deltaX:dx,deltaY:dy,shiftKey:true});
+ assert.equal(event.defaultPrevented,true);assert.equal(f.camera().pitch,pitch);assert.equal(f.camera().bearing,bearing);
+ controls.destroy();f.policy.destroy();f.wheel();
+});
+test('Shift navigation does not snap the view back to the field after trackpad pan',()=>{
+ const f=fixture(),controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
+ f.emit('wheel',{deltaMode:0,deltaX:80,deltaY:40,timeStamp:1000});const panned=f.camera().center;
+ assert.notDeepEqual(panned,[8,44]);
+ for(const [deltaX,deltaY]of [[30,0],[0,30],[-20,-10]]){
+  f.emit('wheel',{deltaMode:0,deltaX,deltaY,shiftKey:true});assert.deepEqual(f.camera().center,panned);
+ }
+ controls.destroy();f.policy.destroy();f.wheel();
+});
+test('Ctrl and Meta pinch remain native through Shift and Alt modifiers',()=>{
+ const f=fixture(),controls=makeControls({map:f.map,reference,gesturePolicy:f.policy}),before=f.camera();
+ for(const key of ['ctrlKey','metaKey']){
+  const event=f.emit('wheel',{deltaMode:0,deltaX:30,deltaY:-40,shiftKey:true,altKey:true,[key]:true});
+  assert.equal(event.defaultPrevented,false);assert.deepEqual(f.camera(),before);
+ }
+ controls.destroy();f.policy.destroy();f.wheel();
+});
+test('terrain navigation retains the current center and restores the exact planar camera and handler policy',()=>{
  const f=fixture(),before=f.camera(),handlers=Object.fromEntries(['dragRotate','dragPan','touchPitch','touchZoomRotate','scrollZoom','doubleClickZoom','keyboard'].map(n=>[n,f.map[n].isEnabled()]));
  const controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
  assert.deepEqual(f.camera().center,[8,44]);assert.equal(f.camera().pitch,55);assert.equal(f.map.touchPitch.isEnabled(),true);assert.equal(f.map.touchZoomRotate.rotation(),true);
- f.map.panBy([200,100]);controls.rotateBy(15);assert.deepEqual(f.camera().center,[8,44]);assert.equal(f.camera().bearing,34);
- controls.zoomBy(.5);controls.pitchBy(10);assert.equal(f.camera().zoom,16.5);assert.equal(f.camera().pitch,65);
+ f.map.panBy([200,100]);const panned=f.camera().center;controls.rotateBy(15);assert.deepEqual(f.camera().center,panned);assert.equal(f.camera().bearing,34);
+ controls.zoomBy(.5);controls.pitchBy(10);assert.equal(f.camera().zoom,16.5);assert.equal(f.camera().pitch,65);assert.deepEqual(f.camera().center,panned);
  controls.destroy();controls.destroy();assert.deepEqual(f.camera(),before);assert.equal(f.document.querySelector('.terrain-camera-controls'),null);
  for(const [name,enabled]of Object.entries(handlers))assert.equal(f.map[name].isEnabled(),enabled,name);
  controls.rotateBy(90);assert.deepEqual(f.camera(),before);f.policy.destroy();f.wheel();
 });
-test('visible buttons clamp pitch/zoom, update compass and recenter the field after pan',()=>{
+test('terrain navigation has no manual panel while public methods clamp pitch and zoom and explicitly recenter',()=>{
  const f=fixture();let returned=0;
  const controls=makeControls({map:f.map,reference,gesturePolicy:f.policy,onReturn2D:()=>{returned++;controls.destroy();}});
- const button=name=>f.document.querySelector(`[data-terrain-camera="${name}"]`);
- for(const name of ['north','rotate-left','rotate-right','zoom-in','zoom-out','pitch-up','pitch-down','recenter','return-2d'])assert.ok(button(name)?.getAttribute('aria-label'),name);
- button('rotate-left').click();assert.equal(f.camera().bearing,4);button('rotate-right').click();assert.equal(f.camera().bearing,19);
- button('zoom-in').click();assert.equal(f.camera().zoom,16.5);button('zoom-out').click();assert.equal(f.camera().zoom,16);
- controls.pitchBy(200);assert.equal(f.camera().pitch,75);assert.equal(button('pitch-up').disabled,true);controls.pitchBy(-200);assert.equal(f.camera().pitch,0);assert.equal(button('pitch-down').disabled,true);
- controls.zoomBy(200);assert.equal(f.camera().zoom,22);assert.equal(button('zoom-in').disabled,true);controls.zoomBy(-200);assert.equal(f.camera().zoom,2);
- f.map.jumpTo({center:[8.1,44.1],pitch:70,zoom:18,bearing:120});assert.match(button('north').getAttribute('aria-label'),/120/);button('north').click();assert.equal(f.camera().bearing,0);
- button('recenter').click();assert.deepEqual(f.camera().center,[8,44]);assert.equal(f.camera().pitch,55);assert.equal(f.camera().zoom,16);
- const stale=button('return-2d');stale.click();stale.click();assert.equal(returned,1);assert.equal(f.events.get('move').size,0);f.policy.destroy();f.wheel();
+ assert.equal(f.document.querySelectorAll('.terrain-camera-controls').length,0);
+ assert.equal(f.document.querySelectorAll('[data-terrain-camera]').length,0);
+ controls.rotateBy(-15);assert.equal(f.camera().bearing,4);controls.rotateBy(15);assert.equal(f.camera().bearing,19);
+ controls.zoomBy(.5);assert.equal(f.camera().zoom,16.5);controls.zoomBy(-.5);assert.equal(f.camera().zoom,16);
+ controls.pitchBy(200);assert.equal(f.camera().pitch,75);controls.pitchBy(-200);assert.equal(f.camera().pitch,0);
+ controls.zoomBy(200);assert.equal(f.camera().zoom,22);controls.zoomBy(-200);assert.equal(f.camera().zoom,2);
+ f.map.jumpTo({center:[8.1,44.1],pitch:70,zoom:18,bearing:120});controls.rotateBy(-120);assert.equal(f.camera().bearing,0);
+ controls.recenter();assert.deepEqual(f.camera().center,[8,44]);assert.equal(f.camera().pitch,55);assert.equal(f.camera().zoom,16);
+ controls.return2D();controls.return2D();assert.equal(returned,1);assert.equal(f.events.get('move')?.size??0,0);f.policy.destroy();f.wheel();
 });
-test('terrain wheel distinguishes mouse zoom, trackpad pan, field orbit and tilt; native pinch remains free',()=>{
+test('terrain wheel distinguishes mouse zoom, trackpad pan, bearing and tilt; native pinch remains free',()=>{
  const f=fixture(),controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
  let event=f.emit('wheel',{deltaMode:0,deltaX:0,deltaY:120,timeStamp:1000});assert.equal(event.defaultPrevented,false,'detented mouse wheel remains native zoom');
  event=f.emit('wheel',{deltaMode:0,deltaX:18,deltaY:-7,timeStamp:1240});assert.equal(event.defaultPrevented,true);assert.notDeepEqual(f.camera().center,[8,44]);
  event=f.emit('wheel',{deltaMode:0,deltaX:0,deltaY:-22,ctrlKey:true});assert.equal(event.defaultPrevented,false,'pinch remains native');
- event=f.emit('wheel',{deltaMode:0,deltaX:30,deltaY:2,altKey:true});assert.equal(event.defaultPrevented,true);assert.deepEqual(f.camera().center,[8,44]);assert.equal(f.camera().bearing,24.4);
+ const panned=f.camera().center;
+ event=f.emit('wheel',{deltaMode:0,deltaX:30,deltaY:2,altKey:true});assert.equal(event.defaultPrevented,true);assert.deepEqual(f.camera().center,panned);assert.equal(f.camera().bearing,24.4);
  event=f.emit('wheel',{deltaMode:0,deltaX:0,deltaY:30,shiftKey:true});assert.equal(event.defaultPrevented,true);assert.equal(f.camera().pitch,60.4);
  controls.destroy();const old=f.camera().pitch;f.emit('wheel',{deltaMode:0,deltaX:0,deltaY:30,shiftKey:true});assert.equal(f.camera().pitch,old,'2D modifier wheel rotates without changing pitch');f.policy.destroy();f.wheel();
 });
@@ -51,23 +79,24 @@ test('map disposal tears down controls without camera operations; standalone sce
  f.map.stop=()=>{throw Error('removed map');};f.map.jumpTo=()=>{throw Error('removed map');};assert.doesNotThrow(()=>controls.destroy({restoreCamera:false}));assert.equal(f.document.querySelector('.terrain-camera-controls'),null);
  const g=fixture(),standalone=makeControls({map:g.map,reference});standalone.destroy();assert.deepEqual(g.camera(),before);assert.equal(g.map.dragRotate.isEnabled(),false);g.policy.destroy();g.wheel();f.policy.destroy({restoreCamera:false});f.wheel();
 });
-test('right mouse orbit starts around the field after pan without swallowing native drag rotation',()=>{
+test('right mouse and Ctrl drag retain the panned center without swallowing native drag rotation',()=>{
  const f=fixture(),controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
- f.map.panBy([500,200]);const event=f.emit('mousedown',{button:2,clientX:300,clientY:200});
- assert.deepEqual(f.camera().center,[8,44]);assert.equal(event.defaultPrevented,false,'native MapLibre receives the drag');
+ f.map.panBy([500,200]);const before=f.camera(),event=f.emit('mousedown',{button:2,clientX:300,clientY:200});
+ assert.deepEqual(f.camera(),before);assert.equal(event.defaultPrevented,false,'native MapLibre receives the drag');
+ const ctrl=f.emit('mousedown',{button:0,ctrlKey:true});assert.deepEqual(f.camera(),before);assert.equal(ctrl.defaultPrevented,false);
  f.map.panBy([100,100]);const panned=f.camera().center;f.emit('mousedown',{button:0});assert.deepEqual(f.camera().center,panned,'left mouse retains fluent pan');
  controls.destroy();f.policy.destroy();f.wheel();
 });
 test('standalone 2D return restores the saved camera even without a scene callback',()=>{
  const f=fixture(),before=f.camera(),controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
- controls.rotateBy(90);f.document.querySelector('[data-terrain-camera="return-2d"]').click();
+ controls.rotateBy(90);controls.return2D();
  assert.deepEqual(f.camera(),before);assert.equal(f.document.querySelector('.terrain-camera-controls'),null);f.policy.destroy();f.wheel();
 });
 test('3D expands the public pitch limit to 85 and restores the exact 2D limit on close',()=>{
  const f=fixture(),before=f.camera();let limit=60;
  f.map.getMaxPitch=()=>limit;f.map.setMaxPitch=value=>{limit=value;if(f.camera().pitch>limit)f.map.jumpTo({pitch:limit});};
  const controls=makeControls({map:f.map,reference,gesturePolicy:f.policy});
- assert.equal(limit,85);controls.pitchBy(100);assert.equal(f.camera().pitch,85);assert.equal(f.document.querySelector('[data-terrain-camera="pitch-up"]').disabled,true);
+ assert.equal(limit,85);controls.pitchBy(100);assert.equal(f.camera().pitch,85);
  f.emit('wheel',{deltaMode:0,deltaX:0,deltaY:-30,shiftKey:true});assert.equal(f.camera().pitch,79.6);
  controls.destroy();assert.equal(limit,60);assert.deepEqual(f.camera(),before);f.policy.destroy();f.wheel();
  const g=fixture();let removedLimit=72;g.map.getMaxPitch=()=>removedLimit;g.map.setMaxPitch=value=>{removedLimit=value;};

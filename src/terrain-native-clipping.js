@@ -15,10 +15,11 @@ import {
   numberBounds,
   sqrtBounds,
   exactDomain,
+  inRegion,
   height,
   xy
 }
-from './terrain-exact.js?v=1.3.3';
+from './terrain-exact.js?v=1.3.4';
 function signedArea(ring) {
   if(!ring.length)return ZERO;
   const origin=ring[0];
@@ -123,6 +124,10 @@ export function createExactNativeClipper(regionXY,budget) {
     if(orientation!==(index===0?1:-1))points.reverse();
     return points;
   }));
+  const regionKernel={regions:new Map(polygons.map((rings,index)=>[index,rings.map(ring=>[...ring,ring[0]] )]))};
+  const boundaryBounds=polygons.flatMap(rings=>rings.flatMap(ring=>ring.map((p,i)=>{
+    const q=ring[(i+1)%ring.length];return [cmp(p[0],q[0])<0?p[0]:q[0],cmp(p[1],q[1])<0?p[1]:q[1],cmp(p[0],q[0])>0?p[0]:q[0],cmp(p[1],q[1])>0?p[1]:q[1]];
+  })));
   return face=>{
     const native=exactDomain({
       faces:[face],
@@ -130,10 +135,21 @@ export function createExactNativeClipper(regionXY,budget) {
     },budget).faces[0];
     const triangle=native.vertices.map(p=>p.slice(0,2));
     budget.check(3);
-    const clipped=polygons.map(polygon=>polygon.map(ring=>clipRing(ring,triangle,budget)));
-    const area=clipped.flat().reduce((sum,ring)=>add(sum,signedArea(ring)),ZERO);
-    if(sign(area)<=0)return null;
-    const vertices=survivingBoundaryVertices(clipped.flat(),budget);
+    const bounds=[0,1].map(i=>[triangle.reduce((v,p)=>cmp(p[i],v)<0?p[i]:v,triangle[0][i]),triangle.reduce((v,p)=>cmp(p[i],v)>0?p[i]:v,triangle[0][i])]);
+    const touches=boundaryBounds.some(edge=>cmp(edge[0],bounds[0][1])<=0&&cmp(edge[2],bounds[0][0])>=0&&cmp(edge[1],bounds[1][1])<=0&&cmp(edge[3],bounds[1][0])>=0);
+    let clipped,area,vertices,wholeNativeTriangle=false;
+    // No real boundary can enter this connected native triangle. Classifying
+    // one vertex therefore proves its entire interior; holes wholly inside a
+    // triangle are caught by their edge bounds and use the full exact clip.
+    if(polygons.length===1&&!touches){
+      if(inRegion(triangle[0],regionKernel)<0)return null;
+      wholeNativeTriangle=true;area=signedArea(triangle);const clockwise=sign(area)<0;if(clockwise)area={n:-area.n,d:area.d};clipped=[[clockwise?[...triangle].reverse():triangle]];vertices=triangle;
+    }else{
+      clipped=polygons.map(polygon=>polygon.map(ring=>clipRing(ring,triangle,budget)));
+      area=clipped.flat().reduce((sum,ring)=>add(sum,signedArea(ring)),ZERO);
+      if(sign(area)<=0)return null;
+      vertices=survivingBoundaryVertices(clipped.flat(),budget);
+    }
     if(!vertices.length)throw Object.assign(new Error('Positive exact clip has no surviving boundary'),{
       status:'numeric-unresolved'
     });
@@ -147,12 +163,15 @@ export function createExactNativeClipper(regionXY,budget) {
     const factor=sqrtBounds(add(ONE,native.q));
     const ground=[mul(area,factor[0]),mul(area,factor[1])];
     const surfaceBounds=ground.map((v,i)=>numberBounds(v)[i]);
-    const fallback=clipped.filter(p=>p[0].length>=3).map(p=>p.filter(r=>r.length>=3).map(r=>{
+    const fallback=()=>clipped.filter(p=>p[0].length>=3).map(p=>p.filter(r=>r.length>=3).map(r=>{
       const points=r.map(xy);
       budget.check(points.length+1);
       return [...points,[...points[0]]];
     }));
     return {
+      wholeNativeTriangle,
+      exactArea:area,
+      surfaceFactorSquared:add(ONE,native.q),
       areaM2:number(area),
       surfaceAreaM2:surfaceBounds[0]+(surfaceBounds[1]-surfaceBounds[0])/2,
       minM:numberBounds(minZ)[0],

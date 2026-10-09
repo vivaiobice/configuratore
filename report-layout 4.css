@@ -1,0 +1,11 @@
+.document-field-map .report-map-panel{width:min(100%,590px);margin:10px auto}
+@media print{
+  .document-field-map .report-map-panel{width:130mm;max-width:130mm;margin:3mm auto}
+}
+
+.document-portion-line{font-size:12px;line-height:18px;margin:0;white-space:pre;overflow-wrap:normal}
+
+.document-data-columns .document-portion-line:first-of-type{margin-top:8px}
+
+/* Long field names retain every character without consuming the notes/footer reserve. */
+.document-long-title h1{font-size:22px!important;line-height:1.25;overflow-wrap:anywhere}

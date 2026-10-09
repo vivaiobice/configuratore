@@ -38,3 +38,12 @@ test('concave clipped paths cancel bridges and retain real intersections and int
  assert.equal(cut.areaM2,5);assert.deepEqual(cut.bounds,[1,0,9,2]);
  assert.equal(cut.maxM,9);
 });
+test('whole native interiors preserve exact area while a wholly contained hole requires its actual subtraction',()=>{
+ const outer=[[-1,-1],[11,-1],[11,11],[-1,11],[-1,-1]];
+ const whole=clip([[outer]]);assert.equal(whole.areaM2,50);assert.equal(whole.wholeNativeTriangle,true);assert.deepEqual(whole.bounds,[0,0,10,10]);
+ const reversed=createExactNativeClipper([[outer]],createTerrainBudget({kind:'measure'}))({...face,vertices:[...face.vertices].reverse(),vertexIds:[...face.vertexIds].reverse()});
+ const ring=reversed.fallback()[0][0],twice=ring.slice(1).reduce((sum,p,i)=>sum+ring[i][0]*p[1]-p[0]*ring[i][1],0);assert.equal(twice,100);
+ const hole=[[1,1],[2,1],[2,2],[1,2],[1,1]],punctured=clip([[outer,hole]]);
+ assert.equal(punctured.wholeNativeTriangle,false);assert.equal(punctured.areaM2,49);assert.deepEqual(punctured.bounds,[0,0,10,10]);
+ assert.equal(clip([[[[20,20],[30,20],[30,30],[20,30],[20,20]]]]),null);
+});

@@ -90,14 +90,20 @@ test('local ground-layout replay and recalculation consume one cumulative operat
  const proposal=buildContourTerrainProposal({...fixture,mode:'measure',manualGroundSpacing:true});
  assert.equal(proposal.ok,true,proposal.message);
  const project={...fixture.project,rowPortions:proposal.rowPortions,terrain:proposal.terrain},portionId=proposal.rowPortions[0].id;
- const replayBudget=createTerrainBudget({kind:'measure',clock:()=>0});
- assert.equal(readTerrainEnvelope(project,{budget:replayBudget}).terrainStatus,'applied');
  const calcBudget=createTerrainBudget({kind:'measure',clock:()=>0});
  assert.equal(buildContourTerrainProposal({project,model:fixture.model,portionId,recomputeAll:true,mode:'measure',manualGroundSpacing:true,budget:calcBudget}).ok,true);
- // There is enough remaining allowance for either complete operation alone,
- // but not both. Local reapply must validate the saved layout and calculate
- // the replacement within one caller allowance.
- const initialNodeCount=500000-replayBudget.usage().nodeCount-calcBudget.usage().nodeCount+100;
+ // Measure the actual composition on ONE ledger: immutable support and exact
+ // evidence may legitimately be reused across saved replay and recalculation.
+ const phases=[],referenceBudget=createTerrainBudget({kind:'measure',clock:()=>0,onProgress:event=>{if(event.phase==='manual-ground-spacing')phases.push(event.nodeCount);}});
+ assert.equal(readTerrainEnvelope(project,{budget:referenceBudget}).terrainStatus,'applied');
+ assert.equal(buildContourTerrainProposal({project,model:fixture.model,portionId,recomputeAll:true,mode:'measure',manualGroundSpacing:true,budget:referenceBudget}).ok,true);
+ assert.equal(phases.length,2);assert.ok(phases[1]>phases[0]);
+ const calcNodes=calcBudget.usage().nodeCount,combinedNodes=referenceBudget.usage().nodeCount;
+ assert.ok(combinedNodes>calcNodes,'saved replay must contribute actual work to the shared ledger');
+ const remainingNodes=Math.floor((calcNodes+combinedNodes)/2),initialNodeCount=500000-remainingNodes;
+ // The replacement alone fits, but the actual shared replay+replacement does
+ // not. This threshold does not sum independently charged cached evidence.
+ assert.ok(remainingNodes>calcNodes&&remainingNodes<combinedNodes);
  const budget=createTerrainBudget({kind:'measure',clock:()=>0,initialNodeCount}),before=JSON.stringify(project);
  const result=buildContourTerrainProposal({project,model:fixture.model,portionId,mode:'measure',manualGroundSpacing:true,budget});
  assert.equal(result.ok,false);assert.equal(result.status,'budget-exceeded');assert.equal(result.budgetReason,'work');

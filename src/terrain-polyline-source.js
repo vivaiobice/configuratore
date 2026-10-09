@@ -1,15 +1,15 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
-import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.3';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
-import {terrainInputHash} from './terrain-model.js?v=1.3.3';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.3';
-import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.3';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.4';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
+import {terrainInputHash} from './terrain-model.js?v=1.3.4';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.4';
+import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.4';
 import {
  Q,ZERO,ONE,TWO,add,sub,mul,div,cmp,sign,min,max,sq,dot,cross,vsub,at,
  mid,key,pointKey,pointOnSegment,segmentIntersection,inRegion,
  unique,number,numberBounds,xy,exactDomain,splitSegment,height,radical,
  radd,radicalCompare,radicalBounds,lengthBounds,nextUp,nextDown
-} from './terrain-exact.js?v=1.3.3';
+} from './terrain-exact.js?v=1.3.4';
 
 export const FINITE_POLYLINE_AXIS_CONVENTION='finite-polyline-domain-intersection-1';
 export const POLYLINE_SOURCE_PARAMETER_OPERATION='polyline-source-parameter-intervals-1';
@@ -65,7 +65,7 @@ export function finitePolylineSourceHash(axis,budget){
 const operationEvidence=new WeakMap();
 function evidenceFor(budget){
  let evidence=operationEvidence.get(budget);
- if(!evidence){evidence={readers:new WeakMap(),sources:new WeakMap(),resolved:new WeakMap()};operationEvidence.set(budget,evidence);}
+ if(!evidence){evidence={readers:new WeakMap(),sources:new WeakMap(),resolved:new WeakMap(),validated:new WeakMap(),intersections:new WeakMap()};operationEvidence.set(budget,evidence);}
  return evidence;
 }
 function domainEvidence(map,domain,originalDomain=domain){
@@ -208,19 +208,32 @@ function boundaryRoots(kernel,a,b,budget,lo=ZERO,hi=ONE){
  budget.check(roots.length*2);return unique(roots);
 }
 function finiteCaps(points,kernel,budget){
- const intervals=[],contacts=[];
+ const intervals=[],boundaryPoints=kernel.boundaries.flatMap(boundary=>boundary.coordinates);
+ // Only the extremal closed contacts determine finite source caps. Retaining
+ // every duplicate root/interior endpoint and sorting them allocated O(knots)
+ // redundant records for each native and geographic clipping pass.
+ let firstSegment=-1,firstParameter=null,lastSegment=-1,lastParameter=null;
+ const contact=(segment,parameter)=>{
+  if(firstSegment<0||segment<firstSegment||segment===firstSegment&&cmp(parameter,firstParameter)<0){firstSegment=segment;firstParameter=parameter;}
+  if(lastSegment<0||segment>lastSegment||segment===lastSegment&&cmp(parameter,lastParameter)>0){lastSegment=segment;lastParameter=parameter;}
+ };
+ const bounds=[0,1].map(i=>[boundaryPoints.reduce((v,p)=>min(v,p[i]),boundaryPoints[0][i]),boundaryPoints.reduce((v,p)=>max(v,p[i]),boundaryPoints[0][i])]);
  for(let segmentIndex=0;segmentIndex<points.length-1;segmentIndex++){
-  const a=points[segmentIndex],b=points[segmentIndex+1],roots=boundaryRoots(kernel,a,b,budget);
-  for(const parameter of roots){budget.check(1);if(inRegion(at(a,b,parameter),kernel)>=0){budget.check(1);contacts.push({componentIndex:0,segmentIndex,parameter});}}
+  const a=points[segmentIndex],b=points[segmentIndex+1];
+  if([0,1].some(i=>cmp(max(a[i],b[i]),bounds[i][0])<0||cmp(min(a[i],b[i]),bounds[i][1])>0)){
+   budget.check(1);intervals.push({componentIndex:0,segmentIndex,lo:ZERO,hi:ONE,inside:false});continue;
+  }
+  const roots=boundaryRoots(kernel,a,b,budget);
+  for(const parameter of roots){budget.check(1);if(inRegion(at(a,b,parameter),kernel)>=0)contact(segmentIndex,parameter);}
   for(let i=1;i<roots.length;i++){
    budget.check(2);
    intervals.push({componentIndex:0,segmentIndex,lo:roots[i-1],hi:roots[i],inside:inRegion(at(a,b,mid(roots[i-1],roots[i])),kernel)>=0});
-   if(intervals.at(-1).inside){budget.check(2);contacts.push({componentIndex:0,segmentIndex,parameter:roots[i-1]},{componentIndex:0,segmentIndex,parameter:roots[i]});}
+   if(intervals.at(-1).inside){contact(segmentIndex,roots[i-1]);contact(segmentIndex,roots[i]);}
   }
  }
- if(!contacts.length)return null;
- contacts.sort(comparePosition);
- const first=contacts[0],last=contacts.at(-1);
+ if(firstSegment<0)return null;
+ budget.check(2);
+ const first={componentIndex:0,segmentIndex:firstSegment,parameter:firstParameter},last={componentIndex:0,segmentIndex:lastSegment,parameter:lastParameter};
  let before=null,after=null;
  for(const part of intervals){
   budget.check();
@@ -411,10 +424,20 @@ function pairedClip(axis,compiled,domain,budget,kernel=exactDomain(domain,budget
 }
 function validateActual(axis,domain,originalDomain,budget){
  if(!validFinitePolylineSourceAxisSchema(axis,budget))throw fail('Unknown or malformed finite polyline source convention/operation');
- const compiled=compileSource(axis,budget);
- checkSimple(compiled.native,budget);checkSimple(compiled.geographic,budget);checkSupport(axis,compiled,originalDomain,budget);
- pairedClip(axis,compiled,originalDomain,budget);
- return {compiled,current:domain===originalDomain?null:pairedClip(axis,compiled,domain,budget)};
+ // Only evidence constructed from the actual owner in this operation is
+ // shared. The complete submitted source is the key; no caller hash or flag
+ // conveys authority, and a fresh budget has an empty evidence store.
+ const entries=domainEvidence(evidenceFor(budget).validated,originalDomain),cacheKey=JSON.stringify(axis);
+ let evidence=entries.get(cacheKey);
+ if(!evidence){
+  const compiled=compileSource(axis,budget);
+  checkSimple(compiled.native,budget);checkSimple(compiled.geographic,budget);checkSupport(axis,compiled,originalDomain,budget);
+  const original=pairedClip(axis,compiled,originalDomain,budget);
+  evidence={compiled:freeze(compiled,budget),clips:new WeakMap([[originalDomain,freeze(original,budget)]])};
+  entries.set(cacheKey,evidence);
+ }
+ if(!evidence.clips.has(domain))evidence.clips.set(domain,freeze(pairedClip(axis,evidence.compiled,domain,budget),budget));
+ budget.check();return {compiled:evidence.compiled,original:evidence.clips.get(originalDomain),current:evidence.clips.get(domain)};
 }
 
 export function traceFinitePolylineContourLevel(domain,levelM,{originalDomain=domain,portionId='default',ordinal=0,budget=createTerrainBudget({kind:'measure'})}={}){
@@ -440,7 +463,7 @@ export function resolveFinitePolylineSourceAxis(kernel,axis,budget=createTerrain
  // Existing dense saved sources retain their original complete construction.
  // Both forms are freshly reconstructed from actual S, never caller evidence.
  if(!matches(constructSource(domain,axis.levelM,regenerationOptions))&&!matches(constructSource(domain,axis.levelM,{...regenerationOptions,preserveNativeKnots:true})))throw fail('Saved finite source differs from deterministic complete native-level regeneration');
- const {compiled}=validateActual(axis,domain,originalDomain,budget),resolved=pairedClip(axis,compiled,domain,budget,kernel);
+ const {current:resolved}=validateActual(axis,domain,originalDomain,budget);
  freeze(resolved,budget);entries.set(cacheKey,resolved);budget.check(1);return {...resolved};
 }
 
@@ -455,6 +478,9 @@ export function polylinePhysicalFragments(pieces,budget=createTerrainBudget({kin
  return fragments;
 }
 export function intersectPolylineSourceIntervals(axis,pieces,originalPieces,budget=createTerrainBudget({kind:'measure'})){
+ const cacheable=Object.isFrozen(pieces)&&Object.isFrozen(originalPieces),all=evidenceFor(budget).intersections,cacheKey=cacheable?JSON.stringify(axis):null;
+ let entries;
+ if(cacheable){let originals=all.get(pieces);if(!originals){originals=new WeakMap();all.set(pieces,originals);}entries=originals.get(originalPieces);if(!entries){entries=new Map();originals.set(originalPieces,entries);}if(entries.has(cacheKey)){budget.check();return entries.get(cacheKey);}}
  const result=[];
  for(const piece of pieces)for(const original of originalPieces){
   budget.check();
@@ -465,6 +491,7 @@ export function intersectPolylineSourceIntervals(axis,pieces,originalPieces,budg
   // A physical cap has priority only while its own endpoint is retained.
   result.push({...piece,lo,hi,a:at(a,b,lo),b:at(a,b,hi),startCap:cmp(lo,piece.lo)===0&&piece.startCap?.kind==='physical-boundary'?piece.startCap:cmp(lo,original.lo)===0?original.startCap:piece.startCap,endCap:cmp(hi,piece.hi)===0&&piece.endCap?.kind==='physical-boundary'?piece.endCap:cmp(hi,original.hi)===0?original.endCap:piece.endCap});
  }
+ if(entries)entries.set(cacheKey,freeze(result,budget));
  return result;
 }
 

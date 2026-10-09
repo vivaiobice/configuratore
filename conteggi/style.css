@@ -102,5 +102,6 @@ body.counter-mode{background:#151c19;color:#f3f5ec;color-scheme:dark;--green:#ba
 .archive-category>summary>span:first-child{flex-basis:140px}
 .archive-category>summary strong{max-width:calc(100% - 24px);overflow-wrap:anywhere}
 
-/* Original linear mark stays legible in the archive and dark counter footer. */
-.counts-footer-brand{display:block;flex-basis:100%;max-width:280px;padding:10px 12px;background:#fff;border-radius:10px}.counts-footer-brand img{display:block;width:100%;max-width:100%;height:auto}
+/* Keep the approved transparent mark centered on its own full footer row. */
+.counts-footer-brand{display:flex;justify-content:center;flex:0 0 100%;padding:10px 0;background:transparent}.counts-footer-brand img{display:block;width:280px;max-width:100%;height:auto}
+.counter-mode .counts-footer-brand img{filter:drop-shadow(1px 0 0 #f3f5ec) drop-shadow(-1px 0 0 #f3f5ec) drop-shadow(0 1px 0 #f3f5ec) drop-shadow(0 -1px 0 #f3f5ec)}

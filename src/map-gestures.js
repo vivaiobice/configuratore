@@ -5,13 +5,18 @@ export function gestureRotationDelta(currentRotation, previousRotation = 0) {
   return current - previous;
 }
 
+function wheelAxisDelta(value) {
+  const delta = Number(value) || 0;
+  if (Math.abs(delta) < 2) return 0;
+  return Math.round(delta * 0.18 * 1000) / 1000;
+}
+
 export function wheelRotationDelta(event) {
   if (!event?.shiftKey && !event?.altKey) return 0;
   const dx = Number(event.deltaX) || 0;
   const dy = Number(event.deltaY) || 0;
   const axis = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
-  if (Math.abs(axis) < 2) return 0;
-  return Math.round(axis * 0.18 * 1000) / 1000;
+  return wheelAxisDelta(axis);
 }
 
 export function trackpadPanDelta(event) {
@@ -22,7 +27,7 @@ export function trackpadPanDelta(event) {
   return [dx,dy];
 }
 
-export function installTrackpadRotation(map, { touchRotation = false, terrain = false, orbitCenter = null } = {}) {
+export function installTrackpadRotation(map, { touchRotation = false, terrain = false } = {}) {
   const container = map?.getCanvasContainer?.() ?? map?.getContainer?.();
   if (!container?.addEventListener) return () => {};
 
@@ -40,21 +45,23 @@ export function installTrackpadRotation(map, { touchRotation = false, terrain = 
   const onWheel = (event) => {
     if(terrain&&(event.ctrlKey||event.metaKey)){resetWheelBurst();return;}
     if(terrain&&(event.shiftKey||event.altKey))resetWheelBurst();
-    // In terrain mode Shift tilts the view; Alt rotates around the field.
+    // In terrain mode Shift maps the two trackpad axes independently.
     // The planar editor retains its established Shift/Alt bearing behavior.
     if (terrain && event.shiftKey && !event.ctrlKey && !event.metaKey) {
-      const delta=wheelRotationDelta(event);
-      if (!delta) return;
+      const bearingDelta=wheelAxisDelta(event.deltaX),pitchDelta=wheelAxisDelta(event.deltaY);
+      if (!bearingDelta&&!pitchDelta) return;
       event.preventDefault?.();event.stopImmediatePropagation?.();
-      map.jumpTo?.({pitch:Math.max(0,Math.min(85,map.getMaxPitch?.()??75,map.getPitch()+delta)),...(orbitCenter?{center:[...orbitCenter]}:{})});
+      const camera={};
+      if(bearingDelta)camera.bearing=map.getBearing()+bearingDelta;
+      if(pitchDelta)camera.pitch=Math.max(0,Math.min(85,map.getMaxPitch?.()??75,map.getPitch()+pitchDelta));
+      map.jumpTo?.(camera);
       return;
     }
     const delta = wheelRotationDelta(event);
     if (delta) {
       event.preventDefault?.();
       event.stopImmediatePropagation?.();
-      if(terrain&&orbitCenter)map.jumpTo?.({center:[...orbitCenter],bearing:map.getBearing()+delta});
-      else map.setBearing?.(map.getBearing() + delta);
+      map.setBearing?.(map.getBearing() + delta);
       return;
     }
     const pan=trackpadPanDelta(event);
@@ -106,7 +113,7 @@ export function createMapGesturePolicy({map,touchRotation}){
  return {
   // Save the owned 2D plane even when the live camera is navigating in 3D.
   cameraForCheckpoint(){return checkpointCamera?copyCamera(checkpointCamera):cameraSnapshot(map);},
-  enter3D({orbitCenter=null}={}){
+  enter3D(){
    if(destroyed)throw new Error('Policy della mappa chiusa.');
    if(releaseCurrent)return releaseCurrent;
    map.stop?.();const camera=cameraSnapshot(map);
@@ -115,7 +122,7 @@ export function createMapGesturePolicy({map,touchRotation}){
    const rotation=touchRotation?.isTouchRotationEnabled?.()??false,wheel=touchRotation?.isEnabled?.()??false;
    touchRotation?.setEnabled?.(false);
    // Retain the established pixel pan / modifier rotation / native pinch paths.
-   const temporaryWheel=installTrackpadRotation(map,{touchRotation:true,terrain:true,orbitCenter});
+   const temporaryWheel=installTrackpadRotation(map,{touchRotation:true,terrain:true});
    for(const name of handlers)map[name].enable();touchRotation?.setTouchRotation?.(true);
    let released=false;checkpointCamera=camera;
    releaseCurrent=({restoreCamera=true}={})=>{

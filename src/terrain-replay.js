@@ -1,17 +1,19 @@
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.3';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.3';
+import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.4';
+import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.4';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.4';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.4';
 
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.3';
-import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
-import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
-import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.3';
-import {createContourDomain} from './terrain-contour-domain.js?v=1.3.3';
-import {measureContourAxes} from './terrain-contour-family.js?v=1.3.3';
-import {resolveRowPortions} from './row-portions.js?v=1.3.3';
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.3';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.3';
-import {calculateProject} from './project-calculator.js?v=1.3.3';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.4';
+import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.4';
+import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.4';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.4';
+import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.4';
+import {resolveRowPortions} from './row-portions.js?v=1.3.4';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.4';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.4';
+import {calculateProject} from './project-calculator.js?v=1.3.4';
 const clone=value=>JSON.parse(JSON.stringify(value));
 // Inspect the actual serialized payload without recursively walking the stack
 // or first allocating a flattened coordinate list. Aliases are visited once per
@@ -63,7 +65,7 @@ function envelopeHash(applied,budget){
  return checkedHash(Object.hasOwn(applied,'schemaVersion')?{schemaVersion:applied.schemaVersion,algorithmVersion:applied.algorithmVersion,...contents}:contents,budget);
 }
 export function hashTerrainEnvelope(applied){return envelopeHash(applied);}
-/** @returns {import('./terrain-contour-contracts.js?v=1.3.3').AppliedEnvelopeV2} */
+/** @returns {import('./terrain-contour-contracts.js?v=1.3.4').AppliedEnvelopeV2} */
 export function createContourEnvelope({project,model,result,portionResults,validation,budget}){
  budget?.check();
  const inputs=geometryInputs(project,budget);
@@ -185,6 +187,23 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
   // authority. The measurement resolver checks every current/original binding.
   const measured=measureContourAxes({domain:originalDomain,physicalDomain:domain,axes:design.axes,headlandWidthM:Math.max(0,Number(project.headlandWidthM)||0),budget:b});
   if(h(measured.rows)!==h(portion.rows??[]))return false;
+  const directional=design.spacingCertificateMethod!==undefined||design.serviceMethod!==undefined||portion.validation?.method===DIRECTIONAL_SPACING_METHOD||portion.coverage?.serviceMethod===DIRECTIONAL_SERVICE_METHOD;
+  if(directional){
+   if(design.spacingCertificateMethod!==DIRECTIONAL_SPACING_METHOD||design.serviceMethod!==DIRECTIONAL_SERVICE_METHOD||portion.validation?.method!==DIRECTIONAL_SPACING_METHOD||portion.coverage?.serviceMethod!==DIRECTIONAL_SERVICE_METHOD)return false;
+   const certificate=certifyNativeDirectionalFamily(domain,design.axes,{originalDomain,spacingM:Number(project.rowSpacingM),toleranceM:.20,budget:b});if(!certificate?.valid)return false;
+   const expected={maxElevationDeviationM:certificate.elevation.maxDeviationM,minimumSpacingLowerM:certificate.lowerM,maximumSpacingUpperM:certificate.upperM,errorBoundM:certificate.errorBoundM,coverageComplete:certificate.coverage.complete};
+   for(const [key,value] of Object.entries(expected))if(h(portion.validation[key])!==h(value))return false;
+   const serviceAxes=Number(project.headlandWidthM)>0?directionalRetainedAxes(design.axes,measured.rows,b):design.axes;
+   const service=measureNativeDirectionalService({certificate,axes:serviceAxes,widthM:Number(project.rowSpacingM),budget:b});
+   if(h(service.areaM2)!==h(portion.coverage.servedAreaM2)||h(service.areaBoundsM2)!==h(portion.coverage.areaBoundsM2)||portion.coverage.serviceQualification!=='certified-conservative-distance-to-row-subset')return false;
+  }else if(hasVariedNativeDirectionalGeometry(domain,b)){
+   if(portion.validation?.method!=='native-levels/continuous-bidirectional-spacing/actual-service-union')return false;
+   const legacy=rebuildLegacyFiniteCandidate({domain,originalDomain,axes:design.axes,spacingM:Number(project.rowSpacingM),headlandWidthM:Math.max(0,Number(project.headlandWidthM)||0),budget:b});
+   if(!legacy.valid)return false;
+   const expected={maxElevationDeviationM:legacy.validation.maxElevationDeviationM,minimumSpacingLowerM:legacy.validation.lowerM,maximumSpacingUpperM:legacy.validation.upperM,errorBoundM:legacy.validation.errorBoundM,coverageComplete:legacy.validation.coverage.complete};
+   for(const [key,value] of Object.entries(expected))if(h(portion.validation[key])!==h(value))return false;
+   if(h(legacy.coverage.servedAreaM2)!==h(portion.coverage.servedAreaM2)||h(legacy.coverage.areaBoundsM2)!==h(portion.coverage.areaBoundsM2))return false;
+  }
   for(const row of measured.rows){
    b.check();
    const matches=(applied.result.rows??[]).filter(saved=>saved.fragmentId===row.fragmentId&&saved.axisId===row.axisId&&saved.portionId===row.portionId);

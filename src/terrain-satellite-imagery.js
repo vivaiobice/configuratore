@@ -1,4 +1,4 @@
-import {satelliteSources} from './satellite-style.js?v=1.3.3';
+import {satelliteSources} from './satellite-style.js?v=1.3.4';
 
 const cancelled=()=>new DOMException('Caricamento satellitare annullato.','AbortError');
 // The atlas shares the basemap's provider and Mercator grid. Bounds come from

@@ -1,12 +1,14 @@
+import {nativeDirectionalServiceTerms} from './terrain-directional-certificate.js?v=1.3.4';
+import {readExactNativeDomainAreaTerms} from './terrain-contour-domain-owner.js?v=1.3.4';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.3';
+from './terrain-budget.js?v=1.3.4';
 import {
   fromUTM,
   toUTM
 }
-from './coordinate-system.js?v=1.3.3';
+from './coordinate-system.js?v=1.3.4';
 import {
   Q,
   rationalSquareRoot,
@@ -32,27 +34,27 @@ import {
   nextUp,
   nextDown
 }
-from './terrain-exact.js?v=1.3.3';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.3';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.3';
+from './terrain-exact.js?v=1.3.4';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.4';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.4';
 import {
   axisPieces
 }
-from './terrain-surface-flow.js?v=1.3.3';
+from './terrain-surface-flow.js?v=1.3.4';
 import {
   certifyContourElevation
 }
-from './terrain-contour-validation.js?v=1.3.3';
+from './terrain-contour-validation.js?v=1.3.4';
 import {
   createAlgebraicField
 }
-from './terrain-algebraic.js?v=1.3.3';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.3';
+from './terrain-algebraic.js?v=1.3.4';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.4';
 import {
   createBandKernel,
   traceBandBundles
 }
-from './terrain-geodesic-flow.js?v=1.3.3';
+from './terrain-geodesic-flow.js?v=1.3.4';
 /** Compare an outward binary64 enclosure to exact binary-input thresholds.
  * Adding the ceiling in floating point first could admit an extra ULP. */
 export function widthBoundsWithin(bounds,centerM) {
@@ -1152,6 +1154,7 @@ function bindMeasuredArea(result,terms) {
     })
     ]))),
     bounds:Object.freeze([...result.areaBoundsM2]),
+    serviceBasis:result.serviceMethod??null,
     fingerprint:JSON.stringify(result)
   });
   return result;
@@ -1190,9 +1193,16 @@ export function sumMeasuredSurfaceAreas(measurements,{budget}={}) {
       terms.push([coefficient,radicand]);
     }
   }
-  const result=measuredAreaResult([lower,upper],terms,{areaOperation:'sum-of-measured-areas',measurementCount:measurements.length});
+  const bases=[...new Set(measurements.map(measurement=>measuredAreaEvidence.get(measurement).serviceBasis))],serviceMethod=bases.length===1?bases[0]:'mixed-service-bases';
+  const result=measuredAreaResult([lower,upper],terms,{areaOperation:'sum-of-measured-areas',measurementCount:measurements.length,...(serviceMethod?{serviceMethod}:{} )});
   budget?.check();
   return result;
+}
+/** Different service constructions are not interchangeable gain baselines. */
+export function measuredSurfaceAreasComparable(a,b,{budget}={}){
+ budget?.check();const left=measuredAreaEvidence.get(a),right=measuredAreaEvidence.get(b);
+ if(!left||!right||left.fingerprint!==JSON.stringify(a)||right.fingerprint!==JSON.stringify(b))throw unresolvedAreaOrder('missing-or-changed-measured-area-evidence');
+ return a===b||left.serviceBasis===right.serviceBasis&&left.serviceBasis!=='mixed-service-bases';
 }
 /** Return the proved sign of a-b. Bounds are refined as exact rationals;
  * overlapping binary64 enclosures never authorize a secondary-score tie. */
@@ -1207,6 +1217,7 @@ export function compareMeasuredSurfaceAreas(a,b,{
     right=measuredAreaEvidence.get(b);
     if(!left||!right)throw unresolvedAreaOrder('missing-measured-area-evidence');
     if(left.fingerprint!==JSON.stringify(a)||right.fingerprint!==JSON.stringify(b))throw unresolvedAreaOrder('changed-measured-area-evidence');
+    if(!measuredSurfaceAreasComparable(a,b,{budget}))throw unresolvedAreaOrder('incomparable-service-area-bases');
     budget?.check();
     if(left.bounds[0]>right.bounds[1])return 1;
     if(left.bounds[1]<right.bounds[0])return -1;
@@ -1419,6 +1430,12 @@ function actualArea(k,rings,areaMode='per-face') {
 export function measureDomainSurfaceArea({domain,areaMode='per-face',budget=createTerrainBudget({kind:'measure'})}={}) {
   budget.check();
   canonicalCutDomainScope(domain);
+  const nativeTerms=readExactNativeDomainAreaTerms(domain,budget);
+  if(nativeTerms){
+    let total=[ZERO,ZERO];const terms=[];
+    for(const [area,factor] of nativeTerms){const interval=measuredTerm(area,factor,budget,terms);total=total.map((v,i)=>add(v,interval[i]));}
+    return measuredAreaResult(total,terms,{actualGeometry:{representation:'native-face-exact-integrals',geometryConvention:'domain-intersection'}});
+  }
   if(!Object.isFrozen(domain)||!Object.isFrozen(domain.faces)||!Object.isFrozen(domain.boundaries))throw numericFailure('unbound-domain-area');
   const exact=exactDomain(domain,budget),k=createBandKernel(exact,createAlgebraicField(budget),budget);
   const measured=actualArea(k,k.boundaries,areaMode);
@@ -2074,4 +2091,11 @@ export function traceSurfaceBand(options={
   }
   if(result)result.validation.unresolved=failures;
   return result;
+}
+
+/** Bind only freshly recomputed native directional cells to exact area evidence. */
+export function measureNativeDirectionalService({certificate,axes,widthM,budget}){
+ const result=nativeDirectionalServiceTerms(certificate,axes,widthM,budget);let total=[ZERO,ZERO];
+ for(const [area,factor] of result.terms){const [lo,hi]=sqrtBounds(factor);total=[add(total[0],mul(area,lo)),add(total[1],mul(area,hi))];budget.check();}
+ return measuredAreaResult(total,result.terms,{serviceMethod:result.serviceMethod,actualGeometry:{representation:'native-directional-rational-cell-union',geometryConvention:'connected-physical-fiber-intersection',halfDisplacementXYM:result.halfDisplacementXYM,coordinateAxis:result.coordinateAxis,...(result.directionVectorXY?{directionVectorXY:result.directionVectorXY}:{})}});
 }

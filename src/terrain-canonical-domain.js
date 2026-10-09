@@ -1,12 +1,12 @@
-import {toUTM} from './coordinate-system.js?v=1.3.3';
-import {terrainInputHash} from './terrain-model.js?v=1.3.3';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.3';
-import {TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.3';
-import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.3';
-import {createRegularTerrainRegionOperations} from './terrain-surface-bands.js?v=1.3.3';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.3';
-import {createContourDomain,readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.3';
-import {resolveRowPortions} from './row-portions.js?v=1.3.3';
+import {toUTM} from './coordinate-system.js?v=1.3.4';
+import {terrainInputHash} from './terrain-model.js?v=1.3.4';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.4';
+import {TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.4';
+import {createExactNativeClipper} from './terrain-native-clipping.js?v=1.3.4';
+import {createRegularTerrainRegionOperations} from './terrain-surface-bands.js?v=1.3.4';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.4';
+import {createContourDomain,readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.4';
+import {resolveRowPortions} from './row-portions.js?v=1.3.4';
 
 // A single queried URL is used by every parent module, including bare imports.
 // Only the owner-derived factories below register exact child authority.
@@ -79,10 +79,11 @@ function childDomain({parent,model,native,geographic,scopeHash,recipe,operands,b
  let areaM2=0,surfaceAreaM2=0,minM=Infinity,maxM=-Infinity,maxSlopePercent=0,nodeCount=0;
  for(const source of parent.faces){
   budget.check();const measured=clip(source);if(!measured)continue;
-  const face=freeze({...source,clipped:measured.fallback,bounds:measured.bounds,minM:measured.minM,maxM:measured.maxM,areaM2:measured.areaM2,surfaceAreaM2:measured.surfaceAreaM2});
+  const fallback=measured.fallback();
+  const face=freeze({...source,clipped:fallback,bounds:measured.bounds,minM:measured.minM,maxM:measured.maxM,areaM2:measured.areaM2,surfaceAreaM2:measured.surfaceAreaM2});
   faces.push(face);byId.set(face.id,face);areaM2+=face.areaM2;surfaceAreaM2+=face.surfaceAreaM2;
   minM=Math.min(minM,face.minM);maxM=Math.max(maxM,face.maxM);maxSlopePercent=Math.max(maxSlopePercent,measured.slopePercent);
-  nodeCount+=measured.fallback.flat(2).length;
+  nodeCount+=fallback.flat(2).length;
  }
  if(!faces.length)throw scopeFailure('Empty native child domain');
  const boundaries=native.map((ring,ringIndex)=>({id:`canonical:${recipe.componentKey??`${recipe.groupId}:physical`}:${ringIndex}`,polygonIndex:0,ringIndex,hole:ringIndex>0,

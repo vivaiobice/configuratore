@@ -1,8 +1,8 @@
-import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.3';
+import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.4';
 const KEY='vivai-obice:configuratore:projects:v1';
 import {migrateProjectArchive} from './local-migrations.js?v=55.6.1';
 import {ownerStorageKey} from './local-owner-scope.js';
-import {APP_CONFIG} from './config.js?v=1.3.3';
+import {APP_CONFIG} from './config.js?v=1.3.4';
 const archiveKey=()=>ownerStorageKey(KEY,APP_CONFIG.environment);
 export function readLocalProjects(storage){
  const raw=storage?.getItem?.(archiveKey());

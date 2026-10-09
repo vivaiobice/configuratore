@@ -1,14 +1,16 @@
-# Pubblicazione — piattaforma Vivai Obice 1.3.3
+# Pubblicazione — piattaforma Vivai Obice 1.3.4
 
 Il pacchetto contiene **entrambi gli strumenti già consolidati**. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `https://progettaimpianto.vivaiobice.com/conteggi/`. Il repository resta `vivaiobice/configuratore`; si usa il flusso GitHub Desktop / GitHub Pages esistente, senza secondo repository, DNS o hosting.
 
 ## Stato della preparazione e servizi
 
-I metadati sono coordinati a 1.3.3; le verifiche dei sorgenti e del pacchetto estratto sono associate al manifest e alla ricevuta dell’archivio. Le prove già disponibili e i limiti sono documentati in [README_RELEASE_1.3.3.md](README_RELEASE_1.3.3.md). Rendering e gesti 3D hanno superato il collaudo locale desktop e touch emulato. Il pilot sul campo reale e i dispositivi fisici richiedono il collaudo dell’utente. Non sono stati modificati GitHub remoto, database, Edge Functions, secret, DNS o account; nessuna email reale inviata. Il backend Supabase esistente è `lnclwslcjufwdbmsxljf`; la migrazione Conteggi non risultava installata al controllo del 2 ottobre 2026.
+Il pacchetto 1.3.4 è destinato al collaudo: la fluidità 3D resta irrisolta nei test con rendering software, soprattutto nel pinch mobile. Esiti funzionali e prestazionali sono distinti nel manifest; la consegna non è una certificazione di navigazione sempre fluida.
+
+I metadati sono coordinati a 1.3.4; le verifiche dei sorgenti e del pacchetto estratto sono associate al manifest e alla ricevuta dell’archivio. Le prove già disponibili e i limiti sono documentati in [README_RELEASE_1.3.4.md](README_RELEASE_1.3.4.md). Gli esiti del collaudo locale desktop e touch emulato sono registrati nel manifest. Il pilot sul campo reale e i dispositivi fisici richiedono il collaudo dell’utente. Non sono stati modificati GitHub remoto, database, Edge Functions, secret, DNS o account; nessuna email reale inviata. Il backend Supabase esistente è `lnclwslcjufwdbmsxljf`; la migrazione Conteggi non risultava installata al controllo del 2 ottobre 2026.
 
 Il pacchetto statico avvia Conteggi in modalità locale. Sincronizzazione, consultazione admin, trasmissione e trasferimento verso un account già esistente hanno flag disattivati: caricare lo ZIP **non installa** questi servizi. I passaggi sotto sono da eseguire.
 
-La 1.3.3 completa il rendering e la navigazione 3D, mantenendo coordinate precise, controlli occhio e percorso manuale precedente. Prima di sostituire il pacchetto conservare la versione pubblicata e i suoi archivi. Dopo il caricamento verificare Manuale/Adatta al terreno, anteprima/Applica/Annulla, passaggi da 1,50 m e pali di testa dei frammenti, ritorno 3D→2D e Aggiorna progetto dalla pagina PDF. Il collaudo locale su fixture non sostituisce i dispositivi reali e il terreno reale.
+La 1.3.4 corregge terreno continuo, navigazione a gesti, calcolo nativo compatibile e logo del contatore, mantenendo coordinate precise, controlli occhio e percorso manuale precedente. Prima di sostituire il pacchetto conservare la versione pubblicata e i suoi archivi. Dopo il caricamento verificare Manuale/Adatta al terreno, anteprima/Applica/Annulla, passaggi da 1,50 m e pali di testa dei frammenti, ritorno 3D→2D e Aggiorna progetto dalla pagina PDF. Il collaudo locale su fixture non sostituisce i dispositivi reali e il terreno reale.
 
 Chiudere le precedenti schede Conteggi e riaprire online dopo l’aggiornamento, così il nuovo worker può attivarsi e precacheare i moduli con query esatta. Conservare IndexedDB e localStorage; non cancellare tutti i dati del sito. Verificare la riapertura offline soltanto dopo questa apertura online.
 
@@ -24,7 +26,7 @@ Chiudere le precedenti schede Conteggi e riaprire online dopo l’aggiornamento,
 
    Non aggiungere `--delete`; lo ZIP non contiene `.git` né dipendenze installate. Non copiare la cartella contenitore al posto della radice. La copia non cancella eventuali file storici remoti non presenti nel pacchetto.
 4. In GitHub Desktop controllare le modifiche, creare un unico commit e pubblicarlo sul ramo già usato da Pages. Mantenere `CNAME` e impostazioni Pages correnti. Non serve una build frontend né `node_modules` sull'hosting. `npm ci` e `npm ci --prefix conteggi` servono solo per riprodurre i test.
-5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.3.3 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
+5. Dopo il deploy verificare entrambe le destinazioni HTTPS, `/conteggi` con redirect allo slash e query preservata, `/conteggi/` direttamente sul contatore, l’icona elenco, ricarica e indietro. Versione attesa su entrambi: `1.3.4 · LIVE`. Eseguire il collaudo manuale indicato nello stato prima di qualificare il rilascio come verificato sui dispositivi.
 
 **Rimozioni:** nessuna rimozione obbligatoria per questa versione. Il remoto contiene copie storiche con suffissi e vecchi pacchetti; non sono riferiti dai percorsi correnti e non vengono cancellati da questa consegna. Non cancellare cartelle o migrazioni per deduzione dal nome. Il nuovo ZIP non contiene cartelle duplicate da sovrapporre.
 
