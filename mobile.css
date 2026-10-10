@@ -275,3 +275,68 @@
  #mobile-app[data-screen="profile"] .mobile-theme-setting{grid-template-columns:1fr}
  #mobile-app[data-screen="profile"] .mobile-auth-feedback{grid-column:2;margin:0}
 }
+
+/* Current mobile shell: separate brand, title and actions instead of forcing
+   them into a shrinking row. Form/detail headings may wrap with long names. */
+@media screen{
+ #mobile-app[data-screen="map"] .mobile-home-bottom{top:calc(62px + env(safe-area-inset-top));bottom:auto;left:max(12px,env(safe-area-inset-left));right:max(60px,env(safe-area-inset-right))}
+ #mobile-app[data-screen="map"] #mobile-active-field{display:block;width:100%;min-width:0;min-height:36px;padding:8px 12px;font-size:11px;line-height:18px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #mobile-app:not([data-screen="profile"]) .mobile-page-heading{min-width:0;gap:8px;align-items:flex-start}
+ #mobile-app:not([data-screen="profile"]) .mobile-page-heading h1{min-width:0;max-width:100%;overflow-wrap:anywhere;font-size:20px;line-height:1.25}
+ #mobile-app[data-screen="fields"] .mobile-page-heading,#mobile-app[data-screen="projects"] .mobile-page-heading{flex-wrap:wrap;align-items:center}
+ #mobile-app[data-screen="fields"] .mobile-heading-actions,#mobile-app[data-screen="projects"] .mobile-heading-actions{max-width:100%;flex:none;margin-left:auto;gap:4px}
+ #mobile-app[data-screen="detail"] .mobile-page-heading h1{flex:1}
+ #mobile-app[data-screen="parameters"] .mobile-page-heading h1{flex:1;max-width:calc(100% - 84px)}
+ #mobile-app[data-screen] .mobile-field-card strong,#mobile-app[data-screen] .mobile-project-card strong{min-width:0;overflow-wrap:anywhere}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app .mobile-editor-top{display:grid;grid-template-columns:minmax(0,1fr) 44px auto;gap:6px;top:calc(8px + env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));padding:0;align-items:center}
+ #mobile-app[data-screen="editor"] #mobile-editor-cancel{grid-column:2;grid-row:1;width:44px;min-width:44px;height:44px;min-height:44px;padding:8px;border-radius:12px}
+ #mobile-app[data-screen="editor"] .mobile-cancel-label{display:none}
+ #mobile-app[data-screen="editor"] #mobile-editor-next{grid-column:3;grid-row:1;height:44px;min-height:44px;padding:8px 10px;font-size:11px;border-radius:12px}
+ #mobile-app[data-screen="editor"] #mobile-editor-title{grid-column:1/-1;grid-row:2;min-width:0;width:100%;padding:6px 10px;border-radius:10px;font-size:12px;line-height:18px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #mobile-app[data-screen="editor"] .mobile-home-tools{top:calc(104px + env(safe-area-inset-top))}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] .map-visibility-control{top:calc(104px + env(safe-area-inset-top))}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] .map-terrain-control{top:calc(156px + env(safe-area-inset-top))}
+ #mobile-app[data-screen="editor"] .mobile-editor-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.25fr) 40px;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));gap:5px}
+ #mobile-app[data-screen="editor"] .mobile-editor-tools button{min-width:0;min-height:44px;padding:7px 4px;font-size:10px;line-height:1.25;overflow-wrap:anywhere}
+ #mobile-app[data-screen="editor"] .mobile-editor-tools button:last-child svg{width:20px;height:20px}
+ body:is(.mobile-drawing,.mobile-editing) #mobile-app[data-screen="editor"] .mobile-editor-tools{display:none}
+ #mobile-app[data-screen="editor"] .mobile-orientation-sheet{max-height:min(68dvh,calc(var(--mobile-viewport-height,100dvh) - 120px));padding:8px 12px 12px}
+ #mobile-app[data-screen] #mobile-refinement-controls{width:100%;min-width:0}
+ #mobile-app[data-screen="editor"] #mobile-refinement-controls>.advanced{width:100%;min-width:0;margin:0;padding:0;border:0;background:transparent!important}
+ #mobile-app[data-screen="editor"] #mobile-refinement-controls>.advanced>summary{display:none}
+ #mobile-app[data-screen] #refinement-exclusions-body>:is(#exclude-line-button,#exclude-zone-button){display:inline-flex;max-width:100%;margin:4px 4px 8px 0;min-height:40px;font-size:11px;padding:7px 9px}
+ #mobile-app[data-screen] .mobile-quick-grid{min-width:0;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #mobile-app[data-screen] .mobile-quick-grid label{min-width:0}
+ #mobile-app[data-screen] .mobile-materials>div{min-width:0}
+ #mobile-app[data-screen] .mobile-materials dt{min-width:0;overflow-wrap:anywhere}
+}
+
+/* Keep map notices and native attribution above the complete drawing dock.
+   Portrait drawing has a second confirmation row; landscape uses one row. */
+@media screen{
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] .map-wrap .map-status{bottom:calc(140px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"]:is(.mobile-drawing,.mobile-editing) #mobile-app[data-screen="editor"] :is(.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right){bottom:calc(128px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"]:is(.mobile-drawing,.mobile-editing) #mobile-app[data-screen="editor"] .map-wrap .map-status{bottom:calc(174px + env(safe-area-inset-bottom))}
+}
+@media screen and (orientation:landscape){
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] :is(.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right){bottom:calc(78px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] .map-wrap .map-status{bottom:calc(120px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"]:is(.mobile-drawing,.mobile-editing) #mobile-app[data-screen="editor"] :is(.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right){bottom:calc(78px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"]:is(.mobile-drawing,.mobile-editing) #mobile-app[data-screen="editor"] .map-wrap .map-status{bottom:calc(120px + env(safe-area-inset-bottom))}
+}
+@media screen and (orientation:landscape) and (max-height:360px){
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] .map-wrap .map-status{left:72px;max-width:calc(100% - 84px)}
+ #mobile-app[data-screen="editor"] .mobile-home-tools{bottom:auto;height:44px;overflow:visible}
+}
+/* On narrow portrait screens the visible attribution occupies two lines. */
+@media screen and (orientation:portrait) and (max-width:359px){
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"] .map-wrap .map-status{bottom:calc(160px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"]:is(.mobile-drawing,.mobile-editing) #mobile-app[data-screen="editor"] .map-wrap .map-status{bottom:calc(194px + env(safe-area-inset-bottom))}
+}
+/* Credits sit above the central new-field button on the main map. */
+@media screen{
+ #mobile-app[data-screen="map"] .maplibregl-ctrl-bottom-right{bottom:calc(168px + env(safe-area-inset-bottom))}
+}
+@media screen and (orientation:landscape){
+ #mobile-app[data-screen="map"] .maplibregl-ctrl-bottom-left{bottom:calc(78px + env(safe-area-inset-bottom))}
+}

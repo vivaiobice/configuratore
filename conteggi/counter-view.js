@@ -1,4 +1,4 @@
-import {selectedDetailLines} from './reading-title.js?v=1.3.6';
+import {selectedDetailLines} from './reading-title.js?v=1.3.7';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths={
  reset:'<path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/>',

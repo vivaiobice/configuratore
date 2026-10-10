@@ -1,5 +1,5 @@
-import {terrainReportMetricMetadata} from '../src/terrain-report-summary.js?v=1.3.6';
-import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.6';
+import {terrainReportMetricMetadata} from '../src/terrain-report-summary.js?v=1.3.7';
+import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.7';
 import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=55.7';
 function sumFields(fields,key){return fields.some(field=>field.terrainStatus==='invalid')?null:fields.reduce((sum,field)=>sum+field[key],0);}
 function text(value) { return String(value ?? '').trim().toLowerCase(); }

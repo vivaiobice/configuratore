@@ -2,3 +2,101 @@
 .profile-transfer-warning{position:fixed;z-index:1600;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:calc(64px + env(safe-area-inset-top));margin:auto;max-width:620px;padding:12px 16px;border:1px solid #b69b58;border-radius:12px;background:#fff9e8;color:#423510;box-shadow:0 8px 24px #0002;font:14px/1.4 Inter,system-ui,sans-serif}
 .profile-transfer-warning[hidden]{display:none}.profile-transfer-warning p{margin:0 0 8px}.profile-transfer-warning button{min-height:44px}
 .identity-change-notice{max-width:620px;margin:32px auto;padding:24px;font:16px/1.5 Inter,system-ui,sans-serif}.identity-change-notice button{display:block;margin-top:16px;min-height:44px}
+
+/* Use the available mobile page instead of squeezing large input text into
+   short fields. Intrinsic heights still allow scrolling with an open keyboard
+   or enlarged system text. All declarations stay inside the mobile shell. */
+@media screen{
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-pages{display:flex;flex-direction:column;bottom:calc(86px + env(safe-area-inset-bottom));padding:calc(8px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left))}
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-pages>section{display:grid;flex:1 0 auto;grid-template-rows:auto minmax(min-content,1fr) auto;gap:6px;min-height:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-page-heading{min-height:26px;margin:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-page-heading h1{font-size:18px;line-height:26px;min-width:0;letter-spacing:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-profile-content{min-width:0;display:grid;grid-template-rows:auto auto auto;align-content:start;gap:6px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-profile-content:has(.mobile-profile-card){grid-template-rows:minmax(min-content,1fr) auto auto;align-content:stretch}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(min-content,1fr) auto;gap:8px;padding:10px;margin:0;border-radius:15px;min-width:0;text-align:left}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head{display:flex;align-items:center;gap:8px;min-width:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-avatar{position:static;flex:none;width:34px;height:34px;margin:0;font-size:17px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-identity{flex:1;min-width:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head h2{margin:0;padding:0;font-size:14px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head p{margin:2px 0 0;padding:0;font-size:11px;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head p:empty{display:none}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-edit{display:grid;grid-template-rows:minmax(min-content,1fr) auto;gap:8px;grid-column:auto;min-width:0;margin:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px;margin:0;align-content:space-between}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details label{display:grid;gap:3px;min-width:0;margin:0;font-size:11px;line-height:13px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details .mobile-profile-wide{grid-column:auto}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details input{display:block;width:100%;min-width:0;height:36px;min-height:36px;padding:6px 7px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;line-height:20px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-card button{min-width:0;min-height:42px;margin:0;padding:6px;border-radius:9px;font-size:11px;line-height:14px;overflow-wrap:anywhere}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-edit>button{min-height:40px;background:#225939;color:#fff}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-account-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-width:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-counts-link{min-height:38px;margin:0;padding:6px 8px;border-radius:10px;font-size:11px;line-height:14px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin:0;padding:3px 8px;font-size:11px;line-height:14px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting select,
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting .mobile-select-trigger{width:100%;min-width:0;height:30px;min-height:30px;margin:0;padding:3px 7px;font-size:13px;line-height:20px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting .mobile-select-trigger::after{font-size:15px;line-height:20px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-feedback{min-height:24px;margin:0;font-size:11px;line-height:14px;overflow-wrap:anywhere}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card{min-width:0;margin:0;padding:12px;border-radius:15px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card .mobile-storage-note{margin:0 0 8px;font-size:11px;line-height:15px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card label{min-width:0;gap:3px;margin:8px 0 0;font-size:11px;line-height:14px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card input:not([type="checkbox"]){width:100%;min-width:0;height:36px;min-height:36px;padding:6px 8px;border-radius:8px;font-size:13px;line-height:20px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card button{min-width:0;min-height:40px;margin-top:6px;padding:6px 8px;border-radius:9px;font-size:11px;line-height:14px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card label:has(input[type="checkbox"]){display:flex;align-items:center;gap:7px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card .mobile-check-toggle{width:34px;min-width:34px;height:34px;min-height:34px;margin:0;padding:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card .mobile-check-toggle::before{width:28px;height:28px;flex-basis:28px;font-size:18px}
+}
+@media screen and (max-height:700px){
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-pages{padding-top:calc(5px + env(safe-area-inset-top));padding-bottom:5px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-pages>section,
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-profile-content{gap:4px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-page-heading{min-height:22px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-page-heading h1{font-size:17px;line-height:22px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-card{padding:6px;gap:4px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-avatar{width:28px;height:28px;font-size:15px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head h2{font-size:13px;line-height:16px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head p{font-size:10px;line-height:12px;margin-top:1px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-edit{gap:4px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details{gap:3px 6px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details label{gap:1px;font-size:10px;line-height:12px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details input{height:28px;min-height:28px;padding:3px 6px;font-size:12px;line-height:20px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-card button{min-height:36px;padding:4px;font-size:10px;line-height:13px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-counts-link{min-height:34px;padding:4px 7px;font-size:10px;line-height:13px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting{padding:2px 7px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting select,
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting .mobile-select-trigger{height:26px;min-height:26px;font-size:12px;padding:2px 6px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-feedback{min-height:24px;font-size:10px;line-height:12px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card{padding:6px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card .mobile-storage-note{margin-bottom:5px;font-size:10px;line-height:13px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card label{margin-top:4px;gap:2px;font-size:10px;line-height:12px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card input:not([type="checkbox"]){height:28px;min-height:28px;padding:3px 6px;font-size:12px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card button{min-height:34px;margin-top:4px;padding:4px 6px;font-size:10px;line-height:13px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card .mobile-check-toggle{min-height:30px;height:30px;margin:0;padding:0}
+}
+@media screen and (orientation:landscape) and (min-width:500px){
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-pages{bottom:calc(53px + env(safe-area-inset-bottom))}
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-pages>section{grid-template-columns:minmax(0,1fr) minmax(130px,26%);grid-template-rows:auto auto auto minmax(min-content,1fr);gap:3px;align-items:stretch}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-page-heading{grid-column:1/-1}
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-profile-content,
+ body.mobile-app-active #mobile-app[data-screen="profile"] #mobile-profile-content:has(.mobile-profile-card){display:contents}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-card{grid-column:1;grid-row:2/span 3;padding:4px;gap:3px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-avatar{width:24px;height:24px;font-size:13px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head h2{font-size:12px;line-height:14px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-head p{font-size:10px;line-height:11px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-edit{gap:3px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px 6px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details .mobile-profile-wide{grid-column:auto}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details label{line-height:11px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-details input{height:24px;min-height:24px;padding:1px 5px;font-size:12px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-card button{min-height:32px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-profile-edit>button{min-height:30px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-counts-link,
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting,
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-feedback{grid-column:2;align-self:start}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-counts-link{grid-row:2}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-theme-setting{grid-row:3;grid-template-columns:1fr;align-content:start}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-feedback{grid-row:4}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card{grid-column:1;grid-row:2/span 3;align-self:start}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card :is(#mobile-login-form,#mobile-register-form){display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px 6px;margin-top:4px}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card :is(#mobile-login-form,#mobile-register-form)>label{grid-column:span 3;margin:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card #mobile-login-form>label:has(input[type="checkbox"]){grid-column:1/-1}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card #mobile-login-form>button{grid-column:span 2;margin:0}
+ body.mobile-app-active #mobile-app[data-screen="profile"] .mobile-auth-card #mobile-register-form>button{grid-column:span 3;margin:0}
+}

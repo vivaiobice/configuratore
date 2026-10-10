@@ -36,3 +36,20 @@
   .vo-service-footer{bottom:calc(75px + env(safe-area-inset-bottom));right:10px;flex-direction:column;gap:0;max-width:45%;font-size:8px}
   body[data-mobile-screen="editor"] .vo-service-footer,body[data-mobile-screen="parameters"] .vo-service-footer{display:none}
 }
+
+/* A single fitted brand control keeps the tool selector clear of the field
+   title. Scope beats the older mobile shell's generic button/span rules. */
+@media screen{
+ #mobile-app[data-screen]>.mobile-brand{top:calc(8px + env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:70px;max-width:calc(100% - 82px);display:flex;align-items:center;gap:6px;pointer-events:auto}
+ #mobile-app:not([data-screen="map"])>.mobile-brand{display:none}
+ #mobile-app[data-screen] .mobile-brand-tool-trigger{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-start;gap:4px;height:44px;min-height:44px;max-width:160px;padding:5px 8px;border:1px solid #dce5de;border-radius:12px;background:#fffffff2;color:#21462e;box-shadow:0 3px 14px #17302319}
+ #mobile-app[data-screen] .mobile-brand>img,#mobile-app[data-screen] .mobile-brand-tool-trigger img{flex:none;width:116px;height:32px;padding:0;background:transparent;border-radius:0;box-shadow:none;object-fit:contain}
+ #mobile-app[data-screen] .mobile-brand .tool-chevron,#mobile-app[data-screen] .mobile-editor-tool-trigger .tool-chevron{display:block;flex:0 0 14px;width:14px;min-width:14px;max-width:14px;margin:0;padding:0;border-radius:0;background:transparent;color:inherit;font-size:18px;line-height:1;letter-spacing:0;box-shadow:none;text-align:center}
+ #mobile-app[data-screen] .mobile-brand>.mobile-release-label{display:block;flex:0 1 auto;min-width:0;max-width:58px;margin:0;padding:3px 5px;border-radius:6px;background:#fffffff0;color:#47604e;font-size:7px;line-height:1.25;font-weight:600;letter-spacing:0;white-space:normal;overflow-wrap:anywhere;box-shadow:none}
+ #mobile-app[data-screen] .mobile-brand>.mobile-release-label:empty{display:none}
+ #mobile-app[data-screen="editor"] .mobile-editor-tool-trigger{display:flex;grid-column:1;grid-row:1;justify-self:start;align-items:center;justify-content:flex-start;gap:4px;width:auto;max-width:146px;height:44px;min-height:44px;padding:5px 8px;border:1px solid #dce5de;border-radius:12px;background:#fffffff2;color:#21462e;box-shadow:0 3px 14px #17302319}
+ #mobile-app[data-screen="editor"] .mobile-editor-tool-trigger img{width:104px;height:32px;object-fit:contain}
+ #mobile-app[data-screen] .tool-selector{max-width:calc(100% - 24px);width:218px}
+ html[data-theme="dark"] #mobile-app[data-screen] :is(.mobile-brand-tool-trigger,.mobile-editor-tool-trigger){background:#f7faf5;color:#21462e;border-color:#dde8de}
+ html[data-theme="dark"] #mobile-app[data-screen] .mobile-brand>.mobile-release-label{background:#203b2b;color:#d7e6da}
+}

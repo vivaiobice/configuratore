@@ -1,4 +1,4 @@
-import {terrainMeasureText,terrainUsesCertifiedQuantities,terrainReportMetadata,terrainRowCountText} from '../src/terrain-report-summary.js?v=1.3.6';
+import {terrainMeasureText,terrainUsesCertifiedQuantities,terrainReportMetadata,terrainRowCountText} from '../src/terrain-report-summary.js?v=1.3.7';
 import {formatCadastralReference} from '../src/cadastral-references.js?v=55.7';
 const STATUS_LABELS={draft:'Bozza',saved:'Salvato',pdf_downloaded:'PDF scaricato',quote_requested:'Preventivo richiesto',contacted:'Contattato',client:'Cliente'};
 const number=value=>value===null?'Non disponibile':(Number(value)||0).toLocaleString('it-IT',{useGrouping:true});

@@ -1,21 +1,21 @@
-# Pubblicazione — piattaforma Vivai Obice 1.3.6
+# Pubblicazione — piattaforma Vivai Obice 1.3.7
 
 Il pacchetto contiene Configuratore e Conteggi. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `/conteggi/`. Repository e impostazioni GitHub Pages restano quelli esistenti. Nessuna pubblicazione remota è stata eseguita in questa consegna.
 
 ## Stato dei servizi
 
-Versione e cache sono coordinate a **1.3.6 · LIVE**. Il codice browser prepara sincronizzazione e trasmissione; Admin resta disabilitato. **I servizi Conteggi non sono attivi sul server:** al controllo del 9 ottobre le tabelle risultano assenti e i tentativi di installazione tramite il collegamento Supabase restituiscono `Invalid or expired requestState`. Non sono stati applicati SQL, distribuite funzioni, modificati secret o inviati messaggi reali.
+Versione e cache sono coordinate a **1.3.7 · LIVE**. Il codice browser prepara sincronizzazione e trasmissione; Admin resta disabilitato. **I servizi Conteggi non sono attivi sul server:** all’ultimo controllo del 9 ottobre, documentato nella 1.3.6, le tabelle risultavano assenti e i tentativi di installazione tramite il collegamento Supabase restituiscono `Invalid or expired requestState`. Non sono stati applicati SQL, distribuite funzioni, modificati secret o inviati messaggi reali.
 
 Il salvataggio locale è disponibile. Le letture aperte sono bozze sul dispositivo; diventano righe sincronizzabili con «Salva lettura». Quando il server sarà attivo, una sessione registrata potrà sincronizzarle anche senza campo associato. Un ospite deve accettare l’avviso corrente e scegliere esplicitamente il trasferimento durante l’accesso a un account esistente. Sincronizzazione e trasmissione sono operazioni distinte: la prima non invia email.
 
-«Adatta al terreno» non viene modificato in questa revisione. La navigazione 3D approvata dall’utente resta invariata. Esiti e limiti in [README_RELEASE_1.3.6.md](README_RELEASE_1.3.6.md), [QA_RELEASE_1.3.6.md](QA_RELEASE_1.3.6.md) e `manifest-piattaforma.json`.
+«Adatta al terreno» non viene modificato in questa revisione. La navigazione 3D approvata dall’utente resta invariata. Esiti e limiti in [README_RELEASE_1.3.7.md](README_RELEASE_1.3.7.md), [QA_RELEASE_1.3.7.md](QA_RELEASE_1.3.7.md) e `manifest-piattaforma.json`.
 
 ## Pubblicare il codice unico
 
 1. Conservare il checkout e lo ZIP della versione pubblicata. Non cancellare gli archivi personali del browser.
-2. Estrarre `Vivai_Obice_Piattaforma_v1.3.6.zip` in una cartella separata. `index.html`, `CNAME`, `src/`, `conteggi/`, `assets/`, `admin/`, `tests/` e `supabase/` sono alla radice.
+2. Estrarre `Vivai_Obice_Piattaforma_v1.3.7.zip` in una cartella separata. `index.html`, `CNAME`, `src/`, `conteggi/`, `assets/`, `admin/`, `tests/` e `supabase/` sono alla radice.
 3. Copiare l’intero contenuto nella radice del checkout `vivaiobice/configuratore`; non aggiungere una cartella contenitore. Non servono `node_modules` sull’hosting. Conservare `CNAME`, ramo e impostazioni Pages.
-4. Controllare le modifiche e pubblicare un unico commit con il flusso già utilizzato. Versione attesa in entrambi gli strumenti: **1.3.6 · LIVE**.
+4. Controllare le modifiche e pubblicare un unico commit con il flusso già utilizzato. Versione attesa in entrambi gli strumenti: **1.3.7 · LIVE**.
 5. Chiudere le vecchie schede Conteggi, riaprire online e poi provare l’avvio offline. Il Service Worker controlla soltanto `/conteggi/`. Conservare IndexedDB/localStorage e la stessa origine HTTPS.
 
 Il caricamento statico non installa il backend. Attivare e verificare i servizi sotto prima di considerare conclusi salvataggio nel profilo e trasmissione.

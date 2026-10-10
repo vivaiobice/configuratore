@@ -1,10 +1,10 @@
-# Configuratore + Conteggi — caricamento unico 1.3.6
+# Configuratore + Conteggi — caricamento unico 1.3.7
 
-Usare il pacchetto completo 1.3.6. La consegna non pubblica il sito; stato e limiti sono in [README_RELEASE_1.3.6.md](README_RELEASE_1.3.6.md).
+Usare il pacchetto completo 1.3.7. La consegna non pubblica il sito; stato e limiti sono in [README_RELEASE_1.3.7.md](README_RELEASE_1.3.7.md).
 
 1. Conservare la versione pubblicata e lo ZIP precedente. Estrarre il nuovo archivio in una cartella separata: `index.html` e `conteggi/index.html` devono essere nella radice, insieme a `src/`, `admin/`, `assets/`, `tests/` e `supabase/`.
 2. Copiare tutto il contenuto estratto nella radice del repository `vivaiobice/configuratore`. Non caricare lo ZIP come file del repository e non aggiungere una cartella contenitore. Conservare `CNAME` e impostazioni Pages.
-3. Dopo la pubblicazione verificare **1.3.6 · LIVE** nel Configuratore e in `/conteggi/`. Provare selettore tool, Profilo, ingresso diretto nel contatore e ritorno all’editor con bozza conservata.
+3. Dopo la pubblicazione verificare **1.3.7 · LIVE** nel Configuratore e in `/conteggi/`. Provare selettore tool, Profilo, ingresso diretto nel contatore e ritorno all’editor con bozza conservata.
 4. Chiudere le vecchie schede Conteggi e riaprire online per attivare il worker aggiornato; poi provare la riapertura offline. Conservare IndexedDB/localStorage e la stessa origine HTTPS; non cancellare tutti i dati del sito.
 
 **Profilo e trasmissione richiedono ancora l’attivazione server.** Il codice browser è già predisposto, ma le migrazioni e le due funzioni Conteggi non sono installate. L’installazione tramite il collegamento Supabase è fallita con `Invalid or expired requestState`. Il solo caricamento dello ZIP non risolve questo blocco; il salvataggio locale rimane disponibile. Admin resta disabilitato.

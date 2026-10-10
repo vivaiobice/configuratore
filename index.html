@@ -14,9 +14,9 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css" />
   <link rel="stylesheet" href="./styles.css?v=18" />
-  <link rel="stylesheet" href="./mobile.css?v=1.3.6" />
-  <link rel="stylesheet" href="./counts-integration.css?v=1.2.4" />
-  <link rel="stylesheet" href="./profile.css?v=1.2.4" />
+  <link rel="stylesheet" href="./mobile.css?v=1.3.7" />
+  <link rel="stylesheet" href="./counts-integration.css?v=1.3.7" />
+  <link rel="stylesheet" href="./profile.css?v=1.3.7" />
   <link rel="stylesheet" href="./desktop-library.css?v=51" />
   <link rel="stylesheet" href="./desktop-v36.css?v=36" />
   <link rel="stylesheet" href="./desktop-v37.css?v=37" />
@@ -42,13 +42,14 @@
   <link rel="stylesheet" href="./v1.0.3.css?v=1.0.3" />
   <link rel="stylesheet" href="./v1.0.4.css?v=1.0.4" />
   <link rel="stylesheet" href="./v1.0.5.css?v=1.2.4" />
-  <link rel="stylesheet" href="./row-portions.css?v=1.3.6" />
-  <link rel="stylesheet" href="./map-visibility.css?v=1.3.6" />
-  <link rel="stylesheet" href="./coordinates.css?v=1.3.6" />
-  <link rel="stylesheet" href="./terrain.css?v=1.3.6" />
+  <link rel="stylesheet" href="./row-portions.css?v=1.3.7" />
+  <link rel="stylesheet" href="./map-visibility.css?v=1.3.7" />
+  <link rel="stylesheet" href="./coordinates.css?v=1.3.7" />
+  <link rel="stylesheet" href="./terrain.css?v=1.3.7" />
+  <link rel="stylesheet" href="./refinement-cards.css?v=1.3.7" />
   <link rel="preload" href="./assets/fonts/Comfortaa-Variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="./fonts.css?v=1.2.4">
-  <link rel="stylesheet" href="./button-feedback.css?v=1.3.6" media="screen">
+  <link rel="stylesheet" href="./button-feedback.css?v=1.3.7" media="screen">
 </head>
 <body>
   <header class="topbar">
@@ -100,14 +101,23 @@
           <label>Distanza piante <span>m</span><input id="plant-spacing" type="number" min="0.3" max="5" step="0.05" value="0.90" /></label>
           <label>Distanza filari <span>m</span><input id="row-spacing" type="number" min="1" max="8" step="0.05" value="2.50" /></label>
         </div>
-        <section id="row-portion-picker" class="row-portion-picker" aria-label="Porzioni coltivabili" hidden></section>
+
+      </section>
+
+      <details class="advanced">
+        <summary>Affina il progetto <span class="advanced-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></svg></span></summary>
+        <div class="advanced-body">
+          <details class="advanced-card advanced-portions" data-refinement="portions"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v18H3zM14 3h7v18h-7z"/></svg><span class="refinement-title">Porzioni</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-portions-body" class="refinement-content">
+<section id="row-portion-picker" class="row-portion-picker" aria-label="Porzioni coltivabili" hidden></section>
         <div class="range-field orientation-control"><label for="orientation">Orientamento filari</label><label class="orientation-manual"><input id="orientation-output" type="text" inputmode="decimal" value="0,0" aria-label="Orientamento filari in gradi" /><span>°</span></label>
           <input id="orientation" type="range" min="0" max="179.9" step="0.1" value="0" />
         </div>
         <div class="orientation-presets" aria-label="Orientamenti rapidi">
           <button data-angle="0">N–S</button><button data-angle="45">NE–SO</button><button data-angle="90">E–O</button><button data-angle="135">SE–NO</button>
         </div>
-        <section class="row-curve-controls" aria-labelledby="row-curve-title">
+          </div></details>
+          <details class="advanced-card advanced-curve" data-refinement="curve"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18C5 2 19 22 21 6"/></svg><span class="refinement-title">Curvatura</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-curve-body" class="refinement-content">
+<section class="row-curve-controls" aria-labelledby="row-curve-title">
           <div class="row-curve-heading"><div><strong id="row-curve-title">Curvatura filari</strong><small>Aggiungi più punti per creare archi o forme a S.</small></div><button id="curve-add-button" type="button">＋ Punto</button></div>
           <div id="terrain-curve-controls"></div>
           <div id="terrain-proposal-review"></div>
@@ -116,14 +126,15 @@
           <div id="curve-points-list" class="curve-points-list"></div>
           <div class="row-curve-actions"><button id="curve-edit-button" type="button" aria-pressed="false">Modifica sulla mappa</button><button id="curve-reset-button" type="button">Raddrizza filari</button></div>
         </section>
-      </section>
-
-      <details class="advanced">
-        <summary>Affina il progetto <span class="advanced-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></svg></span></summary>
-        <div class="advanced-body">
-          <section class="advanced-card advanced-plant" data-refinement="plant">
-            <h3>Caratteristiche dell’impianto</h3>
-            <div class="field-grid advanced-spacing">
+          </div></details>
+          <details class="advanced-card advanced-exclusions" data-refinement="exclusions"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8l8 8m0-8-8 8"/></svg><span class="refinement-title">Gestione aree escluse</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-exclusions-body" class="refinement-content">
+<div class="exclusion-panel">
+            <div class="exclusion-heading"><strong>Gestione aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
+            <div id="exclusion-list" class="exclusion-list"><p class="empty-exclusions">Nessuna area esclusa.</p></div>
+          </div>
+          </div></details>
+          <details class="advanced-card advanced-plant" data-refinement="plant"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 3v6m8 0v6m-8 0v6"/></svg><span class="refinement-title">Caratteristiche impianto</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-plant-body" class="refinement-content">
+<div class="field-grid advanced-spacing">
               <label>Capezzagna <span>m</span><input id="headland" type="number" min="0" max="30" step="0.5" placeholder="es. 8" /></label>
               <label>Distanza pali <span>m</span><input id="post-spacing" type="number" min="1" max="15" step="0.25" value="4.50" placeholder="es. 4,5" /></label>
             </div>
@@ -131,10 +142,9 @@
               <label class="check-row"><input id="mechanized" type="checkbox" /> Vendemmia meccanica prevista</label>
               <p id="mechanized-advice" class="desktop-mechanization-advice" hidden></p>
             </div>
-          </section>
-          <section class="advanced-card advanced-material" data-refinement="material">
-            <h3><span class="mobile-material-prefix">Scelta del </span>Materiale vegetale</h3>
-            <label>Vitigno
+          </div></details>
+          <details class="advanced-card advanced-material" data-refinement="material"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V10M12 14C3 14 3 5 3 5c9 0 9 9 9 9Zm0-4c0-7 9-7 9-7s0 7-9 7Z"/></svg><span class="refinement-title">Materiale vegetale</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-material-body" class="refinement-content">
+<label>Vitigno
               <select id="grape-variety"><option value="">Da definire</option></select>
             </label>
             <div class="field-grid material-grid">
@@ -152,12 +162,11 @@
               <textarea id="material-request-note" class="control-input" rows="3" placeholder="es. varietà, clone, portainnesto o altre caratteristiche richieste"></textarea>
               <small>Richiesta da verificare in base alla disponibilità Vivai Obice o presso vivai colleghi.</small>
             </label>
-          </section>
-          <section class="advanced-card advanced-information" data-refinement="information">
-            <h3>Informazioni</h3>
-            <div class="field-lifecycle-row desktop-campaign-year"><label class="campaign-year-label">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label><label>Stato impianto<select id="planting-status-desktop"><option value="planned">Da realizzare</option><option value="planted">Impianto realizzato</option></select></label></div>
-            <section class="cadastral-reference-section"><h4>Riferimenti catastali del campo</h4><p>Comune, sezione, foglio e particelle sono proposti dal perimetro del campo. Puoi correggerli o aggiungerne altri.</p><button id="cadastral-auto-refresh" type="button">Aggiorna dati catastali</button><p id="cadastral-auto-status" role="status">Disegna un campo per cercare le particelle.</p><div id="cadastral-reference-editor"></div></section>
-            <section class="soil-section"><h4>Suolo</h4><p>Attiva «Suolo» sulla mappa, scegli il tema e tocca un punto per leggerne i dati. Per salvare i dati nel campo disegnato, scegli «Analizza suolo del campo». Cartografia Regione Piemonte · CC BY 4.0 · scala 1:50.000; indicazioni da verificare sul posto.</p><label>Tema della carta<select id="soil-layer-select"><option value="texture">Tessitura superficiale</option><option value="soil">Carta dei suoli</option><option value="limestone">Calcare superficiale</option><option value="drainage">Drenaggio</option><option value="reaction">Reazione superficiale</option></select></label><button id="soil-analyze" type="button">Analizza suolo del campo</button><p id="soil-status" role="status">Disegna un campo e scegli «Analizza suolo del campo».</p><div id="soil-profile"></div></section>
+          </div></details>
+          <details class="advanced-card advanced-information" data-refinement="information"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8h.01M12 11v6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg><span class="refinement-title">Informazioni</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-information-body" class="refinement-content">
+<div class="field-lifecycle-row desktop-campaign-year"><label class="campaign-year-label">Annata dell’impianto<input id="campaign-year-desktop" class="control-input" type="number" min="2000" max="2100" step="1" inputmode="numeric" /></label><label>Stato impianto<select id="planting-status-desktop"><option value="planned">Da realizzare</option><option value="planted">Impianto realizzato</option></select></label></div>
+
+
             <div class="advanced-context">
               <label>Inquadramento dell’impianto
                 <select id="project-context"><option value="new_planting">Nuovo Impianto</option><option value="application">Domanda</option><option value="tender">Bando</option><option value="contribution">Contributo / finanziamento</option><option value="other">Altro</option></select>
@@ -166,11 +175,13 @@
             <div class="advanced-notes">
               <label>Riferimento / note<input id="project-context-note" class="control-input" type="text" placeholder="es. PSR / CSR, misura, numero pratica…" /></label>
             </div>
-          </section>
-          <div class="exclusion-panel">
-            <div class="exclusion-heading"><strong>Gestione aree escluse</strong><span>Strade, fabbricati, boschi o altre superfici non impiantabili.</span></div>
-            <div id="exclusion-list" class="exclusion-list"><p class="empty-exclusions">Nessuna area esclusa.</p></div>
-          </div>
+          </div></details>
+          <details class="advanced-card advanced-cadastre" data-refinement="cadastre"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M9 9v12M15 3v6m0 6h6"/></svg><span class="refinement-title">Catasto</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-cadastre-body" class="refinement-content">
+<section class="cadastral-reference-section"><h4>Riferimenti catastali del campo</h4><p>Comune, sezione, foglio e particelle sono proposti dal perimetro del campo. Puoi correggerli o aggiungerne altri.</p><button id="cadastral-auto-refresh" type="button">Aggiorna dati catastali</button><p id="cadastral-auto-status" role="status">Disegna un campo per cercare le particelle.</p><div id="cadastral-reference-editor"></div></section>
+          </div></details>
+          <details class="advanced-card advanced-soil" data-refinement="soil"><summary><svg class="refinement-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 8 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 18l9 5 9-5"/></svg><span class="refinement-title">Suolo</span><svg class="refinement-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div id="refinement-soil-body" class="refinement-content">
+<section class="soil-section"><h4>Suolo</h4><p>Attiva «Suolo» sulla mappa, scegli il tema e tocca un punto per leggerne i dati. Per salvare i dati nel campo disegnato, scegli «Analizza suolo del campo». Cartografia Regione Piemonte · CC BY 4.0 · scala 1:50.000; indicazioni da verificare sul posto.</p><label>Tema della carta<select id="soil-layer-select"><option value="texture">Tessitura superficiale</option><option value="soil">Carta dei suoli</option><option value="limestone">Calcare superficiale</option><option value="drainage">Drenaggio</option><option value="reaction">Reazione superficiale</option></select></label><button id="soil-analyze" type="button">Analizza suolo del campo</button><p id="soil-status" role="status">Disegna un campo e scegli «Analizza suolo del campo».</p><div id="soil-profile"></div></section>
+          </div></details>
         </div>
       </details>
 
@@ -293,6 +304,6 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
   <footer class="vo-service-footer"><span>Uno strumento Vivai Obice</span><span>© 2026 Vivai Obice. Tutti i diritti riservati.</span></footer>
-  <script type="module" src="./src/app.js?v=1.3.6"></script>
+  <script type="module" src="./src/app.js?v=1.3.7"></script>
 </body>
 </html>

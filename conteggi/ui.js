@@ -1,11 +1,11 @@
-import {CATEGORY_LABELS,CountsError,summarizeCounts,patchCount,validateCountPatch,quantityAfter,countDetailLines as storedDetailLines} from './model.js?v=1.3.6';
-import {scopeKey} from './store.js?v=1.3.6';
-import {buildCountsUrl} from './navigation.js?v=1.3.6';
-import {buildSubmission} from './submission.js?v=1.3.6';
-import {counterView,icon} from './counter-view.js?v=1.3.6';
+import {CATEGORY_LABELS,CountsError,summarizeCounts,patchCount,validateCountPatch,quantityAfter,countDetailLines as storedDetailLines} from './model.js?v=1.3.7';
+import {scopeKey} from './store.js?v=1.3.7';
+import {buildCountsUrl} from './navigation.js?v=1.3.7';
+import {buildSubmission} from './submission.js?v=1.3.7';
+import {counterView,icon} from './counter-view.js?v=1.3.7';
 import {listRootstocksForSelection} from '../src/plant-catalog.js';
-import {generatedReadingTitle,displayDetailValue,selectedDetailLines,createReadingTitleState} from './reading-title.js?v=1.3.6';
-import {NOTICE_TEXT} from './storage-banner.js?v=1.3.6';
+import {generatedReadingTitle,displayDetailValue,selectedDetailLines,createReadingTitleState} from './reading-title.js?v=1.3.7';
+import {NOTICE_TEXT} from './storage-banner.js?v=1.3.7';
 export {NOTICE_TEXT};
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const states={local:'Salvato sul dispositivo',pending:'Sincronizzazione in attesa',synced:'Sincronizzato',error:'Salvato sul dispositivo · sincronizzazione da riprovare',conflict:'Conflitto da risolvere'};

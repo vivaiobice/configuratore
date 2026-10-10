@@ -102,9 +102,9 @@ body.counter-mode{background:#151c19;color:#f3f5ec;color-scheme:dark;--green:#ba
 .archive-category>summary>span:first-child{flex-basis:140px}
 .archive-category>summary strong{max-width:calc(100% - 24px);overflow-wrap:anywhere}
 
-/* Keep the approved transparent mark centered on its own full footer row. */
-.counts-footer-brand{display:flex;justify-content:center;flex:0 0 100%;padding:10px 0;background:transparent}.counts-footer-brand img{display:block;width:280px;max-width:100%;height:auto}
-.counter-mode .counts-footer-brand img{filter:drop-shadow(1px 0 1px #f3f5ecc7) drop-shadow(-1px 0 1px #f3f5ecc7) drop-shadow(0 1px 1px #f3f5ecc7) drop-shadow(0 -1px 1px #f3f5ecc7)}
+/* Margins reserve a centered row; only the transparent mark itself is linked. */
+.counts-footer-brand{display:block;flex:0 0 280px;max-width:100%;margin:10px max(0px,calc((100% - 280px)/2));padding:0;background:transparent}.counts-footer-brand img{display:block;width:280px;max-width:100%;height:auto}
+.counter-mode .counts-footer-brand img{filter:drop-shadow(0 0 1.2px #f3f5ecb8)}
 
 /* Categoria e dettagli precedono il numero senza interrompere gli impulsi. */
 .counter-toolbar,.type-switch,.reading-title,.reading-title-hint,.counter-details-trigger,.counter-detail-summary,.impulse-controls,.save-reading{flex-shrink:0}
