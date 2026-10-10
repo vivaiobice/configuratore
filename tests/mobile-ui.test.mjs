@@ -171,11 +171,18 @@ test('mobile rapid calculator switches to vines and shows the corresponding net 
  assert.match($('#mobile-quick-result').textContent.replace(/\./g,''),/1968 m²/);
  mode.click();assert.equal($('#mobile-quick-area-field').hidden,false);
 });
-test('mobile excluded areas stay in the map tools and return inside refinement on desktop',()=>{
- const c=setup(),{$}=c;
- assert.ok($('[data-content="cuts"] .exclusion-panel'));
+test('mobile excluded areas and soil retain their refinement cards through desktop restoration',()=>{
+ const c=setup(),{$}=c,exclusions=$('.exclusion-panel'),soil=$('.soil-section');
+ assert.equal(exclusions.closest('[data-refinement]').dataset.refinement,'exclusions');
+ assert.equal(soil.closest('[data-refinement]').dataset.refinement,'soil');
+ c.ui.navigate('editor');$('[data-sheet="cuts"]').click();
+ assert.ok($('#mobile-refinement-controls').contains(exclusions));
+ assert.ok($('#mobile-refinement-controls').contains(soil));
+ assert.ok($('#refinement-exclusions-body').contains($('#exclude-line-button')));
  c.desktop();
- assert.ok($('.advanced-body > .exclusion-panel'));
+ assert.ok($('.advanced-body [data-refinement="exclusions"]').contains(exclusions));
+ assert.ok($('.advanced-body [data-refinement="soil"]').contains(soil));
+ assert.ok($('.map-toolbar').contains($('#exclude-line-button')));
 });
 test('mobile project actions use the loaded project without a dropdown',()=>{
  const c=setup(),{$}=c;c.project.localProjectId='p1';
@@ -413,14 +420,32 @@ test('mobile refinement starts closed and retains a single editable planting yea
  assert.equal(Boolean($('#mobile-parameters-body > .mobile-campaign-year')),false);
 });
 
-test('mobile orientation editor has exclusive sections and no preset buttons',()=>{
+test('mobile refinement moves the original complete card tree between editor, parameters and desktop',()=>{
+ const c=setup(),{$}=c,advanced=$('.advanced');
+ const controls=['#row-portion-picker','#orientation','#curve-add-button','#exclusion-list','#grape-variety','#soil-layer-select'];
+ const original=controls.map(selector=>$(selector));
+ c.ui.navigate('editor');$('[data-sheet="orientation"]').click();
+ const refinement=$('#mobile-refinement-controls');assert.ok(refinement,'editor provides the common refinement host');
+ assert.equal(refinement.firstElementChild,advanced);
+ assert.equal(advanced.open,true);
+ controls.forEach((selector,i)=>{assert.equal($(selector),original[i]);assert.ok(advanced.contains(original[i]),selector);});
+ c.ui.navigate('parameters');
+ assert.ok($('#mobile-parameters-body').contains(advanced));
+ controls.forEach((selector,i)=>assert.ok(advanced.contains(original[i]),selector));
+ c.desktop();assert.ok($('.panel-scroll').contains(advanced));
+ controls.forEach((selector,i)=>assert.ok(advanced.contains(original[i]),selector));
+});
+
+test('mobile exclusions shortcut opens the shared refinement card without closing other cards',()=>{
  const c=setup(),{$}=c;c.ui.navigate('editor');
  $('[data-sheet="orientation"]').click();
- const orientation=$('[data-content="orientation"]');
- assert.equal(Boolean(orientation.querySelector('.orientation-presets')),false);
- const sections=orientation.querySelectorAll('[data-filari-section]');assert.equal(sections.length,2);
- sections[1].querySelector('summary').click();
- assert.equal(sections[1].open,true);assert.equal(sections[0].open,false);
+ const portions=$('[data-refinement="portions"]'),curve=$('[data-refinement="curve"]');
+ assert.ok(portions);assert.ok(curve);assert.equal(portions.open,true);curve.open=true;
+ $('#mobile-close-sheet').click();$('[data-sheet="cuts"]').click();
+ assert.equal($('[data-content="orientation"]').hidden,false);
+ assert.equal($('[data-refinement="exclusions"]').open,true);
+ assert.equal(portions.open,true);assert.equal(curve.open,true);
+ assert.ok($('.advanced').contains($('#exclusion-list')));
 });
 
 test('Campi and Progetti expose refresh beside their add actions and rerender after synchronization',async()=>{

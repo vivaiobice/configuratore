@@ -1,12 +1,12 @@
-import {buildTerrainProposal} from './terrain-design.js?v=1.3.6';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.6';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.6';
-import {buildTerrainRestoreProposal,attachTerrainRestore,assertTerrainRestoreHistory} from './terrain-history.js?v=1.3.6';
-import {buildTerrainCutSuggestions} from './terrain-cut-suggestions.js?v=1.3.6';
-import {buildOwnedTerrainEndpointReplacement} from './terrain-contour-design.js?v=1.3.6';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.6';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.6';
-import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.6';
+import {buildTerrainProposal} from './terrain-design.js?v=1.3.7';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.7';
+import {buildTerrainRestoreProposal,attachTerrainRestore,assertTerrainRestoreHistory} from './terrain-history.js?v=1.3.7';
+import {buildTerrainCutSuggestions} from './terrain-cut-suggestions.js?v=1.3.7';
+import {buildOwnedTerrainEndpointReplacement} from './terrain-contour-design.js?v=1.3.7';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.7';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.7';
+import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.7';
 
 const invalidCut=message=>Object.assign(new Error(message),{status:'invalid-input'});
 function cutProposal(options,budget){

@@ -4,7 +4,7 @@ import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
 import {buildReportMapModel,buildTechnicalReportMapModel} from '../src/report-map-model.js';
 import {renderProjectDiagramSvg} from '../src/report-diagram.js';
-import {captureSatelliteImage} from '../src/report-satellite.js?v=1.3.6';
+import {captureSatelliteImage} from '../src/report-satellite.js?v=1.3.7';
 import {buildProjectPdfBytes} from '../src/report-pdf-download.js';
 import {resolveTerrainExclusionPresentation,terrainExclusionPresentationVerified} from '../src/terrain-exclusion-groups.js';
 

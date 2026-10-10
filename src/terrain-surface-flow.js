@@ -2,9 +2,9 @@ import {
   Q, ZERO, ONE, TWO, number, numberBounds, min, max, add, sub, mul, div, neg, cmp, sign, sq, key, pointKey, vadd,
   vsub, scale, dot, cross, orient, mid, unique, xy, inTriangle, inRegion, height,
   splitSegment, radical, radd, rscale,exactDomain,pointOnSegment
-} from './terrain-exact.js?v=1.3.6';
-import {resolveSourceAxis,SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.6';
-import {resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.6';
+} from './terrain-exact.js?v=1.3.7';
+import {resolveSourceAxis,SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.7';
+import {resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.7';
 // Affine scalar [constant, coefficient] and affine XY [constantXY, slopeXY].
 const scalarAt=(p, t)=>add(p[0], mul(p[1], t));
 const vectorAt=(p, t)=>vadd(p[0], scale(p[1], t));
@@ -677,4 +677,4 @@ export function traceNormalBundles({
   };
 }
 
-export {traceSurfaceBand} from './terrain-surface-bands.js?v=1.3.6';
+export {traceSurfaceBand} from './terrain-surface-bands.js?v=1.3.7';

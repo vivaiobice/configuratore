@@ -1,5 +1,5 @@
-import {layoutSatelliteAnnotations,projectReportExclusion,createReportExclusionSource} from './report-satellite.js?v=1.3.6';
-import {resolveTerrainExclusionPresentation,terrainExclusionPresentationVerified} from './terrain-exclusion-groups.js?v=1.3.6';
+import {layoutSatelliteAnnotations,projectReportExclusion,createReportExclusionSource} from './report-satellite.js?v=1.3.7';
+import {resolveTerrainExclusionPresentation,terrainExclusionPresentationVerified} from './terrain-exclusion-groups.js?v=1.3.7';
 import { sideMeasurements as measureSides } from './geometry.js?v=45';
 
 const MAX_MERCATOR_LAT = 85.05112878;

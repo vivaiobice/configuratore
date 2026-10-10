@@ -1,5 +1,5 @@
-import {createTerrainDisplayClient} from './terrain-context-dem.js?v=1.3.6';
-import {createTerrainCameraControls} from './terrain-camera-controls.js?v=1.3.6';
+import {createTerrainDisplayClient} from './terrain-context-dem.js?v=1.3.7';
+import {createTerrainCameraControls} from './terrain-camera-controls.js?v=1.3.7';
 let sequence=0;
 const aborted=()=>new DOMException('Vista terreno chiusa.','AbortError');
 function snapshot(map){const center=map.getCenter(),padding=map.getPadding?.();return {center:[center.lng,center.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing(),...(padding?{padding:{...padding}}:{})};}

@@ -1,9 +1,9 @@
-import { readAppliedTerrainResult } from './terrain-design.js?v=1.3.6';
+import { readAppliedTerrainResult } from './terrain-design.js?v=1.3.7';
 import { polygonMetrics, generateRows, estimatePlantsFromRows, roundUpTo25 } from './geometry.js?v=45';
-import { resolveRowPortions } from './row-portions.js?v=1.3.6';
-import { generateCurvedRows, normalizeRowCurvePoints, rowOwnerId } from './row-curves.js?v=1.3.6';
-import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.6';
-import {invalidTerrainResult} from './terrain-replay.js?v=1.3.6';
+import { resolveRowPortions } from './row-portions.js?v=1.3.7';
+import { generateCurvedRows, normalizeRowCurvePoints, rowOwnerId } from './row-curves.js?v=1.3.7';
+import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.7';
+import {invalidTerrainResult} from './terrain-replay.js?v=1.3.7';
 
 export function calculateManualPlants({ areaM2, rowSpacingM, plantSpacingM }) {
   const area = Number(areaM2);

@@ -1,5 +1,5 @@
 import {pointInPolygon} from './geometry.js';
-import {APP_CONFIG} from './config.js?v=1.3.6';
+import {APP_CONFIG} from './config.js?v=1.3.7';
 import {normalizeCadastralReferences} from './cadastral-references.js';
 export const cadastralGeometrySignature=ring=>JSON.stringify(ring??null);
 function closed(ring){const points=(ring??[]).map(point=>point.map(Number));if(points.length&&JSON.stringify(points[0])!==JSON.stringify(points.at(-1)))points.push([...points[0]]);return points;}

@@ -13,7 +13,7 @@ import {
   sign as rsign,
   numberBounds as rationalBounds
 }
-from './terrain-exact.js?v=1.3.6';
+from './terrain-exact.js?v=1.3.7';
 const facetCache=new WeakMap(),facetBudgets=new WeakMap();
 function cachedFacets(exact,budget) {
   if(facetCache.has(exact)){

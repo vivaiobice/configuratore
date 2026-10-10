@@ -17,7 +17,7 @@ const appSource=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
 test('the actual inherited curve controls keep Reset enabled without misreporting saved curves as straight',()=>{
  const p=project(),s=editor.rowPortionEditorState(p);
  const {document}=parseHTML('<div id="curve-points-list"></div><input id="curve-equidistance"><button id="curve-add-button"></button><button id="curve-edit-button"></button><button id="curve-reset-button"></button>');
- const context={document,$:selector=>document.querySelector(selector),state:{project:p},portionEditorState:()=>s,getRowCurveSegments,resolveRowCurvePoints,curveEditingActive:false};
+ const context={document,$:selector=>document.querySelector(selector),state:{project:p},portionEditorState:()=>s,getRowCurveSegments,resolveRowCurvePoints,curveEditingActive:false,overviewMode:false};
  vm.createContext(context);vm.runInContext(appSource.slice(appSource.indexOf('function renderCurveControls(){'),appSource.indexOf('function patchProject(')),context);context.renderCurveControls();
  assert.equal(document.querySelector('#curve-reset-button').disabled,false);
  assert.equal(document.querySelector('#curve-edit-button').disabled,true);
@@ -28,7 +28,7 @@ test('native portion buttons select B without changing inherited rows or legacy 
  assert.equal(typeof editor.rowPortionEditorState,'function');
  const p=project(),initial=editor.rowPortionEditorState(p),{document}=parseHTML('<div id="picker"></div>');
  let selected;editor.renderRowPortionPicker(document.querySelector('#picker'),initial,id=>selected=id);
- const buttons=[...document.querySelectorAll('button')];assert.equal(buttons.length,2);
+ const buttons=[...document.querySelectorAll('button:not([data-portion-clear])')];assert.equal(buttons.length,2);
  assert.deepEqual(buttons.map(b=>b.textContent),['Porzione 1','Porzione 2']);
  buttons[1].click();assert.equal(selected,initial.portions[1].id);
  const next=editor.rowPortionEditorState(p,selected);

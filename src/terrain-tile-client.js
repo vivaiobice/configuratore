@@ -1,5 +1,5 @@
 const aborted=()=>new DOMException('Tile del terreno annullata.','AbortError');
-export function createTerrainTileClient({model,encodePNG,workerFactory=()=>typeof Worker==='function'?new Worker(new URL('./terrain-tile-worker.js?v=1.3.6',import.meta.url),{type:'module'}):null}){
+export function createTerrainTileClient({model,encodePNG,workerFactory=()=>typeof Worker==='function'?new Worker(new URL('./terrain-tile-worker.js?v=1.3.7',import.meta.url),{type:'module'}):null}){
  let worker=null,workerReady=false,timeout=null;
  let destroyed=false,sequence=0,resolveReady,rejectReady;const cache=new Map(),pending=new Map();
  const ready=new Promise((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});ready.catch(()=>{});

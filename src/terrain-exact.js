@@ -1,6 +1,6 @@
 // Exact rational constructions on frozen IEEE inputs. No tolerance predicates.
 // Geometry stays rational; lengths are finite sums of square roots of rationals.
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.6';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.7';
 const abs=n=>n<0n?-n:n;
 function gcd(a, b){
   a=abs(a);

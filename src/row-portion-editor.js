@@ -1,20 +1,23 @@
-import {resolveRowPortions,updateRowPortion,portionAtCoordinate} from './row-portions.js?v=1.3.6';
-import {normalizeRowCurvePoints,curvePointToLonLat,lonLatToCurvePoint,getRowCurveSegments} from './row-curves.js?v=1.3.6';
+import {resolveRowPortions,updateRowPortion,portionAtCoordinate} from './row-portions.js?v=1.3.7';
+import {normalizeRowCurvePoints,curvePointToLonLat,lonLatToCurvePoint,getRowCurveSegments} from './row-curves.js?v=1.3.7';
 import {nextCurveControlPoint} from './row-curve-control-state.js';
+export const NO_ROW_PORTION='__none__';
 
 export function rowPortionEditorState(project={},activeId=null,resolved=null){
  const portions=resolved??resolveRowPortions({...project,polygon:project.geometry});
  const enabled=portions.length>1||(portions.length>0&&Boolean(project.rowPortions?.length));
- const active=enabled?(portions.find(p=>p.id===activeId)??portions[0]):null;
+ const selectionEmpty=enabled&&activeId===NO_ROW_PORTION;
+ const active=enabled&&!selectionEmpty?(portions.find(p=>p.id===activeId)??portions[0]):null;
  const local=active?.mode==='local';
- return {enabled,portions,active,orientationDeg:active?.orientationDeg??project.orientationDeg,
-  points:active?(local?normalizeRowCurvePoints(active.rowCurvePoints):[]):normalizeRowCurvePoints(project.rowCurvePoints),
+ return {enabled,portions,active,selectionEmpty,orientationDeg:active?.orientationDeg??project.orientationDeg,
+  points:selectionEmpty?[]:active?(local?normalizeRowCurvePoints(active.rowCurvePoints):[]):normalizeRowCurvePoints(project.rowCurvePoints),
   maintainRowEquidistance:(active??project).maintainRowEquidistance!==false,
   context:{polygon:active?.geometry[0]??project.geometry,orientationDeg:active?.orientationDeg??project.orientationDeg,exclusions:active?[]:(project.exclusions??[])}};
 }
 
 export function rowPortionDesignPatch(project,activeId,patch){
  const state=rowPortionEditorState(project,activeId);
+ if(state.selectionEmpty)return {};
  return state.active?{rowPortions:updateRowPortion(state.portions,state.active.id,patch)}:patch;
 }
 
@@ -40,7 +43,9 @@ export function renderRowPortionPicker(container,state,onSelect){
  const document=container.ownerDocument,title=document.createElement('strong');title.textContent='Porzione da progettare';container.append(title);
  const group=document.createElement('div');group.className='row-portion-buttons';group.setAttribute('role','group');group.setAttribute('aria-label','Porzione da progettare');
  for(const portion of state.portions){const button=document.createElement('button');button.type='button';button.textContent=portion.label;button.dataset.portionId=portion.id;button.setAttribute('aria-pressed',String(portion.id===state.active?.id));button.addEventListener('click',()=>onSelect(portion.id));group.append(button);}
+ const clear=document.createElement('button');clear.type='button';clear.className='row-portion-clear';clear.dataset.portionClear='';clear.dataset.portionId=NO_ROW_PORTION;clear.setAttribute('aria-label','Mostra tutte le porzioni');clear.title='Mostra tutte le porzioni';clear.setAttribute('aria-pressed',String(state.selectionEmpty===true));clear.innerHTML='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM8 12h8"/></svg>';clear.addEventListener('click',()=>onSelect(NO_ROW_PORTION));group.append(clear);
  container.append(group);
+ if(state.selectionEmpty){const note=document.createElement('p');note.className='row-portion-note';note.textContent='Campo completo. Scegli una porzione per modificarne direzione e curvatura.';container.append(note);}
  if(state.active?.mode==='inherited'){const copy=document.createElement('p');copy.className='row-portion-note';copy.textContent='Disegno precedente mantenuto. Modifica direzione o aggiungi un punto per progettare questa porzione.';container.append(copy);}
  if(state.active?.conflict){const copy=document.createElement('p');copy.className='row-portion-conflict';copy.setAttribute('role','status');copy.textContent=`Porzioni unite: mantenuto il disegno di ${state.active.label}. Le altre curve non sono state unite. Modifica direzione o curva per confermare questo disegno.`;container.append(copy);}
 }

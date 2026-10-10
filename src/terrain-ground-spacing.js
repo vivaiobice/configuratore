@@ -1,4 +1,4 @@
-import {getTerrainMesh} from './terrain-model.js?v=1.3.6';
+import {getTerrainMesh} from './terrain-model.js?v=1.3.7';
 
 const unsupported=(reason,message)=>Object.assign(new Error(message),{status:'ground-spacing-unsupported',reason});
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1];

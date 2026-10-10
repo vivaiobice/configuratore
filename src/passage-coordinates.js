@@ -1,7 +1,7 @@
-import polygonClipping from './vendor/polygon-clipping.js?v=1.3.6';
+import polygonClipping from './vendor/polygon-clipping.js?v=1.3.7';
 import {corridorPolygonFromLine,normalizeIntersectionRings,polygonMetrics} from './geometry.js?v=45';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.6';
-import {terrainSurfaceGroupMarkerPresent} from './terrain-exclusion-groups.js?v=1.3.6';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.7';
+import {terrainSurfaceGroupMarkerPresent} from './terrain-exclusion-groups.js?v=1.3.7';
 export function nativePassageFamilyPresent(exclusions,id){
  const selected=(exclusions??[]).filter(item=>item?.id===id);
  return selected.some(item=>terrainSurfaceGroupMarkerPresent(item)||(item.passageGroupId&&(exclusions??[]).some(member=>member?.passageGroupId===item.passageGroupId&&terrainSurfaceGroupMarkerPresent(member))));

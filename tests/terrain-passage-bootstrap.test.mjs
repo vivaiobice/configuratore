@@ -4,8 +4,8 @@ import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {fromUTM} from '../src/coordinate-system.js';
 import * as passage from '../src/terrain-passage.js';
-import {resolveTerrainExclusionGroups} from '../src/terrain-exclusion-groups.js?v=1.3.6';
-import {createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes} from '../src/terrain-contour-domain.js?v=1.3.6';
+import {resolveTerrainExclusionGroups} from '../src/terrain-exclusion-groups.js?v=1.3.7';
+import {createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes} from '../src/terrain-contour-domain.js?v=1.3.7';
 
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
 function fixture(options={}){

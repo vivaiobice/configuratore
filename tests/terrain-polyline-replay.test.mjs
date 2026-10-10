@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTerrainModel} from '../src/terrain-model.js?v=1.3.6';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.6';
-import {fromUTM} from '../src/coordinate-system.js?v=1.3.6';
-import {buildContourTerrainProposal} from '../src/terrain-contour-design.js?v=1.3.6';
-import {readTerrainEnvelope,createContourEnvelope} from '../src/terrain-replay.js?v=1.3.6';
+import {createTerrainModel} from '../src/terrain-model.js?v=1.3.7';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.7';
+import {fromUTM} from '../src/coordinate-system.js?v=1.3.7';
+import {buildContourTerrainProposal} from '../src/terrain-contour-design.js?v=1.3.7';
+import {readTerrainEnvelope,createContourEnvelope} from '../src/terrain-replay.js?v=1.3.7';
 
 const diagnostic=value=>JSON.stringify(value,(_key,item)=>typeof item==='bigint'?String(item):item);
 function fixture(){

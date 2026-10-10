@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resolveRowPortions} from '../src/row-portions.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {resolveTerrainUsablePresentation,rankTerrainUsablePortionOverlaps} from '../src/terrain-exclusion-groups.js?v=1.3.6';
+import {resolveTerrainUsablePresentation,rankTerrainUsablePortionOverlaps} from '../src/terrain-exclusion-groups.js?v=1.3.7';
 const ring=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]];
 function input({top=11,scope=ring(0,0,5,10)}={}){
  const polygon=ring(0,0,10,10),geometry=ring(4,-1,6,top);

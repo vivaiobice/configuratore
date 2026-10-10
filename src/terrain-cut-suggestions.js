@@ -1,9 +1,9 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.6';
-import {createScopedTerrainCutEvaluator} from './terrain-contour-design.js?v=1.3.6';
-import {preselectTerrainPassageCandidates} from './terrain-cut-candidates.js?v=1.3.6';
-import {compareMeasuredSurfaceAreas,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.6';
-import {legacyTerrainInputs} from './terrain-replay.js?v=1.3.6';
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.6';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
+import {createScopedTerrainCutEvaluator} from './terrain-contour-design.js?v=1.3.7';
+import {preselectTerrainPassageCandidates} from './terrain-cut-candidates.js?v=1.3.7';
+import {compareMeasuredSurfaceAreas,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.7';
+import {legacyTerrainInputs} from './terrain-replay.js?v=1.3.7';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.7';
 
 const failure=(status,message)=>Object.assign(new Error(message),{status});
 function geometryNodes(value,budget,path=new WeakSet()){

@@ -8,9 +8,9 @@
  * @typedef {[number,number,number]} XYZ Metres in the model CRS, elevation last.
  * @typedef {{type:'Polygon',coordinates:GeoPoint[][]}} Polygon Rings include holes.
  * @typedef {{type:'MultiPolygon',coordinates:GeoPoint[][][]}} MultiPolygon
- * @typedef {ReturnType<import('./terrain-model.js?v=1.3.6').createTerrainModel>} FrozenModel
- * @typedef {ReturnType<import('./fields.js?v=1.3.6').createDefaultField>} Project
- * @typedef {ReturnType<import('./row-portions.js?v=1.3.6').resolveRowPortions>[number]} Portion
+ * @typedef {ReturnType<import('./terrain-model.js?v=1.3.7').createTerrainModel>} FrozenModel
+ * @typedef {ReturnType<import('./fields.js?v=1.3.7').createDefaultField>} Project
+ * @typedef {ReturnType<import('./row-portions.js?v=1.3.7').resolveRowPortions>[number]} Portion
  * @typedef {'adapt'|'measure'|'cut'|'restore'} TerrainOperationKind
  * @typedef {{phase:string,elapsedMs:number,remainingMs:number,nodeCount:number}} TerrainProgress
  * @typedef {'time'|'work'} TerrainBudgetReason

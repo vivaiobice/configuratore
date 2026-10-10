@@ -1,5 +1,5 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.6';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.6';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.7';
 
 // Accounting for one actual structuredClone/postMessage allocation. Aliases
 // are retained by structured cloning, so each shared coordinate/grid is paid
@@ -60,7 +60,7 @@ export function runTerrainProposal(options,{signal,WorkerImpl=globalThis.Worker,
   const finish=(value,error=false)=>{if(settled)return;settled=true;clearTimeoutImpl(timer);signal?.removeEventListener('abort',abort);worker?.terminate();(error?reject:resolve)(value);};
   const abort=()=>finish(new DOMException('Operazione annullata.','AbortError'),true);
   try{
-   worker=new WorkerImpl(new URL('./terrain-worker.js?v=1.3.6',import.meta.url),{type:'module'});
+   worker=new WorkerImpl(new URL('./terrain-worker.js?v=1.3.7',import.meta.url),{type:'module'});
    signal?.addEventListener('abort',abort,{once:true});
    worker.onmessage=event=>{
     if(settled)return;

@@ -1,4 +1,4 @@
-import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.6';
+import {toUTM,fromUTM} from './coordinate-system.js?v=1.3.7';
 import {polygonMetrics} from './geometry.js?v=45';
 const systems=['EPSG:4326','EPSG:32632','EPSG:32633','EPSG:32634'];
 export function parseCoordinateNumber(value){

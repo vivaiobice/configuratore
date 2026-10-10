@@ -28,7 +28,7 @@ let mountedCutWitness;
 async function realMountedCutWitness(){
  if(mountedCutWitness)return mountedCutWitness;
  const [{createTerrainModel},{createContourDomain},{traceContourLevel},{certifyContourSpacing},{fromUTM}]=await Promise.all([
-  import('../src/terrain-model.js'),import('../src/terrain-contour-domain.js?v=1.3.6'),import('../src/terrain-contours.js?v=1.3.6'),import('../src/terrain-contour-validation.js?v=1.3.6'),import('../src/coordinate-system.js')]);
+  import('../src/terrain-model.js'),import('../src/terrain-contour-domain.js?v=1.3.7'),import('../src/terrain-contours.js?v=1.3.7'),import('../src/terrain-contour-validation.js?v=1.3.7'),import('../src/coordinate-system.js')]);
  const geometry=[[-10,0],[10,0],[10,10],[-10,10],[-10,0]].map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
  const model=createTerrainModel({acquiredAt:'2026-10-05T00:00:00.000Z',grid:{width:9,height:9,origin:[499980,5000030],step:[5,-5],values:Array.from({length:81},(_,i)=>{const x=-20+(i%9)*5,y=30-Math.floor(i/9)*5;return y/4+(x<0?x/16:x/2);})}});
  const domain=createContourDomain({model,geometry:{type:'Polygon',coordinates:[geometry]}});
@@ -231,7 +231,10 @@ test('actual mobile metrics hook retains field source and scoped optional relief
  const netRow=[...document.querySelectorAll('#mobile-field-detail .mobile-metrics div')].find(row=>row.querySelector('dt').textContent==='Superficie netta');
  assert.equal(netRow.querySelector('dd').textContent,'—');
  ui.navigate('parameters');assert.match(document.querySelector('#mobile-parameters-metrics').textContent,/DTM del campo/);
- assert.equal(document.querySelectorAll('#terrain-curve-controls').length,1);assert.ok(document.querySelector('#mobile-curve-controls #terrain-curve-controls'));
+ const curveHost=document.querySelector('#terrain-curve-controls');
+ assert.equal(document.querySelectorAll('#terrain-curve-controls').length,1);assert.ok(document.querySelector('#mobile-parameters-body [data-refinement="curve"]').contains(curveHost));
+ ui.navigate('editor');assert.ok(document.querySelector('#mobile-refinement-controls [data-refinement="curve"]').contains(curveHost));
+ ui.navigate('parameters');assert.ok(document.querySelector('#mobile-parameters-body [data-refinement="curve"]').contains(curveHost));
 });
 
 // Catches applying native-null formatting to historical absent-basis manual values.

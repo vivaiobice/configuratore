@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTerrainModel} from '../src/terrain-model.js';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.6';
-import {buildContourFamily} from '../src/terrain-contour-family.js?v=1.3.6';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.7';
+import {buildContourFamily} from '../src/terrain-contour-family.js?v=1.3.7';
 import {createTerrainBudget} from '../src/terrain-budget.js';
-import {compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.6';
+import {compareMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.7';
 
 test('scoped cut candidate seam certifies a real complete single level when heterogeneous progressions fail',()=>{
  const {project,model}=contourFixture({height:(x,y)=>(x<0?.05:.4)*x+.2*y,

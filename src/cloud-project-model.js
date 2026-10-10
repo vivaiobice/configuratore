@@ -1,4 +1,4 @@
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.6';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.7';
 export const CLOUD_SNAPSHOT_VERSION = 2;
 
 function clone(value) {

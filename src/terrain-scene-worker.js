@@ -1,4 +1,4 @@
-import {buildTerrainScene,terrainSceneTransferables} from './terrain-scene-mesh.js?v=1.3.6';
+import {buildTerrainScene,terrainSceneTransferables} from './terrain-scene-mesh.js?v=1.3.7';
 
 // All frozen grid decoding, native-face preparation, and overlay sampling happen
 // here. A view owns this worker and terminates it on close or context changes.

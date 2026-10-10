@@ -5,7 +5,7 @@ import {parseHTML} from 'linkedom';
 
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 
-test('desktop sidebar follows field, terrain, spacing and orientation order',()=>{
+test('desktop sidebar follows field, terrain, spacing and refinement orientation order',()=>{
  const {document}=parseHTML(html);const panel=document.querySelector('.panel-scroll');
  const manager=panel.querySelector(':scope>.field-manager');
  const terrain=panel.querySelector(':scope>.step[data-step="1"]');
@@ -14,7 +14,8 @@ test('desktop sidebar follows field, terrain, spacing and orientation order',()=
  const children=[...panel.children];
  assert.ok(children.indexOf(manager)<children.indexOf(terrain));
  assert.ok(children.indexOf(terrain)<children.indexOf(spacing));
- assert.ok(spacing.querySelector('.range-field'));
+ const advanced=panel.querySelector(':scope>.advanced');assert.ok(advanced&&children.indexOf(spacing)<children.indexOf(advanced));
+ assert.ok(advanced.querySelector('[data-refinement="portions"] .range-field'));
  assert.equal(panel.querySelector('.manual-calculator'),null);
 });
 

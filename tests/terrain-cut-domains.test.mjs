@@ -5,12 +5,12 @@ import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import * as domains from '../src/terrain-contour-domain.js';
 import {exactDomain,pointKey,Q,ZERO,add,mul,div,cross} from '../src/terrain-exact.js';
-import * as measuredBands from '../src/terrain-surface-bands.js?v=1.3.6';
+import * as measuredBands from '../src/terrain-surface-bands.js?v=1.3.7';
 import {axisScopeHash} from '../src/terrain-axis-geometry.js';
 import {terrainInputHash} from '../src/terrain-model.js';
-import * as queriedDomains from '../src/terrain-contour-domain.js?v=1.3.6';
-import {exactDomain as queriedExactDomain} from '../src/terrain-exact.js?v=1.3.6';
-import {axisScopeHash as queriedAxisScopeHash} from '../src/terrain-axis-geometry.js?v=1.3.6';
+import * as queriedDomains from '../src/terrain-contour-domain.js?v=1.3.7';
+import {exactDomain as queriedExactDomain} from '../src/terrain-exact.js?v=1.3.7';
+import {axisScopeHash as queriedAxisScopeHash} from '../src/terrain-axis-geometry.js?v=1.3.7';
 import {traceSupportedPassageStrip,createTerrainPassageGroup} from '../src/terrain-passage.js';
 
 function fixture(){

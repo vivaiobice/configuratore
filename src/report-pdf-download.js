@@ -1,7 +1,7 @@
-import {terrainMeasureText,terrainUsesCertifiedQuantities,terrainRowCountText} from './terrain-report-summary.js?v=1.3.6';
-import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.6';
-import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.6';
-import {reportExclusionGeometry} from './report-satellite.js?v=1.3.6';
+import {terrainMeasureText,terrainUsesCertifiedQuantities,terrainRowCountText} from './terrain-report-summary.js?v=1.3.7';
+import {hasPortionDesign,portionReportPages} from './row-portion-summary.js?v=1.3.7';
+import { buildReportMapModel, buildTechnicalReportMapModel } from './report-map-model.js?v=1.3.7';
+import {reportExclusionGeometry} from './report-satellite.js?v=1.3.7';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 
 const A4=[595.28,841.89];

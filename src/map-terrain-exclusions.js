@@ -1,4 +1,4 @@
-import {resolveTerrainExclusionPresentation,terrainExclusionPresentationVerified,terrainSurfaceGroupMarkerPresent,terrainSurfaceGroupsPresent} from './terrain-exclusion-groups.js?v=1.3.6';
+import {resolveTerrainExclusionPresentation,terrainExclusionPresentationVerified,terrainSurfaceGroupMarkerPresent,terrainSurfaceGroupsPresent} from './terrain-exclusion-groups.js?v=1.3.7';
 
 function legacyFeature(item,index){
  const geometry=Array.isArray(item)?item:item?.geometry;
