@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
-import {createMobileUI} from '../src/mobile-ui.js?v=1.3.9';
+import {createMobileUI} from '../src/mobile-ui.js?v=1.3.10';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=readFileSync(new URL('../src/app.js',import.meta.url),'utf8');

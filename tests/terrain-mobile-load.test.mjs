@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {calculateProject} from '../src/project-calculator.js?v=1.3.9';
-import {terrainPortionEditorState} from '../src/terrain-controller.js?v=1.3.9';
-import {fieldCalculationInputs} from '../src/field-calculation-inputs.js?v=1.3.9';
-import {createTerrainCalculationPresentationCache} from '../src/terrain-calculation-presentation-cache.js?v=1.3.9';
+import {calculateProject} from '../src/project-calculator.js?v=1.3.10';
+import {terrainPortionEditorState} from '../src/terrain-controller.js?v=1.3.10';
+import {fieldCalculationInputs} from '../src/field-calculation-inputs.js?v=1.3.10';
+import {createTerrainCalculationPresentationCache} from '../src/terrain-calculation-presentation-cache.js?v=1.3.10';
 
 const app=readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 const fixture=JSON.parse(readFileSync(new URL('./fixtures/terrain-v130-applied.json',import.meta.url),'utf8')).cases[0];

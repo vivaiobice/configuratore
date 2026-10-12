@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
-import {buildContourTerrainProposal} from '../src/terrain-contour-design.js?v=1.3.9';
-import {hashTerrainEnvelope,terrainGeometryInputHash,readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.9';
-import {terrainInputHash} from '../src/terrain-model.js?v=1.3.9';
-import {terrainCoreWidgetState,createTerrainCoreMount} from '../src/terrain-core-presentation.js?v=1.3.9';
+import {buildContourTerrainProposal} from '../src/terrain-contour-design.js?v=1.3.10';
+import {hashTerrainEnvelope,terrainGeometryInputHash,readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.10';
+import {terrainInputHash} from '../src/terrain-model.js?v=1.3.10';
+import {terrainCoreWidgetState,createTerrainCoreMount} from '../src/terrain-core-presentation.js?v=1.3.10';
 
 // Count real reader entries; expose private hash routines only to construct a
 // semantic forgery with valid outer hashes. No validator/result is replaced.

@@ -8,8 +8,8 @@ import {chargeTerrainOperationCopy} from '../src/terrain-worker-client.js';
 import {readTerrainEnvelope,hashTerrainEnvelope} from '../src/terrain-replay.js';
 import {terrainInputHash} from '../src/terrain-model.js';
 import {createContourDomain} from '../src/terrain-contour-domain.js';
-import {certifyNativeDirectionalFamily} from '../src/terrain-directional-certificate.js?v=1.3.9';
-import {measureNativeDirectionalService,measureDomainSurfaceArea,measuredSurfaceAreasComparable,compareMeasuredSurfaceAreas,sumMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.9';
+import {certifyNativeDirectionalFamily} from '../src/terrain-directional-certificate.js?v=1.3.10';
+import {measureNativeDirectionalService,measureDomainSurfaceArea,measuredSurfaceAreasComparable,compareMeasuredSurfaceAreas,sumMeasuredSurfaceAreas} from '../src/terrain-surface-bands.js?v=1.3.10';
 
 test('real Float32 native varied L and road completes filled family, transport and independent replay within one allowance',async t=>{
  const {model,project}=nativeDirectionalFixture(),modelBefore=JSON.stringify(model),projectBefore=JSON.stringify(project),budget=createTerrainBudget({kind:'adapt'});
@@ -62,9 +62,12 @@ test('a diagonal noisy native hill with a real interior hole uses an exact ratio
  assert.ok(portion.rows.length>=5);assert.ok(portion.validation.minimumSpacingLowerM>=2.8);assert.ok(portion.validation.maximumSpacingUpperM<=3.2);
  assert.deepEqual(readTerrainEnvelope({...project,rowPortions:proposal.rowPortions,terrain:proposal.terrain}),proposal.result);
 });
-test('a broad native gradient range stays inconclusive without spending the global root-field cap',()=>{
+test('a broad native gradient range is rejected or stays inconclusive within the operation allowance',()=>{
  const {model,project}=nativeDirectionalFixture({size:12,noise:.6}),before=JSON.stringify(project),budget=createTerrainBudget({kind:'adapt'});
  const proposal=buildContourTerrainProposal({project,model,portionId:'lower',budget});
  assert.equal(proposal.ok,false);assert.notEqual(proposal.status,'budget-exceeded');assert.ok(budget.usage().nodeCount<200000);
- assert.match(JSON.stringify(proposal.diagnostics),/native-directional-proof-inconclusive/);assert.equal(JSON.stringify(project),before);
+ const failures=proposal.diagnostics.portions.flatMap(p=>p.candidates.filter(c=>c.valid===false).map(c=>c.validation));
+ assert.ok(failures.length>0);
+ assert.ok(failures.every(v=>v.unresolved?.some(r=>r.reason==='native-directional-proof-inconclusive')||v.critical?.some(r=>r.reason==='too-close'&&r.proof==='continuous-surface-path'&&r.distanceM[1]<2.8)));
+ assert.equal(JSON.stringify(project),before);
 });

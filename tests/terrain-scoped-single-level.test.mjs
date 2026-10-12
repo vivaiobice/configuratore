@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTerrainModel} from '../src/terrain-model.js?v=1.3.9';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.9';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.9';
-import {fromUTM} from '../src/coordinate-system.js?v=1.3.9';
-import {buildContourFamily} from '../src/terrain-contour-family.js?v=1.3.9';
-import {compareMeasuredSurfaceAreas,traceSurfaceBand} from '../src/terrain-surface-bands.js?v=1.3.9';
-import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.9';
-import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.9';
+import {createTerrainModel} from '../src/terrain-model.js?v=1.3.10';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.10';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.10';
+import {fromUTM} from '../src/coordinate-system.js?v=1.3.10';
+import {buildContourFamily} from '../src/terrain-contour-family.js?v=1.3.10';
+import {compareMeasuredSurfaceAreas,traceSurfaceBand} from '../src/terrain-surface-bands.js?v=1.3.10';
+import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.10';
+import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.10';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
 const diagnostic=value=>JSON.stringify(value,(_key,item)=>typeof item==='bigint'?String(item):item);
 

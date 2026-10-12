@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBackend} from '../src/backend.js?v=1.3.9';
-import {createAdminService} from '../admin/admin-service.js?v=1.3.9';
-import {packTerrainRowMirror} from '../src/terrain-row-mirror.js?v=1.3.9';
+import {createBackend} from '../src/backend.js?v=1.3.10';
+import {createAdminService} from '../admin/admin-service.js?v=1.3.10';
+import {packTerrainRowMirror} from '../src/terrain-row-mirror.js?v=1.3.10';
 
 const backendFor=value=>createBackend({rpc:async()=>({data:value,error:null})});
 function serviceFor(projects){

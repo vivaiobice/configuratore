@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {encodeTerrainHistoryBefore} from '../src/terrain-history-codec.js?v=1.3.9';
-import {terrainInputHash} from '../src/terrain-model.js?v=1.3.9';
-import {packTerrainRowMirror} from '../src/terrain-row-mirror.js?v=1.3.9';
-import {loadSharedProject,SHARED_UNAVAILABLE_MESSAGE} from '../src/shared-project.js?v=1.3.9';
-import {createBackend} from '../src/backend.js?v=1.3.9';
+import {encodeTerrainHistoryBefore} from '../src/terrain-history-codec.js?v=1.3.10';
+import {terrainInputHash} from '../src/terrain-model.js?v=1.3.10';
+import {packTerrainRowMirror} from '../src/terrain-row-mirror.js?v=1.3.10';
+import {loadSharedProject,SHARED_UNAVAILABLE_MESSAGE} from '../src/shared-project.js?v=1.3.10';
+import {createBackend} from '../src/backend.js?v=1.3.10';
 
 // Count entry to the real metric boundary without replacing its implementation.
 const adminUrl=new URL('../admin/admin-model.js',import.meta.url);
