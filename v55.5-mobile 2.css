@@ -1,0 +1,56 @@
+/* V55.5: mobile-only layout corrections and tablet desktop controls. */
+@media screen {
+  #mobile-app .mobile-project-row{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:8px;align-items:stretch}
+  #mobile-app .mobile-project-card{grid-column:1;grid-row:1;min-width:0;padding-right:54px}
+  #mobile-app .mobile-project-card strong{overflow-wrap:anywhere}
+  #mobile-app .mobile-project-actions{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:center;gap:7px;margin:0;width:86px}
+  #mobile-app .mobile-project-actions button{height:38px;min-height:38px;padding:0 5px;font-size:11px}
+  #mobile-app .mobile-project-row>button[data-mobile-project-action="pdf"]{top:39px;right:102px;transform:translateY(-50%);width:40px;height:40px;min-height:40px}
+  #mobile-app .mobile-project-rename{grid-column:1/-1}
+  body.mobile-app-active #public-project-close{width:44px;height:44px;min-width:44px;touch-action:manipulation}
+
+  #mobile-app .advanced>summary{pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0;font-size:15px}
+  #mobile-app .advanced>summary span{display:inline;color:#225939;font-size:19px}
+  #mobile-app .advanced[open]>summary{padding-bottom:12px}
+  #mobile-app .advanced[open]>summary span{transform:rotate(45deg)}
+  #mobile-app .mobile-campaign-year{display:none!important}
+  #mobile-app .advanced-information .desktop-campaign-year{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  #mobile-app .advanced-information .desktop-campaign-year label{min-width:0}
+  #mobile-app .advanced-information .desktop-campaign-year input,#mobile-app .advanced-information .desktop-campaign-year select{width:100%}
+  #mobile-app .orientation-presets{display:none!important}
+
+  body.mobile-app-active[data-mobile-screen="editor"] .mobile-editor-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px}
+  #mobile-app .mobile-editor-top strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:12px 4px}
+  #mobile-app .mobile-editor-top button{min-width:0;white-space:nowrap;padding:9px 10px}
+  #mobile-app .mobile-editor-top svg{width:18px;height:18px;flex:none}
+  #mobile-app .mobile-sheet [data-content="orientation"]{display:grid;gap:4px;width:100%}
+  #mobile-app [data-filari-section]{width:100%;border:1px solid #e1e8dd;border-radius:12px;padding:0 10px;background:#f8faf6}
+  #mobile-app [data-filari-section]>summary{min-height:36px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px;font-weight:750;list-style:none}
+  #mobile-app [data-filari-section]>summary::-webkit-details-marker{display:none}
+  #mobile-app [data-filari-section]>summary::after{content:'⌄';font-size:19px;font-weight:500;line-height:1}
+  #mobile-app [data-filari-section][open]>summary::after{transform:rotate(180deg)}
+  #mobile-app #mobile-orientation-controls .range-field{margin:0 0 3px;padding:0}
+  #mobile-app #mobile-orientation-controls .range-field>label[for="orientation"]{display:none}
+  #mobile-app #mobile-orientation-controls .orientation-control{display:flex;flex-direction:column-reverse;gap:3px;align-items:flex-end}
+  #mobile-app #mobile-orientation-controls input[type="range"]{width:100%;min-height:34px}
+  #mobile-app #mobile-orientation-controls .orientation-manual input{min-height:36px;width:68px;padding:5px}
+  #mobile-app #mobile-curve-controls .row-curve-controls{margin:3px 0 8px;padding:8px}
+  #mobile-app #mobile-curve-controls .row-curve-heading strong{display:none}
+  #mobile-app #mobile-close-sheet{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;font-size:23px;line-height:1}
+  #mobile-app .mobile-orientation-sheet{padding:6px 12px 12px;max-height:min(30dvh,210px);overflow-y:auto}
+  #mobile-app .mobile-orientation-sheet .mobile-sheet-handle{margin-bottom:5px}
+  #mobile-app .mobile-orientation-sheet header{margin-bottom:5px}
+  #mobile-app .mobile-orientation-sheet #mobile-sheet-title{font-size:14px}
+
+  #mobile-app :is(.mobile-home-tools,#mobile-parameters-preview)>#center-field-button{display:grid!important;place-items:center;padding:0!important;transform:none!important}
+  #mobile-app :is(.mobile-home-tools,#mobile-parameters-preview)>#center-field-button :is(.tool-icon,.tool-label){display:none!important}
+  #mobile-app :is(.mobile-home-tools,#mobile-parameters-preview)>#center-field-button::before{content:"";display:block;width:24px;height:24px;background:center / 24px 24px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='5' fill='none' stroke='%2321462e' stroke-width='1.6'/%3E%3Cpath d='M12 1v6m0 10v6M1 12h6m10 0h6' fill='none' stroke='%2321462e' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E")}
+}
+@media screen and (max-width:430px){
+  #mobile-app .mobile-editor-top .mobile-cancel-label{display:none}
+  #mobile-app #mobile-editor-cancel{width:44px;min-width:44px;padding:8px}
+  #mobile-app .mobile-editor-top .mobile-primary{font-size:12px}
+}
+@media screen and (min-width:801px) and (max-width:1100px) and (orientation:landscape) and (pointer:coarse){
+  body:not(.mobile-app-active) .topbar-actions{display:flex}
+}

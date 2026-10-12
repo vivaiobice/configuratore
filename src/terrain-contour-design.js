@@ -1,9 +1,11 @@
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.7';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.7';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
+import {TERRAIN_ROW_PREVIEW_CONVENTION,TERRAIN_ROW_PREVIEW_TOLERANCE_M} from './terrain-row-preview.js?v=1.3.9';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.9';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.9';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.7';
+from './terrain-budget.js?v=1.3.9';
 import {
   exactDomain,
   Q,
@@ -18,35 +20,35 @@ import {
   cmp,
   sqrtBounds
 }
-from './terrain-exact.js?v=1.3.7';
+from './terrain-exact.js?v=1.3.9';
 import {
   toUTM
 }
-from './coordinate-system.js?v=1.3.7';
+from './coordinate-system.js?v=1.3.9';
 import {
   buildContourFamily,
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.7';
+from './terrain-contour-family.js?v=1.3.9';
 import {
   createContourDomain,createCanonicalCutChildDomain,createCanonicalCutPhysicalDomain,deriveCanonicalCutScopes
 }
-from './terrain-contour-domain.js?v=1.3.7';
+from './terrain-contour-domain.js?v=1.3.9';
 import {
   legacyTerrainInputs,
   terrainGeometryInputHash,
   readTerrainEnvelope,
   createContourEnvelope
 }
-from './terrain-replay.js?v=1.3.7';
+from './terrain-replay.js?v=1.3.9';
 import {
   validateTerrainModel,terrainInputHash
 }
-from './terrain-model.js?v=1.3.7';
+from './terrain-model.js?v=1.3.9';
 import {
   resolveRowPortions
 }
-from './row-portions.js?v=1.3.7';
+from './row-portions.js?v=1.3.9';
 import {
   polygonMetrics,
   estimatePlantsFromRows,
@@ -56,31 +58,31 @@ from './geometry.js?v=45';
 import {
   calculateProject
 }
-from './project-calculator.js?v=1.3.7';
+from './project-calculator.js?v=1.3.9';
 import {
   assertTerrainSerializationBudget
 }
-from './terrain-serialization.js?v=1.3.7';
+from './terrain-serialization.js?v=1.3.9';
 import {
   certifyUniformPlaneSupport,
   measureSurfaceFootprint,
   measureSurfaceUnion,createRegularTerrainRegionOperations,sumMeasuredSurfaceAreas,compareMeasuredSurfaceAreas,measuredSurfaceAreasComparable
 }
-from './terrain-surface-bands.js?v=1.3.7';
-import {buildTerrainPassage} from './terrain-passage.js?v=1.3.7';
-import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.7';
-import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.7';
-import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.7';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.7';
-import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.7';
-import {validateCoordinate} from './coordinate-editor.js?v=1.3.7';
+from './terrain-surface-bands.js?v=1.3.9';
+import {buildTerrainPassage} from './terrain-passage.js?v=1.3.9';
+import {resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.9';
+import {SOURCE_DOMAIN_AXIS_CONVENTION} from './terrain-axis-geometry.js?v=1.3.9';
+import {FINITE_POLYLINE_AXIS_CONVENTION} from './terrain-polyline-source.js?v=1.3.9';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.9';
+import {measureDomainSurfaceArea} from './terrain-surface-bands.js?v=1.3.9';
+import {validateCoordinate} from './coordinate-editor.js?v=1.3.9';
 const failure=(status,message)=>Object.assign(new Error(message),{
   status
 });
 export {
   measureContourAxes
 }
-from './terrain-contour-family.js?v=1.3.7';
+from './terrain-contour-family.js?v=1.3.9';
 function geometryNodes(value) {
   if(Array.isArray(value)){
     if((value.length===2||value.length===3)&&value.every(Number.isFinite))return 1;
@@ -188,6 +190,7 @@ export function buildContourTerrainProposal({
   };
   try {
     budget.check();
+    project=hydrateTerrainRows(project,{budget});
     if(!project||!validateTerrainModel(model).valid)throw failure('invalid-model','Invalid frozen terrain model.');
     if(!['adapt','measure'].includes(mode))throw failure('invalid-input','Unknown contour proposal mode.');
     const input=legacyTerrainInputs(project),
@@ -293,6 +296,7 @@ export function buildContourTerrainProposal({
           reference,
           ...(!certifyUniformPlaneSupport(domain,budget)||!certifyUniformPlaneSupport(original,budget)?{candidateGeneration:{kind:'scoped-cut-1',axisGeometryConvention:FINITE_POLYLINE_AXIS_CONVENTION}}:{}),
           spacingM:input.rowSpacingM,
+          rowPreview:{convention:TERRAIN_ROW_PREVIEW_CONVENTION,toleranceM:TERRAIN_ROW_PREVIEW_TOLERANCE_M},
           budget,
           referenceAreaM2
         });
@@ -336,6 +340,7 @@ export function buildContourTerrainProposal({
         axes,
         ...(axes.some(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION)?{
           axisGeometryConvention:FINITE_POLYLINE_AXIS_CONVENTION,
+          rowPreview:{convention:TERRAIN_ROW_PREVIEW_CONVENTION,toleranceM:TERRAIN_ROW_PREVIEW_TOLERANCE_M},
           axisScopeGeometry:scopedClone(domain.geometry,budget),
           ...(canonicalCutDomainScope(domain)?{axisScopeRecipe:scopedClone(canonicalCutDomainScope(domain).recipe,budget)}:{}),
           originalAxisScopeGeometry:scopedClone(original.geometry,budget),
@@ -588,6 +593,7 @@ export function createScopedTerrainCutEvaluator({project,model,portionId,groupId
 // mode. Generic callers and SEARCH retain their eager actual no-road baseline.
 function createScopedTerrainCutContext({project,model,portionId,groupId=null,referenceLevelM,onBaselineAreaMeasurement,budget}={},endpointReplacement=false){
   budget.check();
+  project=hydrateTerrainRows(project,{budget});
   const fingerprint=scopedFingerprint(project,model,budget),input=legacyTerrainInputs(project),epsg=Number(model.crs.split(':')[1]);
   if(!(input.rowSpacingM>0)||!(input.plantSpacingM>0))throw failure('invalid-input','Positive row and plant spacing required.');
   const groups=resolveTerrainExclusionGroups({exclusions:input.exclusions,field:input.polygon,budget}),oldGroup=groups.groups.find(group=>group.groupId===groupId);
@@ -738,6 +744,7 @@ function createScopedTerrainCutContext({project,model,portionId,groupId=null,ref
  * a skipped-baseline flag, a family certificate or a create fallback. */
 export function buildOwnedTerrainEndpointReplacement({project,model,exclusionId,sourceAxis,budget=createTerrainBudget({kind:'cut'}),...extra}={}){
   budget.check();
+  project=hydrateTerrainRows(project,{budget});
   if(Object.keys(extra).length||typeof exclusionId!=='string'||!exclusionId)throw failure('invalid-input','Invalid owned endpoint replacement input.');
   const validateAxis=axis=>{
     if(!Array.isArray(axis)||axis.length!==2)throw failure('invalid-input','An endpoint replacement needs two complete coordinates.');

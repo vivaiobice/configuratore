@@ -1,3 +1,4 @@
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
 import {normalizeCadastralReferences} from './cadastral-references.js?v=55.7';
 import {normalizeSoilProfile} from './soil.js?v=55.1';
 
@@ -18,6 +19,7 @@ function newId() {
 }
 
 export function createDefaultField(id = newId(), index = 1, overrides = {}) {
+  overrides=hydrateTerrainRows(overrides);
   const label = String(overrides.label ?? `Campo ${index}`);
   const labelCustomized = Object.prototype.hasOwnProperty.call(overrides, 'labelCustomized')
     ? Boolean(overrides.labelCustomized)
@@ -70,6 +72,7 @@ function mirrorField(project, field) {
 }
 
 export function ensureProjectFields(project = {}) {
+  project=hydrateTerrainRows(project);
   const fields = Array.isArray(project.fields) && project.fields.length
     ? project.fields.map((field, index) => createDefaultField(field.id || `field-${index+1}`, index+1, field))
     : [legacyField(project, 1)];

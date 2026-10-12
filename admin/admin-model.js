@@ -1,5 +1,6 @@
-import {terrainReportMetricMetadata} from '../src/terrain-report-summary.js?v=1.3.7';
-import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.7';
+import {hydrateTerrainRows} from '../src/terrain-row-mirror.js?v=1.3.9';
+import {terrainReportMetricMetadata} from '../src/terrain-report-summary.js?v=1.3.9';
+import {fieldSummaryMetrics} from '../src/project-summary.js?v=1.3.9';
 import {normalizeCadastralReferences} from '../src/cadastral-references.js?v=55.7';
 function sumFields(fields,key){return fields.some(field=>field.terrainStatus==='invalid')?null:fields.reduce((sum,field)=>sum+field[key],0);}
 function text(value) { return String(value ?? '').trim().toLowerCase(); }
@@ -99,6 +100,7 @@ export function expandProjectFields(projects = [],profiles = []) {
     if (project?.deleted_at) continue;
     let fields = Array.isArray(project?.field_plans) ? project.field_plans : [];
     if (!fields.length && validRing(project?.geometry)) fields = [legacyField(project)];
+    fields=hydrateTerrainRows({fields}).fields;
     fields.forEach((field, index) => {
       if(field?.terrain)field={...field,metrics:fieldSummaryMetrics({...field,geometry:ringFrom(field.geometry)})};
       const id = String(field?.id ?? field?.clientFieldId ?? `field-${index + 1}`);

@@ -1,4 +1,5 @@
-import { isValidProjectStatus } from './admin-model.js?v=1.3.7';
+import { isValidProjectStatus } from './admin-model.js?v=1.3.9';
+import {assertTerrainWireFieldBudget} from '../src/terrain-serialization.js?v=1.3.9';
 
 const PROJECT_SELECT = [
   'id','owner_user_id','client_project_id','public_code','name','campaign_year','origin','owner_kind','version','latest_revision_number','deleted_at',
@@ -57,7 +58,9 @@ export function createAdminService(client,{randomUUID=()=>globalThis.crypto.rand
         .order('created_at', { ascending:false })
         .limit(500);
       if (result.error) throw result.error;
-      return result.data ?? [];
+      const projects=result.data ?? [];
+      for(const project of projects)if(Array.isArray(project?.field_plans))assertTerrainWireFieldBudget({fields:project.field_plans});
+      return projects;
     },
 
     async loadProfiles() {

@@ -1,19 +1,22 @@
-import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.7';
-import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.7';
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.7';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.7';
+import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.9';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
+import {validTerrainRowPreview} from './terrain-row-preview.js?v=1.3.9';
+import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.9';
+import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.9';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.9';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.9';
 
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.7';
-import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.7';
-import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.7';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
-import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.7';
-import {createContourDomain} from './terrain-contour-domain.js?v=1.3.7';
-import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.7';
-import {resolveRowPortions} from './row-portions.js?v=1.3.7';
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.7';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.7';
-import {calculateProject} from './project-calculator.js?v=1.3.7';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.9';
+import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.9';
+import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.9';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.9';
+import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.9';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.9';
+import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.9';
+import {resolveRowPortions} from './row-portions.js?v=1.3.9';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.9';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.9';
+import {calculateProject} from './project-calculator.js?v=1.3.9';
 const clone=value=>JSON.parse(JSON.stringify(value));
 // Inspect the actual serialized payload without recursively walking the stack
 // or first allocating a flattened coordinate list. Aliases are visited once per
@@ -65,7 +68,7 @@ function envelopeHash(applied,budget){
  return checkedHash(Object.hasOwn(applied,'schemaVersion')?{schemaVersion:applied.schemaVersion,algorithmVersion:applied.algorithmVersion,...contents}:contents,budget);
 }
 export function hashTerrainEnvelope(applied){return envelopeHash(applied);}
-/** @returns {import('./terrain-contour-contracts.js?v=1.3.7').AppliedEnvelopeV2} */
+/** @returns {import('./terrain-contour-contracts.js?v=1.3.9').AppliedEnvelopeV2} */
 export function createContourEnvelope({project,model,result,portionResults,validation,budget}){
  budget?.check();
  const inputs=geometryInputs(project,budget);
@@ -164,6 +167,7 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
  };
  const validateFinite=portion=>{
   const design=portion.design;
+  if(Object.hasOwn(design,'rowPreview')&&!validTerrainRowPreview(design.rowPreview))return false;
   finiteBudget??=budget??createTerrainBudget({kind:'cut'});
   const b=finiteBudget,h=value=>checkedHash(value,b);
   if(design.modelHash!==model.contentHash||design.crs!==model.crs||!Array.isArray(design.axes)||!design.axes.length||design.axes.some(axis=>axis.axisGeometryConvention!==FINITE_POLYLINE_AXIS_CONVENTION||axis.axisOperation||!validFinitePolylineSourceAxisSchema(axis,b)||axis.portionId!==portion.id)||new Set(design.axes.map(axis=>axis.axisId)).size!==design.axes.length)return false;
@@ -185,7 +189,7 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
   // Rebuild complete acquired-support sources and the original-perimeter ground
   // operations. Submitted previews, intervals and rehashed mirrors confer no
   // authority. The measurement resolver checks every current/original binding.
-  const measured=measureContourAxes({domain:originalDomain,physicalDomain:domain,axes:design.axes,headlandWidthM:Math.max(0,Number(project.headlandWidthM)||0),budget:b});
+  const measured=measureContourAxes({domain:originalDomain,physicalDomain:domain,axes:design.axes,headlandWidthM:Math.max(0,Number(project.headlandWidthM)||0),rowPreview:design.rowPreview??null,budget:b});
   if(h(measured.rows)!==h(portion.rows??[]))return false;
   const directional=design.spacingCertificateMethod!==undefined||design.serviceMethod!==undefined||portion.validation?.method===DIRECTIONAL_SPACING_METHOD||portion.coverage?.serviceMethod===DIRECTIONAL_SERVICE_METHOD;
   if(directional){
@@ -198,7 +202,7 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
    if(h(service.areaM2)!==h(portion.coverage.servedAreaM2)||h(service.areaBoundsM2)!==h(portion.coverage.areaBoundsM2)||portion.coverage.serviceQualification!=='certified-conservative-distance-to-row-subset')return false;
   }else if(hasVariedNativeDirectionalGeometry(domain,b)){
    if(portion.validation?.method!=='native-levels/continuous-bidirectional-spacing/actual-service-union')return false;
-   const legacy=rebuildLegacyFiniteCandidate({domain,originalDomain,axes:design.axes,spacingM:Number(project.rowSpacingM),headlandWidthM:Math.max(0,Number(project.headlandWidthM)||0),budget:b});
+   const legacy=rebuildLegacyFiniteCandidate({domain,originalDomain,axes:design.axes,spacingM:Number(project.rowSpacingM),headlandWidthM:Math.max(0,Number(project.headlandWidthM)||0),rowPreview:design.rowPreview??null,budget:b});
    if(!legacy.valid)return false;
    const expected={maxElevationDeviationM:legacy.validation.maxElevationDeviationM,minimumSpacingLowerM:legacy.validation.lowerM,maximumSpacingUpperM:legacy.validation.upperM,errorBoundM:legacy.validation.errorBoundM,coverageComplete:legacy.validation.coverage.complete};
    for(const [key,value] of Object.entries(expected))if(h(portion.validation[key])!==h(value))return false;
@@ -223,6 +227,7 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
  for(const portion of portions){
   budget?.check();
   const design=portion.design??{};
+  if(Object.hasOwn(design,'rowPreview')&&design.axisGeometryConvention!==FINITE_POLYLINE_AXIS_CONVENTION)return false;
   if(Object.hasOwn(design,'groundSpacing')){if(!validateGround(portion))return false;continue;}
   const markers=(design.axes??[]).filter(axis=>Object.hasOwn(axis,'axisGeometryConvention'));
   if(design.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION){if(!validateFinite(portion))return false;continue;}
@@ -271,6 +276,7 @@ function validAxisRecipeEnvelope(project,applied,model,canonicalDomains,budget){
 }
 export function readTerrainEnvelope(project,{budget}={}){
  budget?.check();
+ try{project=hydrateTerrainRows(project,{budget});}catch(error){if(error?.status==='budget-exceeded')throw error;return invalid('Geometria terreno applicata non valida.');}
  const terrain=project?.terrain;if(!terrain)return null;
  const applied=terrain.applied;
  if(applied&&Object.hasOwn(applied,'schemaVersion')&&applied.schemaVersion!==TERRAIN_ENVELOPE_SCHEMA_VERSION)return invalid('Versione del disegno terreno non supportata.');
@@ -300,4 +306,44 @@ export function readTerrainEnvelope(project,{budget}={}){
   inspectPayload(applied.result,budget,true);
   budget?.check();const result=clone(applied.result);budget?.check();return result;
  }catch(error){if(budget&&error?.status==='budget-exceeded')throw error;return invalid('Geometria terreno applicata non valida.');}
+}
+
+function chargeSavedInputCopy(value,budget){
+ if(!budget)return;
+ const seen=new WeakSet(),stack=[value];
+ while(stack.length){
+  budget.check();const item=stack.pop();if(!item||typeof item!=='object'||seen.has(item))continue;seen.add(item);
+  if(Array.isArray(item)&&item.length>=2&&item.length<=3&&item.every(Number.isFinite))budget.check(1);
+  for(const key of Reflect.ownKeys(item)){budget.check();const descriptor=Object.getOwnPropertyDescriptor(item,key);if(descriptor?.enumerable&&Object.hasOwn(descriptor,'value'))stack.push(descriptor.value);}
+ }
+}
+export function readTerrainSavedAndLive(project,{budget,liveRequired=true}={}){
+ const actualProject=project;
+ project=hydrateTerrainRows(project,{budget});
+ budget?.check();
+ const operand=(object,key)=>{if(!budget)return object?.[key];const descriptor=object&&Object.getOwnPropertyDescriptor(object,key);if(descriptor&&!Object.hasOwn(descriptor,'value'))throw new TypeError('Unsupported saved terrain inputs for a bounded replay copy.');return descriptor?.value;};
+ const actualOwner=operand(actualProject,'terrain'),actualProjectKey=actualTerrainContentKey(actualProject,{budget});
+ const terrain=operand(project,'terrain'),applied=operand(terrain,'applied'),actualInputs=operand(applied,'inputs');
+ if(!actualInputs)return {savedValid:false,liveResult:null};
+ if(budget&&actualTerrainContentKey(actualInputs,{budget})===null)throw new TypeError('Unsupported saved terrain inputs for a bounded replay copy.');
+ chargeSavedInputCopy(actualInputs,budget);
+ const saved={...structuredClone(actualInputs),terrain};budget?.check();
+ const needsLive=()=>(typeof liveRequired==='function'?liveRequired():liveRequired)===true;
+ let equal=false;
+ const projectKey=actualTerrainContentKey(project,{budget});
+ if(projectKey!==null&&actualTerrainContentKey(saved,{budget})!==null&&saved.terrain===terrain){
+  const v2=Object.hasOwn(applied,'schemaVersion'),projectInput=v2?geometryInputs(project,budget):legacyTerrainInputs(project),savedInput=v2?geometryInputs(saved,budget):legacyTerrainInputs(saved);
+  const liveKey=actualTerrainContentKey(projectInput,{budget}),savedKey=actualTerrainContentKey(savedInput,{budget});
+  equal=liveKey!==null&&savedKey!==null&&liveKey===savedKey;
+  if(equal&&terrainSurfaceGroupsPresent(project.exclusions))equal=actualTerrainContentKey(project.exclusions,{budget})===actualTerrainContentKey(saved.exclusions,{budget});
+ }
+ if(equal){
+  const sharedResult=readTerrainEnvelope(project,{budget}),savedValid=sharedResult?.terrainStatus==='applied';
+  if(!savedValid)return {savedValid,liveResult:sharedResult};
+  if(!needsLive())return {savedValid,liveResult:null};
+  const liveResult=actualProjectKey!==null&&operand(actualProject,'terrain')===actualOwner&&actualTerrainContentKey(actualProject,{budget})===actualProjectKey&&project.terrain===terrain&&actualTerrainContentKey(project,{budget})===projectKey?sharedResult:readTerrainEnvelope(actualProject,{budget});
+  return {savedValid,liveResult};
+ }
+ const savedResult=readTerrainEnvelope(saved,{budget}),savedValid=savedResult?.terrainStatus==='applied';
+ return {savedValid,liveResult:savedValid&&needsLive()?readTerrainEnvelope(actualProject,{budget}):null};
 }

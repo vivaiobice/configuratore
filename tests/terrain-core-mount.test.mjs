@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {parseHTML} from 'linkedom';
+import {APP_CONFIG} from '../src/config.js';
 const load=()=>import('../src/terrain-core-presentation.js');
 const state={portionId:'p1',contextKey:'field/input/history',actualMode:'manual',requestedMode:'terrain',busy:false,viewOpening:false,
  canAdapt:true,canApply:false,canSuggestCut:false,proposal:null,progress:null,statusKind:'unavailable',lastProposalOutcome:null,
@@ -28,7 +29,7 @@ let mountedCutWitness;
 async function realMountedCutWitness(){
  if(mountedCutWitness)return mountedCutWitness;
  const [{createTerrainModel},{createContourDomain},{traceContourLevel},{certifyContourSpacing},{fromUTM}]=await Promise.all([
-  import('../src/terrain-model.js'),import('../src/terrain-contour-domain.js?v=1.3.7'),import('../src/terrain-contours.js?v=1.3.7'),import('../src/terrain-contour-validation.js?v=1.3.7'),import('../src/coordinate-system.js')]);
+  import('../src/terrain-model.js'),import(`../src/terrain-contour-domain.js?v=${APP_CONFIG.version}`),import(`../src/terrain-contours.js?v=${APP_CONFIG.version}`),import(`../src/terrain-contour-validation.js?v=${APP_CONFIG.version}`),import('../src/coordinate-system.js')]);
  const geometry=[[-10,0],[10,0],[10,10],[-10,10],[-10,0]].map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
  const model=createTerrainModel({acquiredAt:'2026-10-05T00:00:00.000Z',grid:{width:9,height:9,origin:[499980,5000030],step:[5,-5],values:Array.from({length:81},(_,i)=>{const x=-20+(i%9)*5,y=30-Math.floor(i/9)*5;return y/4+(x<0?x/16:x/2);})}});
  const domain=createContourDomain({model,geometry:{type:'Polygon',coordinates:[geometry]}});

@@ -9,7 +9,7 @@
 .map-visibility-panel label{display:flex;align-items:center;gap:10px;min-height:44px;font-size:13px;cursor:pointer}
 .map-visibility-panel input{width:18px;height:18px;margin:0;accent-color:var(--green,#183f28);cursor:pointer}
 .map-visibility-control .map-visibility-panel button{width:100%;min-height:38px;margin-top:6px;padding:7px;border:1px solid var(--line,#dce2dd);border-radius:9px;background:var(--soft,#edf4ef);color:var(--ink,#142019);font:inherit;font-size:12px;cursor:pointer}
-[data-map-field-visible="false"] :is(.map-field-label-overlay,.field-label-marker),[data-map-quotes-visible="false"] .side-measurement-label{display:none!important}
+[data-map-names-visible="false"] :is(.map-field-label-overlay,.field-label-marker),[data-map-quotes-visible="false"] .side-measurement-label{display:none!important}
 /* The same map element moves between the main map, Campi and editing. Keep
    controls outside MapLibre's native control container, hidden in field views. */
 body.mobile-app-active #mobile-app .map-visibility-control{top:calc(104px + env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:auto}
@@ -18,3 +18,10 @@ body.mobile-app-active #mobile-app .map-visibility-panel{left:0;right:auto;top:5
 body.mobile-app-active[data-mobile-screen="editor"] #mobile-app .map-visibility-control{top:calc(76px + env(safe-area-inset-top))}
 body.mobile-app-active #mobile-app :is(#mobile-detail-map,#mobile-parameters-preview) .map-visibility-control{top:12px;left:auto;right:12px}
 body.mobile-app-active #mobile-app :is(#mobile-detail-map,#mobile-parameters-preview) .map-visibility-panel{left:auto;right:0}
+/* Four options must fit inside the compact, clipped field previews. */
+body.mobile-app-active #mobile-app :is(#mobile-detail-map,#mobile-parameters-preview) .map-visibility-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;top:0;right:54px}
+body.mobile-app-active #mobile-app .map-visibility-panel :is(strong,button){grid-column:1/-1}
+@media (orientation:landscape) and (max-height:440px){
+ body.mobile-app-active #mobile-app .map-visibility-panel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:8px;top:0;left:54px;right:auto;width:min(410px,calc(100vw - 92px))}
+ body.mobile-app-active #mobile-app :is(#mobile-detail-map,#mobile-parameters-preview) .map-visibility-panel{grid-template-columns:repeat(4,minmax(0,1fr));top:50px;left:auto;right:0;width:min(410px,calc(100vw - 64px))}
+}

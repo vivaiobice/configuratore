@@ -9,6 +9,7 @@ import {readTerrainEnvelope} from '../src/terrain-replay.js';
 import {createTerrainController,checkpointTerrainProposal,terrainContextKey} from '../src/terrain-controller.js';
 import {mergeProjectState} from '../src/state.js';
 import {saveDraft,loadDraft} from '../src/storage.js';
+import {hydrateTerrainProject} from '../src/terrain-row-mirror.js';
 
 const clone=value=>structuredClone(value);
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
@@ -80,7 +81,7 @@ test('core actual restore checkpoint consumes one entry and preserves missing po
 });
 
 test('core restore schedules the reviewed builder without attaching redo history',async()=>{
- const applied=materialize(original,attachTerrainRestore({project:original,proposal:measured,operationId:'first'}));let seen;const f=fixture({getProject:()=>applied,runProposal:async(options)=>{seen=options;return buildTerrainRestoreProposal(options);}});await f.controller.refresh();assert.equal(f.controller.getState().restoreAvailability.reason,'exact');const restored=await f.controller.restore();assert.equal(seen.kind,'restore');assert.equal(seen.deadlineMs,30000);assert.equal(restored.kind,'restore');assert.equal(restored.terrain.history.entries.length,0);assert.equal(f.saves(),0);f.controller.destroy();
+ const applied=materialize(original,attachTerrainRestore({project:original,proposal:measured,operationId:'first'}));let seen;const f=fixture({getProject:()=>applied,runProposal:async(options)=>{seen=options;return buildTerrainRestoreProposal(options);}});await f.controller.refresh();assert.equal(f.controller.getState().restoreAvailability.reason,'pending-verification');const restored=await f.controller.restore();assert.equal(seen.kind,'restore');assert.equal(seen.deadlineMs,30000);assert.equal(restored.kind,'restore');assert.equal(restored.terrain.history.entries.length,0);assert.equal(f.saves(),0);f.controller.destroy();
 });
 
 test('core actual worker restore dispatch shares progress budget and returns consumed preview',async()=>{
@@ -114,8 +115,12 @@ test('core stale preview and outcome are hidden after a no-refresh history switc
 test('core patch-only aliases and producer winners persist with all snapshot quotas enforced',()=>{
  const attached=attachTerrainRestore({project:original,proposal:measured,operationId:'patch'}),proposal={...clone(attached),terrain:undefined,rowPortions:undefined,projectPatch:{terrain:clone(attached.terrain),rowPortions:clone(attached.rowPortions),locationLabel:'producer'}},state={project:clone(original)},captured=checkpointContext(state.project);
  const next=checkpointTerrainProposal({state,proposal,...captured,currentContext:captured.identity,mergeState:mergeProjectState,saveCheckpoint:next=>next});assert.equal(next.project.locationLabel,'producer');assert.equal(readTerrainEnvelope(next.project).terrainStatus,'applied');
- const large={project:{...clone(original),fields:[{...clone(original),id:'field'},...Array.from({length:5},(_,i)=>({id:`foreign-${i}`,terrain:clone(measured.terrain),materialRequestNote:'x'.repeat(900000)}))]}};const guard=checkpointContext(large.project);let writes=0;
- assert.throws(()=>checkpointTerrainProposal({state:large,proposal:attached,...guard,currentContext:guard.identity,mergeState:mergeProjectState,saveCheckpoint:()=>{writes++;return large;}}),/4 MiB/);assert.equal(writes,0);
+ const large={project:{...clone(original),fields:[{...clone(original),id:'field'},...Array.from({length:5},(_,i)=>({id:`foreign-${i}`,terrain:clone(measured.terrain),materialRequestNote:'x'.repeat(900000)}))]}};let writes=0;
+ assert.ok(Buffer.byteLength(JSON.stringify(large.project))>4*1024*1024);
+ assert.throws(()=>hydrateTerrainProject(large.project),/4 MiB/);
+ // Readers reject this oversized project before a checkpoint context can be
+ // issued; retain the whole attempted operation inside the rejection boundary.
+ assert.throws(()=>{const guard=checkpointContext(large.project);checkpointTerrainProposal({state:large,proposal:attached,...guard,currentContext:guard.identity,mergeState:mergeProjectState,saveCheckpoint:()=>{writes++;return large;}});},error=>error.status==='invalid-history');assert.equal(writes,0);
 });
 
 test('core actual adapt producer remains an explicit preview with one original baseline',async()=>{

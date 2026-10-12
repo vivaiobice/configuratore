@@ -7,6 +7,7 @@ import {createTerrainModel} from '../src/terrain-model.js';
 import {buildTerrainProposal} from '../src/terrain-design.js';
 import {fieldSummaryMetrics} from '../src/project-summary.js';
 import {serializeTerrainSnapshot,TERRAIN_FIELD_MAX_BYTES,TERRAIN_SNAPSHOT_MAX_BYTES} from '../src/terrain-serialization.js';
+import {packTerrainRowMirror,hydrateTerrainRows} from '../src/terrain-row-mirror.js';
 import {buildCloudSnapshot,snapshotToFieldRows} from '../src/cloud-project-model.js';
 import {saveDraft,loadDraft} from '../src/storage.js';
 import {projectPayloadToState} from '../src/backend.js';
@@ -37,6 +38,14 @@ function exactSizeField(field,targetBytes){
  assert.equal(byteLength(sized),targetBytes);
  return sized;
 }
+function exactSizeWireField(field,targetBytes){
+ const {metrics,clientFieldId,cloudReady,...design}=packTerrainRowMirror(structuredClone(field));
+ assert.deepEqual(design.terrain.rowMirrorStorage,{schemaVersion:1,convention:'portion-results-order'});
+ const wire=exactSizeField(design,targetBytes);
+ const transported=JSON.parse(serializeTerrainSnapshot({fields:[wire]})).fields[0];
+ assert.equal(byteLength(transported),targetBytes);
+ return wire;
+}
 function projectState(fields=[structuredClone(small.field)]){
  return {environment:'TEST',project:{localProjectId:'transport',localProjectName:'Frozen transport',activeFieldId:fields[0].id,fields,terrain:fields[0].terrain},cloud:{projectId:'server',latestRevisionNumber:1},reportOwnerId:'owner'};
 }
@@ -65,7 +74,10 @@ test('ordinary accepted 7.7 ha applied field survives cloud transport with scala
 
 test('1 MiB applies to canonical field data while all cloud transport bytes remain in the 4 MiB budget',()=>{
  const editorField=ensureProjectFields(projectState().project).fields[0];
- const field=exactSizeField(editorField,TERRAIN_FIELD_MAX_BYTES),result=fieldSummaryMetrics(field),state=projectState([field]),store=storage();
+ const wire=exactSizeWireField(editorField,TERRAIN_FIELD_MAX_BYTES),field=hydrateTerrainRows(wire),result=fieldSummaryMetrics(field),state=projectState([field]),store=storage();
+ assert.deepEqual(field.terrain.applied.result.rows,editorField.terrain.applied.result.rows);
+ assert.deepEqual(field.terrain.history,editorField.terrain.history);
+ assert.ok(byteLength(field)>TERRAIN_FIELD_MAX_BYTES,'lossless hydration restores the exact aggregate row mirror');
  assert.equal(result.terrainStatus,'applied');saveDraft(store,state);
  assert.deepEqual(loadDraft(store).project.fields[0],field);
  const snapshot=buildCloudSnapshot(state,fieldSummaryMetrics);
@@ -73,6 +85,7 @@ test('1 MiB applies to canonical field data while all cloud transport bytes rema
  assert.deepEqual(fieldSummaryMetrics(JSON.parse(serializeTerrainSnapshot(snapshot)).fields[0]),result);
  assert.doesNotThrow(()=>serializeTerrainSnapshot({fields:[{...field,metrics:{derived:'x'.repeat(1000)},clientFieldId:'transport-id',cloudReady:true}]}));
  assert.throws(()=>serializeTerrainSnapshot({fields:[{...field,label:field.label+'x'}]}),/1 MiB/);
+ assert.throws(()=>serializeTerrainSnapshot({fields:[{...field,materialRequestNote:field.materialRequestNote.slice(0,-1)+'é'}]}),/1 MiB/);
  assert.throws(()=>buildCloudSnapshot(projectState([{...field,label:field.label+'x'}]),fieldSummaryMetrics),/1 MiB/);
  assert.throws(()=>serializeTerrainSnapshot({fields:[{...small.field,metrics:{derived:'x'.repeat(TERRAIN_SNAPSHOT_MAX_BYTES)}}]}),/4 MiB/);
  const fields=Array.from({length:4},(_,index)=>({...field,id:`field-${index}`}));
@@ -174,12 +187,16 @@ test('real attached history counts toward inclusive UTF-8 field and snapshot cei
  const before={...structuredClone(small.field),rowPortions:[]};delete before.terrain;
  const attached=attachTerrainRestore({project:before,proposal:small.proposal,operationId:'quota-history'});
  const original={...before,rowPortions:attached.rowPortions,terrain:attached.terrain};
- const field=exactSizeField(ensureProjectFields(projectState([original]).project).fields[0],TERRAIN_FIELD_MAX_BYTES);
+ const editorField=ensureProjectFields(projectState([original]).project).fields[0];
+ const wire=exactSizeWireField(editorField,TERRAIN_FIELD_MAX_BYTES),field=hydrateTerrainRows(wire);
+ assert.deepEqual(field.terrain.applied.result.rows,editorField.terrain.applied.result.rows);
+ assert.deepEqual(field.terrain.history,attached.terrain.history);
  assert.doesNotThrow(()=>serializeTerrainSnapshot({fields:[field]}));
  assert.throws(()=>serializeTerrainSnapshot({fields:[{...field,materialRequestNote:field.materialRequestNote+'x'}]}),/1 MiB/);
  assert.throws(()=>serializeTerrainSnapshot({fields:[{...field,materialRequestNote:field.materialRequestNote.slice(0,-1)+'é'}]}),/1 MiB/);
  const snapshot={fields:[field],transportNote:''};snapshot.transportNote='x'.repeat(TERRAIN_SNAPSHOT_MAX_BYTES-byteLength(snapshot));
- assert.equal(byteLength(snapshot),TERRAIN_SNAPSHOT_MAX_BYTES);assert.doesNotThrow(()=>serializeTerrainSnapshot(snapshot));
+ assert.equal(byteLength(snapshot),TERRAIN_SNAPSHOT_MAX_BYTES,'the unchanged snapshot ceiling includes the complete decoded row mirror and history');
+ assert.doesNotThrow(()=>serializeTerrainSnapshot(snapshot));
  assert.throws(()=>serializeTerrainSnapshot({...snapshot,transportNote:snapshot.transportNote+'x'}),/4 MiB/);
  const harness=reportHarness(projectState([original]));harness.open();
  const report=readReportContext(harness.store,'report');assert.deepEqual(report.project.fields[0].terrain.history,attached.terrain.history);

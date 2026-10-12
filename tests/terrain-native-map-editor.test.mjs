@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseHTML} from 'linkedom';
 import {initMap} from '../src/map.js';
-import {reshapeExclusion,regeneratePassage} from '../src/passage-coordinates.js?v=1.3.7';
-import {buildTerrainPassage} from '../src/terrain-passage.js?v=1.3.7';
-import {resolveTerrainExclusionGroups} from '../src/terrain-exclusion-groups.js?v=1.3.7';
+import {reshapeExclusion,regeneratePassage} from '../src/passage-coordinates.js?v=1.3.9';
+import {buildTerrainPassage} from '../src/terrain-passage.js?v=1.3.9';
+import {resolveTerrainExclusionGroups} from '../src/terrain-exclusion-groups.js?v=1.3.9';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
-import {fromUTM} from '../src/coordinate-system.js?v=1.3.7';
+import {fromUTM} from '../src/coordinate-system.js?v=1.3.9';
 
 // Actual native road construction supplies the saved owner operands. Splitting
 // one simple raw construction ring along its existing diagonal supplies a

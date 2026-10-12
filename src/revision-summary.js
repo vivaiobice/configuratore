@@ -1,3 +1,4 @@
+import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.9';
 const GROUPS = {
   geometry:['geometry'],
   exclusions:['exclusions'],
@@ -46,6 +47,7 @@ function labelFor(categories) {
 }
 
 export function summarizeRevisionChanges(previous, current) {
+  previous=normalizeTerrainStorageForComparison(previous);current=normalizeTerrainStorageForComparison(current);
   const currentFields = Array.isArray(current?.fields) ? current.fields : [];
   if (!previous) {
     return {

@@ -1,4 +1,5 @@
-import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.7';
+import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.9';
+import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.9';
 
 function comparable(value) {
   if (Array.isArray(value)) return value.map(comparable);
@@ -16,7 +17,7 @@ function sameDesign(snapshot,server) {
     && snapshot.campaignYear === Number(server.campaign_year)
     && snapshot.origin === server.origin
     && Array.isArray(server.field_plans)
-    && JSON.stringify(comparable(snapshot.fields)) === JSON.stringify(comparable(server.field_plans));
+    && JSON.stringify(comparable(normalizeTerrainStorageForComparison({fields:snapshot.fields}).fields)) === JSON.stringify(comparable(normalizeTerrainStorageForComparison({fields:server.field_plans}).fields));
 }
 
 export async function ensureQuoteRevision({sync,backend,getState,getMetrics}) {

@@ -3,6 +3,10 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {checkpointTerrainProposal,terrainPortionEditorState} from '../../src/terrain-controller.js';
 import {calculateProject} from '../../src/project-calculator.js';
+import {fieldCalculationInputs} from '../../src/field-calculation-inputs.js';
+import {createTerrainCalculationPresentationCache} from '../../src/terrain-calculation-presentation-cache.js';
+import {APP_CONFIG} from '../../src/config.js';
+import {NO_ROW_PORTION} from '../../src/row-portion-editor.js';
 import {mergeProjectState} from '../../src/state.js';
 import {migrateDraftEnvelope} from '../../src/local-migrations.js';
 import {saveDraft} from '../../src/storage.js';
@@ -33,6 +37,7 @@ export function createNativeAppHarness({state,storage,ownerId,portionId='source'
   terrainController:null,activeRowPortionId:portionId,rowPortionFieldId:state.project.activeFieldId,curveEditingActive:false,latestMetrics:null,
   authBridge:{getState:()=>({user:ownerId==null?null:{id:ownerId}})},
   captureWorkspace,checkpointTerrainProposal,mergeProjectState,migrateDraftEnvelope,saveDraft,calculateProject,terrainPortionEditorState,
+  fieldCalculationInputs,createTerrainCalculationPresentationCache,APP_CONFIG,NO_ROW_PORTION,
   mapApi:{setTerrainProposalPreview:proposal=>onPreview(proposal,api)},
   summarySaveFeedback:{dirty:()=>onDirty(api)},calculateAndRender:()=>{if(reconcilePortionSelection)scope.actualSelectionReconciliation();onCalculateAndRender(api);},
   projectSync:{schedule:reason=>onSync(reason,api)},renderCurveControls:()=>onRenderCurveControls(api),syncCurveEditor:()=>onSyncCurveEditor(api),

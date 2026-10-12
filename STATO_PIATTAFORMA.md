@@ -1,3 +1,13 @@
+# Stato attuale — 1.3.9
+
+La piattaforma completa 1.3.9 ottimizza Adatta al terreno mantenendo quota costante, interfila sul terreno, porzioni indipendenti e verifiche esatte. Le altre funzioni raggiunte sono preservate. Consultare README_RELEASE_1.3.9.md e QA_RELEASE_1.3.9.md per esiti e limiti del collaudo; PUBBLICAZIONE.md per caricamento e compatibilità dei nuovi checkpoint.
+
+Nessuna pubblicazione o modifica del backend è stata eseguita. I servizi server Conteggi non sono stati verificati in questa sessione; l'ultimo stato documentato del 9 ottobre 2026 indicava l'attivazione pendente.
+
+## Documentazione storica
+
+Il testo seguente conserva lo stato e le prove delle versioni precedenti e non descrive il collaudo 1.3.9.
+
 # Piattaforma Vivai Obice — stato 1.3.6
 
 **Versione coordinata: 1.3.6 · LIVE — 9 ottobre 2026.** Pacchetto completo pronto per il caricamento; nessuna pubblicazione remota eseguita.

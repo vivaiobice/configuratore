@@ -1,21 +1,21 @@
-# Pubblicazione — piattaforma Vivai Obice 1.3.7
+# Pubblicazione — piattaforma Vivai Obice 1.3.9
 
 Il pacchetto contiene Configuratore e Conteggi. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `/conteggi/`. Repository e impostazioni GitHub Pages restano quelli esistenti. Nessuna pubblicazione remota è stata eseguita in questa consegna.
 
 ## Stato dei servizi
 
-Versione e cache sono coordinate a **1.3.7 · LIVE**. Il codice browser prepara sincronizzazione e trasmissione; Admin resta disabilitato. **I servizi Conteggi non sono attivi sul server:** all’ultimo controllo del 9 ottobre, documentato nella 1.3.6, le tabelle risultavano assenti e i tentativi di installazione tramite il collegamento Supabase restituiscono `Invalid or expired requestState`. Non sono stati applicati SQL, distribuite funzioni, modificati secret o inviati messaggi reali.
+Versione e cache sono coordinate a **1.3.9 · LIVE**. Il codice browser prepara sincronizzazione e trasmissione; Admin resta disabilitato. **I servizi Conteggi non sono attivi sul server:** all’ultimo controllo del 9 ottobre, documentato nella 1.3.6, le tabelle risultavano assenti e i tentativi di installazione tramite il collegamento Supabase restituiscono `Invalid or expired requestState`. Non sono stati applicati SQL, distribuite funzioni, modificati secret o inviati messaggi reali.
 
 Il salvataggio locale è disponibile. Le letture aperte sono bozze sul dispositivo; diventano righe sincronizzabili con «Salva lettura». Quando il server sarà attivo, una sessione registrata potrà sincronizzarle anche senza campo associato. Un ospite deve accettare l’avviso corrente e scegliere esplicitamente il trasferimento durante l’accesso a un account esistente. Sincronizzazione e trasmissione sono operazioni distinte: la prima non invia email.
 
-«Adatta al terreno» non viene modificato in questa revisione. La navigazione 3D approvata dall’utente resta invariata. Esiti e limiti in [README_RELEASE_1.3.7.md](README_RELEASE_1.3.7.md), [QA_RELEASE_1.3.7.md](QA_RELEASE_1.3.7.md) e `manifest-piattaforma.json`.
+«Adatta al terreno» riduce lavoro duplicato e dimensione dei checkpoint mantenendo le verifiche esatte. La navigazione 3D approvata dall’utente resta invariata. Esiti e limiti in [README_RELEASE_1.3.9.md](README_RELEASE_1.3.9.md), [QA_RELEASE_1.3.9.md](QA_RELEASE_1.3.9.md) e `manifest-piattaforma.json`.
 
 ## Pubblicare il codice unico
 
-1. Conservare il checkout e lo ZIP della versione pubblicata. Non cancellare gli archivi personali del browser.
-2. Estrarre `Vivai_Obice_Piattaforma_v1.3.7.zip` in una cartella separata. `index.html`, `CNAME`, `src/`, `conteggi/`, `assets/`, `admin/`, `tests/` e `supabase/` sono alla radice.
+1. Conservare il checkout, lo ZIP e gli export dei progetti della versione pubblicata. Non cancellare gli archivi personali del browser. I nuovi checkpoint compressi o con righe condivise richiedono 1.3.9 o successiva anche per lettura, stampa e annullamento; una versione precedente non è un lettore compatibile dei nuovi salvataggi.
+2. Estrarre `Vivai_Obice_Piattaforma_v1.3.9.zip` in una cartella separata. `index.html`, `CNAME`, `src/`, `conteggi/`, `assets/`, `admin/`, `tests/` e `supabase/` sono alla radice.
 3. Copiare l’intero contenuto nella radice del checkout `vivaiobice/configuratore`; non aggiungere una cartella contenitore. Non servono `node_modules` sull’hosting. Conservare `CNAME`, ramo e impostazioni Pages.
-4. Controllare le modifiche e pubblicare un unico commit con il flusso già utilizzato. Versione attesa in entrambi gli strumenti: **1.3.7 · LIVE**.
+4. Controllare le modifiche e pubblicare un unico commit con il flusso già utilizzato. Versione attesa in entrambi gli strumenti: **1.3.9 · LIVE**.
 5. Chiudere le vecchie schede Conteggi, riaprire online e poi provare l’avvio offline. Il Service Worker controlla soltanto `/conteggi/`. Conservare IndexedDB/localStorage e la stessa origine HTTPS.
 
 Il caricamento statico non installa il backend. Attivare e verificare i servizi sotto prima di considerare conclusi salvataggio nel profilo e trasmissione.
@@ -40,7 +40,12 @@ I test locali usano servizi simulati e non sostituiscono questi controlli LIVE. 
 
 ## Ripristino
 
-Conservare il pacchetto precedente. Se necessario disabilitare i flag dei servizi e ripubblicare quel pacchetto, senza cancellare dati, account o tabelle. Per rimuovere il worker annullare soltanto la registrazione con scope `/conteggi/` e le cache statiche `vivai-obice-counts-static-*`; non usare «cancella tutti i dati del sito». Un trasferimento già concluso non va invertito automaticamente.
+Conservare separatamente il pacchetto e gli export dei progetti precedenti all'aggiornamento. I nuovi checkpoint compressi o con righe condivise richiedono un lettore 1.3.9 o successivo: per ripubblicare una versione precedente utilizzare i relativi export precedenti, conservando separatamente tutti i nuovi dati 1.3.9. Non cancellare localStorage, IndexedDB o archivi personali e non sovrascrivere i nuovi progetti con copie precedenti.
+
+
+## Note storiche dei rilasci precedenti
+
+Le sezioni seguenti documentano le procedure delle relative versioni. Per la 1.3.9 valgono le istruzioni iniziali di questo documento.
 
 ## Cronologia: aggiornamenti delle versioni precedenti
 

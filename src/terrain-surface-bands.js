@@ -1,14 +1,14 @@
-import {nativeDirectionalServiceTerms} from './terrain-directional-certificate.js?v=1.3.7';
-import {readExactNativeDomainAreaTerms} from './terrain-contour-domain-owner.js?v=1.3.7';
+import {nativeDirectionalServiceTerms} from './terrain-directional-certificate.js?v=1.3.9';
+import {readExactNativeDomainAreaTerms} from './terrain-contour-domain-owner.js?v=1.3.9';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.7';
+from './terrain-budget.js?v=1.3.9';
 import {
   fromUTM,
   toUTM
 }
-from './coordinate-system.js?v=1.3.7';
+from './coordinate-system.js?v=1.3.9';
 import {
   Q,
   rationalSquareRoot,
@@ -34,27 +34,27 @@ import {
   nextUp,
   nextDown
 }
-from './terrain-exact.js?v=1.3.7';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.7';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.7';
+from './terrain-exact.js?v=1.3.9';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.9';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.9';
 import {
   axisPieces
 }
-from './terrain-surface-flow.js?v=1.3.7';
+from './terrain-surface-flow.js?v=1.3.9';
 import {
   certifyContourElevation
 }
-from './terrain-contour-validation.js?v=1.3.7';
+from './terrain-contour-validation.js?v=1.3.9';
 import {
   createAlgebraicField
 }
-from './terrain-algebraic.js?v=1.3.7';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.7';
+from './terrain-algebraic.js?v=1.3.9';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.9';
 import {
   createBandKernel,
   traceBandBundles
 }
-from './terrain-geodesic-flow.js?v=1.3.7';
+from './terrain-geodesic-flow.js?v=1.3.9';
 /** Compare an outward binary64 enclosure to exact binary-input thresholds.
  * Adding the ceiling in floating point first could admit an extra ULP. */
 export function widthBoundsWithin(bounds,centerM) {
@@ -998,8 +998,30 @@ function completePlaneSupport(k) {
 }
 /** Shared eligibility proof. A missing native patch or nonuniform plane never
  * authorizes suppression of native events. Calls occur after ESM setup only. */
+const uniformPlaneEligibility=new WeakMap();
+function exactUniformPlane(exact,budget){
+  budget?.check();
+  let checked=uniformPlaneEligibility.get(exact);
+  if(!checked){checked=new WeakMap();uniformPlaneEligibility.set(exact,checked);}
+  if(budget&&checked.has(budget))return checked.get(budget);
+  const first=exact.faces[0];
+  // Same exact gradient and plane intercept used by BandKernel. Scalar
+  // evaluation avoids constructing any temporary XY coordinate slices.
+  const intercept=face=>sub(sub(face.vertices[0][2],mul(face.g[0],face.vertices[0][0])),mul(face.g[1],face.vertices[0][1]));
+  let uniform=!!first;
+  if(first){
+    const origin=intercept(first);
+    for(const face of exact.faces){
+      budget?.check();
+      if(cmp(face.g[0],first.g[0])||cmp(face.g[1],first.g[1])||cmp(intercept(face),origin)){uniform=false;break;}
+    }
+  }
+  if(budget)checked.set(budget,uniform);
+  return uniform;
+}
 export function certifyUniformPlaneSupport(domain,budget) {
   const exact=exactDomain(domain,budget);
+  if(!exactUniformPlane(exact,budget))return null;
   const k=createBandKernel(exact,createAlgebraicField(budget),budget);
   try{
     return completePlaneSupport(k);

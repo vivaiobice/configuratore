@@ -1,11 +1,13 @@
-import {calculateProject} from './project-calculator.js?v=1.3.7';
-import {terrainInputHash} from './terrain-model.js?v=1.3.7';
-import {createContourEnvelope,legacyTerrainInputs,readTerrainEnvelope,terrainGeometryInputHash} from './terrain-replay.js?v=1.3.7';
-import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.7';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
-import {TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.7';
+import {encodeTerrainHistoryBefore,decodeTerrainHistoryBefore,encodedTerrainHistoryBefore} from './terrain-history-codec.js?v=1.3.9';
+import {hydrateTerrainProject,mapTerrainFields,inspectTerrainRowMirrors} from './terrain-row-mirror.js?v=1.3.9';
+import {calculateProject} from './project-calculator.js?v=1.3.9';
+import {terrainInputHash} from './terrain-model.js?v=1.3.9';
+import {createContourEnvelope,legacyTerrainInputs,readTerrainEnvelope,readTerrainSavedAndLive,terrainGeometryInputHash} from './terrain-replay.js?v=1.3.9';
+import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.9';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.9';
+import {TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.9';
 import {polygonMetrics,estimatePlantsFromRows,roundUpTo25} from './geometry.js?v=45';
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.7';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.9';
 
 const clone=value=>structuredClone(value);
 const select=(value,keys)=>Object.fromEntries(keys.filter(key=>Object.hasOwn(value,key)).map(key=>[key,value[key]]));
@@ -14,6 +16,10 @@ const failure=(status,message)=>Object.assign(new Error(message),{status});
 function geometryNodes(value){
  if(Array.isArray(value))return value.length>=2&&value.length<=3&&value.every(Number.isFinite)?1:value.reduce((s,item)=>s+geometryNodes(item),0);
  return value&&typeof value==='object'?Object.values(value).reduce((s,item)=>s+geometryNodes(item),0):0;
+}
+function strictPositions(value,records){
+ if(!Array.isArray(value)||value.length!==records.length||Reflect.ownKeys(value).length!==value.length+1)return false;
+ for(let i=0;i<value.length;i++){const d=Object.getOwnPropertyDescriptor(value,String(i));if(!d||!Object.hasOwn(d,'value')||!Number.isSafeInteger(d.value)||d.value<0||(i&&d.value<=value[i-1]))return false;}return true;
 }
 const groupKeys=['surfaceGroupVersion','surfaceGroupOwner','surfaceGeometry','surfaceGeometryConvention','surfaceConstructionPolicy'];
 const exclusionProjection=item=>Array.isArray(item)?{geometry:item}:select(item,[...TERRAIN_EXCLUSION_GEOMETRY_KEYS,...groupKeys]);
@@ -173,24 +179,74 @@ function validEntry(entry,budget){
  if(!before.portions.every(p=>typeof p.id==='string'&&Array.isArray(p.rows)&&typeof p.quantityBasis==='string'))return false;
  const explicitNative=before.cut&&['protocolVersion','action','beforePortionIds','afterPortionIds','previousGroup'].some(key=>Object.hasOwn(before.cut,key));
  if(explicitNative&&!validNativeEntry(entry))return false;
+ if(!nativeCut(entry)){const keys=['portionPositions','referencePortionPositions','quantityPositions'];if(keys.some(key=>Object.hasOwn(before.source,key))&&(!keys.every(key=>Object.hasOwn(before.source,key))||!strictPositions(before.source.portionPositions,before.source.portions)||!strictPositions(before.source.referencePortionPositions,before.source.referencePortions)||!strictPositions(before.source.quantityPositions,before.portions)))return false;}
  if(nativeCut(entry))return typeof entry.afterFingerprint==='string'&&typeof entry.contextFingerprint==='string'&&entry.baselineHash===baselineHash(entry,budget);
  return nonrecursive(before)&&typeof entry.afterFingerprint==='string'&&typeof entry.contextFingerprint==='string'&&entry.baselineHash===baselineHash(entry,budget);
 }
-function historyEntries(project,budget){
- budget?.check();
- const history=project.terrain?.history;
- if(!history)return [];
- if(history.schemaVersion!==1||!Array.isArray(history.entries))throw failure('invalid-history','Invalid terrain restore history.');
- const seen=new Set();
+// Logical readers validate decoded baselines; foreign entries retain their actual stored bytes.
+const storedEntries=new WeakMap(),newStoredEntries=new WeakSet();
+function preflightHistory(history,budget){
+ let plainBytes=0;
  for(const entry of history.entries){
-  if(!validEntry(entry,budget)||entry.affectedIds.some(id=>seen.has(id)))throw failure('invalid-history','Invalid or overlapping terrain restore baseline.');
-  entry.affectedIds.forEach(id=>seen.add(id));
+  budget?.check();const before=entry?.before;
+  if(encodedTerrainHistoryBefore(before)){
+   const descriptor=Object.getOwnPropertyDescriptor(before,'plainBytes');
+   if(!descriptor||!Object.hasOwn(descriptor,'value')||!Number.isSafeInteger(descriptor.value)||descriptor.value<1)throw failure('invalid-history','Invalid compressed history size.');
+   plainBytes+=descriptor.value;
+  }else if(history.schemaVersion===2){
+   try{plainBytes+=new TextEncoder().encode(JSON.stringify(before)).length;}catch{throw failure('invalid-history','Invalid restore history.');}
+  }
+  if(!Number.isSafeInteger(plainBytes)||plainBytes>4*1024*1024)throw failure('invalid-history','Terrain restore history exceeds the bounded snapshot size.');
  }
- return history.entries;
+}
+function historyEntries(project,budget){
+ budget?.check();inspectTerrainRowMirrors(project,{budget});const history=project.terrain?.history;
+ if(!history)return [];
+ if(![1,2].includes(history.schemaVersion)||!Array.isArray(history.entries)||history.schemaVersion===2&&(!history.entries.some(entry=>encodedTerrainHistoryBefore(entry?.before))||Reflect.ownKeys(history).some(key=>typeof key!=='string')||Reflect.ownKeys(history).sort().join(',')!=='entries,schemaVersion'||['schemaVersion','entries'].some(key=>{const d=Object.getOwnPropertyDescriptor(history,key);return !d||!d.enumerable||!Object.hasOwn(d,'value');})))throw failure('invalid-history','Invalid terrain restore history.');
+ preflightHistory(history,budget);budget??=history.schemaVersion===2?createTerrainBudget({kind:'restore'}):undefined;
+ const seen=new Set(),entries=[];
+ for(const stored of history.entries){
+  const encoded=encodedTerrainHistoryBefore(stored?.before);
+  if(encoded&&history.schemaVersion!==2)throw failure('invalid-history','Compressed baseline requires history schema 2.');
+  const entry=encoded?{...stored,before:decodeTerrainHistoryBefore(stored.before,budget)}:stored;
+  if(!validEntry(entry,budget)||entry.affectedIds.some(id=>seen.has(id)))throw failure('invalid-history','Invalid or overlapping terrain restore baseline.');
+  storedEntries.set(entry,stored);entries.push(entry);entry.affectedIds.forEach(id=>seen.add(id));
+ }
+ return entries;
+}
+function durableHistory(entries,budget){
+ const stored=entries.map(entry=>{if(storedEntries.has(entry))return copyOwned(storedEntries.get(entry),budget);newStoredEntries.add(entry);return entry;});
+ return {schemaVersion:stored.some(entry=>encodedTerrainHistoryBefore(entry.before))?2:1,entries:stored};
+}
+function fitHistory(project,candidate,budget){
+ const effective=()=>effectiveNativeProject(project,candidate);
+ if(candidate.terrain.history.schemaVersion===2)preflightHistory(candidate.terrain.history,budget);
+ try{assertTerrainSerializationBudget(effective(),{rowMirrors:false,budget});}
+ catch(error){
+  if(!(error instanceof RangeError)||error.message!=='Il campo con terreno supera il limite di 1 MiB.')throw error;
+  const entries=candidate.terrain.history.entries.map(entry=>{
+   if(encodedTerrainHistoryBefore(entry.before)||!newStoredEntries.has(entry))return entry;
+   const before=encodeTerrainHistoryBefore(entry.before,budget);return before===entry.before?entry:{...entry,before};
+  });
+  if(entries.some(entry=>encodedTerrainHistoryBefore(entry.before))){candidate.terrain.history={schemaVersion:2,entries};preflightHistory(candidate.terrain.history,budget);}
+  assertTerrainSerializationBudget(effective(),{budget});
+ }
+ budget?.check();return candidate;
+}
+export function readTerrainRestoreEntries({project,budget=createTerrainBudget({kind:'restore'})}={}){return historyEntries(hydrateTerrainProject(project,{budget}),budget);}
+// Only comparison projections decode history. Durable foreign entries stay untouched.
+export function normalizeTerrainStorageForComparison(value,{budget=createTerrainBudget({kind:'restore'})}={}){
+ const hydrated=hydrateTerrainProject(value,{budget});
+ return mapTerrainFields(hydrated,field=>{
+  const history=field?.terrain?.history;
+  if(history?.schemaVersion!==2&&!history?.entries?.some(entry=>encodedTerrainHistoryBefore(entry?.before)))return field;
+  return {...field,terrain:{...field.terrain,history:{schemaVersion:1,entries:historyEntries(field,budget)}}};
+ },{budget});
 }
 /** Validate every baseline and return a transient checkpoint identity only. */
 export function assertTerrainRestoreHistory({project,budget}={}){
  try{
+  project=hydrateTerrainProject(project,{budget});
   historyEntries(project,budget);
   const present=Object.hasOwn(project.terrain??{},'history');
   // A present malformed value must not borrow the historical absent branch.
@@ -202,9 +258,9 @@ export function assertTerrainRestoreHistory({project,budget}={}){
   throw failure('invalid-history','Invalid terrain restore history.');
  }
 }
-function savedEnvelopeValid(project){
+function savedEnvelopeValid(project,budget){
  const applied=project.terrain?.applied;
- return !!applied?.inputs&&readTerrainEnvelope({...clone(applied.inputs),terrain:project.terrain})?.terrainStatus==='applied';
+ return !!applied?.inputs&&readTerrainEnvelope({...copyOwned(applied.inputs,budget),terrain:project.terrain},{budget})?.terrainStatus==='applied';
 }
 function sums(rows,project){
  const post=Number(project.postSpacingM),heads=post>0?rows.length*2:0;
@@ -270,7 +326,7 @@ function captureBefore(project,ids,manual,referenceModel){
  });
  const referencePortions=clone((original.terrain.applied.result.portions??[]).filter(p=>selected.has(p.id)));
  return {
-  source:{rowPortionsPresence:!Object.hasOwn(project,'rowPortions')?'missing':raw.length?'present':'empty',portions:raw,referencePortions},
+  source:{rowPortionsPresence:!Object.hasOwn(project,'rowPortions')?'missing':raw.length?'present':'empty',portions:raw,referencePortions,portionPositions:(original.rowPortions??[]).flatMap((p,index)=>selected.has(p.id)?[index]:[]),referencePortionPositions:(original.terrain.applied.result.portions??[]).flatMap((p,index)=>selected.has(p.id)?[index]:[]),quantityPositions:(applied?.portionResults??manual).flatMap((p,index)=>selected.has(p.id)?[index]:[])},
   portions:clone(portions),
   referenceModelHash:referenceModel.contentHash,
   quantityContextFingerprint:contextFingerprint(original,referenceModel)
@@ -359,14 +415,14 @@ function attachNativeRestore({project,proposal,operationId,budget}){
   entry.baselineHash=nativeHash(select(entry,['schemaVersion','operationId','kind','affectedIds','before','afterFingerprint','contextFingerprint']),budget);
   if(!validEntry(entry,budget))throw failure('invalid-history','Invalid complete native restore baseline.');return entry;
  });
- const replaced=new Set(entries.flatMap(entry=>entry.affectedIds)),remaining=copyOwned(existing.filter(entry=>!entry.affectedIds.some(id=>replaced.has(id))),budget);
+ const replaced=new Set(entries.flatMap(entry=>entry.affectedIds)),remaining=existing.filter(entry=>!entry.affectedIds.some(id=>replaced.has(id)));
  const {terrain:_,rowPortions:__,projectPatch:___,...other}=proposal;
  const {model,history:oldHistory,...terrainContents}=after.terrain;
  const {terrain:____,rowPortions:_____,...patch}=proposal.projectPatch??{};
  const copied=copyOwned({other,rowPortions:after.rowPortions,terrainContents,patch},budget);
- const terrain={model,...copied.terrainContents,history:{schemaVersion:1,entries:[...remaining,...entries]}};
+ const terrain={model,...copied.terrainContents,history:durableHistory([...remaining,...entries],budget)};
  const candidate={...copied.other,rowPortions:copied.rowPortions,terrain,projectPatch:{...copied.patch,rowPortions:copied.rowPortions,terrain}};
- assertTerrainSerializationBudget(effectiveNativeProject(project,candidate));budget.check();return candidate;
+ return fitHistory(project,candidate,budget);
 }
 
 /**
@@ -375,6 +431,7 @@ function attachNativeRestore({project,proposal,operationId,budget}){
  * reuse it rather than reconstructing the same candidate a second time.
  */
 export function assertNativeTerrainCutAttachment({project,proposal,operationId,budget=createTerrainBudget({kind:'cut'})}={}){
+ project=hydrateTerrainProject(project,{budget});
  budget.check();
  if(!project||!proposal?.ok||proposal.kind!=='cut'||typeof operationId!=='string'||!operationId)throw failure('invalid-history','A genuine native cut attachment and operation identity are required.');
  const after=effectiveNativeProject(project,proposal),binding=nativeOperation(project,proposal,after,budget);
@@ -395,26 +452,28 @@ export function assertNativeTerrainCutAttachment({project,proposal,operationId,b
   entry.baselineHash=baselineHash(entry,budget);return entry;
  });
  const affected=new Set(expected.flatMap(entry=>entry.affectedIds)),retained=existing.filter(entry=>!entry.affectedIds.some(id=>affected.has(id)));
- historyEntries(after,budget);
+ const actualHistory={schemaVersion:1,entries:historyEntries(after,budget)};
  const expectedHistory={schemaVersion:1,entries:[...retained,...expected]};
  // A hash can bind archived bytes, but cannot prove that a worker captured the
  // actual before records. Compare their bounded structure and values as well.
- if(!nativeStructureEqual(after.terrain.history,expectedHistory,budget))throw failure('invalid-history','Native attachment differs from the actual captured baseline or retained history.');
+ if(!nativeStructureEqual(actualHistory,expectedHistory,budget))throw failure('invalid-history','Native attachment differs from the actual captured baseline or retained history.');
  assertTerrainSerializationBudget(after);budget.check();
  return {historyFingerprint:nativeHash({present:true,history:after.terrain.history},budget),result};
 }
 
 /** Attach one genuine baseline per affected portion; callers checkpoint the copy. */
 export function attachTerrainRestore({project,proposal,operationId,budget}={}){
+ project=hydrateTerrainProject(project,{budget});
  budget?.check();
  if(!proposal?.ok)return clone(proposal);
  if(proposal.kind==='restore')throw failure('invalid-history','Restore consumes history and cannot create redo history.');
  if(typeof operationId!=='string'||!operationId)throw failure('invalid-history','A restore operation identity is required.');
  if(proposal.kind==='cut'&&(proposal.cutOperation||(proposal.projectPatch?.exclusions??project.exclusions??[]).some(member=>member?.surfaceGroupVersion!==undefined&&member.passageGroupId===proposal.cut?.groupId)||(proposal.rowPortions??[]).some(portion=>portion.terrainScopeRecipe?.groupId===proposal.cut?.groupId)))return attachNativeRestore({project,proposal,operationId,budget:budget??createTerrainBudget({kind:'cut'})});
  const after=materialize(project,proposal);
- if(!savedEnvelopeValid(after)||readTerrainEnvelope(after)?.terrainStatus!=='applied')throw failure('invalid-applied','Only a valid complete applied envelope matching its effective context may receive history.');
- if(project.terrain&&!savedEnvelopeValid(project))throw failure('invalid-applied','Original applied baseline integrity failed.');
- const existing=historyEntries(project),manual=project.terrain?null:manualBaselines(project);
+ const afterReads=readTerrainSavedAndLive(after,{budget});
+ if(!afterReads.savedValid||afterReads.liveResult?.terrainStatus!=='applied')throw failure('invalid-applied','Only a valid complete applied envelope matching its effective context may receive history.');
+ if(project.terrain&&!savedEnvelopeValid(project,budget))throw failure('invalid-applied','Original applied baseline integrity failed.');
+ const existing=historyEntries(project,budget),manual=project.terrain?null:manualBaselines(project,budget);
  const beforeIds=(project.terrain?.applied?.portionResults??manual).map(p=>p.id);
  // changes is a full-field presentation summary, including retained results.
  // Only the producer's explicit operation scope may replace restore entries.
@@ -438,21 +497,69 @@ export function attachTerrainRestore({project,proposal,operationId,budget}={}){
   return entry;
  });
  const replaced=new Set(entries.flatMap(entry=>entry.affectedIds));
- const candidate=clone(proposal);candidate.terrain.history={schemaVersion:1,entries:[...clone(existing.filter(entry=>!entry.affectedIds.some(id=>replaced.has(id)))),...entries]};
- assertTerrainSerializationBudget(materialize(project,candidate));
- return candidate;
+ const candidate=clone(proposal);candidate.terrain.history=durableHistory([...existing.filter(entry=>!entry.affectedIds.some(id=>replaced.has(id))),...entries],budget);
+ return fitHistory(project,candidate,budget);
 }
 
-export function terrainRestoreAvailability({project,portionId,budget}={}){
+/** Rendering only: eligibility to request a fresh restore, never a proof that
+ * saved quantities or axes can be restored. Action readers remain independent. */
+export function terrainRestorePresentationAvailability({project,portionId,budget}={}){
  try{
+  project=hydrateTerrainProject(project,{budget});
+  if(Object.hasOwn(project.terrain??{},'history')&&!project.terrain.history)throw failure('invalid-history','Invalid terrain restore history.');
   const entry=historyEntries(project,budget).find(entry=>entry.affectedIds.includes(portionId));
   if(!entry)return {available:false,reason:'no-baseline'};
   if(nativeCut(entry)){
    const {source,...availability}=nativeAvailabilityProjection(project,entry,budget);return availability;
   }
-  if(entry.afterFingerprint!==targetFingerprint(project,entry.affectedIds,entry.before.cut?.groupId)||!savedEnvelopeValid(project))return {available:false,reason:'restore-conflict',operationId:entry.operationId};
-  const restoreContext=contextFingerprint(restoreSource(project,entry).candidate);
-  const exact=entry.contextFingerprint===contextFingerprint(project)&&entry.before.quantityContextFingerprint===restoreContext&&readTerrainEnvelope(project)?.terrainStatus==='applied';
+  const saved=project.terrain?.applied,model=project.terrain?.model;
+  if(!saved?.inputs||saved.validation?.valid!==true||saved.result?.terrainStatus!=='applied'||!Array.isArray(saved.result.rows)||!Array.isArray(saved.result.portions)||!Array.isArray(saved.portionResults)||!model||typeof model.contentHash!=='string'||!model.contentHash)return {available:false,reason:'restore-conflict',operationId:entry.operationId};
+  if(Object.hasOwn(saved,'schemaVersion')&&(saved.schemaVersion!==TERRAIN_ENVELOPE_SCHEMA_VERSION||saved.algorithmVersion!==TERRAIN_CONTOUR_ALGORITHM_VERSION))return {available:false,reason:'restore-conflict',operationId:entry.operationId};
+  if(entry.afterFingerprint!==targetFingerprint(project,entry.affectedIds,entry.before.cut?.groupId,budget))return {available:false,reason:'restore-conflict',operationId:entry.operationId};
+  // Construct both actual contexts even when one differs; malformed context
+  // must not borrow the otherwise valid recomputation branch.
+  contextFingerprint(saved.inputs,model,budget);
+  const liveContext=contextFingerprint(project,model,budget);
+  const restoredContext=contextFingerprint(restorePresentationSource(project,entry,budget),model,budget);
+  const matchingContext=entry.contextFingerprint===liveContext&&entry.before.quantityContextFingerprint===restoredContext;
+  return {available:true,reason:matchingContext?'pending-verification':'recompute-required',operationId:entry.operationId};
+ }catch(error){if(budget&&error?.status==='budget-exceeded')throw error;return {available:false,reason:'invalid-history'};}
+}
+
+// Context comparison borrows readonly records. It neither duplicates coordinate
+// arrays nor builds a restore proposal; action construction remains separate.
+function restorePresentationSource(project,entry,budget){
+ budget?.check();
+ const affected=new Set(entry.affectedIds),source=entry.before.source;
+ const retain=records=>records.filter(record=>{budget?.check();return !affected.has(record.id);});
+ const raw=project.rowPortions??[],references=project.terrain.applied.result.portions;
+ const rowPortions=positioned(retain(raw),source.portions,source.portionPositions??source.portions.map(()=>raw.length));
+ budget?.check();
+ const portions=positioned(retain(references),source.referencePortions,source.referencePortionPositions??source.referencePortions.map(()=>references.length));
+ const exclusions=entry.before.cut?(project.exclusions??[]).filter(item=>{budget?.check();return Array.isArray(item)||item.passageGroupId!==entry.before.cut.groupId;}):project.exclusions;
+ budget?.check();
+ const candidate={...project,rowPortions,exclusions,terrain:{...project.terrain,applied:{...project.terrain.applied,result:{...project.terrain.applied.result,portions}}}};
+ if(!rowPortions.length&&source.rowPortionsPresence==='missing')delete candidate.rowPortions;
+ return candidate;
+}
+
+export function terrainRestoreAvailability({project,portionId,budget}={}){
+ try{
+  project=hydrateTerrainProject(project,{budget});
+  const entry=historyEntries(project,budget).find(entry=>entry.affectedIds.includes(portionId));
+  if(!entry)return {available:false,reason:'no-baseline'};
+  if(nativeCut(entry)){
+   const {source,...availability}=nativeAvailabilityProjection(project,entry,budget);return availability;
+  }
+  if(entry.afterFingerprint!==targetFingerprint(project,entry.affectedIds,entry.before.cut?.groupId,budget))return {available:false,reason:'restore-conflict',operationId:entry.operationId};
+  let exactContext=false;
+  const reads=readTerrainSavedAndLive(project,{budget,liveRequired:()=>{
+   const restoreContext=contextFingerprint(restoreSource(project,entry).candidate,project.terrain?.model,budget);
+   exactContext=entry.contextFingerprint===contextFingerprint(project,project.terrain?.model,budget)&&entry.before.quantityContextFingerprint===restoreContext;
+   return exactContext;
+  }});
+  if(!reads.savedValid)return {available:false,reason:'restore-conflict',operationId:entry.operationId};
+  const exact=exactContext&&reads.liveResult?.terrainStatus==='applied';
   return {available:true,reason:exact?'exact':'recompute-required',operationId:entry.operationId};
  }catch(error){if(budget&&error?.status==='budget-exceeded')throw error;return {available:false,reason:'invalid-history'};}
 }
@@ -499,16 +606,16 @@ function nativeAvailability(project,entry,budget){
 function restoreSource(project,entry){
  const affected=new Set(entry.affectedIds),raw=project.rowPortions??[];
  const source=entry.before.source;
- const portions=[...clone(raw.filter(p=>!affected.has(p.id))),...clone(source.portions)];
+ const portions=positioned(clone(raw.filter(p=>!affected.has(p.id))),clone(source.portions),source.portionPositions??source.portions.map(()=>raw.length));
  const candidate=clone(project);candidate.rowPortions=portions;
  // Model/global inputs stay live; topology is the actual post-restore topology
  // when comparing it with the baseline's independently bound quantity context.
- candidate.terrain.applied.result.portions=[...clone(project.terrain.applied.result.portions.filter(p=>!affected.has(p.id))),...clone(source.referencePortions)];
+ const oldReferences=project.terrain.applied.result.portions;candidate.terrain.applied.result.portions=positioned(clone(oldReferences.filter(p=>!affected.has(p.id))),clone(source.referencePortions),source.referencePortionPositions??source.referencePortions.map(()=>oldReferences.length));
  const patch={};
  if(entry.before.cut){patch.exclusions=clone((project.exclusions??[]).filter(e=>Array.isArray(e)||e.passageGroupId!==entry.before.cut.groupId));candidate.exclusions=patch.exclusions;}
  const removeProjectKeys=!portions.length&&source.rowPortionsPresence==='missing'?['rowPortions']:[];
  if(removeProjectKeys.length)delete candidate.rowPortions;
- return {candidate,rowPortions:portions,removeProjectKeys,projectPatch:patch};
+ return {candidate,rowPortions:portions,referencePortions:candidate.terrain.applied.result.portions,removeProjectKeys,projectPatch:patch};
 }
 function aggregate(project,portionResults,result,budget){
  budget?.check();
@@ -628,46 +735,47 @@ function buildNativeRestore({project,portionId,model,budget,entries,entry}){
   fresh.result=fresh.terrain.applied.result;
   fresh.changes=portionResults.map(portion=>({portionId:portion.id,after:sums(portion.rows,source.candidate)}));
   const {terrain:patchTerrain,rowPortions:patchPortions,...freshPatch}=fresh.projectPatch??{};
-  const copied=copyOwned({remaining:entries.filter(saved=>saved!==entry),patch:{...source.projectPatch,...freshPatch}},budget);
+  const copied=copyOwned({patch:{...source.projectPatch,...freshPatch}},budget);
   // The producer's terrain/rows are already owned. Keep its genuine model and
   // envelope instead of copying them again with the history patch.
-  fresh.kind='restore';fresh.terrain.history={schemaVersion:1,entries:copied.remaining};fresh.projectPatch=copied.patch;
+  fresh.kind='restore';fresh.terrain.history=durableHistory(entries.filter(saved=>saved!==entry),budget);fresh.projectPatch=copied.patch;
   if(patchTerrain!==undefined)fresh.projectPatch.terrain=fresh.terrain;
   if(patchPortions!==undefined)fresh.projectPatch.rowPortions=fresh.rowPortions;
   const after=effectiveNativeProject(project,fresh);
   if(readTerrainEnvelope(after,{budget})?.terrainStatus!=='applied')throw failure('restore-conflict','Fresh restored envelope integrity failed.');
-  assertTerrainSerializationBudget(after);budget.check();return fresh;
+  return fitHistory(project,fresh,budget);
  }
  const affected=new Set(entry.affectedIds),saved=project.terrain.applied;
  const portionResults=positioned(saved.portionResults.filter(portion=>!affected.has(portion.id)),entry.before.portions,entry.before.source.quantityPositions);
  const result=nativeAggregate(source.candidate,portionResults,saved.result,entry.before.nativeAggregate,budget);result.portions=source.referencePortions;
  const validation={valid:true,method:'saved-baseline-and-retained-applied-portions',automaticPortionIds:portionResults.filter(portion=>portion.validation?.automaticSpacing).map(portion=>portion.id)};
  const applied=createContourEnvelope({project:source.candidate,model,result,portionResults,validation,budget});
- const copied=copyOwned({rowPortions:source.rowPortions,patch:source.projectPatch,remaining:entries.filter(savedEntry=>savedEntry!==entry)},budget);
- const terrain={model,applied,history:{schemaVersion:1,entries:copied.remaining}};
+ const copied=copyOwned({rowPortions:source.rowPortions,patch:source.projectPatch},budget);
+ const terrain={model,applied,history:durableHistory(entries.filter(savedEntry=>savedEntry!==entry),budget)};
  const proposal={ok:true,status:'ready',kind:'restore',message:'Disegno precedente pronto per Applica.',terrain,rowPortions:copied.rowPortions,projectPatch:copied.patch,...(source.removeProjectKeys.length?{removeProjectKeys:source.removeProjectKeys}:{}),result:applied.result,changes:entry.before.portions.map(portion=>({portionId:portion.id,after:sums(portion.rows,source.candidate)})),timings:budget.timings()};
  const after=effectiveNativeProject(project,proposal);
  if(readTerrainEnvelope(after,{budget})?.terrainStatus!=='applied')throw failure('restore-conflict','Restored native envelope integrity failed.');
- assertTerrainSerializationBudget(after);budget.check();return proposal;
+ return fitHistory(project,proposal,budget);
 }
 
 /** A changed common context always goes through the real proposal builder. */
 export function buildTerrainRestoreProposal({project,portionId,model=project?.terrain?.model,budget=createTerrainBudget({kind:'restore'})}={}){
  try{
+  project=hydrateTerrainProject(project,{budget});
   budget.check();const entries=historyEntries(project,budget),entry=entries.find(saved=>saved.affectedIds.includes(portionId));
   if(nativeCut(entry))return buildNativeRestore({project,portionId,model,budget,entries,entry});
  }catch(error){
-  const nativeHistory=Array.isArray(project?.terrain?.history?.entries)&&project.terrain.history.entries.some(saved=>saved?.before?.cut&&['protocolVersion','action','beforePortionIds','afterPortionIds','previousGroup'].some(key=>Object.hasOwn(saved.before.cut,key)));
+  const nativeHistory=project?.terrain?.history?.schemaVersion===2||Array.isArray(project?.terrain?.history?.entries)&&project.terrain.history.entries.some(saved=>saved?.before?.cut&&['protocolVersion','action','beforePortionIds','afterPortionIds','previousGroup'].some(key=>Object.hasOwn(saved.before.cut,key)));
   if(error?.status==='budget-exceeded'||nativeHistory)return {ok:false,status:error.status??'restore-conflict',kind:'restore',message:error.message};
   // Historical malformed baselines keep their original availability/conflict
   // response. Native history and explicit exhaustion retain typed failures.
  }
- const availability=terrainRestoreAvailability({project,portionId});
+ const availability=terrainRestoreAvailability({project,portionId,budget});
  if(!availability.available)return conflict(availability.reason==='no-baseline'?'No saved original drawing is available.':'The restored drawing or baseline was edited.');
  try{
   budget.check();budget.phase('restore');
-  const entries=historyEntries(project),entry=entries.find(e=>e.affectedIds.includes(portionId));
-  const source=restoreSource(project,entry),remaining=clone(entries.filter(e=>e!==entry));
+  const entries=historyEntries(project,budget),entry=entries.find(e=>e.affectedIds.includes(portionId));
+  const source=restoreSource(project,entry),remaining=durableHistory(entries.filter(e=>e!==entry),budget);
   if(availability.reason==='recompute-required'||entry.contextFingerprint!==contextFingerprint(project,model)){
    // The saved reference supplies raw manual parameters; no stale result enters
    // the fresh envelope. Other live input edits stay in the candidate.
@@ -682,21 +790,22 @@ export function buildTerrainRestoreProposal({project,portionId,model=project?.te
    }
    const fresh=buildContourTerrainProposal({project:reference,model,portionId:entry.before.cut?.sourceId??entry.before.portions[0].id,mode:'measure',recomputeAll:true,budget});
    if(!fresh.ok)return {...fresh,kind:'restore'};
-   fresh.kind='restore';fresh.terrain.history={schemaVersion:1,entries:remaining};fresh.projectPatch={...source.projectPatch,...fresh.projectPatch};
-   assertTerrainSerializationBudget(materialize(project,fresh));return fresh;
+   fresh.kind='restore';fresh.terrain.history=remaining;fresh.projectPatch={...source.projectPatch,...fresh.projectPatch};
+   return fitHistory(project,fresh,budget);
   }
   const affected=new Set(entry.affectedIds),saved=project.terrain.applied;
-  const portionResults=[...clone(saved.portionResults.filter(p=>!affected.has(p.id))),...clone(entry.before.portions)];
+  const portionResults=positioned(clone(saved.portionResults.filter(p=>!affected.has(p.id))),clone(entry.before.portions),entry.before.source.quantityPositions??entry.before.portions.map(()=>saved.portionResults.length));
   // Preserve ordering/ownership separately from literal manual row objects.
-  const order=saved.result.portions.filter(p=>!affected.has(p.id));
-  for(const baseline of entry.before.portions){const original=baseline.manualPortion??source.rowPortions.find(p=>p.id===baseline.id)??saved.result.portions.find(p=>p.id===baseline.id);if(!original)throw failure('restore-conflict','Original portion topology is missing.');order.push(clone(original));}
+  const originalPortions=entry.before.portions.map(baseline=>{const original=baseline.manualPortion??source.rowPortions.find(p=>p.id===baseline.id)??saved.result.portions.find(p=>p.id===baseline.id);if(!original)throw failure('restore-conflict','Original portion topology is missing.');return clone(original);});
+  const referenceRecords=entry.before.source.referencePortionPositions?entry.before.source.referencePortions.map(ref=>{const original=originalPortions.find(p=>p.id===ref.id);if(!original)throw failure('restore-conflict','Original reference portion is missing.');return original;}):originalPortions;
+  const order=positioned(clone(saved.result.portions.filter(p=>!affected.has(p.id))),referenceRecords,entry.before.source.referencePortionPositions??referenceRecords.map(()=>saved.result.portions.length));
   const result=aggregate(source.candidate,portionResults,saved.result);result.portions=order;
   if(portionResults.every(p=>Number.isFinite(p.usableHorizontalAreaM2)))result.excludedAreaM2=Math.max(0,result.areaM2-portionResults.reduce((s,p)=>s+p.usableHorizontalAreaM2,0));
   const validation={valid:true,method:'saved-baseline-and-retained-applied-portions',automaticPortionIds:portionResults.filter(p=>p.validation?.automaticSpacing).map(p=>p.id)};
   budget.check(geometryNodes(source.candidate.rowPortions)+geometryNodes(model)+geometryNodes(result)+geometryNodes(portionResults)+geometryNodes(remaining));
-  const terrain={model:clone(model),applied:createContourEnvelope({project:source.candidate,model,result,portionResults,validation}),history:{schemaVersion:1,entries:remaining}};
+  const terrain={model:clone(model),applied:createContourEnvelope({project:source.candidate,model,result,portionResults,validation}),history:remaining};
   const proposal={ok:true,status:'ready',kind:'restore',message:'Disegno precedente pronto per Applica.',terrain,rowPortions:source.rowPortions,projectPatch:source.projectPatch,...(source.removeProjectKeys.length?{removeProjectKeys:source.removeProjectKeys}:{}),result,changes:entry.before.portions.map(p=>({portionId:p.id,after:sums(p.rows,source.candidate)})),timings:budget.timings()};
   if(readTerrainEnvelope(materialize(project,proposal)).terrainStatus!=='applied')throw failure('restore-conflict','Restored envelope integrity failed.');
-  assertTerrainSerializationBudget(materialize(project,proposal));budget.check();return proposal;
+  return fitHistory(project,proposal,budget);
  }catch(error){return {ok:false,status:error.status??'restore-conflict',kind:'restore',message:error.message};}
 }

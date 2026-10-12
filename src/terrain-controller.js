@@ -1,14 +1,15 @@
-import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.7';
+import {createTerrainRestorePresentationCache} from './terrain-restore-presentation-cache.js?v=1.3.9';
+import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.9';
 // Candidate acquisition and solver output never mutate the live project.
-import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.7';
-import {attachTerrainRestore,terrainRestoreAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.7';
-import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.7';
-import {terrainInputHash} from './terrain-model.js?v=1.3.7';
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.7';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
-import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.7';
-import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.7';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.7';
+import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.9';
+import {attachTerrainRestore,terrainRestoreAvailability,terrainRestorePresentationAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.9';
+import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.9';
+import {terrainInputHash} from './terrain-model.js?v=1.3.9';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.9';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.9';
+import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.9';
+import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.9';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.9';
 export function terrainPortionEditorState(project,activeId,result){
  return rowPortionEditorState(project,activeId,result?.terrainStatus==='invalid'?null:result?.portions);
 }
@@ -80,22 +81,28 @@ function validateCandidate(project,proposal){
  if(Object.hasOwn(proposal,'result')&&terrainInputHash(proposal.result)!==terrainInputHash(project.terrain.applied.result))throw new Error('Le quantità della proposta non corrispondono al disegno.');
  assertTerrainSerializationBudget(project);
 }
-const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.7')).loadTerrainForField(options);
-const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.7')).runTerrainProposal(options,control);
-const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.7')).terrainSummary(model);
-const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.7');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
-const defaultView=async options=>(await import('./terrain-map.js?v=1.3.7')).createTerrainMapView(options);
+const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.9')).loadTerrainForField(options);
+const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.9')).runTerrainProposal(options,control);
+const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.9')).terrainSummary(model);
+const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.9');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
+const defaultView=async options=>(await import('./terrain-map.js?v=1.3.9')).createTerrainMapView(options);
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
 export function createTerrainController({document,getProject,getContext,getPortionId=()=>null,getMapApi=()=>null,getResult=()=>null,getCheckpointSnapshot,applyProposal,onStatus=()=>{},onProposalChange=()=>{},onStateChange=()=>{},onBudgetUsage=()=>{},loadTerrain=defaultLoad,runProposal=defaultRun,summarize=defaultSummary,covers=defaultCoverage,createMapView=defaultView}){
  const card=document.querySelector('#terrain-card');
  let key=null,model=null,proposal=null,summary=null,status='Disegna e conferma il perimetro per acquisire il terreno.',busy=false,destroyed=false,abort=null,operation=0,view=null,in3D=false,inflight=null,proposalKey=null,proposalRequest=0,projectPatchDraft=null,viewOpening=false,viewOperation=0;
  let mode='terrain',progress=null,lastProposalOutcome=null,statusKind='unavailable',proposalHistory=null,proposalPortion=null,proposalMode=null,progressCurrent=()=>false,applying=null,nativePreview=null,cutFailure=null;
+ const restorePresentation=createTerrainRestorePresentationCache(terrainRestorePresentationAvailability);
  const node=(tag,text,className)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(className)e.className=className;return e;};
  const currentKey=()=>terrainContextKey(getContext(),getProject());
  const reportBudget=(phase,value)=>{try{onBudgetUsage(Object.freeze({phase,...value}));}catch{}};
  const valid=(captured,sequence)=>!destroyed&&currentKey()===captured&&operation===sequence;
- function close3D(){viewOperation++;viewOpening=false;const hadView=in3D||view;view?.close();view?.destroy();view=null;in3D=false;if(hadView)getMapApi()?.setRows?.(getResult()?.rows??[]);render();}
- function invalidate(){operation++;proposalRequest++;projectPatchDraft=null;progress=null;lastProposalOutcome=null;cutFailure=null;abort?.abort();abort=null;inflight=null;close3D();model=null;summary=null;proposal=null;nativePreview=null;proposalKey=null;busy=false;onProposalChange(null);}
+ function close3D(){
+  // Invalidate late create/open completions even when the 2D state is unchanged.
+  viewOperation++;const hadView=in3D||view,hadOpening=viewOpening;viewOpening=false;
+  if(!hadView&&!hadOpening)return;
+  view?.close();view?.destroy();view=null;in3D=false;if(hadView)getMapApi()?.setRows?.(getResult()?.rows??[]);render();
+ }
+ function invalidate({preserveRestorePresentation=false}={}){if(!preserveRestorePresentation)restorePresentation.clear();operation++;proposalRequest++;projectPatchDraft=null;progress=null;lastProposalOutcome=null;cutFailure=null;abort?.abort();abort=null;inflight=null;close3D();model=null;summary=null;proposal=null;nativePreview=null;proposalKey=null;busy=false;onProposalChange(null);}
  function setStatus(message,kind=statusKind){status=message;statusKind=kind;onStatus(message);render();}
  function action(label,name,fn,disabled=false){const b=node('button',label);b.type='button';b.dataset.terrain=name;b.disabled=disabled;b.addEventListener('click',fn);return b;}
  const available=()=>Boolean(!destroyed&&getProject()?.geometry&&getContext()?.fieldId!=null);
@@ -114,7 +121,7 @@ export function createTerrainController({document,getProject,getContext,getPorti
   assertTerrainSerializationBudget(snapshot);budget.check();
  }
  const getState=()=>{
-  const portionId=selectedPortion(),restoreAvailability=terrainRestoreAvailability({project:getProject(),portionId});
+  const portionId=selectedPortion(),restoreAvailability=restorePresentation.read(getProject(),portionId);
   const currentProposal=visibleProposal(),current=progressCurrent(),actualDesign=(currentProposal?.rowPortions??getProject()?.rowPortions??[]).find(p=>p.id===portionId)?.terrainDesign;
   let validInputs=false,inputHash;try{inputHash=terrainGeometryInputHash(getProject(),model??{});validInputs=true;}catch{}
   const canAdapt=Boolean(validInputs&&available()&&model&&currentKey()===key&&!busy&&!currentProposal&&historyKey()!==null);
@@ -168,10 +175,10 @@ export function createTerrainController({document,getProject,getContext,getPorti
    if(!details?.valid)throw new Error('Modello del terreno non valido.');model=candidate;summary=details;busy=false;setStatus(frozen?'Terreno congelato disponibile.':'Terreno disponibile. La proposta si salva solo con Applica.');
   }catch(error){if(!valid(captured,sequence)){discard();return;}busy=false;setStatus(error?.name==='AbortError'?'Operazione annullata.':`Terreno non disponibile. ${error.message??''}`,error?.name==='AbortError'?'cancelled':'unavailable');}
  }
- async function refresh(){
+ async function refresh({preserveRestorePresentation=false}={}){
   if(destroyed)return;const next=currentKey(),promotion=expectedPromotion();
   if(next!==key){
-   if(!promotion)invalidate();key=next;if(!getProject()?.geometry){setStatus('Disegna e conferma il perimetro per acquisire il terreno.');return;}
+   if(!promotion)invalidate({preserveRestorePresentation});key=next;if(!getProject()?.geometry){setStatus('Disegna e conferma il perimetro per acquisire il terreno.');return;}
   }else if(proposal&&!visibleProposal()&&!promotion){
    // History and target are deliberately outside the model acquisition key.
    // Settle obsolete preview ownership without discarding a valid frozen model.
@@ -315,7 +322,7 @@ export function createTerrainController({document,getProject,getContext,getPorti
    // and identity still prevent an older completion clearing a newer preview.
    if(!ownsCompletion())return discard();
    close3D();proposal=null;nativePreview=null;proposalKey=null;projectPatchDraft=null;progress=null;busy=false;key=null;onProposalChange(null);
-   const completionKey=currentKey(),completionHistory=historyKey(),loading=refresh(),completionRequest=proposalRequest,completionOperation=operation;
+   const completionKey=currentKey(),completionHistory=historyKey(),loading=refresh({preserveRestorePresentation:true}),completionRequest=proposalRequest,completionOperation=operation;
    await loading;if(destroyed||JSON.stringify(getContext())!==identity||proposalRequest!==completionRequest||operation!==completionOperation||currentKey()!==completionKey||historyKey()!==completionHistory||proposal)return false;
    setStatus('Terreno applicato e salvato.','applied');return true;
   }catch{if(!ownsCompletion())return discard();busy=false;if(proposalCurrent())setStatus('Il salvataggio locale non è riuscito. Il progetto precedente e la proposta sono conservati. Libera spazio e riprova Applica.','error');else setStatus('Il contesto del progetto è cambiato.','unavailable');return false;}
@@ -341,7 +348,7 @@ export function createTerrainController({document,getProject,getContext,getPorti
 
 
  render();
- return {refresh,propose,restore,suggestCut,setMode,isTargetCurrent,apply,cancel,retry,toggle3D,close3D,getState,destroy(){if(destroyed)return;destroyed=true;invalidate();card?.replaceChildren();}};
+ return {refresh,propose,restore,suggestCut,setMode,isTargetCurrent,apply,cancel,retry,toggle3D,close3D,getState,destroy(){if(destroyed)return;const had3DState=Boolean(view||in3D||viewOpening);destroyed=true;invalidate();if(!had3DState)render();card?.replaceChildren();}};
 }
 // The caller assigns the returned state only after this synchronous checkpoint.
 export function checkpointTerrainProposal({state,proposal,context,currentContext,mergeState,saveCheckpoint}){

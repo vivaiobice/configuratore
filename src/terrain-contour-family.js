@@ -1,29 +1,30 @@
-import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.7';
-import {measureNativeDirectionalService,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.7';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.7';
+import {compactTerrainRowPreview,validTerrainRowPreview} from './terrain-row-preview.js?v=1.3.9';
+import {certifyNativeDirectionalFamily,hasVariedNativeDirectionalGeometry,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.9';
+import {measureNativeDirectionalService,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.9';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.9';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.7';
+from './terrain-budget.js?v=1.3.9';
 import {
   traceContourLevel
 }
-from './terrain-contours.js?v=1.3.7';
+from './terrain-contours.js?v=1.3.9';
 import {
   certifyContourSpacing
 }
-from './terrain-contour-validation.js?v=1.3.7';
+from './terrain-contour-validation.js?v=1.3.9';
 import {
   traceSurfaceBand,
   measureSurfaceUnion,
   compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.7';
+from './terrain-surface-bands.js?v=1.3.9';
 import {
   toUTM,
   fromUTM
 }
-from './coordinate-system.js?v=1.3.7';
+from './coordinate-system.js?v=1.3.9';
 import {
   exactDomain,
   Q,
@@ -47,10 +48,10 @@ import {
   ZERO,
   orient
 }
-from './terrain-exact.js?v=1.3.7';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.7';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.7';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.7';
+from './terrain-exact.js?v=1.3.9';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.9';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.9';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.9';
 const failed=(status,diagnostics)=>({
   ok:false,
   status,
@@ -235,7 +236,8 @@ function measureSourceAxes({domain,physicalDomain=domain,axes,headlandWidthM=0,b
   }
   return {rows,trimRecords,rowAxisCount:new Set(rows.map(r=>r.axisId)).size,rowFragmentCount:rows.length};
 }
-function measurePolylineAxes({domain,physicalDomain=domain,axes,headlandWidthM=0,budget}) {
+function measurePolylineAxes({domain,physicalDomain=domain,axes,headlandWidthM=0,rowPreview=null,budget}) {
+  if(rowPreview!==null&&!validTerrainRowPreview(rowPreview))throw failure('axis-geometry-unresolved','Unknown terrain row preview convention');
   const original=exactDomain(domain,budget),physical=exactDomain(physicalDomain,budget),epsg=Number(domain.crs.split(':')[1]),rows=[],trimRecords=[];
   for(const axis of axes){
     if(axis.axisOperation&&headlandWidthM)throw failure('axis-geometry-unresolved','A retained recipe cannot be trimmed a second time');
@@ -261,8 +263,11 @@ function measurePolylineAxes({domain,physicalDomain=domain,axes,headlandWidthM=0
       for(const actual of polylinePhysicalFragments(pieces,budget)){
         const surfaceLengthBoundsM=exactPieceLengthBounds(actual,budget),horizontalLengthBoundsM=exactPieceLengthBounds(actual,budget,{horizontal:true});
         if(!(surfaceLengthBoundsM[0]>0))throw failure('axis-geometry-unresolved','Positive finite fragment ground length is unresolved');
-        budget.check(2*(actual.length+1)+1);
-        const coordinatesXY=[xy(actual[0].a),...actual.map(piece=>xy(piece.b))],coordinates=coordinatesXY.map(point=>fromUTM(point,epsg));
+        budget.check(actual.length+1);
+        const nativeCoordinatesXY=[xy(actual[0].a),...actual.map(piece=>xy(piece.b))];
+        const coordinatesXY=rowPreview?compactTerrainRowPreview(nativeCoordinatesXY,rowPreview.toleranceM,{budget}):nativeCoordinatesXY;
+        budget.check(coordinatesXY.length+1);
+        const coordinates=coordinatesXY.map(point=>fromUTM(point,epsg));
         const surfaceLengthM=(surfaceLengthBoundsM[0]+surfaceLengthBoundsM[1])/2;
         rows.push({axisId:axis.axisId,fragmentId:`${axis.axisId}:fragment:${fragment++}`,portionId:axis.portionId,ordinal:axis.ordinal,coordinatesXY,coordinates,start:coordinates[0],end:coordinates.at(-1),horizontalLengthM:(horizontalLengthBoundsM[0]+horizontalLengthBoundsM[1])/2,horizontalLengthBoundsM,surfaceLengthM,surfaceLengthBoundsM,lengthM:surfaceLengthM,quantityBasis:'model-surface',coordinateRole:'render-export-preview',axisOperation:{kind:operation?.kind??FINITE_POLYLINE_AXIS_CONVENTION,...(operation?{intervals:operation.intervals}:{}),sourceHash,...axis.axisGeometryBinding},...(headlandWidthM?{headlandTrim:trimRecords.filter(record=>record.axisId===axis.axisId)}:{})});
       }
@@ -277,12 +282,13 @@ export function measureContourAxes({
   physicalDomain=domain,
   axes,
   headlandWidthM=0,
+  rowPreview=null,
   budget=createTerrainBudget({
     kind:'measure'
   })
 }) {
   if(axes.some(axis=>Object.hasOwn(axis,'axisGeometryConvention'))){
-    if(axes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION))return measurePolylineAxes({domain,physicalDomain,axes,headlandWidthM,budget});
+    if(axes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION))return measurePolylineAxes({domain,physicalDomain,axes,headlandWidthM,rowPreview,budget});
     if(!axes.every(axis=>axis.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION))throw failure('axis-geometry-unresolved','Mixed or unknown axis geometry conventions');
     return measureSourceAxes({domain,physicalDomain,axes,headlandWidthM,budget});
   }
@@ -661,7 +667,8 @@ function completeCandidate({
   budget,
   reference,
   areaMode,
-  legacyReplay=false
+  legacyReplay=false,
+  rowPreview=null
 }) {
   const finiteSource=axes.every(axis=>axis.axisGeometryConvention===FINITE_POLYLINE_AXIS_CONVENTION);
   const originalDomain=reference.originalDomain??domain;
@@ -687,9 +694,10 @@ function completeCandidate({
     physicalDomain:domain,
     axes,
     headlandWidthM,
+    rowPreview,
     budget
   }):{
-    rows:finiteSource?measurePolylineAxes({domain:originalDomain,physicalDomain:domain,axes,budget}).rows:axes.every(a=>a.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION)?measureSourceAxes({domain:reference.originalDomain??domain,physicalDomain:domain,axes,budget}).rows:rowsFor(axes,domain,budget),
+    rows:finiteSource?measurePolylineAxes({domain:originalDomain,physicalDomain:domain,axes,rowPreview,budget}).rows:axes.every(a=>a.axisGeometryConvention===SOURCE_DOMAIN_AXIS_CONVENTION)?measureSourceAxes({domain:reference.originalDomain??domain,physicalDomain:domain,axes,budget}).rows:rowsFor(axes,domain,budget),
     trimRecords:[]
   };
   const {
@@ -798,8 +806,8 @@ function completeCandidate({
 }
 // Only replay uses this explicit legacy method. Submitted markers never grant
 // authority: spacing and actual normal-band area are reconstructed from sources.
-export function rebuildLegacyFiniteCandidate({domain,originalDomain,axes,spacingM,headlandWidthM,budget}){
- return completeCandidate({id:'legacy-replay',axes,domain,spacingM,toleranceM:.20,referenceAreaM2:1,budget,reference:{originalDomain,headlandWidthM},legacyReplay:true});
+export function rebuildLegacyFiniteCandidate({domain,originalDomain,axes,spacingM,headlandWidthM,rowPreview=null,budget}){
+ return completeCandidate({id:'legacy-replay',axes,domain,spacingM,toleranceM:.20,referenceAreaM2:1,budget,reference:{originalDomain,headlandWidthM},rowPreview,legacyReplay:true});
 }
 function planeAreaUpper(axes,facts,spacingM,budget) {
   if(!facts.plane)return Infinity;
@@ -848,6 +856,7 @@ export function buildContourFamily({
   toleranceM=.20,
   onSelectedAreaMeasurement,
   candidateGeneration=null,
+  rowPreview=null,
   budget=createTerrainBudget({
     kind:'adapt'
   }),
@@ -907,7 +916,8 @@ export function buildContourFamily({
         referenceAreaM2,
         budget,
         reference,
-        areaMode:facts.plane?'constant-plane':'coplanar-patches'
+        areaMode:facts.plane?'constant-plane':'coplanar-patches',
+        rowPreview
       });
       diagnostics.candidates.push(candidate.valid?{
         id,

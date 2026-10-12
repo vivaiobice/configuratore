@@ -1,10 +1,11 @@
-import {createReportPreflight,updateReportPreflight,DISCLAIMER_VERSION} from './report-preflight.js?v=1.3.7';
+import {deserializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.9';
+import {createReportPreflight,updateReportPreflight,DISCLAIMER_VERSION} from './report-preflight.js?v=1.3.9';
 
 const clone=value=>globalThis.structuredClone?globalThis.structuredClone(value):JSON.parse(JSON.stringify(value));
 export const REPORT_CONTEXT_KEY=requestId=>`vivai-obice:report-context:v1:${requestId}`;
 export function readReportContext(storage,requestId){
   if(!requestId)return null;
-  try{const state=JSON.parse(storage?.getItem(REPORT_CONTEXT_KEY(requestId))||'null');return state?.project&&Array.isArray(state.project.fields)?state:null;}
+  try{const state=deserializeTerrainSnapshot(storage?.getItem(REPORT_CONTEXT_KEY(requestId))||'null');return state?.project&&Array.isArray(state.project.fields)?state:null;}
   catch{return null;}
 }
 export function mountReportProjectContext(documentRef,state,{onRefresh,busy=false}={}){

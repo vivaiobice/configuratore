@@ -1,5 +1,5 @@
-import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.7';
-import {createTerrainControls} from './terrain-controls.js?v=1.3.7';
+import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.9';
+import {createTerrainControls} from './terrain-controls.js?v=1.3.9';
 
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
@@ -28,7 +28,7 @@ export function terrainCoreWidgetState(state={}, {project={},enabled=true}={}) {
  let restoreKind='unavailable';
  if(active && availability?.available===true) {
   if(availability.reason==='exact')restoreKind='exact';
-  if(availability.reason==='recompute-required')restoreKind='proposal';
+  if(availability.reason==='recompute-required'||availability.reason==='pending-verification')restoreKind='proposal';
  } else if(active && availability?.available===false && availability.reason==='restore-conflict')restoreKind='conflict';
  const canAdapt=active && state.canAdapt===true;
  const idleAcquired=canAdapt && state.statusKind==='unavailable' && !state.lastProposalOutcome && !proposal;

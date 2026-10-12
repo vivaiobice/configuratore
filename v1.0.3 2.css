@@ -1,0 +1,13 @@
+/* Release 1.0.3: compact action rows and bidirectional quick calculator. */
+.desktop-library-actions{justify-content:flex-end;flex-wrap:wrap}
+.desktop-library-actions .library-icon-action svg,.desktop-library-item-actions .library-icon-action svg{display:block;flex:none}
+.calculator-mode-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;margin:0 0 12px;padding:7px 12px;border:1px solid #b9cfc0;border-radius:10px;background:#e8f2e9;color:#183f28;font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+.calculator-mode-button:hover,.calculator-mode-button:focus-visible{background:#d8ebdc;outline:2px solid #398458;outline-offset:1px}
+.manual-calculator [hidden],#mobile-app .mobile-quick-grid [hidden]{display:none!important}
+.calculator-note{margin:10px 0 0;color:#53665a;font-size:12px;line-height:1.4}
+@media(max-width:800px),(max-width:1100px) and (pointer:coarse){
+ #mobile-app .mobile-heading-actions{margin-left:auto;justify-content:flex-end;flex-wrap:wrap}
+ #mobile-app .mobile-page-heading h1{flex:0 1 auto}
+ #mobile-app .mobile-sheet .calculator-mode-button{min-height:40px;margin:0 0 12px;padding:8px 12px;background:#e8f2e9;border:1px solid #b9cfc0;font-size:13px}
+ #mobile-app .mobile-quick-grid label:first-child,#mobile-app .mobile-quick-grid label:nth-child(2){grid-column:1/-1}
+}

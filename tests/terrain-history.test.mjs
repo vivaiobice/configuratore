@@ -337,3 +337,27 @@ test('exact saved source-axis and row-operation provenance survives the history 
  assert.equal(readTerrainEnvelope(materialize(current,restore)).terrainStatus,'applied');
  assert.equal(JSON.stringify(current.terrain).match(/valuesBase64/g).length,1);
 });
+
+// Transport fixture: preserve literal manual records and ordering without a
+// synthetic claim of native contour certification.
+test('generic terrain restore preserves raw, reference and quantity order independently',async()=>{
+ const {project,proposal,manual,model,ids}=await conversion({split:true});
+ project.rowPortions=structuredClone(manual.portions).reverse();
+ const originalRaw=structuredClone(project.rowPortions);
+ const current=materialize(project,api().attachTerrainRestore({project,proposal,operationId:'independent-orders'}));
+ const upper=current.terrain.history.entries.find(entry=>entry.affectedIds.includes(ids[1]));
+ assert.deepEqual(upper.before.source.portionPositions,[0]);
+ assert.deepEqual(upper.before.source.referencePortionPositions,[1]);
+ assert.deepEqual(upper.before.source.quantityPositions,[1]);
+ const restoredUpper=api().buildTerrainRestoreProposal({project:current,portionId:ids[1],model});
+ assert.equal(restoredUpper.ok,true,restoredUpper.message);
+ assert.deepEqual(restoredUpper.rowPortions.map(p=>p.id),originalRaw.map(p=>p.id));
+ assert.deepEqual(restoredUpper.terrain.applied.result.portions.map(p=>p.id),ids);
+ assert.deepEqual(restoredUpper.terrain.applied.portionResults.map(p=>p.id),ids);
+ const restoredLower=api().buildTerrainRestoreProposal({project:materialize(current,restoredUpper),portionId:ids[0],model});
+ assert.equal(restoredLower.ok,true,restoredLower.message);
+ assert.deepEqual(restoredLower.rowPortions,originalRaw);
+ assert.deepEqual(restoredLower.terrain.applied.result.portions.map(p=>p.id),ids);
+ assert.deepEqual(restoredLower.terrain.applied.portionResults.map(p=>p.id),ids);
+ assert.deepEqual(restoredLower.result.rows,manual.rows);
+});

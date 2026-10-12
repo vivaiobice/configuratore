@@ -1,15 +1,15 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.7';
-import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.7';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.7';
-import {terrainInputHash} from './terrain-model.js?v=1.3.7';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.7';
-import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.7';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.9';
+import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.9';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.9';
+import {terrainInputHash} from './terrain-model.js?v=1.3.9';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.9';
+import {fromUTM,toUTM} from './coordinate-system.js?v=1.3.9';
 import {
  Q,ZERO,ONE,TWO,add,sub,mul,div,cmp,sign,min,max,sq,dot,cross,vsub,at,
- mid,key,pointKey,pointOnSegment,segmentIntersection,inRegion,
- unique,number,numberBounds,xy,exactDomain,splitSegment,height,radical,
+ mid,key,pointKey,pointOnSegment,segmentIntersection,inRegion,inTriangle,
+ unique,number,numberBounds,xy,exactDomain,height,radical,
  radd,radicalCompare,radicalBounds,lengthBounds,nextUp,nextDown
-} from './terrain-exact.js?v=1.3.7';
+} from './terrain-exact.js?v=1.3.9';
 
 export const FINITE_POLYLINE_AXIS_CONVENTION='finite-polyline-domain-intersection-1';
 export const POLYLINE_SOURCE_PARAMETER_OPERATION='polyline-source-parameter-intervals-1';
@@ -65,7 +65,7 @@ export function finitePolylineSourceHash(axis,budget){
 const operationEvidence=new WeakMap();
 function evidenceFor(budget){
  let evidence=operationEvidence.get(budget);
- if(!evidence){evidence={readers:new WeakMap(),sources:new WeakMap(),resolved:new WeakMap(),validated:new WeakMap(),intersections:new WeakMap()};operationEvidence.set(budget,evidence);}
+ if(!evidence){evidence={readers:new WeakMap(),sources:new WeakMap(),resolved:new WeakMap(),validated:new WeakMap(),intersections:new WeakMap(),regions:new WeakMap(),pointEvidence:new WeakMap(),splits:new WeakMap()};operationEvidence.set(budget,evidence);}
  return evidence;
 }
 function domainEvidence(map,domain,originalDomain=domain){
@@ -76,7 +76,7 @@ function domainEvidence(map,domain,originalDomain=domain){
 function supportReader(domain,budget){
  const acquired=readAcquiredNativeSupport(domain,{budget}),readers=evidenceFor(budget).readers;
  if(readers.has(acquired))return readers.get(acquired);
- const mesh=acquired.mesh,vertices=new Map(),faces=new Map();
+ const mesh=acquired.mesh,vertices=new Map(),faces=new Map(),queries=new Map();
  const vertex=id=>{
   if(!vertices.has(id)){budget.check(1);vertices.set(id,mesh.vertices[id].map(Q));}
   return vertices.get(id);
@@ -95,16 +95,18 @@ function supportReader(domain,budget){
   return faces.get(id);
  };
  const query=(a,b,operationBudget=budget)=>{
-  operationBudget.check(2);
-  const bounds=[numberBounds(min(a[0],b[0]))[0],numberBounds(min(a[1],b[1]))[0],numberBounds(max(a[0],b[0]))[1],numberBounds(max(a[1],b[1]))[1]];
-  const loX=Math.max(0,Math.floor((bounds[0]-mesh.origin[0])/mesh.step[0])-1),hiX=Math.min(mesh.width-2,Math.floor((bounds[2]-mesh.origin[0])/mesh.step[0]));
-  const loY=Math.max(0,Math.floor((bounds[3]-mesh.origin[1])/mesh.step[1])-1),hiY=Math.min(mesh.height-2,Math.floor((bounds[1]-mesh.origin[1])/mesh.step[1]));
+  operationBudget.check();
+  const loX=Math.max(0,Math.floor((numberBounds(min(a[0],b[0]))[0]-mesh.origin[0])/mesh.step[0])-1),hiX=Math.min(mesh.width-2,Math.floor((numberBounds(max(a[0],b[0]))[1]-mesh.origin[0])/mesh.step[0]));
+  const loY=Math.max(0,Math.floor((numberBounds(max(a[1],b[1]))[1]-mesh.origin[1])/mesh.step[1])-1),hiY=Math.min(mesh.height-2,Math.floor((numberBounds(min(a[1],b[1]))[0]-mesh.origin[1])/mesh.step[1]));
+  const queryKey=`${loX}:${hiX}:${loY}:${hiY}`;
+  if(queries.has(queryKey))return queries.get(queryKey);
+  operationBudget.check(1);
   const result=[];
   for(let row=loY;row<=hiY;row++)for(let col=loX;col<=hiX;col++)for(let half=0;half<2;half++){
    operationBudget.check(1);
    result.push(face(2*(row*(mesh.width-1)+col)+half));
   }
-  return result;
+  Object.freeze(result);queries.set(queryKey,result);return result;
  };
  const reader={acquired,mesh,face,vertex,boundaries:[],queryPoint:(a,b)=>query(a,a,b),querySegment:query};
  readers.set(acquired,reader);return reader;
@@ -118,7 +120,8 @@ function levelGraph(reader,levelM,budget){
   const id=zero!==null?`v:${face.vertexIds[zero]}`:`e:${face.edgeIds[i]}`;
   if(!nodes.has(id)){
    budget.check(2);
-   nodes.set(id,zero!==null?face.vertices[zero].slice(0,2):at(a.slice(0,2),b.slice(0,2),div(sub(h,a[2]),sub(b[2],a[2]))));
+   const parameter=zero!==null?null:div(sub(h,a[2]),sub(b[2],a[2]));
+   nodes.set(id,zero!==null?[face.vertices[zero][0],face.vertices[zero][1]]:[add(a[0],mul(sub(b[0],a[0]),parameter)),add(a[1],mul(sub(b[1],a[1]),parameter))]);
   }
   return nodes.get(id);
  };
@@ -129,20 +132,22 @@ function levelGraph(reader,levelM,budget){
  };
  for(let id=0;id<reader.mesh.triangles.length;id++){
   budget.check();
-  const ids=reader.mesh.triangles[id],raw=ids.map(i=>reader.mesh.vertices[i][2]);
-  if(raw.every(z=>z>levelM)||raw.every(z=>z<levelM))continue;
-  const face=reader.face(id);budget.check(3);
-  const signs=face.vertices.map(p=>cmp(p[2],h)),zeros=signs.reduce((sum,s)=>sum+(!s?1:0),0);
-  for(let i=0;i<3;i++)if(!signs[i]&&!criticalVertices.has(face.vertexIds[i])){budget.check(1);criticalVertices.set(face.vertexIds[i],node(face,i,(i+1)%3));}
+  const ids=reader.mesh.triangles[id],z0=reader.mesh.vertices[ids[0]][2],z1=reader.mesh.vertices[ids[1]][2],z2=reader.mesh.vertices[ids[2]][2];
+  if(z0>levelM&&z1>levelM&&z2>levelM||z0<levelM&&z1<levelM&&z2<levelM)continue;
+  const face=reader.face(id),s0=cmp(face.vertices[0][2],h),s1=cmp(face.vertices[1][2],h),s2=cmp(face.vertices[2][2],h),signAt=i=>i===0?s0:i===1?s1:s2,zeros=(!s0?1:0)+(!s1?1:0)+(!s2?1:0);
+  for(let i=0;i<3;i++)if(!signAt(i)&&!criticalVertices.has(face.vertexIds[i])){budget.check(1);criticalVertices.set(face.vertexIds[i],node(face,i,(i+1)%3));}
   if(zeros===3){budget.check(1);diagnostics.push({reason:'plateau',faceId:id,levelM});continue;}
   if(zeros===2){
-   const i=signs.findIndex((s,j)=>!s&&!signs[(j+1)%3]),edgeId=face.edgeIds[i];
+   const i=!s0&&!s1?0:!s1&&!s2?1:2,edgeId=face.edgeIds[i];
    if(!levelEdges.has(edgeId)){budget.check(3);levelEdges.set(edgeId,{a:node(face,i,(i+1)%3),b:node(face,(i+1)%3,(i+2)%3),signs:[],faceIds:[]});}
-   const edge=levelEdges.get(edgeId);budget.check(2);edge.signs.push(signs[(i+2)%3]);edge.faceIds.push(id);continue;
+   const edge=levelEdges.get(edgeId);budget.check(2);edge.signs.push(signAt((i+2)%3));edge.faceIds.push(id);continue;
   }
-  const points=new Map();
-  for(let i=0;i<3;i++)if(signs[i]*signs[(i+1)%3]<0||!signs[i]||!signs[(i+1)%3]){const p=node(face,i,(i+1)%3);budget.check(1);points.set(pointKey(p),p);}
-  if(points.size===2){const [a,b]=points.values();insert(a,b);}
+  let first=null,second=null,firstKey=null;
+  for(let i=0;i<3;i++)if(signAt(i)*signAt((i+1)%3)<0||!signAt(i)||!signAt((i+1)%3)){
+   const p=node(face,i,(i+1)%3),id=pointKey(p);
+   if(!first){first=p;firstKey=id;}else if(id!==firstKey)second=p;
+  }
+  if(second)insert(first,second);
  }
  for(const [edgeId,edge] of levelEdges){
   budget.check();
@@ -171,16 +176,22 @@ function levelGraph(reader,levelM,budget){
   }
   if(points.length>1){budget.check(1);components.push(points);}
  };
- budget.check(graph.size*3);
- for(const [id,edges] of [...graph].sort(([a],[b])=>a.localeCompare(b)))if(edges.length===1&&!used.has(edges[0].id))walk(id);
+ const terminals=[];budget.check(1);
+ for(const [id,edges] of graph)if(edges.length===1){budget.check(1);terminals.push(id);}
+ terminals.sort((a,b)=>a.localeCompare(b));
+ for(const id of terminals)if(!used.has(graph.get(id)[0].id))walk(id);
  for(const [id,edges] of graph)if(edges.some(edge=>!used.has(edge.id)))walk(id);
  return {components,diagnostics,criticalVertices,graph};
 }
 
 function regionKernel(domain,budget,geographic=false){
+ budget.check();readAcquiredNativeSupport(domain,{budget});
+ const cache=evidenceFor(budget).regions;
+ let entries=cache.get(domain);if(!entries){entries=new Map();cache.set(domain,entries);}
+ if(entries.has(geographic))return entries.get(geographic);
  const scope=canonicalCutDomainScope(domain),native=exactDomain(domain,budget);
  const scopeBindingHash=scope?.scopeHash??terrainInputHash(domain.geometry);budget.check();
- if(!geographic){budget.check(1);return {...native,canonicalSourceScope:scope,scopeBindingHash};}
+ if(!geographic){budget.check(1);const result={...native,canonicalSourceScope:scope,scopeBindingHash};entries.set(false,result);return result;}
  const boundaries=[],regions=new Map();
  const source=scope?.geographicBoundaries;
  if(source){
@@ -196,7 +207,7 @@ function regionKernel(domain,budget,geographic=false){
   }
  }
  for(const boundary of boundaries){if(!regions.has(boundary.polygonIndex)){budget.check(1);regions.set(boundary.polygonIndex,[]);}budget.check(1);regions.get(boundary.polygonIndex)[boundary.ringIndex]=boundary.coordinates;}
- return {domain,boundaries,regions,canonicalSourceScope:scope,scopeBindingHash};
+ const result={domain,boundaries,regions,canonicalSourceScope:scope,scopeBindingHash};entries.set(true,result);return result;
 }
 function boundaryRoots(kernel,a,b,budget,lo=ZERO,hi=ONE){
  budget.check(2);
@@ -335,7 +346,7 @@ function checkSupport(axis,compiled,domain,budget){
  for(const component of compiled.native){
   budget.check(2);
   for(const cap of [component[0],component.at(-1)])if(cmp(cap[0],loX)<=0||cmp(cap[0],hiX)>=0||cmp(cap[1],loY)<=0||cmp(cap[1],hiY)>=0)throw fail('Initial finite source cap is not strictly within acquired native S');
-  for(let i=1;i<component.length;i++)for(const piece of splitSegment(reader,component[i-1],component[i],budget,{region:false})){
+  for(let i=1;i<component.length;i++)for(const piece of splitSourceSegment(reader,component[i-1],component[i],budget,{region:false})){
    if(!piece.faces.length)throw fail('Actual submitted finite source has uncovered acquired-support interval');
    for(const face of piece.faces)for(const endpoint of [piece.a,piece.b])if(cmp(absolute(sub(height(face,endpoint),Q(axis.levelM))),Q(.001))>0)throw fail('Actual submitted finite source exceeds the native elevation limit');
   }
@@ -343,7 +354,7 @@ function checkSupport(axis,compiled,domain,budget){
 }
 
 const sourceEdgeId=edge=>`${edge.operandId}:${edge.polygonIndex}:${edge.ringIndex}:${edge.edgeIndex}`;
-function incidence(kernel,p,budget){
+function incidenceFresh(kernel,p,budget){
  const labels=[];
  const scope=kernel.canonicalSourceScope;
  for(const boundary of kernel.boundaries)for(let i=1;i<boundary.coordinates.length;i++){
@@ -354,6 +365,60 @@ function incidence(kernel,p,budget){
   labels.push(`${boundary.polygonIndex}:${boundary.ringIndex}:${i-1}:${ancestry?ancestry.sources.map(sourceEdgeId).sort().join('|'):'saved-scope-edge'}`);
  }
  budget.check(labels.length*2);return [...new Set(labels)].sort();
+}
+function pointEvidence(kernel,p,budget){
+ budget.check();
+ const all=evidenceFor(budget).pointEvidence;
+ let entries=all.get(kernel);if(!entries){entries=new Map();all.set(kernel,entries);}
+ const id=pointKey(p);
+ if(!entries.has(id)){
+  const ancestry=Object.freeze(incidenceFresh(kernel,p,budget));
+  budget.check(1);entries.set(id,{location:inRegion(p,kernel),ancestry});
+ }
+ return entries.get(id);
+}
+function incidence(kernel,p,budget){return pointEvidence(kernel,p,budget).ancestry;}
+function sourcePoint(a,b,t,budget){
+ budget.check();
+ if(cmp(t,ZERO)===0)return a;
+ if(cmp(t,ONE)===0)return b;
+ budget.check(1);
+ return [add(a[0],mul(sub(b[0],a[0]),t)),add(a[1],mul(sub(b[1],a[1]),t))];
+}
+// Same exact splitting predicates. Retain each unique subsegment endpoint
+// once, borrow submitted endpoints, and share only this operation's result.
+function segmentRootsXY(a,b,c,d){
+ const ux=sub(b[0],a[0]),uy=sub(b[1],a[1]),vx=sub(d[0],c[0]),vy=sub(d[1],c[1]),wx=sub(c[0],a[0]),wy=sub(c[1],a[1]);
+ const crossXY=(x,y,u,v)=>sub(mul(x,v),mul(y,u)),den=crossXY(ux,uy,vx,vy),within=t=>cmp(t,ZERO)>=0&&cmp(t,ONE)<=0;
+ if(sign(den)){
+  const t=div(crossXY(wx,wy,vx,vy),den),s=div(crossXY(wx,wy,ux,uy),den);
+  return within(t)&&within(s)?[t]:[];
+ }
+ if(sign(crossXY(wx,wy,ux,uy)))return [];
+ const i=sign(ux)?0:1,u=i?uy:ux;
+ if(!sign(u))return cmp(a[0],c[0])===0&&cmp(a[1],c[1])===0?[ZERO]:[];
+ return [div(sub(c[i],a[i]),u),div(sub(d[i],a[i]),u)].filter(within);
+}
+function splitSourceSegment(kernel,a,b,budget,{region=true}={}){
+ budget.check();
+ const all=evidenceFor(budget).splits;
+ let entries=all.get(kernel);if(!entries){entries=new Map();all.set(kernel,entries);}
+ const identity=`${pointKey(a)}>${pointKey(b)}:${region}`;
+ if(entries.has(identity))return entries.get(identity);
+ const roots=[ZERO,ONE],candidateFaces=kernel.querySegment(a,b,budget);
+ for(const face of candidateFaces){
+  budget.check();
+  for(let i=0;i<3;i++)roots.push(...segmentRootsXY(a,b,face.vertices[i],face.vertices[(i+1)%3]));
+ }
+ for(const boundary of kernel.boundaries)for(let i=1;i<boundary.coordinates.length;i++)roots.push(...segmentIntersection(a,b,boundary.coordinates[i-1],boundary.coordinates[i]));
+ const ts=unique(roots),pieces=[];
+ let start=a;
+ for(let i=1;i<ts.length;i++){
+  budget.check();
+  const lo=ts[i-1],hi=ts[i],p=sourcePoint(a,b,mid(lo,hi),budget),end=sourcePoint(a,b,hi,budget),faces=candidateFaces.filter(face=>inTriangle(p,face)),inside=!region||inRegion(p,kernel)>=0;
+  pieces.push({lo,hi,a:start,b:end,faces:inside?faces:[],inside});start=end;
+ }
+ const result=freeze(pieces,budget);entries.set(identity,result);return result;
 }
 function intervalsFor(axis,budget){
  if(axis.axisOperation)return axis.axisOperation.intervals;
@@ -378,41 +443,67 @@ function sourceCap(axis,interval,parameter,point,kernel,budget){
 /** Independent contact word: parameters stay in their own coordinate role.
  * Source knots, operation caps, real edge/vertex ancestry and interval order
  * must match; counts or copied native roots cannot establish correspondence. */
-function contactWord(axis,coordinates,kernel,budget){
- const word=[],positiveEndpoints=new Set(),contacts=new Map();
- for(const [intervalIndex,interval] of intervalsFor(axis,budget).entries()){
-  const {componentIndex,segmentIndex}=interval,a=coordinates[componentIndex][segmentIndex],b=coordinates[componentIndex][segmentIndex+1],roots=boundaryRoots(kernel,a,b,budget,Q(interval.lo),Q(interval.hi));
+function* contactWord(axis,coordinates,kernel,budget,intervals=intervalsFor(axis,budget),proof={contacts:new Set(),positiveEndpoints:new Set()}){
+ budget.check(1);const event={};
+ for(const [intervalIndex,interval] of intervals.entries()){
+  const {componentIndex,segmentIndex}=interval,a=coordinates[componentIndex][segmentIndex],b=coordinates[componentIndex][segmentIndex+1],lo=Q(interval.lo),hi=Q(interval.hi),roots=boundaryRoots(kernel,a,b,budget,lo,hi);
+  let point=sourcePoint(a,b,roots[0],budget);
   for(let i=0;i<roots.length;i++){
-   budget.check(3);
-   const parameter=roots[i],point=at(a,b,parameter),location=inRegion(point,kernel),ancestry=incidence(kernel,point,budget),id=`${componentIndex}:${pointKey(point)}`;
-   const source=cmp(parameter,ZERO)===0?`knot:${segmentIndex}`:cmp(parameter,ONE)===0?`knot:${segmentIndex+1}`:cmp(parameter,Q(interval.lo))===0?`retained:${intervalIndex}:start`:cmp(parameter,Q(interval.hi))===0?`retained:${intervalIndex}:end`:'boundary';
-   const pointRecord={componentIndex,segmentIndex,kind:'point',source,location,ancestry};
-   Object.defineProperty(pointRecord,'exactParameter',{value:key(parameter)});
-   word.push(pointRecord);
-   if(location>=0)contacts.set(id,point);
+   budget.check();
+   const parameter=roots[i],{location,ancestry}=pointEvidence(kernel,point,budget),id=`${componentIndex}:${pointKey(point)}`;
+   const source=cmp(parameter,ZERO)===0?`knot:${segmentIndex}`:cmp(parameter,ONE)===0?`knot:${segmentIndex+1}`:cmp(parameter,lo)===0?`retained:${intervalIndex}:start`:cmp(parameter,hi)===0?`retained:${intervalIndex}:end`:'boundary';
+   Object.assign(event,{componentIndex,segmentIndex,kind:'point',source,location,ancestry,parameter});
+   if(location>=0&&!proof.contacts.has(id)){budget.check(1);proof.contacts.add(id);}
+   yield event;
    if(i<roots.length-1){
-    budget.check(2);
-    const inside=inRegion(at(a,b,mid(parameter,roots[i+1])),kernel)>=0;
-    word.push({componentIndex,segmentIndex,kind:'open',inside});
-    if(inside){budget.check(3);positiveEndpoints.add(id);positiveEndpoints.add(`${componentIndex}:${pointKey(at(a,b,roots[i+1]))}`);}
+    const nextPoint=sourcePoint(a,b,roots[i+1],budget),inside=inRegion(sourcePoint(a,b,mid(parameter,roots[i+1]),budget),kernel)>=0;
+    if(inside){
+     const endId=`${componentIndex}:${pointKey(nextPoint)}`;
+     for(const value of [id,endId])if(!proof.positiveEndpoints.has(value)){budget.check(1);proof.positiveEndpoints.add(value);}
+    }
+    Object.assign(event,{componentIndex,segmentIndex,kind:'open',inside});yield event;point=nextPoint;
    }
   }
  }
- for(const id of contacts.keys()){budget.check();if(!positiveEndpoints.has(id))throw fail('Isolated retained source/true-P contact has no point-stratum certificate');}
- return word;
+}
+function validateContacts(proof,budget){
+ for(const id of proof.contacts){budget.check();if(!proof.positiveEndpoints.has(id))throw fail('Isolated retained source/true-P contact has no point-stratum certificate');}
+}
+function sameContact(a,b){
+ if(!a||!b)return a===b;
+ if(a.componentIndex!==b.componentIndex||a.segmentIndex!==b.segmentIndex||a.kind!==b.kind)return false;
+ if(a.kind==='open')return a.inside===b.inside;
+ return a.source===b.source&&a.location===b.location&&a.ancestry.length===b.ancestry.length&&a.ancestry.every((label,i)=>label===b.ancestry[i]);
+}
+function contactSnapshot(event,budget){
+ if(!event)return null;
+ budget.check(1);
+ return event.kind==='open'?{componentIndex:event.componentIndex,segmentIndex:event.segmentIndex,kind:event.kind,inside:event.inside}:{componentIndex:event.componentIndex,segmentIndex:event.segmentIndex,kind:event.kind,source:event.source,location:event.location,ancestry:event.ancestry,exactParameter:key(event.parameter)};
 }
 function pairedClip(axis,compiled,domain,budget,kernel=exactDomain(domain,budget)){
- const native=regionKernel(domain,budget),geographic=regionKernel(domain,budget,true),nativeWord=contactWord(axis,compiled.native,native,budget),geographicWord=contactWord(axis,compiled.geographic,geographic,budget);
- if(JSON.stringify(nativeWord)!==JSON.stringify(geographicWord)){
-  let index=0;while(index<Math.min(nativeWord.length,geographicWord.length)&&JSON.stringify(nativeWord[index])===JSON.stringify(geographicWord[index]))index++;
-  const entry=(word,i)=>word[i]?{...word[i],...(word[i].exactParameter?{exactParameter:word[i].exactParameter}:{})}:null;
-  throw Object.assign(fail('Independent native/geographic source contact ancestry is unpaired'),{diagnostics:{firstDifference:index,nativeCount:nativeWord.length,geographicCount:geographicWord.length,nativePrevious:entry(nativeWord,index-1),geographicPrevious:entry(geographicWord,index-1),native:entry(nativeWord,index),geographic:entry(geographicWord,index)}});
+ const native=regionKernel(domain,budget),geographic=regionKernel(domain,budget,true),intervals=intervalsFor(axis,budget);
+ const nativeProof={contacts:new Set(),positiveEndpoints:new Set()},geographicProof={contacts:new Set(),positiveEndpoints:new Set()};
+ const nativeWord=contactWord(axis,compiled.native,native,budget,intervals,nativeProof),geographicWord=contactWord(axis,compiled.geographic,geographic,budget,intervals,geographicProof);
+ // Compare every independent point and open stratum in historical order.
+ // No word record lists are retained; only a first mismatch has snapshots.
+ budget.check(2);const nativePrevious={},geographicPrevious={};
+ let firstDifference=null,nativeCount=0,geographicCount=0,index=0;
+ while(true){
+  budget.check();
+  const n=nativeWord.next(),g=geographicWord.next(),ne=n.done?null:n.value,ge=g.done?null:g.value;
+  if(!ne&&!ge)break;
+  if(ne)nativeCount++;if(ge)geographicCount++;
+  if(!firstDifference&&!sameContact(ne,ge))firstDifference={firstDifference:index,nativePrevious:index?contactSnapshot(nativePrevious,budget):null,geographicPrevious:index?contactSnapshot(geographicPrevious,budget):null,native:contactSnapshot(ne,budget),geographic:contactSnapshot(ge,budget)};
+  if(ne)Object.assign(nativePrevious,ne);if(ge)Object.assign(geographicPrevious,ge);
+  index++;
  }
+ // Preserve native-first isolated-contact rejection before pair diagnostics.
+ validateContacts(nativeProof,budget);validateContacts(geographicProof,budget);
+ if(firstDifference)throw Object.assign(fail('Independent native/geographic source contact ancestry is unpaired'),{diagnostics:{...firstDifference,nativeCount,geographicCount}});
  const pieces=[],uncovered=[],outside=[];
- for(const interval of intervalsFor(axis,budget)){
+ for(const interval of intervals){
   const {componentIndex,segmentIndex}=interval,a=compiled.native[componentIndex][segmentIndex],b=compiled.native[componentIndex][segmentIndex+1],lo=Q(interval.lo),hi=Q(interval.hi);
-  budget.check(2);
-  for(const part of splitSegment(kernel,at(a,b,lo),at(a,b,hi),budget)){
+  for(const part of splitSourceSegment(kernel,sourcePoint(a,b,lo,budget),sourcePoint(a,b,hi,budget),budget)){
    const start=add(lo,mul(sub(hi,lo),part.lo)),end=add(lo,mul(sub(hi,lo),part.hi));
    budget.check(1);
    const record={...part,lo:start,hi:end,axisId:axis.axisId,componentIndex,segmentIndex,levelM:axis.levelM,ordinal:axis.ordinal,startCap:sourceCap(axis,interval,start,part.a,native,budget),endCap:sourceCap(axis,interval,end,part.b,native,budget)};

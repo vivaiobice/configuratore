@@ -1,3 +1,4 @@
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
 import {secureUuid} from './secure-id.js';
 
 function clone(value) {
@@ -45,6 +46,7 @@ function migrateState(state, savedAt, idFactory, now) {
 }
 
 export function migrateDraftEnvelope(envelope, idFactory = defaultId, now = () => new Date().toISOString()) {
+  envelope=hydrateTerrainRows(envelope);
   if (!envelope || ![1,2,3].includes(envelope.version)) throw new TypeError('Unsupported draft envelope version');
   const savedAt = envelope.savedAt || nowIso(now);
   return {
@@ -59,6 +61,8 @@ export function migrateProjectArchive(envelope, idFactory = defaultId, now = () 
   if (!envelope || ![1,2].includes(envelope.version) || !Array.isArray(envelope.projects)) {
     throw new TypeError('Project archive is invalid or unsupported');
   }
+  // Each project has its own unchanged snapshot budget; the archive can hold many.
+  envelope={...envelope,projects:envelope.projects.map(item=>hydrateTerrainRows(item))};
   return {
     ...clone(envelope),
     version:2,

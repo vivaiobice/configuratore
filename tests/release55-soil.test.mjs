@@ -1,4 +1,5 @@
 import {APP_CONFIG} from '../src/config.js';
+import {mountReleaseVersion} from '../src/release-version.js';
 import {releaseQuery} from './helpers/release-query.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -84,10 +85,17 @@ test('mobile soil analysis reads four actual cartographic themes for the same fi
   assert.deepEqual([result.cartographic.texture,result.cartographic.limestone,result.cartographic.drainage,result.cartographic.reaction],['Franco','Medio','Buono','Neutro']);
   controller.destroy();
 });
-test('V55 exposes soil tools on desktop and mobile entry paths',()=>{
+test('current release exposes the soil map toggle and shared refinement card on desktop and mobile',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const mobile=readFileSync(new URL('../src/mobile-ui.js',import.meta.url),'utf8');
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-  assert.equal(pkg.version,APP_CONFIG.version);assert.match(html,/1\.0\.2/);assert.match(html,releaseQuery('src/app.js'));assert.match(html,/id="soil-button"/);assert.match(html,/id="soil-analyze"/);assert.match(mobile,/#soil-button/);assert.match(mobile,/layers:.*\.soil-section/);
+  const {document}=parseHTML(html),badge=document.querySelector('[data-release-version]');assert.ok(badge);
+  mountReleaseVersion({document});assert.equal(badge.textContent,`${APP_CONFIG.version} · ${APP_CONFIG.environment}`);
+  assert.equal(pkg.version,APP_CONFIG.version);assert.match(html,releaseQuery('src/app.js'));
+  assert.equal(document.querySelectorAll('#soil-button').length,1);
+  const soil=document.querySelector('.advanced [data-refinement="soil"] .soil-section');assert.ok(soil);
+  for(const selector of ['#soil-analyze','#soil-layer-select','#soil-profile']){assert.ok(soil.querySelector(selector));assert.equal(document.querySelectorAll(selector).length,1);}
+  assert.match(mobile,/layers:\[[^\]]*'#soil-button'/,'mobile map layers retain the soil toggle');
+  assert.match(mobile,/move\(advanced,editorHost\)/,'soil analysis stays within the original shared refinement tree');
 });
 test('soil map loads only on activation and a failed query never invents a soil value',async()=>{
   const handlers=new Map(),sources=new Map(),layers=new Map();const map={loaded:()=>true,getZoom:()=>14,getBounds:()=>({getWest:()=>8,getSouth:()=>44,getEast:()=>8.1,getNorth:()=>44.1}),getCanvas:()=>({clientWidth:400,clientHeight:300}),on:(event,fn)=>handlers.set(event,fn),off:(event)=>handlers.delete(event),getLayer:id=>layers.get(id),getSource:id=>sources.get(id),addSource:(id,source)=>sources.set(id,{...source,updateImage(value){this.url=value.url;}}),addLayer:layer=>layers.set(layer.id,layer),setLayoutProperty(){},project:()=>({x:100,y:100})};

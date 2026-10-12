@@ -58,21 +58,19 @@ test('map field selector contains only the switcher without a visible heading',(
   assert.deepEqual(visibleText,[]);
 });
 
-test('advanced desktop project refinement is split into three dedicated cards',()=>{
+test('desktop project refinement retains eight independent cards with their original controls',()=>{
   const {document}=parseHTML(html);
   const advanced=document.querySelector('.advanced');
   assert.match(advanced.querySelector('summary').textContent,/Affina il progetto/);
-  const cards=[...advanced.querySelectorAll('.advanced-card')];
-  assert.deepEqual(cards.map(card=>card.dataset.refinement),['plant','material','information']);
-  assert.ok(cards[0].querySelector('#headland'));
-  assert.ok(cards[0].querySelector('#post-spacing'));
-  assert.ok(cards[0].querySelector('#mechanized'));
-  assert.ok(cards[1].querySelector('#grape-variety'));
-  assert.ok(cards[1].querySelector('#clone-selection'));
-  assert.ok(cards[1].querySelector('#rootstock'));
-  assert.ok(cards[2].querySelector('#campaign-year-desktop'));
-  assert.ok(cards[2].querySelector('#project-context'));
-  assert.ok(cards[2].querySelector('#project-context-note'));
+  const cards=[...advanced.querySelectorAll('.advanced-body > details.advanced-card')];
+  const expected=['portions','curve','exclusions','plant','material','information','cadastre','soil'];
+  assert.deepEqual(cards.map(card=>card.dataset.refinement),expected);
+  const controls={portions:['#row-portion-picker','#orientation','#orientation-output'],curve:['#curve-add-button','#curve-edit-button','#curve-reset-button','#curve-points-list'],exclusions:['#exclusion-list'],plant:['#headland','#post-spacing','#mechanized'],material:['#grape-variety','#clone-selection','#rootstock'],information:['#campaign-year-desktop','#project-context','#project-context-note'],cadastre:['#cadastral-reference-editor','#cadastral-auto-refresh'],soil:['#soil-layer-select','#soil-analyze','#soil-profile']};
+  for(const card of cards){
+    assert.ok(card.querySelector('summary .refinement-title'),card.dataset.refinement);
+    assert.equal(card.hasAttribute('name'),false,'cards do not form an exclusive accordion');
+    for(const selector of controls[card.dataset.refinement]){assert.ok(card.querySelector(selector),`${card.dataset.refinement} retains ${selector}`);assert.equal(document.querySelectorAll(selector).length,1,`${selector} remains a single original control`);}
+  }
 });
 
 test('V39 desktop styles standardize material inputs and compact map controls',()=>{

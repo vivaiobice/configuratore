@@ -106,13 +106,15 @@ test('native PDF retains compact source and separates horizontal and surface mea
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
-test('unapplied report retains approved 1.2.6 metrics and released 1.3.2 HTML',async()=>{
+test('unapplied report retains approved 1.2.6 metrics and released 1.3.8 HTML',async()=>{
  const {readFile}=await import('node:fs/promises');const {createHash}=await import('node:crypto');
  const fixture=JSON.parse(await readFile(new URL('./fixtures/terrain-planar-report-parity.json',import.meta.url),'utf8'));
  const model=buildProjectReportModel({state:fixture.state,report:fixture.report,getMetrics:fieldSummaryMetrics});
  assert.deepEqual(model,fixture.model);
- const released=JSON.parse(await readFile(new URL('./fixtures/terrain-v132-report-parity.json',import.meta.url),'utf8'));
- assert.equal(createHash('sha256').update(renderProjectReportHtml(model)).digest('hex'),released.htmlSha256);
+ // Independently rendered from the approved complete 1.3.8 platform baseline
+ // f098908c9dbe02a037fcbcb1ce08f619aa4de412, recovered byte-exact as f65ec9e.
+ const releasedHtmlSha256='053c24ecf754fd76031b6c825b4463bcf54c0cb77235e1c1aecd72fce0e59cef';
+ assert.equal(createHash('sha256').update(renderProjectReportHtml(model)).digest('hex'),releasedHtmlSha256);
 });
 
 test('removing applied field geometry keeps explicit unavailable terrain in archive summaries',()=>{

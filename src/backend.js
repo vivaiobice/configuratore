@@ -1,7 +1,15 @@
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.7';
-import { ensureProjectFields } from './fields.js?v=1.3.7';
-import { normalizeMapState } from './state.js?v=1.3.7';
+import {serializeTerrainSnapshot,assertTerrainWireFieldBudget} from './terrain-serialization.js?v=1.3.9';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
+import { ensureProjectFields } from './fields.js?v=1.3.9';
+import { normalizeMapState } from './state.js?v=1.3.9';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function hydrateProjectPayload(payload,fieldKey='fields'){
+  if(!payload||!Array.isArray(payload[fieldKey]))return payload;
+  const {[fieldKey]:fields,...metadata}=payload;
+  const wire={...metadata,fields};assertTerrainWireFieldBudget(wire);
+  const hydrated=hydrateTerrainRows(wire);
+  return {...payload,[fieldKey]:hydrated.fields};
+}
 
 async function edgeFunctionError(error,fallback){
   try{
@@ -68,7 +76,7 @@ export function polygonToWkt(ring) {
 }
 
 export function toProjectRow(state, metrics, { ownerUserId, sessionId, projectId = undefined, contactId = undefined, resumeTokenHash = undefined } = {}) {
-  assertTerrainSerializationBudget(state);
+  const packedState=JSON.parse(serializeTerrainSnapshot(state));
   const project = state?.project ?? {};
   const clientProjectId = state?.cloud?.clientProjectId || project.localProjectId || null;
   const row = {
@@ -108,7 +116,7 @@ export function toProjectRow(state, metrics, { ownerUserId, sessionId, projectId
     grape_variety: project.grapeVariety || null,
     rootstock: project.rootstock || null,
     clone_selection: project.cloneSelection || null,
-    field_plans: Array.isArray(project.fields) ? project.fields : [],
+    field_plans: Array.isArray(packedState.project?.fields) ? packedState.project.fields : [],
     active_field_id: project.activeFieldId || null,
     updated_at: new Date().toISOString()
   };
@@ -245,7 +253,7 @@ export function createBackend(client,{requestSignal=null}={}) {
         .is('deleted_at', null)
         .order('updated_at', { ascending:false });
       if (result.error) throw result.error;
-      return result.data ?? [];
+      return (result.data ?? []).map(payload=>hydrateProjectPayload(payload,'field_plans'));
     },
     async loadEditableProject(projectId) {
       const allowed=await rpc('can_edit_project',{p_project_id:projectId});
@@ -255,7 +263,7 @@ export function createBackend(client,{requestSignal=null}={}) {
         .eq('id',projectId).is('deleted_at',null).maybeSingle();
       if(result.error)throw result.error;
       if(!result.data)throw new Error('Progetto non disponibile.');
-      return result.data;
+      return hydrateProjectPayload(result.data,'field_plans');
     },
     async setOwnProfile({ displayName, username }) {
       return rpc('set_own_profile', { p_display_name:displayName, p_username:username });
@@ -311,7 +319,9 @@ export function createBackend(client,{requestSignal=null}={}) {
         .order('revision_number',{ascending:false})
         .limit(1);
       if(result.error)throw result.error;
-      return result.data?.[0]??null;
+      const revision=result.data?.[0]??null;
+      if(revision?.snapshot)assertTerrainWireFieldBudget(revision.snapshot);
+      return revision?.snapshot?{...revision,snapshot:hydrateTerrainRows(revision.snapshot)}:revision;
     },
     async issueProjectReport({ projectId, revisionNumber, selectedFieldIds, recipient, disclaimerVersion, acceptedAt, tokenHash }) {
       return rpc('issue_project_report', {
@@ -325,12 +335,12 @@ export function createBackend(client,{requestSignal=null}={}) {
       });
     },
     async getSharedProjectReport(reportId,token) {
-      return rpc('get_shared_project_report',{p_report_id:reportId,p_token:token});
+      return hydrateProjectPayload(await rpc('get_shared_project_report',{p_report_id:reportId,p_token:token}));
     },
     async getPublicProjectByCode(publicCode) {
       const normalized=String(publicCode??'').trim().toUpperCase();
       if(!/^VO-[0-9]{7}$/.test(normalized))return null;
-      return rpc('get_public_project_by_code',{p_public_code:normalized});
+      return hydrateProjectPayload(await rpc('get_public_project_by_code',{p_public_code:normalized}));
     },
     async canEditProject(projectId) {
       return rpc('can_edit_project',{p_project_id:projectId});
@@ -382,7 +392,7 @@ export function createBackend(client,{requestSignal=null}={}) {
     async claimProject(publicCode, token) {
       const data = await rpc('claim_project', { p_public_code: publicCode, p_token: token });
       if (!data) throw new Error('Project resume link is invalid or expired');
-      return data;
+      return hydrateProjectPayload(data,'field_plans');
     },
     async loadContact(id) {
       if (!id) return null;

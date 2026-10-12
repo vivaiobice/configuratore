@@ -63,19 +63,23 @@ test('eye controls independently hide map overlays without editing any source or
   assert.equal(eye.getAttribute('aria-expanded'),'true');
   toggle(ctx,'field',false);
   assert.equal(visibility(ctx.map,'project-geometry-fill'),'none');assert.equal(visibility(ctx.map,'excluded-zones-line'),'none');assert.equal(visibility(ctx.map,'row-portions-outline'),'none');
-  assert.equal(visibility(ctx.map,'vineyard-rows-line'),'visible');assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
+  assert.equal(visibility(ctx.map,'vineyard-rows-line'),'visible');assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'');
+  toggle(ctx,'names',false);assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
   toggle(ctx,'schema',false);assert.equal(visibility(ctx.map,'vineyard-rows-line'),'none');assert.equal(visibility(ctx.map,'other-project-rows-line'),'none');
   toggle(ctx,'quotes',false);assert.equal(ctx.document.querySelector('.side-measurement-label').style.display,'none');
-  toggle(ctx,'field',true);assert.equal(visibility(ctx.map,'excluded-zones-line'),'visible');assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'');
+  toggle(ctx,'field',true);assert.equal(visibility(ctx.map,'excluded-zones-line'),'visible');assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
   assert.equal(visibility(ctx.map,'vineyard-rows-line'),'none');assert.equal(ctx.document.querySelector('.side-measurement-label').style.display,'none');
+  ctx.document.querySelector('[data-map-visibility-restore]').click();
+  assert.deepEqual(ctx.api.getOverlayVisibility(),{field:true,schema:true,quotes:true,names:true});
+  assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'');
   assert.equal(JSON.stringify([...ctx.map.sources]),before);assert.equal(edits,0);
  }finally{ctx.restore();}
 });
 
-test('hidden field and quotes stay hidden through redraw, movement and mobile detail reparenting',()=>{
+test('hidden field names and quotes stay hidden through redraw, movement and mobile detail reparenting',()=>{
  const ctx=setup();try{
   assert.equal(typeof ctx.api.setOverlayVisibility,'function','map should expose visual preferences');
-  ctx.api.setGeometry(ring);ctx.api.setOverlayVisibility({field:false,quotes:false});
+  ctx.api.setGeometry(ring);ctx.api.setOverlayVisibility({field:false,quotes:false,names:false});
   ctx.document.getElementById('mobile-detail-map').append(ctx.map.host.closest('.map-wrap'));
   ctx.api.setGeometry(ring.map(([lng,lat])=>[lng+.01,lat]));ctx.api.setActiveFieldLabel('Rinominato');ctx.map.trigger('idle');ctx.map.trigger('resize');
   assert.equal(visibility(ctx.map,'project-geometry-line'),'none');
@@ -84,13 +88,17 @@ test('hidden field and quotes stay hidden through redraw, movement and mobile de
   assert.ok(ctx.document.getElementById('mobile-detail-map').querySelector('[data-map-visibility-trigger]'));
   ctx.api.setOverlayVisibility({field:true,quotes:true});
   assert.equal(visibility(ctx.map,'project-geometry-line'),'visible');assert.ok([...ctx.document.querySelectorAll('.side-measurement-label')].every(label=>label.style.display===''));
+  assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
+  ctx.api.setOverlayVisibility({names:true});assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'');
  }finally{ctx.restore();}
 });
 
 test('preferences chosen before map load apply when layers become ready and active drawing remains usable',()=>{
  const ctx=setup({load:false});try{
   assert.equal(typeof ctx.api.setOverlayVisibility,'function','map should accept visibility before load');
-  ctx.api.setOverlayVisibility({field:false,schema:false});ctx.map.trigger('load');
+  ctx.api.setOverlayVisibility({field:false,schema:false,names:false});ctx.map.trigger('load');
+  ctx.api.setGeometry(ring);ctx.api.setActiveFieldLabel('Prima del caricamento');
+  assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
   assert.equal(visibility(ctx.map,'other-project-fields-fill'),'none');assert.equal(visibility(ctx.map,'other-project-rows-line'),'none');
   ctx.api.beginDraw();ctx.map.trigger('click',{lngLat:{lng:8,lat:44},point:{x:80,y:440}});
   const before=ctx.api.capturePendingEdit();ctx.api.setOverlayVisibility({quotes:false});const after=ctx.api.capturePendingEdit();

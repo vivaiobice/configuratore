@@ -1,4 +1,4 @@
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.7';
+import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.9';
 export const CLOUD_SNAPSHOT_VERSION = 2;
 
 function clone(value) {
@@ -59,7 +59,7 @@ export function buildCloudSnapshot(state, getMetrics = () => ({}), { now = () =>
     cloudReady:isClosedRing(field.geometry),
     metrics:cloudMetrics(field, getMetrics(field))
   }));
-  return assertTerrainSerializationBudget({
+  return JSON.parse(serializeTerrainSnapshot({
     schemaVersion:CLOUD_SNAPSHOT_VERSION,
     clientProjectId:normalized.cloud.clientProjectId,
     projectId:normalized.cloud.projectId ?? null,
@@ -68,7 +68,7 @@ export function buildCloudSnapshot(state, getMetrics = () => ({}), { now = () =>
     campaignYear:validCampaignYear(project.campaignYear, now),
     origin:project.origin === 'fieldarea' ? 'fieldarea' : 'native',
     fields
-  });
+  }));
 }
 
 export function snapshotToProjectRow(snapshot, ownerUserId, sessionId, ownerKind = 'guest') {

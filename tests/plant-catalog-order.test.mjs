@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {releaseQuery} from './helpers/release-query.mjs';
 import {listVarieties,listClonesForVariety,listRootstocksForSelection} from '../src/plant-catalog.js';
 
 const sorted=(values)=>[...values].sort((a,b)=>a.localeCompare(b,'it',{sensitivity:'base',numeric:true}));
@@ -16,5 +17,5 @@ test('clones and rootstocks are alphabetic for selected grape varieties',()=>{
 test('main entry cache-busts the catalog and profile module used on the deployed site',()=>{
   const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
   assert.match(app,/from '\.\/plant-catalog\.js\?v=45'/);
-  assert.match(app,/from '\.\/profile-ui\.js\?v=1\.2\.4'/);
+  assert.match(app,releaseQuery('./profile-ui.js'));
 });

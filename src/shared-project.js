@@ -1,17 +1,18 @@
-import {terrainReportMetadata,terrainMeasureText,terrainUsesCertifiedQuantities,terrainRowCountText} from './terrain-report-summary.js?v=1.3.7';
-import {rowPortionDescriptors,hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.3.7';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
+import {terrainReportMetadata,terrainMeasureText,terrainUsesCertifiedQuantities,terrainRowCountText} from './terrain-report-summary.js?v=1.3.9';
+import {rowPortionDescriptors,hasPortionDesign,formatPortionDesign} from './row-portion-summary.js?v=1.3.9';
 import { parseSharedReportUrl } from './report-share.js';
 import { parsePublicProjectCodeUrl } from './public-project-access.js';
-import { calculateProject } from './project-calculator.js?v=1.3.7';
-import { buildReportMapModel } from './report-map-model.js?v=1.3.7';
-import { renderProjectDiagramSvg } from './report-diagram.js?v=1.3.7';
-import { buildProjectReportModel } from './pdf-model.js?v=1.3.7';
-import { captureSatelliteImage } from './report-satellite.js?v=1.3.7';
-import { renderProjectReportHtml } from './report-template.js?v=1.3.7';
+import { calculateProject } from './project-calculator.js?v=1.3.9';
+import { buildReportMapModel } from './report-map-model.js?v=1.3.9';
+import { renderProjectDiagramSvg } from './report-diagram.js?v=1.3.9';
+import { buildProjectReportModel } from './pdf-model.js?v=1.3.9';
+import { captureSatelliteImage } from './report-satellite.js?v=1.3.9';
+import { renderProjectReportHtml } from './report-template.js?v=1.3.9';
 import { buildReportPdfFilename } from './report-filename.js?v=45';
 import { renderReportQrSvg } from './report-qr.js';
 import { buildPublicProjectUrl } from './public-project-access.js';
-import {satelliteStyle} from './satellite-style.js?v=1.3.7';
+import {satelliteStyle} from './satellite-style.js?v=1.3.9';
 
 export const SHARED_UNAVAILABLE_MESSAGE = 'Collegamento non disponibile. Chiedi a Vivai Obice un nuovo collegamento.';
 const DISCLAIMER = 'Il presente documento è uno studio preliminare ed esemplificativo. Non costituisce progetto tecnico firmato, rilievo topografico o catastale, pratica autorizzativa, asseverazione o garanzia di realizzabilità. Prima dell’esecuzione devono essere verificati sul posto confini, quote, pendenze, vincoli, accessi e prescrizioni applicabili.';
@@ -59,6 +60,7 @@ export async function loadSharedProject({ url, backend } = {}) {
     else if(publicCode&&backend?.getPublicProjectByCode)payload=await backend.getPublicProjectByCode(publicCode);
     else throw new Error('invalid');
     if (!payload || !Array.isArray(payload.fields)) throw new Error('unavailable');
+    payload={...payload,fields:hydrateTerrainRows({fields:payload.fields}).fields};
     let canEdit = false;
     try { canEdit = Boolean(await backend.canEditProject?.(payload.projectId)); } catch { canEdit = false; }
     return { state:'ready', payload, canEdit };

@@ -35,7 +35,7 @@ const gateway=createCountsGateway({scope:{backend:'https://fixture.example',envi
 const ui=mountCountsUI({gateway,route:{view:'resume'},config:{syncEnabled:false},feedback:{pulse(){}}});
 await ui.ready;document.querySelector('#sync-banner').textContent='Salvataggio su questo dispositivo';globalThis.footerFixture={ui,gateway};`;
 
-test('counter footer preserves alpha, centers its mark across the full footer, and renders a light outline',{skip:invalidOverride?false:skipReason},async()=>{
+test('counter footer links only its centered transparent mark and renders a subtle light outline',{skip:invalidOverride?false:skipReason},async()=>{
  assert.equal(!!invalidOverride,false,'COUNTS_CHROMIUM_PATH must point to an executable file');
  await mkdir(output,{recursive:true});
  const server=createServer(async(request,response)=>{
@@ -78,13 +78,19 @@ test('counter footer preserves alpha, centers its mark across the full footer, a
     });
     await writeFile(resolve(output,name+'-metrics.json'),JSON.stringify(metrics,null,2));
     await page.screenshot({path:resolve(output,name+'-counter-footer.png'),fullPage:true});
-    assert.ok(Math.abs(metrics.link.width-metrics.available)<1,'brand slot spans the full footer content width');
+    for(const dimension of ['left','top','width','height'])assert.ok(Math.abs(metrics.link[dimension]-metrics.image[dimension])<1,'only the logo image bounds are linked: '+dimension);
+    assert.ok(metrics.link.width<=280&&metrics.link.width<=metrics.available,'logo-sized link fits the footer content');
     assert.ok(Math.abs(metrics.image.center-metrics.footer.center)<1,'logo is centered across the footer');
     assert.equal(metrics.background,'rgba(0, 0, 0, 0)','brand link has no opaque plate');
     assert.equal(metrics.imageBackground,'rgba(0, 0, 0, 0)');
     assert.ok(metrics.transparent>500000,'approved mark retains substantial transparent pixels');
     assert.equal(metrics.src,'../assets/logo-vivai-obice-lineare.png','original approved mark is preserved');
     assert.equal(metrics.overflow,false);
+    const shadow=metrics.filter.match(/drop-shadow\(rgba\((\d+), (\d+), (\d+), ([\d.]+)\) 0px 0px ([\d.]+)px\)/);
+    assert.ok(shadow,'outline follows the transparent mark via a light shadow');
+    assert.ok(shadow.slice(1,4).every(channel=>Number(channel)>200),'outline color stays light');
+    assert.ok(Number(shadow[4])>0&&Number(shadow[4])<1,'outline remains translucent');
+    assert.ok(Number(shadow[5])>0&&Number(shadow[5])<=1.5,'outline remains thin');
     const outlined=PNG.sync.read(await brand.screenshot());
     const previous=await brand.locator('img').evaluate(image=>{const value=image.style.filter;image.style.filter='none';return value;});
     const unoutlined=PNG.sync.read(await brand.screenshot());
@@ -93,9 +99,10 @@ test('counter footer preserves alpha, centers its mark across the full footer, a
     for(let index=0;index<outlined.data.length;index+=4){
      const rgb=[outlined.data[index],outlined.data[index+1],outlined.data[index+2]];
      const old=[unoutlined.data[index],unoutlined.data[index+1],unoutlined.data[index+2]];
-     if(Math.min(...rgb)>140&&Math.max(...old)<120)lightOutline++;
+     if(rgb.every((channel,index)=>channel>=old[index]+3))lightOutline++;
     }
-    assert.ok(lightOutline>100,'visible light pixels follow the mark rather than a background rectangle');
+    assert.ok(lightOutline>100,'subtle light pixels visibly follow the mark');
+    assert.ok(lightOutline<outlined.width*outlined.height/2,'outline does not brighten a background rectangle');
     assert.deepEqual(errors,[]);
    }finally{await context.close();}
   }

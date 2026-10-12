@@ -1,8 +1,9 @@
 const SCENE_LAYERS=new Set(['project-geometry-fill','project-geometry-line','excluded-zones-fill','excluded-zones-line','row-portions-fill','row-portions-outline','vineyard-rows-line']);
 const GROUPS = [
- {key:'field',label:'Campo',layers:['project-geometry-fill','project-geometry-line','other-project-fields-fill','other-project-fields-line','excluded-zones-fill','excluded-zones-line','row-portions-fill','row-portions-outline'],selector:'.map-field-label-overlay, .field-label-marker'},
+ {key:'field',label:'Campo',layers:['project-geometry-fill','project-geometry-line','other-project-fields-fill','other-project-fields-line','excluded-zones-fill','excluded-zones-line','row-portions-fill','row-portions-outline'],selector:null},
  {key:'schema',label:'Schema vigneto',layers:['vineyard-rows-line','other-project-rows-line'],selector:null},
- {key:'quotes',label:'Quote',layers:[],selector:'.side-measurement-label'}
+ {key:'quotes',label:'Quote',layers:[],selector:'.side-measurement-label'},
+ {key:'names',label:'Nomi dei campi',layers:[],selector:'.map-field-label-overlay, .field-label-marker'}
 ];
 let controlSequence=0;
 
@@ -11,7 +12,7 @@ let controlSequence=0;
 export function createMapOverlayVisibility({map,documentRef=globalThis.document}={}){
  const host=map.getContainer();
  const controlHost=host.closest?.('.map-wrap')??host;
- const state={field:true,schema:true,quotes:true};
+ const state={field:true,schema:true,quotes:true,names:true};
  let control=null,sceneActive=false;
  function refresh(){
   for(const group of GROUPS){
@@ -25,7 +26,7 @@ export function createMapOverlayVisibility({map,documentRef=globalThis.document}
    }
    if(group.selector){
     // Hide the HTML label overlay parent: its viewport updates can safely keep
-    // positioning individual labels without showing a hidden field again.
+    // positioning individual labels without showing hidden names again.
     for(const element of host.querySelectorAll?.(group.selector)??[]){
      if(element.classList.contains('field-label-marker')&&element.closest('.map-field-label-overlay'))continue;
      element.style.display=visible?'':'none';
@@ -48,7 +49,7 @@ export function createMapOverlayVisibility({map,documentRef=globalThis.document}
   function close(restoreFocus=false){panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(restoreFocus)trigger.focus?.();}
   trigger.addEventListener('click',()=>{panel.hidden=!panel.hidden;trigger.setAttribute('aria-expanded',String(!panel.hidden));});
   for(const input of control.querySelectorAll('[data-map-visibility]'))input.addEventListener('change',()=>set({[input.dataset.mapVisibility]:input.checked}));
-  control.querySelector('[data-map-visibility-restore]').addEventListener('click',()=>set({field:true,schema:true,quotes:true}));
+  control.querySelector('[data-map-visibility-restore]').addEventListener('click',()=>set({field:true,schema:true,quotes:true,names:true}));
   // Native checkbox/keyboard behavior is preserved while map drawing, gestures
   // and Escape/Enter editor shortcuts cannot consume the panel's events.
   for(const type of ['click','dblclick','pointerdown','pointerup','mousedown','mouseup','touchstart','touchend','touchmove','wheel'])control.addEventListener(type,event=>event.stopPropagation(),{passive:true});

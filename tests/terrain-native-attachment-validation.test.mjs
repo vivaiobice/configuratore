@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as history from '../src/terrain-history.js?v=1.3.7';
-import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.7';
-import {createContourEnvelope,readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.7';
-import {axisSourceHash} from '../src/terrain-axis-geometry.js?v=1.3.7';
+import * as history from '../src/terrain-history.js?v=1.3.9';
+import {createScopedTerrainCutEvaluator} from '../src/terrain-contour-design.js?v=1.3.9';
+import {createContourEnvelope,readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.9';
+import {axisSourceHash} from '../src/terrain-axis-geometry.js?v=1.3.9';
 import {terrainInputHash} from '../src/terrain-model.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {fromUTM} from '../src/coordinate-system.js';
 import {contourFixture} from './helpers/terrain-contour-fixtures.mjs';
+import {serializeTerrainSnapshot,TERRAIN_FIELD_MAX_BYTES} from '../src/terrain-serialization.js';
+import {hydrateTerrainRows} from '../src/terrain-row-mirror.js';
 
 const clone=value=>structuredClone(value);
 const geographic=points=>points.map(([x,y])=>fromUTM([500000+x,5000000+y],32632));
@@ -233,9 +235,27 @@ test('native attachment active field quota includes genuine captured history whi
  const foreign={id:'foreign-field',geometry:project.geometry,rowPortions:[],terrain:null,custom:'retain foreign field'};
  project.fields=[{id:project.activeFieldId,geometry:project.geometry,exclusions:project.exclusions,rowPortions:clone(input.project.rowPortions),terrain:null},foreign];
  const before=JSON.stringify(project);
- // The genuine native candidate is unchanged; presentation-only source data
- // is intentionally captured by history, and must be counted in the new field.
- assert.throws(()=>history.attachTerrainRestore({project,proposal:input.producer,operationId:'native-field-history-quota',budget:createTerrainBudget({kind:'cut'})}),/1 MiB/);
+ // The genuine native candidate is unchanged. Newly owned presentation data
+ // can use bounded lossless history storage; the field ceiling applies to its
+ // actual durable bytes and the snapshot still includes its decoded baseline.
+ const proposal=history.attachTerrainRestore({project,proposal:input.producer,operationId:'native-field-history-quota',budget:createTerrainBudget({kind:'cut'})});
+ assert.equal(proposal.terrain.history.schemaVersion,2);
+ const after={...project,...proposal.projectPatch,terrain:proposal.terrain,rowPortions:proposal.rowPortions,
+  fields:project.fields.map(field=>field.id===project.activeFieldId?{...field,...proposal.projectPatch,terrain:proposal.terrain,rowPortions:proposal.rowPortions}:field)};
+ const raw=serializeTerrainSnapshot(after),wire=JSON.parse(raw),reloaded=hydrateTerrainRows(wire);
+ assert.ok(Buffer.byteLength(JSON.stringify(wire.fields[0]))<=TERRAIN_FIELD_MAX_BYTES);
+ const entries=history.readTerrainRestoreEntries({project:after});
+ assert.deepEqual(entries[0].before.source.portions[0].custom,project.rowPortions[0].custom);
+ assert.deepEqual(history.readTerrainRestoreEntries({project:reloaded.fields[0]}),entries);
+ assert.deepEqual(reloaded.fields[0].terrain.applied.result.rows,proposal.terrain.applied.result.rows);
+ assert.equal(after.fields[1],foreign);assert.deepEqual(reloaded.fields[1],foreign);
+ // A live note outside the baseline remains in the durable field. Compression
+ // cannot hide its inclusive 1 MiB overflow or mutate the rejected source.
+ const oversized={...project,materialRequestNote:'x'.repeat(TERRAIN_FIELD_MAX_BYTES),
+  fields:project.fields.map(field=>field.id===project.activeFieldId?{...field,materialRequestNote:'x'.repeat(TERRAIN_FIELD_MAX_BYTES)}:field)};
+ const oversizedBefore=JSON.stringify(oversized);
+ assert.throws(()=>history.attachTerrainRestore({project:oversized,proposal:input.producer,operationId:'native-live-field-quota',budget:createTerrainBudget({kind:'cut'})}),/1 MiB/);
+ assert.equal(JSON.stringify(oversized),oversizedBefore);assert.equal(oversized.fields[1],foreign);
  assert.equal(JSON.stringify(project),before);assert.equal(project.fields[1],foreign);
 });
 

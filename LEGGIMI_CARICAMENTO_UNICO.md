@@ -1,15 +1,19 @@
-# Configuratore + Conteggi — caricamento unico 1.3.7
+# Pacchetto completo 1.3.9
 
-Usare il pacchetto completo 1.3.7. La consegna non pubblica il sito; stato e limiti sono in [README_RELEASE_1.3.7.md](README_RELEASE_1.3.7.md).
+Consultare `README_RELEASE_1.3.9.md`, `QA_RELEASE_1.3.9.md` e `PUBBLICAZIONE.md`. Conservare gli export precedenti: il nuovo formato di checkpoint richiede 1.3.9 o successiva per lettura e ripristino. Nessuna pubblicazione remota eseguita.
+
+# Configuratore + Conteggi — caricamento unico 1.3.9
+
+Usare il pacchetto completo 1.3.9. La consegna non pubblica il sito; stato e limiti sono in [README_RELEASE_1.3.9.md](README_RELEASE_1.3.9.md).
 
 1. Conservare la versione pubblicata e lo ZIP precedente. Estrarre il nuovo archivio in una cartella separata: `index.html` e `conteggi/index.html` devono essere nella radice, insieme a `src/`, `admin/`, `assets/`, `tests/` e `supabase/`.
 2. Copiare tutto il contenuto estratto nella radice del repository `vivaiobice/configuratore`. Non caricare lo ZIP come file del repository e non aggiungere una cartella contenitore. Conservare `CNAME` e impostazioni Pages.
-3. Dopo la pubblicazione verificare **1.3.7 · LIVE** nel Configuratore e in `/conteggi/`. Provare selettore tool, Profilo, ingresso diretto nel contatore e ritorno all’editor con bozza conservata.
+3. Dopo la pubblicazione verificare **1.3.9 · LIVE** nel Configuratore e in `/conteggi/`. Provare selettore tool, Profilo, ingresso diretto nel contatore e ritorno all’editor con bozza conservata.
 4. Chiudere le vecchie schede Conteggi e riaprire online per attivare il worker aggiornato; poi provare la riapertura offline. Conservare IndexedDB/localStorage e la stessa origine HTTPS; non cancellare tutti i dati del sito.
 
-**Profilo e trasmissione richiedono ancora l’attivazione server.** Il codice browser è già predisposto, ma le migrazioni e le due funzioni Conteggi non sono installate. L’installazione tramite il collegamento Supabase è fallita con `Invalid or expired requestState`. Il solo caricamento dello ZIP non risolve questo blocco; il salvataggio locale rimane disponibile. Admin resta disabilitato.
+**Verificare separatamente i servizi server Conteggi.** L’ultima verifica documentata del 9 ottobre 2026 indicava migrazioni e funzioni Conteggi non installate e il collegamento Supabase rifiutato con `Invalid or expired requestState`; il browser era predisposto e il salvataggio locale disponibile. Nessuna nuova verifica o installazione server è stata eseguita per questa release. Il caricamento dello ZIP aggiorna il codice statico e non installa questi servizi.
 
-«Adatta al terreno» e il funzionamento 3D non cambiano. Il configuratore alla radice non è dichiarato offline. Procedura di attivazione e ripristino in [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
+«Adatta al terreno» riduce il lavoro duplicato e la dimensione dei checkpoint conservando il metodo approvato. Il funzionamento 3D è conservato. Il configuratore alla radice non è dichiarato offline. Procedura di attivazione e ripristino in [PUBBLICAZIONE.md](PUBBLICAZIONE.md).
 
 <details>
 <summary>Istruzioni storiche conservate della consegna 1.2.5</summary>

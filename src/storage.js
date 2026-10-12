@@ -1,10 +1,10 @@
-import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.7';
+import {serializeTerrainSnapshot,deserializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.9';
 const DRAFT_KEY = 'vivai-obice:configuratore:draft';
 const CONSENT_KEY = 'vivai-obice:configuratore:consent';
 const DRAFT_VERSION = 3;
-import { migrateDraftEnvelope } from './local-migrations.js?v=55.6.1&counts=1';
+import { migrateDraftEnvelope } from './local-migrations.js?v=1.3.9&counts=1';
 import {ownerStorageKey} from './local-owner-scope.js';
-import {APP_CONFIG} from './config.js?v=1.3.7';
+import {APP_CONFIG} from './config.js?v=1.3.9';
 import {secureUuid} from './secure-id.js';
 const draftKey=()=>ownerStorageKey(DRAFT_KEY,APP_CONFIG.environment);
 
@@ -20,7 +20,7 @@ export function loadDraftRecord(storage) {
   try {
     const raw = storage.getItem(draftKey());
     if (!raw) return null;
-    const envelope = JSON.parse(raw);
+    const envelope = deserializeTerrainSnapshot(raw);
     return migrateDraftEnvelope(envelope);
   } catch {
     return null;

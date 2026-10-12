@@ -1,4 +1,4 @@
-import {createMapGesturePolicy} from './map-gestures.js?v=1.3.7';
+import {createMapGesturePolicy} from './map-gestures.js?v=1.3.9';
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 

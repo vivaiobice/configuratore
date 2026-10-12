@@ -171,9 +171,9 @@ test('clearing and a replacement source still publish the correct committed geom
  }finally{ctx.restore();}
 });
 
-test('quote and field eyes survive mobile reparenting and vertex edits retain callbacks',()=>{
+test('quote, field and names eyes survive mobile reparenting and vertex edits retain callbacks',()=>{
  const changes=[];const ctx=setup({onGeometryChange:value=>changes.push(structuredClone(value))});try{
-  establish(ctx);ctx.api.setOverlayVisibility({field:false,quotes:false});ctx.map.flushStyle();
+  establish(ctx);ctx.api.setOverlayVisibility({field:false,quotes:false,names:false});ctx.map.flushStyle();
   ctx.document.getElementById('mobile-detail-map').append(ctx.map.host.closest('.map-wrap'));
   assert.equal(ctx.api.beginVertexEditing(),true);
   const handle=ctx.map.markers.find(marker=>marker.draggable&&!marker.removed&&marker.coordinate[0]===8.001&&marker.coordinate[1]===44);
@@ -183,6 +183,9 @@ test('quote and field eyes survive mobile reparenting and vertex edits retain ca
   assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');assert.ok(labels(ctx).every(node=>node.style.display==='none'));
   ctx.api.finishVertexEditing();ctx.api.setOverlayVisibility({field:true,quotes:true});ctx.map.flushStyle();
   assert.equal(ctx.map.getLayoutProperty('project-geometry-line','visibility'),'visible');assert.ok(labels(ctx).every(node=>node.style.display===''));
+  assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'none');
+  ctx.api.setOverlayVisibility({names:true});ctx.map.flushStyle();
+  assert.equal(ctx.document.querySelector('.map-field-label-overlay').style.display,'');
  }finally{ctx.restore();}
 });
 
