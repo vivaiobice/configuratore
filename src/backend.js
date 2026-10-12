@@ -1,7 +1,7 @@
-import {serializeTerrainSnapshot,assertTerrainWireFieldBudget} from './terrain-serialization.js?v=1.3.9';
-import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
-import { ensureProjectFields } from './fields.js?v=1.3.9';
-import { normalizeMapState } from './state.js?v=1.3.9';
+import {serializeTerrainSnapshot,assertTerrainWireFieldBudget} from './terrain-serialization.js?v=1.3.10';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.10';
+import { ensureProjectFields } from './fields.js?v=1.3.10';
+import { normalizeMapState } from './state.js?v=1.3.10';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function hydrateProjectPayload(payload,fieldKey='fields'){
   if(!payload||!Array.isArray(payload[fieldKey]))return payload;

@@ -1,0 +1,13 @@
+/* Desktop map actions and readable dark panels. */
+.map-wrap>.map-load-project{position:absolute;z-index:7;top:18px;left:18px;min-height:43px;padding:0 14px;border:1px solid rgba(255,255,255,.8);border-radius:13px;background:rgba(247,250,247,.94);color:#183f28;box-shadow:0 8px 28px rgba(15,34,23,.18);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.desktop-map-tools .map-tools-visual{left:164px}
+.map-wrap>.map-load-project:hover{background:#fff}
+.map-wrap>.map-load-project:focus-visible{outline:3px solid #78be8b;outline-offset:2px}
+html[data-theme="dark"] .topbar .brand{background:transparent!important}
+html[data-theme="dark"] .topbar .brand-logo{background:transparent!important;border:0!important;padding:0!important;filter:drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white)!important}
+html[data-theme="dark"] .project-manager,html[data-theme="dark"] .project-manager input,html[data-theme="dark"] .field-manager .field-name-label input{background:#263e2e!important;color:#eef6ef!important;border-color:#54705b!important}
+html[data-theme="dark"] .project-manager label,html[data-theme="dark"] .project-manager strong,html[data-theme="dark"] .field-manager label{color:#e4f1e6!important}
+html[data-theme="dark"] .exclusion-panel,html[data-theme="dark"] .advanced-card{background:#263e2e!important;border-color:#496353!important}
+html[data-theme="dark"] .desktop-map-tools .map-tool-group,html[data-theme="dark"] .map-wrap>.map-load-project{background:#20392a;color:#eef6ef;border-color:#688672}
+html[data-theme="dark"] .desktop-map-tools .map-tool-group button{background:#2b4b37;color:#eef6ef}
+@media(max-width:800px),(max-width:1100px) and (pointer:coarse){.map-wrap>.map-load-project{display:none!important}}

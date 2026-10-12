@@ -1,4 +1,4 @@
-import { ensureProjectFields } from './fields.js?v=1.3.9';
+import { ensureProjectFields } from './fields.js?v=1.3.10';
 import { resolveFieldLocation } from './field-location.js?v=51';
 
 export const DISCLAIMER_VERSION = 'VO-DISC-2026-01';

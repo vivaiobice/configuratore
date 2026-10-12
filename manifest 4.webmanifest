@@ -1,0 +1,16 @@
+{
+  "name": "Configuratore Vigneto Vivai Obice",
+  "short_name": "Vivai Obice",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#16251c",
+  "theme_color": "#16251c",
+  "icons": [
+    {
+      "src": "./assets/vivai-obice-icon-v26.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

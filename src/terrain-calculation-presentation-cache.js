@@ -1,5 +1,5 @@
-import {fieldCalculationInputs} from './field-calculation-inputs.js?v=1.3.9';
-import {actualTerrainContentKey,isSupportedActualTerrainContent} from './terrain-actual-content.js?v=1.3.9';
+import {fieldCalculationInputs} from './field-calculation-inputs.js?v=1.3.10';
+import {actualTerrainContentKey,isSupportedActualTerrainContent} from './terrain-actual-content.js?v=1.3.10';
 
 /** A single applied display result. Authority paths call the calculator fresh. */
 export function createTerrainCalculationPresentationCache(calculate){

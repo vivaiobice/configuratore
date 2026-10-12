@@ -1,10 +1,10 @@
-import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.9';
-import {createProjectSync} from './project-sync.js?v=1.3.9';
+import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.10';
+import {createProjectSync} from './project-sync.js?v=1.3.10';
 import {createSyncQueue} from './sync-queue.js';
-import {projectPayloadToArchiveItem} from './backend.js?v=1.3.9';
+import {projectPayloadToArchiveItem} from './backend.js?v=1.3.10';
 import {mergeCloudSnapshot} from './cloud-state.js';
-import {prepareReportContext,assertReportContextScope} from './report-context.js?v=1.3.9';
-import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.9';
+import {prepareReportContext,assertReportContextScope} from './report-context.js?v=1.3.10';
+import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.10';
 const clone=value=>structuredClone(value);
 export function hasReportProjectChanges(current,reported){
  const shape=value=>{const {name,campaignYear,origin,fields}=buildCloudSnapshot(value);return {name,campaignYear,origin,fields};};

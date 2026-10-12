@@ -1,6 +1,6 @@
-import {buildCadastralWmsUrl} from './cadastre.js?v=1.3.9';
-import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=1.3.9';
-import {terrainExclusionPresentationVerified} from './terrain-exclusion-groups.js?v=1.3.9';
+import {buildCadastralWmsUrl} from './cadastre.js?v=1.3.10';
+import {satelliteStyle,SATELLITE_ATTRIBUTION} from './satellite-style.js?v=1.3.10';
+import {terrainExclusionPresentationVerified} from './terrain-exclusion-groups.js?v=1.3.10';
 
 const projectedExclusionProofs=new WeakMap();
 const geographicExclusionProofs=new WeakMap();

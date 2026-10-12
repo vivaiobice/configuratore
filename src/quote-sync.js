@@ -1,5 +1,5 @@
-import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.9';
-import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.9';
+import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.10';
+import {buildCloudSnapshot} from './cloud-project-model.js?v=1.3.10';
 
 function comparable(value) {
   if (Array.isArray(value)) return value.map(comparable);

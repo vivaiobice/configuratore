@@ -1,4 +1,4 @@
-import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.9';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.10';
 import {secureUuid} from './secure-id.js';
 
 function clone(value) {

@@ -1,5 +1,5 @@
-import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.9';
-import {encodedTerrainHistoryBefore,inspectTerrainHistoryBefore} from './terrain-history-codec.js?v=1.3.9';
+import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.10';
+import {encodedTerrainHistoryBefore,inspectTerrainHistoryBefore} from './terrain-history-codec.js?v=1.3.10';
 
 const CONVENTION='portion-results-order',MAX_EXPANDED_BYTES=4*1024*1024;
 const bytes=value=>new TextEncoder().encode(value).byteLength;

@@ -1,0 +1,20 @@
+.map-visibility-control{position:absolute;top:82px;right:18px;z-index:8;pointer-events:auto;font-family:inherit;color:var(--ink,#142019)}
+.map-visibility-control .map-visibility-trigger{display:grid;place-items:center;width:42px;height:42px;padding:9px;border:1px solid var(--line,#dce2dd);border-radius:12px;background:var(--surface,#fff);color:var(--green,#183f28);box-shadow:0 4px 18px #17302322;cursor:pointer}
+.map-visibility-trigger svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.map-visibility-control.has-hidden-overlays .map-visibility-trigger{background:var(--soft,#edf4ef)}
+.map-visibility-control button:focus-visible,.map-visibility-control input:focus-visible{outline:3px solid #8fb699;outline-offset:2px}
+.map-visibility-panel{position:absolute;right:0;top:50px;width:210px;max-width:calc(100vw - 32px);padding:12px;border:1px solid var(--line,#dce2dd);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#142019);box-shadow:0 6px 24px #17302333}
+.map-visibility-panel[hidden]{display:none!important}
+.map-visibility-panel strong{display:block;font-size:12px;margin:0 0 5px}
+.map-visibility-panel label{display:flex;align-items:center;gap:10px;min-height:44px;font-size:13px;cursor:pointer}
+.map-visibility-panel input{width:18px;height:18px;margin:0;accent-color:var(--green,#183f28);cursor:pointer}
+.map-visibility-control .map-visibility-panel button{width:100%;min-height:38px;margin-top:6px;padding:7px;border:1px solid var(--line,#dce2dd);border-radius:9px;background:var(--soft,#edf4ef);color:var(--ink,#142019);font:inherit;font-size:12px;cursor:pointer}
+[data-map-field-visible="false"] :is(.map-field-label-overlay,.field-label-marker),[data-map-quotes-visible="false"] .side-measurement-label{display:none!important}
+/* The same map element moves between the main map, Campi and editing. Keep
+   controls outside MapLibre's native control container, hidden in field views. */
+body.mobile-app-active #mobile-app .map-visibility-control{top:calc(104px + env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:auto}
+body.mobile-app-active #mobile-app .map-visibility-trigger{width:44px;height:44px;min-height:44px;padding:10px;border-radius:50%;background:var(--surface,#fff)}
+body.mobile-app-active #mobile-app .map-visibility-panel{left:0;right:auto;top:50px}
+body.mobile-app-active[data-mobile-screen="editor"] #mobile-app .map-visibility-control{top:calc(76px + env(safe-area-inset-top))}
+body.mobile-app-active #mobile-app :is(#mobile-detail-map,#mobile-parameters-preview) .map-visibility-control{top:12px;left:auto;right:12px}
+body.mobile-app-active #mobile-app :is(#mobile-detail-map,#mobile-parameters-preview) .map-visibility-panel{left:auto;right:0}

@@ -1,14 +1,14 @@
-import {nativeDirectionalServiceTerms} from './terrain-directional-certificate.js?v=1.3.9';
-import {readExactNativeDomainAreaTerms} from './terrain-contour-domain-owner.js?v=1.3.9';
+import {nativeDirectionalServiceTerms} from './terrain-directional-certificate.js?v=1.3.10';
+import {readExactNativeDomainAreaTerms} from './terrain-contour-domain-owner.js?v=1.3.10';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.9';
+from './terrain-budget.js?v=1.3.10';
 import {
   fromUTM,
   toUTM
 }
-from './coordinate-system.js?v=1.3.9';
+from './coordinate-system.js?v=1.3.10';
 import {
   Q,
   rationalSquareRoot,
@@ -34,27 +34,27 @@ import {
   nextUp,
   nextDown
 }
-from './terrain-exact.js?v=1.3.9';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.9';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.9';
+from './terrain-exact.js?v=1.3.10';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,resolveSourceAxis} from './terrain-axis-geometry.js?v=1.3.10';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.10';
 import {
   axisPieces
 }
-from './terrain-surface-flow.js?v=1.3.9';
+from './terrain-surface-flow.js?v=1.3.10';
 import {
   certifyContourElevation
 }
-from './terrain-contour-validation.js?v=1.3.9';
+from './terrain-contour-validation.js?v=1.3.10';
 import {
   createAlgebraicField
 }
-from './terrain-algebraic.js?v=1.3.9';
-import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.9';
+from './terrain-algebraic.js?v=1.3.10';
+import {canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.10';
 import {
   createBandKernel,
   traceBandBundles
 }
-from './terrain-geodesic-flow.js?v=1.3.9';
+from './terrain-geodesic-flow.js?v=1.3.10';
 /** Compare an outward binary64 enclosure to exact binary-input thresholds.
  * Adding the ceiling in floating point first could admit an extra ULP. */
 export function widthBoundsWithin(bounds,centerM) {

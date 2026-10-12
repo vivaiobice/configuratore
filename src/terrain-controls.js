@@ -1,3 +1,5 @@
+import {terrainSpacingFailureText} from './terrain-spacing-feedback.js?v=1.3.10';
+
 const PHASE_LABELS = {
  domain:'Preparazione del terreno…',
  contours:'Preparazione dei filari…',
@@ -14,6 +16,7 @@ const STATUS_LABELS = {
  'budget-exceeded':'Il calcolo ha raggiunto il limite di calcolo. Il disegno precedente è conservato.',
  timeout:'Il calcolo ha raggiunto il limite di tempo. Riprova.',
  incompatible:'Non è stata trovata una disposizione compatibile per questa porzione.',
+ 'review-required':'Non è stata trovata una disposizione verificabile. Il disegno precedente è conservato.',
  'ground-spacing-unsupported':'L’interfila sul terreno non è verificabile con questa guida manuale. Modifica la guida o usa Adatta al terreno.',
  'restore-conflict':'Il disegno precedente non può essere ripristinato dopo le modifiche successive.',
  cancelled:'Operazione annullata.',
@@ -36,6 +39,8 @@ function normalizeState(value={}) {
   canAdapt:value.canAdapt===true,canSuggestCut:value.canSuggestCut===true,repeatMode:value.repeatMode===true,
   restoreKind:['exact','proposal','conflict'].includes(restoreKind)?restoreKind:'unavailable',
   statusKind:typeof value.status?.kind==='string'?value.status.kind:null,
+  spacingFailureText:validTarget&&value.canAdapt===true&&value.busy!==true&&value.proposal?.pending!==true&&['review-required','incompatible'].includes(value.status?.kind)
+   ?terrainSpacingFailureText(value.status.spacingFeedback):null,
   budgetReason:['time','work'].includes(value.status?.budgetReason)?value.status.budgetReason:null,
   progressPhase:typeof value.progress?.phase==='string'?value.progress.phase:null,
  };
@@ -49,7 +54,7 @@ function normalizeState(value={}) {
  * The owner still validates context and checkpoints proposals atomically.
  *
  * render({portionId, contextKey?, mode, busy, canAdapt, canSuggestCut, repeatMode?,
- *   proposal: null | {pending, canApply}, status: null | {kind},
+ *   proposal: null | {pending, canApply}, status: null | {kind, spacingFeedback?},
  *   progress: null | {phase}, restoreAvailability: {kind}})
  * restore kind: unavailable | exact | proposal | conflict.
  * destroy removes only the widget, preserving the host and manual controls.
@@ -124,6 +129,7 @@ export function createTerrainControls({host,onModeChange,onApply,onCancel,onSugg
   if(!message && state.statusKind==='budget-exceeded' && state.budgetReason)message=state.budgetReason==='work'
    ?'Il calcolo ha raggiunto il limite di complessità. Il disegno precedente è conservato.'
    :'Il calcolo ha raggiunto il limite di tempo. Il disegno precedente è conservato.';
+  if(!message && ['review-required','incompatible'].includes(state.statusKind))message=state.spacingFailureText;
   if(!message && state.statusKind)message=Object.hasOwn(STATUS_LABELS,state.statusKind)?STATUS_LABELS[state.statusKind]:STATUS_LABELS.unavailable;
   if(!message && state.restoreKind==='conflict')message=STATUS_LABELS['restore-conflict'];
   if(!message && state.pendingProposal)message=STATUS_LABELS.ready;

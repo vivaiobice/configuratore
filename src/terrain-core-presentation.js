@@ -1,5 +1,6 @@
-import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.9';
-import {createTerrainControls} from './terrain-controls.js?v=1.3.9';
+import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.10';
+import {createTerrainControls} from './terrain-controls.js?v=1.3.10';
+import {terrainSpacingFailureFeedback} from './terrain-spacing-feedback.js?v=1.3.10';
 
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
@@ -32,6 +33,10 @@ export function terrainCoreWidgetState(state={}, {project={},enabled=true}={}) {
  } else if(active && availability?.available===false && availability.reason==='restore-conflict')restoreKind='conflict';
  const canAdapt=active && state.canAdapt===true;
  const idleAcquired=canAdapt && state.statusKind==='unavailable' && !state.lastProposalOutcome && !proposal;
+ const outcome=state.lastProposalOutcome;
+ const spacingFeedback=canAdapt && !state.busy && !state.viewOpening && !proposal && ['review-required','incompatible'].includes(state.statusKind)
+  && outcome?.ok===false && outcome.kind==='adapt' && outcome.status==='review-required'
+  ?terrainSpacingFailureFeedback(outcome.diagnostics,{portionId:state.portionId,spacingM:project.rowSpacingM}):null;
  return {
   portionId:active?state.portionId:null,contextKey:active?state.contextKey:null,
   mode:!proposal && saved?.legacy?saved.mode:state.actualMode==='terrain'?'terrain':'manual',
@@ -40,7 +45,7 @@ export function terrainCoreWidgetState(state={}, {project={},enabled=true}={}) {
   repeatMode:Boolean(canAdapt && !state.busy && !state.viewOpening && !proposal && saved),
   proposal:proposal?{pending:true,canApply:state.canApply===true}:null,
   progress:active && state.busy===true && state.statusKind==='saving'?{phase:'checkpoint'}:active && state.progress?{phase:state.progress.phase}:null,
-  status:active && state.statusKind && !idleAcquired?{kind:state.statusKind,...(state.lastProposalOutcome?.budgetReason?{budgetReason:state.lastProposalOutcome.budgetReason}:{})}:null,
+  status:active && state.statusKind && !idleAcquired?{kind:state.statusKind,...(state.lastProposalOutcome?.budgetReason?{budgetReason:state.lastProposalOutcome.budgetReason}:{}),...(spacingFeedback?{spacingFeedback}:{})}:null,
   restoreAvailability:{kind:restoreKind},
  };
 }

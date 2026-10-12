@@ -1,13 +1,13 @@
-import {encodeTerrainHistoryBefore,decodeTerrainHistoryBefore,encodedTerrainHistoryBefore} from './terrain-history-codec.js?v=1.3.9';
-import {hydrateTerrainProject,mapTerrainFields,inspectTerrainRowMirrors} from './terrain-row-mirror.js?v=1.3.9';
-import {calculateProject} from './project-calculator.js?v=1.3.9';
-import {terrainInputHash} from './terrain-model.js?v=1.3.9';
-import {createContourEnvelope,legacyTerrainInputs,readTerrainEnvelope,readTerrainSavedAndLive,terrainGeometryInputHash} from './terrain-replay.js?v=1.3.9';
-import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.9';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.9';
-import {TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.9';
+import {encodeTerrainHistoryBefore,decodeTerrainHistoryBefore,encodedTerrainHistoryBefore} from './terrain-history-codec.js?v=1.3.10';
+import {hydrateTerrainProject,mapTerrainFields,inspectTerrainRowMirrors} from './terrain-row-mirror.js?v=1.3.10';
+import {calculateProject} from './project-calculator.js?v=1.3.10';
+import {terrainInputHash} from './terrain-model.js?v=1.3.10';
+import {createContourEnvelope,legacyTerrainInputs,readTerrainEnvelope,readTerrainSavedAndLive,terrainGeometryInputHash} from './terrain-replay.js?v=1.3.10';
+import {buildContourTerrainProposal} from './terrain-contour-design.js?v=1.3.10';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.10';
+import {TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_CONTOUR_ALGORITHM_VERSION} from './terrain-contour-contracts.js?v=1.3.10';
 import {polygonMetrics,estimatePlantsFromRows,roundUpTo25} from './geometry.js?v=45';
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.9';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.10';
 
 const clone=value=>structuredClone(value);
 const select=(value,keys)=>Object.fromEntries(keys.filter(key=>Object.hasOwn(value,key)).map(key=>[key,value[key]]));

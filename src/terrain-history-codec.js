@@ -1,4 +1,4 @@
-import pako from './vendor/pako.js?v=1.3.9';
+import pako from './vendor/pako.js?v=1.3.10';
 
 const MAX_PLAIN_BYTES=4*1024*1024,MAX_COMPRESSED_BYTES=1024*1024;
 const invalid=()=>Object.assign(new Error('Invalid compressed terrain restore baseline.'),{status:'invalid-history'});

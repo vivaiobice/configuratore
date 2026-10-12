@@ -1,0 +1,9 @@
+.row-portion-picker{margin:1rem 0;display:grid;gap:.55rem}
+.row-portion-picker[hidden]{display:none}
+.row-portion-buttons{display:flex;flex-wrap:wrap;gap:.5rem}
+#row-portion-picker .row-portion-buttons button{min-height:44px;padding:.6rem .9rem;border:1px solid var(--line,#c9d6c8);border-radius:12px;background:var(--surface,#fff);color:inherit;font:inherit;cursor:pointer}
+#row-portion-picker .row-portion-buttons button[aria-pressed="true"]{background:#e3eedc;border-color:#507443;color:#244320;box-shadow:inset 0 0 0 1px #507443}
+#row-portion-picker .row-portion-buttons button:focus-visible{outline:3px solid #ad8433;outline-offset:2px}
+.row-portion-note,.row-portion-conflict{font-size:.78rem;line-height:1.5;margin:0;color:var(--muted,#596856)}
+.row-portion-conflict{padding:.55rem;border-left:3px solid #ad8433;background:#fff6df}
+body[data-theme="dark"] #row-portion-picker .row-portion-buttons button[aria-pressed="true"]{background:#324b30;color:#edf4e9}
