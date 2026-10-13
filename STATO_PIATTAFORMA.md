@@ -1,8 +1,8 @@
-# Stato attuale — 1.3.9
+# Stato attuale — 1.3.11
 
-La piattaforma completa 1.3.9 ottimizza Adatta al terreno mantenendo quota costante, interfila sul terreno, porzioni indipendenti e verifiche esatte. Le altre funzioni raggiunte sono preservate. Consultare README_RELEASE_1.3.9.md e QA_RELEASE_1.3.9.md per esiti e limiti del collaudo; PUBBLICAZIONE.md per caricamento e compatibilità dei nuovi checkpoint.
+Pacchetto completo con editor mobile compatto, nome progetto nell’intestazione, versione sotto navigazione, profilo ottimizzato e Media per campo su mobile e desktop. Backend Media privato attivato e verificato separatamente; nessuna pubblicazione del sito statico eseguita da questa consegna.
 
-Nessuna pubblicazione o modifica del backend è stata eseguita. I servizi server Conteggi non sono stati verificati in questa sessione; l'ultimo stato documentato del 9 ottobre 2026 indicava l'attivazione pendente.
+La logica di 3D, disegno manuale, Conteggi e PDF è conservata. Adatta al terreno mantiene i limiti della 1.3.10. Verifiche e limitazioni in QA_RELEASE_1.3.11.md; uso e caricamento in README_RELEASE_1.3.11.md e LEGGIMI_CARICAMENTO_UNICO.md.
 
 ## Documentazione storica
 

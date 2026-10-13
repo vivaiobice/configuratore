@@ -1,6 +1,6 @@
-import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.10';
-import {createTerrainControls} from './terrain-controls.js?v=1.3.10';
-import {terrainSpacingFailureFeedback} from './terrain-spacing-feedback.js?v=1.3.10';
+import {terrainQuantityBasisText,terrainTheoreticalBasisText,terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.11';
+import {createTerrainControls} from './terrain-controls.js?v=1.3.11';
+import {terrainSpacingFailureFeedback} from './terrain-spacing-feedback.js?v=1.3.11';
 
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';

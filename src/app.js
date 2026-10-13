@@ -1,69 +1,71 @@
-import {fieldCalculationInputs} from './field-calculation-inputs.js?v=1.3.10';
-import {createTerrainCalculationPresentationCache} from './terrain-calculation-presentation-cache.js?v=1.3.10';
-import {mountReleaseVersion} from './release-version.js?v=1.3.10';
-import {createTerrainController,checkpointTerrainProposal,terrainPortionEditorState} from './terrain-controller.js?v=1.3.10';
-import {terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.10';
-import {createTerrainCoreMount} from './terrain-core-presentation.js?v=1.3.10';
-import {createCadastralCoordinator} from './cadastral-auto.js?v=1.3.10';
-import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=1.3.10';
-import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=1.3.10';
-import { createMobileUI } from './mobile-ui.js?v=1.3.10';
-import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.3.10';
+import {fieldCalculationInputs} from './field-calculation-inputs.js?v=1.3.11';
+import {createTerrainCalculationPresentationCache} from './terrain-calculation-presentation-cache.js?v=1.3.11';
+import {mountReleaseVersion} from './release-version.js?v=1.3.11';
+import {createTerrainController,checkpointTerrainProposal,terrainPortionEditorState} from './terrain-controller.js?v=1.3.11';
+import {terrainUsesCertifiedQuantities} from './terrain-report-summary.js?v=1.3.11';
+import {createTerrainCoreMount} from './terrain-core-presentation.js?v=1.3.11';
+import {createCadastralCoordinator} from './cadastral-auto.js?v=1.3.11';
+import {createUserProjectsView,loadUserProjectsData} from './user-projects-view.js?v=1.3.11';
+import { createInitialState, mergeProjectState, applyGeometryWithSuggestedOrientation, normalizeMapState } from './state.js?v=1.3.11';
+import { createMobileUI } from './mobile-ui.js?v=1.3.11';
+import {createFieldMediaStore} from './field-media-store.js?v=1.3.11';
+import {createFieldMediaUI} from './field-media-ui.js?v=1.3.11';
+import { createDesktopLibraryUI } from './desktop-library-ui.js?v=1.3.11';
 import {createQuoteUI} from './quote-ui.js?v=55.6.6';
-import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.3.10';
-import { readLocalProjects, writeLocalProject } from './local-projects.js?v=1.3.10';
-import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=1.3.10';
-import { initMap } from './map.js?v=1.3.10';
-import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.3.10';
-import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=1.3.10';
-import {migrateDraftEnvelope} from './local-migrations.js?v=1.3.10&counts=1';
-import {nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.10';
-import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.3.10';
+import { createDesktopQuickCalculator, createSaveFeedback, createDesktopMapFieldAction, createCadastreToggle, createDesktopFieldSelectors, createDesktopMapSearchAction, setToolButtonLabel, syncVertexRemovalButton, renderCadastralParcelStatus } from './desktop-ux.js?v=1.3.11';
+import { readLocalProjects, writeLocalProject } from './local-projects.js?v=1.3.11';
+import { renameArchivedProject as renameArchivedProjectRecord, deleteArchivedProject as deleteArchivedProjectRecord, moveArchivedField as moveArchivedFieldRecord } from './project-archive-actions.js?v=1.3.11';
+import { initMap } from './map.js?v=1.3.11';
+import { calculateProject, calculateManualPlants } from './project-calculator.js?v=1.3.11';
+import { loadDraftRecord, saveDraft, newSessionId, getOwnerSessionId, getConsentState, setConsentState } from './storage.js?v=1.3.11';
+import {migrateDraftEnvelope} from './local-migrations.js?v=1.3.11&counts=1';
+import {nativePassageFamilyPresent} from './passage-coordinates.js?v=1.3.11';
+import {checkpointBeforeSwitch,restoreWorkspaceForOwner,restoreVersionConflict} from './tool-switch.js?v=1.3.11';
 import {resolveIntegrationConfig,buildCountsUrl} from './counts-routes.js?v=counts1';
 import {createFieldDirectory,fieldRouteParams,writePendingFieldContext,clearPendingFieldContext} from './field-directory.js?v=counts1';
-import {mountToolMenu} from './tool-menu.js?v=1.3.10';
-import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=1.3.10';
+import {mountToolMenu} from './tool-menu.js?v=1.3.11';
+import {createDesktopCountsGateway} from './counts-desktop-gateway.js?v=1.3.11';
 import {setLocalOwnerScope} from './local-owner-scope.js';
-import { APP_CONFIG } from './config.js?v=1.3.10';
-import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.3.10';
+import { APP_CONFIG } from './config.js?v=1.3.11';
+import {COUNTS_CONFIG} from '../conteggi/config.js?v=1.3.11';
 import {rememberCountsOwner} from './counts-offline-owner.js';
-import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.3.10';
-import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.3.10';
-import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.3.10';
+import {installIdentityGuard,bindBackendToIdentity} from './identity-guard.js?v=1.3.11';
+import {mountWorkspaceRestoreGate,workspaceContextMatches} from './workspace-restore-gate.js?v=1.3.11';
+import { connectSupabase, createBackend, projectPayloadToArchiveItem } from './backend.js?v=1.3.11';
 import { requireSecureConnection } from './secure-context.js';
 import { projectContactFromProfile, missingProjectProfileFields, assertSavedRevision } from './project-profile.js';
-import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=1.3.10';
+import { createCloudService, hydrateOwnedProjects } from './cloud.js?v=1.3.11';
 import { mergeCloudSnapshot } from './cloud-state.js';
 import { createSyncQueue } from './sync-queue.js';
 import { createIndexedDbSyncAdapter } from './indexeddb-sync-adapter.js';
-import { createProjectSync } from './project-sync.js?v=1.3.10';
-import {ensureQuoteRevision} from './quote-sync.js?v=1.3.10';
-import { buildCloudSnapshot } from './cloud-project-model.js?v=1.3.10';
+import { createProjectSync } from './project-sync.js?v=1.3.11';
+import {ensureQuoteRevision} from './quote-sync.js?v=1.3.11';
+import { buildCloudSnapshot } from './cloud-project-model.js?v=1.3.11';
 import { parseResumeParams } from './resume.js';
 import { adviseProject } from './project-advisor.js';
-import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.3.10';
+import { ensureProjectFields, updateActiveFieldProject, updateProjectField, addProjectField, duplicateProjectField, switchProjectField, removeActiveProjectField, renameActiveProjectField, autoNameActiveProjectField, activeField } from './fields.js?v=1.3.11';
 import {createCadastralReferenceEditor} from './cadastral-reference-editor.js?v=1.0.2';
 import {createSoilMapController} from './soil-map.js?v=55.4';
 import {SOIL_LAYER_LABELS,soilProfileIsCurrent} from './soil.js?v=55.3';
 import {renderSoilCard} from './soil-card.js?v=55.1';
 import {createViewMode} from './view-mode.js?v=55.4';
 import {resolveEditableProjectCode} from './project-code-loader.js?v=55.2';
-import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.3.10';
-import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.10';
-import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.3.10';
+import {prepareReportContext,REPORT_CONTEXT_KEY} from './report-context.js?v=1.3.11';
+import {serializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.11';
+import {createReportProjectSource,hasReportProjectChanges} from './report-project-source.js?v=1.3.11';
 import {installPenTapFallback} from './pen-tap.js?v=55.5';
 import { createFieldLocationCoordinator, resolveFieldLocation } from './field-location.js?v=51';
 import { normalizeHeadlandForMechanization } from './project-rules.js';
 import { OTHER_MATERIAL_VALUE, listVarieties, listClonesForVariety, listRootstocksForSelection, isOtherMaterialSelection, isKnownCloneForVariety, isKnownRootstockForSelection } from './plant-catalog.js?v=45';
-import { createAuthService } from './auth-service.js?v=1.3.10';
-import { createAuthBridge } from './auth-bridge.js?v=1.3.10';
-import { createProfileUI } from './profile-ui.js?v=1.3.10';
+import { createAuthService } from './auth-service.js?v=1.3.11';
+import { createAuthBridge } from './auth-bridge.js?v=1.3.11';
+import { createProfileUI } from './profile-ui.js?v=1.3.11';
 import { initializeTheme } from './theme.js?v=45';
 import { REPORT_HANDOFF_KEY } from './report-handoff.js?v=45';
 import { normalizeOrientationDeg,formatOrientationDeg } from './orientation.js?v=45';
-import { resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.10';
+import { resolveRowCurvePoints,getRowCurveSegments } from './row-curves.js?v=1.3.11';
 import {curveControlRange,nextCurveControlPoint} from './row-curve-control-state.js';
-import {rowPortionEditorState,rowPortionDesignPatch,nextPortionCurvePoint,renderRowPortionPicker,NO_ROW_PORTION} from './row-portion-editor.js?v=1.3.10';
+import {rowPortionEditorState,rowPortionDesignPatch,nextPortionCurvePoint,renderRowPortionPicker,NO_ROW_PORTION} from './row-portion-editor.js?v=1.3.11';
 import { normalizePublicProjectCode, buildPublicProjectUrl } from './public-project-access.js?v=45';
 
 const $ = (selector) => document.querySelector(selector);
@@ -98,6 +100,26 @@ let switchingTool=false;
 let coordinatedIdentityChange=false,identitySaveFailed=false,identityFrozen=false;
 let fieldDirectory=null,countsGateway=null;
 let countsConfig;
+let mediaClient=null,fieldMediaStore=null;
+function fieldMediaContext(){
+ const auth=authBridge.getState(),field=state.project.fields?.find(item=>item.id===state.project.activeFieldId);
+ return {ownerId:auth.kind==='user'?auth.user?.id??null:null,guestId:'guest',projectId:state.project.localProjectId,
+  fieldId:overviewMode||identityFrozen?null:field?.id,fieldName:field?.label||state.project.label||'Campo',environment:APP_CONFIG.environment};
+}
+const fieldMediaUI=createFieldMediaUI({document,getContext:fieldMediaContext,getStore:()=>{
+ if(!fieldMediaStore)fieldMediaStore=createFieldMediaStore({client:mediaClient,getContext:fieldMediaContext});return fieldMediaStore;
+},ensureSaved:async context=>{
+ if(identityFrozen||restoringWorkspace||!projectSync)throw new Error('Attendi la connessione del profilo e riprova.');
+ const result=await projectSync.flush();
+ if(context.ownerId!==fieldMediaContext().ownerId||context.projectId!==state.project.localProjectId||context.fieldId!==state.project.activeFieldId)throw new Error('Il campo è cambiato. Riapri Media.');
+ if(result.state!=='synced'||!result.projectId)throw new Error('Il campo non è stato sincronizzato. Riprova prima di caricare i media.');
+}});
+function openFieldMedia(fieldId=state.project.activeFieldId){
+ if(identityFrozen||restoringWorkspace)return setStatus('Attendi il ripristino del progetto.');
+ if(!state.project.fields?.some(item=>item.id===fieldId&&item.geometry))return setStatus('Disegna e salva il campo prima di aggiungere Media.');
+ if(fieldId!==state.project.activeFieldId||overviewMode){state={...state,project:switchProjectField(state.project,fieldId)};persist();loadActiveFieldOnMap();}
+ persist();return fieldMediaUI.open();
+}
 try{countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:APP_CONFIG.countsEnabled});}
 catch{console.warn('Conteggi non configurato su questa origine');countsConfig=resolveIntegrationConfig(globalThis.location.href,{enabled:false});}
 let perimeterEventSent = Boolean(state.project.geometry);
@@ -107,6 +129,8 @@ let activeRowPortionId=null;
 let rowPortionFieldId=null;
 let cadastralOverlayActive=false;
 const authBridge=createAuthBridge();
+let mediaAuthOwner=null;
+authBridge.subscribe(auth=>{const owner=auth?.kind==='user'?auth.user?.id??null:null;if(owner!==mediaAuthOwner){fieldMediaUI.close();fieldMediaStore?.invalidate();mediaAuthOwner=owner;}else fieldMediaUI.contextChanged();});
 let adminReadClient=null;
 const userProjectsView=createUserProjectsView({document,auth:authBridge,loadData:()=>loadUserProjectsData(adminReadClient)});
 authBridge.subscribe(()=>desktopLibraryUi?.render());
@@ -649,6 +673,8 @@ const desktopFieldSelectors=createDesktopFieldSelectors({document,onSelect:(id)=
 desktopFieldSelectors.mount();
 
 function renderFieldManager({renderMobile=true}={}) {
+  fieldMediaUI.contextChanged();
+  const mediaButton=$('#summary-field-media');if(mediaButton)mediaButton.disabled=overviewMode||identityFrozen||!state.project.geometry;
   if(renderMobile)mobileUi?.renderField();
   desktopFieldSelectors.render(state.project.fields ?? [],overviewMode?'':state.project.activeFieldId);
   const remove = $('#remove-field-button'); if (remove) remove.disabled = (state.project.fields?.length ?? 1) <= 1;
@@ -1029,8 +1055,11 @@ async function moveArchivedField(sourceItem,targetItem,field){
   });
 }
 
+$('#summary-field-media')?.addEventListener('click',()=>openFieldMedia());
+
 mountReleaseVersion();
 mobileUi = createMobileUI({
+  openFieldMedia,
   countsEnabled:countsConfig.enabled,openCounts:switchToCounts,openCountsForField,
   auth:authBridge,
   getMap:()=>mapApi?.map,
@@ -1060,6 +1089,7 @@ mobileUi = createMobileUI({
 if(countsConfig.enabled)mountToolMenu({document,onCounts:()=>switchToCounts('resume'),onError:error=>setStatus(error.message||'Conteggi non disponibile.')});
 
 desktopLibraryUi=createDesktopLibraryUI({
+  openFieldMedia,
   countsEnabled:countsConfig.enabled,openCountsForField,loadCountsForField,
   document,isDesktop:()=>!isMobileMap(),getFields:()=>state.project.fields??[],getProjects:()=>readLocalProjects(globalThis.localStorage),getActiveProjectId:()=>state.project.localProjectId,
   getFieldMetrics:(field)=>calculateFieldPresentation(field),
@@ -1319,6 +1349,7 @@ async function initializeCloud() {
   try {
     let startupConflict=false;
     const client = await connectSupabase({ url:APP_CONFIG.supabaseUrl, publishableKey:APP_CONFIG.supabasePublishableKey });
+    fieldMediaUI.close();mediaClient=client;fieldMediaStore?.dispose();fieldMediaStore=null;
     adminReadClient=client;
     if (!client) return;
     const resumeRequest = parseResumeParams(globalThis.location.href);

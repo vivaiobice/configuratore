@@ -29,8 +29,8 @@ test('native clear button is accessible and distinct from selecting a portion',(
 test('the eight refinement cards retain their real controls, ordered and independently collapsible',async()=>{
  const {document}=parseHTML(await readFile(new URL('../index.html',import.meta.url),'utf8'));
  const cards=[...document.querySelectorAll('.advanced-body > details.advanced-card')];
- assert.deepEqual(cards.map(c=>c.dataset.refinement),['portions','curve','exclusions','plant','material','information','cadastre','soil']);
- const controls=['#row-portion-picker','#curve-add-button','#exclusion-list','#headland','#grape-variety','#project-context','#cadastral-reference-editor','#soil-profile'];
+ assert.deepEqual(cards.map(c=>c.dataset.refinement),['plant','material','information','cadastre','soil','portions','curve','exclusions']);
+ const controls=['#headland','#grape-variety','#project-context','#cadastral-reference-editor','#soil-profile','#row-portion-picker','#curve-add-button','#exclusion-list'];
  cards.forEach((card,i)=>{assert.ok(card.querySelector(controls[i]));assert.ok(card.querySelector('summary svg'));assert.equal(card.hasAttribute('name'),false);});
  for(const control of controls)assert.equal(document.querySelectorAll(control).length,1);
  assert.equal(document.querySelector('.step[data-step="2"] .row-curve-controls'),null);

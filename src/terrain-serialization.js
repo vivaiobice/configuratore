@@ -1,6 +1,6 @@
-import {mapTerrainFields,packTerrainRowMirror,hydrateTerrainRows,inspectTerrainRowMirrors,terrainSnapshotJson} from './terrain-row-mirror.js?v=1.3.10';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.10';
-import {inspectTerrainJsonText} from './terrain-history-codec.js?v=1.3.10';
+import {mapTerrainFields,packTerrainRowMirror,hydrateTerrainRows,inspectTerrainRowMirrors,terrainSnapshotJson} from './terrain-row-mirror.js?v=1.3.11';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.11';
+import {inspectTerrainJsonText} from './terrain-history-codec.js?v=1.3.11';
 export const TERRAIN_FIELD_MAX_BYTES=1024*1024;
 export const TERRAIN_SNAPSHOT_MAX_BYTES=4*1024*1024;
 const bytes=value=>new TextEncoder().encode(value).byteLength;

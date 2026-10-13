@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {calculateProject} from '../src/project-calculator.js?v=1.3.10';
-import {terrainPortionEditorState} from '../src/terrain-controller.js?v=1.3.10';
-import {fieldCalculationInputs} from '../src/field-calculation-inputs.js?v=1.3.10';
-import {createTerrainCalculationPresentationCache} from '../src/terrain-calculation-presentation-cache.js?v=1.3.10';
+import {calculateProject} from '../src/project-calculator.js?v=1.3.11';
+import {terrainPortionEditorState} from '../src/terrain-controller.js?v=1.3.11';
+import {fieldCalculationInputs} from '../src/field-calculation-inputs.js?v=1.3.11';
+import {createTerrainCalculationPresentationCache} from '../src/terrain-calculation-presentation-cache.js?v=1.3.11';
 
 const app=readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 const fixture=JSON.parse(readFileSync(new URL('./fixtures/terrain-v130-applied.json',import.meta.url),'utf8')).cases[0];
@@ -24,6 +24,9 @@ function harness(){
  const $=selector=>{if(!nodes.has(selector))nodes.set(selector,{value:'',disabled:false,hidden:false});return nodes.get(selector);};
  const observe=name=>(...args)=>{events.push(name);return args;};
  const scope={state,$,fieldCalculationInputs,createTerrainCalculationPresentationCache,terrainPortionEditorState,
+  // The extracted app functions now notify the independent Media dialog when
+  // selection changes; its real integration is covered by browser acceptance.
+  fieldMediaUI:{contextChanged(){}},
   calculateProject:inputs=>{events.push('calculate');calls++;const result=calculateProject(inputs);metrics.push(result);return result;},
   APP_CONFIG:{environment:'LIVE'},authBridge:{getState:()=>({user:{id:'owner'}})},identityFrozen:false,NO_ROW_PORTION:'none',
   mobileUi:{renderField(){events.push('mobile');displayed=methods.calculateFieldPresentation(state.project);},isActive:()=>true,captureSession:()=>({screen:'editor'})},

@@ -1,4 +1,4 @@
-import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.10';
+import {normalizeTerrainStorageForComparison} from './terrain-history.js?v=1.3.11';
 const GROUPS = {
   geometry:['geometry'],
   exclusions:['exclusions'],

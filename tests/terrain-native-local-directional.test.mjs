@@ -4,10 +4,10 @@ import {createTerrainModel} from '../src/terrain-model.js';
 import {fromUTM} from '../src/coordinate-system.js';
 import {createTerrainBudget} from '../src/terrain-budget.js';
 import {createContourDomain} from '../src/terrain-contour-domain.js';
-import {traceFinitePolylineContourLevel} from '../src/terrain-polyline-source.js?v=1.3.10';
-import * as certificates from '../src/terrain-directional-certificate.js?v=1.3.10';
+import {traceFinitePolylineContourLevel} from '../src/terrain-polyline-source.js?v=1.3.11';
+import * as certificates from '../src/terrain-directional-certificate.js?v=1.3.11';
 import {measureContourAxes} from '../src/terrain-contour-family.js';
-import {measureNativeDirectionalService} from '../src/terrain-surface-bands.js?v=1.3.10';
+import {measureNativeDirectionalService} from '../src/terrain-surface-bands.js?v=1.3.11';
 
 function paddedHill({step=.9,headlandM=0,reverseBoth=false,extract=true}={}){
  const n=25,budget=createTerrainBudget({kind:'adapt'});

@@ -1,5 +1,5 @@
-import { isValidProjectStatus } from './admin-model.js?v=1.3.10';
-import {assertTerrainWireFieldBudget} from '../src/terrain-serialization.js?v=1.3.10';
+import { isValidProjectStatus } from './admin-model.js?v=1.3.11';
+import {assertTerrainWireFieldBudget} from '../src/terrain-serialization.js?v=1.3.11';
 
 const PROJECT_SELECT = [
   'id','owner_user_id','client_project_id','public_code','name','campaign_year','origin','owner_kind','version','latest_revision_number','deleted_at',

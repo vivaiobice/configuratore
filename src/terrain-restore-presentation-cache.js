@@ -1,4 +1,4 @@
-import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.10';
+import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.11';
 
 // This key belongs only to an interface value. It is never a terrain proof,
 // budget exemption, persisted fingerprint or caller-supplied source identity.

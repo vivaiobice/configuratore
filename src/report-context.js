@@ -1,5 +1,5 @@
-import {deserializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.10';
-import {createReportPreflight,updateReportPreflight,DISCLAIMER_VERSION} from './report-preflight.js?v=1.3.10';
+import {deserializeTerrainSnapshot} from './terrain-serialization.js?v=1.3.11';
+import {createReportPreflight,updateReportPreflight,DISCLAIMER_VERSION} from './report-preflight.js?v=1.3.11';
 
 const clone=value=>globalThis.structuredClone?globalThis.structuredClone(value):JSON.parse(JSON.stringify(value));
 export const REPORT_CONTEXT_KEY=requestId=>`vivai-obice:report-context:v1:${requestId}`;

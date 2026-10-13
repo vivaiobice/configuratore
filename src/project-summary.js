@@ -1,4 +1,4 @@
-import {calculateProject} from './project-calculator.js?v=1.3.10';
+import {calculateProject} from './project-calculator.js?v=1.3.11';
 
 export function fieldSummaryMetrics(field={}) {
  if(field.terrain)return calculateProject({...field,polygon:field.geometry});

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import * as content from '../src/terrain-actual-content.js?v=1.3.10';
-import {fieldCalculationInputs} from '../src/field-calculation-inputs.js?v=1.3.10';
-import {createTerrainCalculationPresentationCache} from '../src/terrain-calculation-presentation-cache.js?v=1.3.10';
+import * as content from '../src/terrain-actual-content.js?v=1.3.11';
+import {fieldCalculationInputs} from '../src/field-calculation-inputs.js?v=1.3.11';
+import {createTerrainCalculationPresentationCache} from '../src/terrain-calculation-presentation-cache.js?v=1.3.11';
 
 const field=()=>({id:'f',geometry:[[9,45],[9.01,45.01]],rowSpacingM:3,terrain:{model:{contentHash:'unchanged',grid:{valuesBase64:'actual'}},applied:{result:{rows:[]}},history:{entries:[]}}});
 const applied=()=>({terrainStatus:'applied',rows:[{coordinates:[[9,45],[9.01,45.01]]}],rowCount:1});

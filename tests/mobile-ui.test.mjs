@@ -41,7 +41,7 @@ test('mixed valid and invalid terrain fields cannot display an unlabeled project
 test('legacy responsive controller cannot pull the map out of the active mobile app',()=>{assert.match(app,/mobileUi\?\.isActive\?\.\(\)/);});
 test('mobile release label follows the version displayed in the main header',()=>{
  const c=setup();
- assert.equal(c.$('.mobile-brand span').textContent,c.$('.test-badge').textContent);
+ assert.equal(c.$('.mobile-release-label').textContent,c.$('.test-badge').textContent);
 });
 test('mobile editor context can be restored without confirming or cancelling its transaction',()=>{
  const first=setup(),{$}=first;$('#mobile-add-field').click();

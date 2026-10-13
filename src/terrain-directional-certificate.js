@@ -1,11 +1,11 @@
 // Native shortest-distance certificate. A fixed transverse lifted path proves
 // an upper bound; the elevation differential bounds EVERY acquired-surface
 // path below. No gradient-normal trajectory or exact-width band is claimed.
-import {Q,ZERO,ONE,TWO,add,sub,mul,div,sq,cmp,sign,min,max,neg,key,unique,mid,numberBounds,sqrtBounds,exactDomain,height,inRegion,vsub,dot,orient,segmentIntersection,segmentDistanceSquared,splitSegment,nextUp,nextDown} from './terrain-exact.js?v=1.3.10';
-import {axisPieces} from './terrain-surface-flow.js?v=1.3.10';
-import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.10';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION} from './terrain-polyline-source.js?v=1.3.10';
-import {certifyNativeRetainedApproach} from './terrain-native-approach.js?v=1.3.10';
+import {Q,ZERO,ONE,TWO,add,sub,mul,div,sq,cmp,sign,min,max,neg,key,unique,mid,numberBounds,sqrtBounds,exactDomain,height,inRegion,vsub,dot,orient,segmentIntersection,segmentDistanceSquared,splitSegment,nextUp,nextDown} from './terrain-exact.js?v=1.3.11';
+import {axisPieces} from './terrain-surface-flow.js?v=1.3.11';
+import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.11';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION} from './terrain-polyline-source.js?v=1.3.11';
+import {certifyNativeRetainedApproach} from './terrain-native-approach.js?v=1.3.11';
 export const DIRECTIONAL_SPACING_METHOD='native-directional-shortest-spacing-1';
 export const DIRECTIONAL_SERVICE_METHOD='native-directional-conservative-ribbon-1';
 const certificateEvidence=new WeakMap(),metricEvidence=new WeakMap();

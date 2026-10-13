@@ -63,7 +63,7 @@ test('desktop project refinement retains eight independent cards with their orig
   const advanced=document.querySelector('.advanced');
   assert.match(advanced.querySelector('summary').textContent,/Affina il progetto/);
   const cards=[...advanced.querySelectorAll('.advanced-body > details.advanced-card')];
-  const expected=['portions','curve','exclusions','plant','material','information','cadastre','soil'];
+  const expected=['plant','material','information','cadastre','soil','portions','curve','exclusions'];
   assert.deepEqual(cards.map(card=>card.dataset.refinement),expected);
   const controls={portions:['#row-portion-picker','#orientation','#orientation-output'],curve:['#curve-add-button','#curve-edit-button','#curve-reset-button','#curve-points-list'],exclusions:['#exclusion-list'],plant:['#headland','#post-spacing','#mechanized'],material:['#grape-variety','#clone-selection','#rootstock'],information:['#campaign-year-desktop','#project-context','#project-context-note'],cadastre:['#cadastral-reference-editor','#cadastral-auto-refresh'],soil:['#soil-layer-select','#soil-analyze','#soil-profile']};
   for(const card of cards){

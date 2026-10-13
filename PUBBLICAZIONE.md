@@ -1,3 +1,11 @@
+# Pubblicazione — pacchetto completo 1.3.11
+
+Usare lo ZIP 1.3.11 e seguire [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Il backend Media privato è attivato sull’istanza LIVE; nessuna nuova attivazione manuale è richiesta per Media. La pubblicazione del sito statico resta il caricamento dell’intero archivio.
+
+Controllare versione, selettore tool, bozza conservata tra Configuratore e Conteggi, pannelli Affina progetto mobile, profilo e Media mobile/desktop. Dettagli e prove in README_RELEASE_1.3.11.md e QA_RELEASE_1.3.11.md.
+
+## Documentazione storica
+
 # Pubblicazione — piattaforma Vivai Obice 1.3.9
 
 Il pacchetto contiene Configuratore e Conteggi. Destinazioni: `https://progettaimpianto.vivaiobice.com/` e `/conteggi/`. Repository e impostazioni GitHub Pages restano quelli esistenti. Nessuna pubblicazione remota è stata eseguita in questa consegna.

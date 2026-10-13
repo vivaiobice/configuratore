@@ -1,22 +1,22 @@
-import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.10';
-import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.10';
-import {validTerrainRowPreview} from './terrain-row-preview.js?v=1.3.10';
-import {certifyNativeDirectionalFamily,certifyNativeLocalDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.10';
-import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.10';
-import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.10';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.10';
+import {actualTerrainContentKey} from './terrain-actual-content.js?v=1.3.11';
+import {hydrateTerrainRows} from './terrain-row-mirror.js?v=1.3.11';
+import {validTerrainRowPreview} from './terrain-row-preview.js?v=1.3.11';
+import {certifyNativeDirectionalFamily,certifyNativeLocalDirectionalFamily,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.11';
+import {measureNativeDirectionalService} from './terrain-surface-bands.js?v=1.3.11';
+import {terrainInputHash,validateTerrainModel} from './terrain-model.js?v=1.3.11';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_ENVELOPE_SCHEMA_VERSION,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.11';
 
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.10';
-import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.10';
-import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.10';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.10';
-import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.10';
-import {createContourDomain} from './terrain-contour-domain.js?v=1.3.10';
-import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.10';
-import {resolveRowPortions} from './row-portions.js?v=1.3.10';
-import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.10';
-import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.10';
-import {calculateProject} from './project-calculator.js?v=1.3.10';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,validSourceAxisSchema,axisSourceHash} from './terrain-axis-geometry.js?v=1.3.11';
+import {terrainSurfaceGroupsPresent,resolveTerrainExclusionGroups} from './terrain-exclusion-groups.js?v=1.3.11';
+import {deriveCanonicalCutScopes,canonicalCutDomainScope} from './terrain-canonical-domain.js?v=1.3.11';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.11';
+import {FINITE_POLYLINE_AXIS_CONVENTION,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.11';
+import {createContourDomain} from './terrain-contour-domain.js?v=1.3.11';
+import {measureContourAxes,rebuildLegacyFiniteCandidate} from './terrain-contour-family.js?v=1.3.11';
+import {resolveRowPortions} from './row-portions.js?v=1.3.11';
+import {sourceManualRows,manualAxes,manualStraightIntent,preserveFlatManualQuantities} from './terrain-manual-axes.js?v=1.3.11';
+import {groundSpaceManualAxes} from './terrain-ground-spacing.js?v=1.3.11';
+import {calculateProject} from './project-calculator.js?v=1.3.11';
 const clone=value=>JSON.parse(JSON.stringify(value));
 // Inspect the actual serialized payload without recursively walking the stack
 // or first allocating a flattened coordinate list. Aliases are visited once per
@@ -68,7 +68,7 @@ function envelopeHash(applied,budget){
  return checkedHash(Object.hasOwn(applied,'schemaVersion')?{schemaVersion:applied.schemaVersion,algorithmVersion:applied.algorithmVersion,...contents}:contents,budget);
 }
 export function hashTerrainEnvelope(applied){return envelopeHash(applied);}
-/** @returns {import('./terrain-contour-contracts.js?v=1.3.10').AppliedEnvelopeV2} */
+/** @returns {import('./terrain-contour-contracts.js?v=1.3.11').AppliedEnvelopeV2} */
 export function createContourEnvelope({project,model,result,portionResults,validation,budget}){
  budget?.check();
  const inputs=geometryInputs(project,budget);

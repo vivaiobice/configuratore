@@ -1,33 +1,33 @@
-import {compactTerrainRowPreview,validTerrainRowPreview} from './terrain-row-preview.js?v=1.3.10';
-import {certifyNativeDirectionalFamily,certifyNativeLocalDirectionalFamily,hasNativeDirectionalSupport,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.10';
-import {buildNativeAdaptiveLevelSchedule} from './terrain-adaptive-levels.js?v=1.3.10';
-import {certifyNativeRetainedApproach} from './terrain-native-approach.js?v=1.3.10';
-import {terrainSpacingFailureFeedback,terrainSpacingFailureText} from './terrain-spacing-feedback.js?v=1.3.10';
-import {measureNativeDirectionalService,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.10';
-import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.10';
+import {compactTerrainRowPreview,validTerrainRowPreview} from './terrain-row-preview.js?v=1.3.11';
+import {certifyNativeDirectionalFamily,certifyNativeLocalDirectionalFamily,hasNativeDirectionalSupport,hasVariedNativeDirectionalGeometry,directionalRetainedAxes,DIRECTIONAL_SPACING_METHOD,DIRECTIONAL_SERVICE_METHOD} from './terrain-directional-certificate.js?v=1.3.11';
+import {buildNativeAdaptiveLevelSchedule} from './terrain-adaptive-levels.js?v=1.3.11';
+import {certifyNativeRetainedApproach} from './terrain-native-approach.js?v=1.3.11';
+import {terrainSpacingFailureFeedback,terrainSpacingFailureText} from './terrain-spacing-feedback.js?v=1.3.11';
+import {measureNativeDirectionalService,measuredSurfaceAreasComparable} from './terrain-surface-bands.js?v=1.3.11';
+import {TERRAIN_MAX_NODES} from './terrain-contour-contracts.js?v=1.3.11';
 import {
   createTerrainBudget
 }
-from './terrain-budget.js?v=1.3.10';
+from './terrain-budget.js?v=1.3.11';
 import {
   traceContourLevel
 }
-from './terrain-contours.js?v=1.3.10';
+from './terrain-contours.js?v=1.3.11';
 import {
   certifyContourSpacing
 }
-from './terrain-contour-validation.js?v=1.3.10';
+from './terrain-contour-validation.js?v=1.3.11';
 import {
   traceSurfaceBand,
   measureSurfaceUnion,
   compareMeasuredSurfaceAreas
 }
-from './terrain-surface-bands.js?v=1.3.10';
+from './terrain-surface-bands.js?v=1.3.11';
 import {
   toUTM,
   fromUTM
 }
-from './coordinate-system.js?v=1.3.10';
+from './coordinate-system.js?v=1.3.11';
 import {
   exactDomain,
   Q,
@@ -51,10 +51,10 @@ import {
   ZERO,
   orient
 }
-from './terrain-exact.js?v=1.3.10';
-import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.10';
-import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.10';
-import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.10';
+from './terrain-exact.js?v=1.3.11';
+import {SOURCE_DOMAIN_AXIS_CONVENTION,SOURCE_PARAMETER_OPERATION,axisBinding,resolveSourceAxis,physicalFragments,exactPieceLengthBounds,trimSourceFragment,axisSourceHash,intersectSourceIntervals} from './terrain-axis-geometry.js?v=1.3.11';
+import {certifyUniformPlaneSupport} from './terrain-surface-bands.js?v=1.3.11';
+import {FINITE_POLYLINE_AXIS_CONVENTION,POLYLINE_SOURCE_PARAMETER_OPERATION,traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,intersectPolylineSourceIntervals,polylinePhysicalFragments,trimPolylineSourceFragment,finitePolylineSourceHash,validFinitePolylineSourceAxisSchema} from './terrain-polyline-source.js?v=1.3.11';
 const failed=(status,diagnostics)=>({
   ok:false,
   status,

@@ -1,4 +1,4 @@
-import {terrainSpacingFailureText} from './terrain-spacing-feedback.js?v=1.3.10';
+import {terrainSpacingFailureText} from './terrain-spacing-feedback.js?v=1.3.11';
 
 const PHASE_LABELS = {
  domain:'Preparazione del terreno…',

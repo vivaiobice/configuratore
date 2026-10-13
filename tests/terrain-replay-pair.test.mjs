@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.10';
-import {packTerrainRowMirror} from '../src/terrain-row-mirror.js?v=1.3.10';
-import {fromUTM} from '../src/coordinate-system.js?v=1.3.10';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.11';
+import {packTerrainRowMirror} from '../src/terrain-row-mirror.js?v=1.3.11';
+import {fromUTM} from '../src/coordinate-system.js?v=1.3.11';
 
 // Execute the actual module and its real validators. The only instrumentation
 // counts reader entries; no result, hash, numerical predicate, or budget is mocked.

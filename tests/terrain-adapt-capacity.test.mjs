@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {nativeDirectionalFixture} from './helpers/terrain-directional-fixture.mjs';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.10';
-import {buildContourTerrainProposal} from '../src/terrain-contour-design.js?v=1.3.10';
-import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.10';
-import {chargeTerrainOperationCopy} from '../src/terrain-worker-client.js?v=1.3.10';
-import {serializeTerrainSnapshot} from '../src/terrain-serialization.js?v=1.3.10';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.11';
+import {buildContourTerrainProposal} from '../src/terrain-contour-design.js?v=1.3.11';
+import {readTerrainEnvelope} from '../src/terrain-replay.js?v=1.3.11';
+import {chargeTerrainOperationCopy} from '../src/terrain-worker-client.js?v=1.3.11';
+import {serializeTerrainSnapshot} from '../src/terrain-serialization.js?v=1.3.11';
 test('authentic 50m directional L completes both portions, transport and an independent fresh JSON replay within unchanged caps',t=>{
  const {model,project}=nativeDirectionalFixture({size:50}),original=JSON.stringify(project),budget=createTerrainBudget({kind:'adapt'});
  const proposal=buildContourTerrainProposal({project,model,budget});

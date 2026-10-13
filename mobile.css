@@ -340,3 +340,54 @@
 @media screen and (orientation:landscape){
  #mobile-app[data-screen="map"] .maplibregl-ctrl-bottom-left{bottom:calc(78px + env(safe-area-inset-bottom))}
 }
+
+/* Project identity and release have their own space above and below the map. */
+@media screen{
+ #mobile-app{--mobile-nav-reserved:96px}
+ body.mobile-app-active #mobile-app[data-screen="map"]>.mobile-brand{top:calc(8px + env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:max(60px,env(safe-area-inset-right));max-width:none;min-width:0;min-height:44px;gap:6px}
+ #mobile-app #mobile-map-project-name{display:block;flex:1;min-width:0;width:auto;max-width:100%;margin:0;padding:7px 8px;border-radius:9px;background:#fffffff0;color:#21462e;font-size:11px;font-weight:700;line-height:16px;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 3px 14px #17302319}
+ #mobile-app[data-screen]>.mobile-release-label{position:absolute;left:50%;bottom:calc(4px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:16;max-width:calc(100% - 24px);height:14px;padding:0 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:5px;background:#193b29bf;color:#fff;font-size:9px;font-weight:650;line-height:14px;letter-spacing:0;pointer-events:none}
+ #mobile-app[data-screen]>.mobile-release-label:empty,#mobile-app[data-screen="editor"]>.mobile-release-label,#mobile-app[data-screen="parameters"]>.mobile-release-label,#mobile-app.mobile-keyboard-open>.mobile-release-label{display:none}
+ #mobile-app[data-screen]>.mobile-navigation{bottom:calc(24px + env(safe-area-inset-bottom))}
+ #mobile-app[data-screen]:not([data-screen="parameters"]):not(.mobile-keyboard-open)>#mobile-pages{bottom:calc(var(--mobile-nav-reserved) + env(safe-area-inset-bottom))}
+ body.mobile-app-active #mobile-app[data-screen].mobile-keyboard-open #mobile-pages{bottom:0;padding-bottom:18px}
+ #mobile-app[data-screen="map"] #mobile-add-field{bottom:calc(108px + env(safe-area-inset-bottom))}
+ #mobile-app[data-screen="map"] .maplibregl-ctrl-bottom-right{bottom:calc(184px + env(safe-area-inset-bottom))}
+ #mobile-app[data-screen="map"] .mobile-sheet{bottom:calc(102px + env(safe-area-inset-bottom))}
+ #mobile-app .mobile-map-tools-stack{display:contents}
+ #mobile-app .mobile-home-tools>button{flex-shrink:0}
+
+ /* The section rail stays beside the bottom panel, including short screens. */
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-map-tools-stack{position:absolute;display:flex;flex-direction:column;gap:8px;top:calc(104px + env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));bottom:calc(72px + env(safe-area-inset-bottom));width:44px;min-height:0;z-index:14}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-home-tools{position:static;display:flex;flex-direction:column;flex:none;width:44px;height:auto;min-height:0;overflow:visible;align-items:center}
+ #mobile-app[data-screen="editor"] #mobile-refinement-tools{display:flex;flex:1;min-height:0;flex-direction:column;align-items:center;gap:5px;overflow-y:auto;overscroll-behavior:contain;padding:2px 0 4px;scrollbar-width:thin}
+ #mobile-app[data-screen="editor"] #mobile-refinement-tools button{flex:none;width:40px;height:40px;min-height:40px;padding:8px;border:1px solid var(--line,#d3ddcc);border-radius:12px;background:var(--surface,#fff);color:var(--ink,#21462e);box-shadow:0 3px 12px #17302322}
+ #mobile-app[data-screen="editor"] #mobile-refinement-tools button[aria-pressed="true"]{background:#225939;color:#fff;border-color:#225939}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-editor-tools{grid-template-columns:minmax(0,1fr);right:max(64px,env(safe-area-inset-right))}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-editor-tools>button:not([data-sheet="orientation"]){display:none}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-editor-tools>[data-sheet="orientation"]{background:#a45135;color:#fff;font-size:12px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-sheet{left:max(8px,env(safe-area-inset-left));right:max(64px,env(safe-area-inset-right));bottom:calc(72px + env(safe-area-inset-bottom));max-height:min(38dvh,304px);padding:8px 10px 12px;border-radius:17px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"].mobile-keyboard-open .mobile-sheet{bottom:8px;max-height:calc(var(--mobile-viewport-height,100dvh) - 16px);padding-bottom:16px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-sheet-handle{margin-bottom:4px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-sheet>header{position:sticky;top:-8px;z-index:1;background:var(--surface,#fff);color:var(--ink,#21462e);gap:5px;margin:0 0 8px;padding:2px 0;font-size:13px;line-height:18px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] #mobile-close-sheet{flex:none;width:36px;min-width:36px;height:40px;min-height:40px;padding:6px}
+ #mobile-app[data-screen="editor"][data-refinement-panel="true"] :is(.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right){bottom:calc(min(38dvh,304px) + 80px + env(safe-area-inset-bottom))}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .maplibregl-ctrl-bottom-right{right:max(64px,env(safe-area-inset-right))}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .maplibregl-ctrl-attrib{max-height:64px;overflow:auto}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-refinement-mode="true"] .map-wrap .map-status{bottom:calc(176px + env(safe-area-inset-bottom))}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-refinement-panel="true"] .map-wrap .map-status{bottom:calc(min(38dvh,304px) + 152px + env(safe-area-inset-bottom))}
+ html[data-theme="dark"] #mobile-app[data-screen="editor"] #mobile-editor-title{color:#21462e}
+ #mobile-app[data-screen="detail"] #mobile-detail-media{flex:none;min-height:36px;padding:7px 10px;font-size:11px}
+}
+@media screen and (orientation:landscape){
+ #mobile-app[data-screen="profile"]{--mobile-nav-reserved:68px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-map-tools-stack{top:calc(104px + env(safe-area-inset-top));bottom:calc(70px + env(safe-area-inset-bottom));width:88px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .mobile-home-tools{width:88px;display:grid;grid-template-columns:repeat(2,40px);gap:5px}
+ #mobile-app[data-screen="editor"] #mobile-refinement-tools{display:grid;grid-template-columns:repeat(2,40px);align-content:start;justify-content:center;gap:5px}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] :is(.mobile-sheet,.mobile-editor-tools){right:max(108px,env(safe-area-inset-right))}
+ #mobile-app[data-screen="editor"][data-refinement-mode="true"] .maplibregl-ctrl-bottom-right{right:max(108px,env(safe-area-inset-right))}
+ /* Share the strip below the editor heading without covering map controls. */
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"][data-refinement-mode="true"] .map-wrap .map-status{top:calc(96px + env(safe-area-inset-top));bottom:auto;left:max(64px,env(safe-area-inset-left));max-width:calc(50% - 80px);max-height:min(64px,calc(var(--mobile-viewport-height,100dvh) - min(38dvh,304px) - 176px));overflow:auto}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"][data-refinement-mode="true"] .maplibregl-ctrl-bottom-right{top:calc(96px + env(safe-area-inset-top));bottom:auto;right:max(108px,env(safe-area-inset-right));width:calc(50% - 108px)}
+ body.mobile-app-active[data-mobile-screen="editor"] #mobile-app[data-screen="editor"][data-refinement-mode="true"] .maplibregl-ctrl-attrib{max-width:calc(100% - 10px);max-height:min(64px,calc(var(--mobile-viewport-height,100dvh) - min(38dvh,304px) - 176px));overflow:auto}
+}

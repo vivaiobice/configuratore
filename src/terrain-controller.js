@@ -1,15 +1,15 @@
-import {createTerrainRestorePresentationCache} from './terrain-restore-presentation-cache.js?v=1.3.10';
-import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.10';
+import {createTerrainRestorePresentationCache} from './terrain-restore-presentation-cache.js?v=1.3.11';
+import {terrainUsesCertifiedQuantities,terrainQuantityBasisText} from './terrain-report-summary.js?v=1.3.11';
 // Candidate acquisition and solver output never mutate the live project.
-import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.10';
-import {attachTerrainRestore,terrainRestoreAvailability,terrainRestorePresentationAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.10';
-import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.10';
-import {terrainInputHash} from './terrain-model.js?v=1.3.10';
-import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.10';
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.10';
-import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.10';
-import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.10';
-import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.10';
+import {rowPortionEditorState} from './row-portion-editor.js?v=1.3.11';
+import {attachTerrainRestore,terrainRestoreAvailability,terrainRestorePresentationAvailability,assertTerrainRestoreHistory,assertNativeTerrainCutAttachment as verifyNativeAttachment} from './terrain-history.js?v=1.3.11';
+import {terrainGeometryInputHash,readTerrainEnvelope} from './terrain-replay.js?v=1.3.11';
+import {terrainInputHash} from './terrain-model.js?v=1.3.11';
+import {assertTerrainSerializationBudget} from './terrain-serialization.js?v=1.3.11';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.11';
+import {chargeTerrainOperationCopy} from './terrain-worker-client.js?v=1.3.11';
+import {hasTerrainCutConvergence} from './terrain-cut-candidates.js?v=1.3.11';
+import {TERRAIN_CONTOUR_ALGORITHM_VERSION,TERRAIN_OPERATION_CAP_MS,TERRAIN_PORTION_GEOMETRY_KEYS,TERRAIN_EXCLUSION_GEOMETRY_KEYS} from './terrain-contour-contracts.js?v=1.3.11';
 export function terrainPortionEditorState(project,activeId,result){
  return rowPortionEditorState(project,activeId,result?.terrainStatus==='invalid'?null:result?.portions);
 }
@@ -81,11 +81,11 @@ function validateCandidate(project,proposal){
  if(Object.hasOwn(proposal,'result')&&terrainInputHash(proposal.result)!==terrainInputHash(project.terrain.applied.result))throw new Error('Le quantità della proposta non corrispondono al disegno.');
  assertTerrainSerializationBudget(project);
 }
-const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.10')).loadTerrainForField(options);
-const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.10')).runTerrainProposal(options,control);
-const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.10')).terrainSummary(model);
-const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.10');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
-const defaultView=async options=>(await import('./terrain-map.js?v=1.3.10')).createTerrainMapView(options);
+const defaultLoad=async options=>(await import('./terrain-provider.js?v=1.3.11')).loadTerrainForField(options);
+const defaultRun=async(options,control)=>(await import('./terrain-worker-client.js?v=1.3.11')).runTerrainProposal(options,control);
+const defaultSummary=async model=>(await import('./terrain-model.js?v=1.3.11')).terrainSummary(model);
+const defaultCoverage=async(model,polygon)=>{const {sampleTerrain}=await import('./terrain-model.js?v=1.3.11');return Array.isArray(polygon)&&polygon.every(point=>sampleTerrain(model,point)!=null);};
+const defaultView=async options=>(await import('./terrain-map.js?v=1.3.11')).createTerrainMapView(options);
 const quantity=value=>Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:1}):'—';
 export function createTerrainController({document,getProject,getContext,getPortionId=()=>null,getMapApi=()=>null,getResult=()=>null,getCheckpointSnapshot,applyProposal,onStatus=()=>{},onProposalChange=()=>{},onStateChange=()=>{},onBudgetUsage=()=>{},loadTerrain=defaultLoad,runProposal=defaultRun,summarize=defaultSummary,covers=defaultCoverage,createMapView=defaultView}){
  const card=document.querySelector('#terrain-card');

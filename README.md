@@ -1,3 +1,11 @@
+# Vivai Obice — piattaforma completa 1.3.11
+
+Configuratore, Conteggi, PDF e amministrazione nello stesso ZIP. Versione coordinata **1.3.11 · LIVE**. Questa release aggiunge Media privati per campo e aggiorna l’interfaccia mobile.
+
+Dettagli in [README_RELEASE_1.3.11.md](README_RELEASE_1.3.11.md), verifiche in [QA_RELEASE_1.3.11.md](QA_RELEASE_1.3.11.md), caricamento in [LEGGIMI_CARICAMENTO_UNICO.md](LEGGIMI_CARICAMENTO_UNICO.md). Il backend Media è attivato; il sito statico viene pubblicato caricando il pacchetto. Adatta al terreno conserva il comportamento e i limiti della 1.3.10.
+
+## Documentazione storica
+
 # Vivai Obice — piattaforma unica 1.3.4
 
 Configuratore alla radice e Conteggi in `/conteggi/`, nello stesso pacchetto statico. Entrambi mostrano **1.3.4 · LIVE**.

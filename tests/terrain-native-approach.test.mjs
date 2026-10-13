@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTerrainModel} from '../src/terrain-model.js?v=1.3.10';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.10';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.10';
-import {fromUTM} from '../src/coordinate-system.js?v=1.3.10';
-import {traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,POLYLINE_SOURCE_PARAMETER_OPERATION} from '../src/terrain-polyline-source.js?v=1.3.10';
-import {exactDomain,Q,rational} from '../src/terrain-exact.js?v=1.3.10';
+import {createTerrainModel} from '../src/terrain-model.js?v=1.3.11';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.11';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.11';
+import {fromUTM} from '../src/coordinate-system.js?v=1.3.11';
+import {traceFinitePolylineContourLevel,resolveFinitePolylineSourceAxis,POLYLINE_SOURCE_PARAMETER_OPERATION} from '../src/terrain-polyline-source.js?v=1.3.11';
+import {exactDomain,Q,rational} from '../src/terrain-exact.js?v=1.3.11';
 
 let api;
 const moduleURL=new URL('../src/terrain-native-approach.js',import.meta.url);

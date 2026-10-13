@@ -1,11 +1,11 @@
-import {createTerrainBudget} from './terrain-budget.js?v=1.3.10';
-import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.10';
-import {FINITE_POLYLINE_AXIS_CONVENTION,resolveFinitePolylineSourceAxis} from './terrain-polyline-source.js?v=1.3.10';
-import {axisPieces} from './terrain-surface-flow.js?v=1.3.10';
+import {createTerrainBudget} from './terrain-budget.js?v=1.3.11';
+import {readAcquiredNativeSupport} from './terrain-contour-domain.js?v=1.3.11';
+import {FINITE_POLYLINE_AXIS_CONVENTION,resolveFinitePolylineSourceAxis} from './terrain-polyline-source.js?v=1.3.11';
+import {axisPieces} from './terrain-surface-flow.js?v=1.3.11';
 import {
  Q,ZERO,ONE,rational,add,sub,sq,min,max,cmp,xy,exactDomain,height,
  inRegion,inTriangle,splitSegment,segmentDistanceSquared,radical,lengthBounds
-} from './terrain-exact.js?v=1.3.10';
+} from './terrain-exact.js?v=1.3.11';
 
 function lifted(piece,axis,budget){
  budget.check(2);

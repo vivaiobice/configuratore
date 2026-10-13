@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {createTerrainModel} from '../src/terrain-model.js?v=1.3.10';
-import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.10';
-import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.10';
-import {fromUTM} from '../src/coordinate-system.js?v=1.3.10';
-import {Q,exactDomain} from '../src/terrain-exact.js?v=1.3.10';
-import {certifyUniformPlaneSupport} from '../src/terrain-surface-bands.js?v=1.3.10';
+import {createTerrainModel} from '../src/terrain-model.js?v=1.3.11';
+import {createContourDomain} from '../src/terrain-contour-domain.js?v=1.3.11';
+import {createTerrainBudget} from '../src/terrain-budget.js?v=1.3.11';
+import {fromUTM} from '../src/coordinate-system.js?v=1.3.11';
+import {Q,exactDomain} from '../src/terrain-exact.js?v=1.3.11';
+import {certifyUniformPlaneSupport} from '../src/terrain-surface-bands.js?v=1.3.11';
 const sourceUrl=new URL('../src/terrain-polyline-source.js',import.meta.url);
 async function internals(source){
- source=source.replaceAll('v=1.3.8','v=1.3.10');
+ source=source.replaceAll('v=1.3.8','v=1.3.11');
  source=source.replace(/from '(\.\/[^']+)'/g,(_match,path)=>`from '${new URL(path,sourceUrl).href}'`);
  return import('data:text/javascript;base64,'+Buffer.from(source+'\nexport {supportReader,levelGraph,regionKernel,contactWord,pairedClip,compileSource};').toString('base64'));
 }
@@ -86,7 +86,7 @@ test('split results are immutable same-operation evidence, and fresh budgets reb
  assert.throws(()=>current.resolveFinitePolylineSourceAxis(exactDomain(domain,budget),modified,budget),{status:'axis-geometry-unresolved'});
 });
 test('uniform eligibility remains the BandKernel exact predicate even with parallel intercept differences',async()=>{
- const {createBandKernel}=await import('../src/terrain-geodesic-flow.js?v=1.3.10'),{createAlgebraicField}=await import('../src/terrain-algebraic.js?v=1.3.10');
+ const {createBandKernel}=await import('../src/terrain-geodesic-flow.js?v=1.3.11'),{createAlgebraicField}=await import('../src/terrain-algebraic.js?v=1.3.11');
  const vertices=[[0,0,0],[4,0,1],[0,4,1],[10,0,2.5],[14,0,3.5],[10,4,3.5]];
  const make=offset=>({faces:[[0,1,2],[3,4,5]].map((ids,id)=>({id,vertexIds:ids,vertices:ids.map(index=>vertices[index].map((value,i)=>i===2&&id?value+offset:value)),edgeIds:ids.map((v,i)=>[v,ids[(i+1)%3]].sort((a,b)=>a-b).join(':'))})),boundaries:[]});
  // Intercept disagreement, including one exact binary ULP, is always negative.
